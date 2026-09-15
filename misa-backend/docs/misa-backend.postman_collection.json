@@ -1,0 +1,388 @@
+{
+  "info": {
+    "name": "MISA Backend API",
+    "_postman_id": "b3f6a1a0-5e3a-4e39-9c1a-misa-backend-0001",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "accessToken", "value": "" },
+    { "key": "refreshToken", "value": "" },
+    { "key": "email", "value": "freelancer1@example.com" },
+    { "key": "password", "value": "123456" },
+    { "key": "resetToken", "value": "" },
+    { "key": "taxpayerId", "value": "" },
+    { "key": "payoutId", "value": "" },
+    { "key": "certificateId", "value": "" },
+    { "key": "lookupCode", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/v1/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\",\n  \"displayName\": \"Nguyen Van A\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Sign In",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res && res.data && res.data.accessToken) {",
+                  "  pm.collectionVariables.set('accessToken', res.data.accessToken);",
+                  "  pm.collectionVariables.set('refreshToken', res.data.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/v1/auth/sign-in",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res && res.data && res.data.accessToken) {",
+                  "  pm.collectionVariables.set('accessToken', res.data.accessToken);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/auth/refresh-token"
+          }
+        },
+        {
+          "name": "Get Me",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/v1/auth/me"
+          }
+        },
+        {
+          "name": "Sign Out",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/v1/auth/sign-out",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accessToken\": \"{{accessToken}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Forgot Password - Send OTP",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/v1/auth/forgot-password/send-otp",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Forgot Password - Verify OTP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res && res.data) {",
+                  "  pm.collectionVariables.set('resetToken', res.data);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/v1/auth/forgot-password/verify-otp",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"otp\": \"123456\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Forgot Password - Reset",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/v1/auth/forgot-password/reset",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"resetToken\": \"{{resetToken}}\",\n  \"newPassword\": \"newpass123\",\n  \"confirmPassword\": \"newpass123\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Taxpayer",
+      "item": [
+        {
+          "name": "Register Taxpayer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res && res.data && res.data.id) {",
+                  "  pm.collectionVariables.set('taxpayerId', res.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/taxpayers",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Nguyen Van A\",\n  \"address\": \"Quan 1, TP.HCM\",\n  \"phone\": \"0900000000\",\n  \"taxCode\": \"8123456789\",\n  \"identityNumber\": \"079123456789\",\n  \"nationality\": \"Vietnam\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get My Taxpayer Profile",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/v1/taxpayers/me"
+          }
+        },
+        {
+          "name": "Get Taxpayer By Id",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/v1/taxpayers/{{taxpayerId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Organization",
+      "item": [
+        {
+          "name": "Get Organization Info",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/v1/organization"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Payout Transaction",
+      "item": [
+        {
+          "name": "Record Payout",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res && res.data && res.data.id) {",
+                  "  pm.collectionVariables.set('payoutId', res.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/taxpayers/{{taxpayerId}}/payouts",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"platformPayoutId\": \"PAYOUT-0001\",\n  \"transactionHash\": \"5F3sD9c...mockhash\",\n  \"blockchain\": \"solana\",\n  \"description\": \"Thanh toan du an website thang 9\",\n  \"amountUsdc\": 500,\n  \"exchangeRate\": 25000,\n  \"paymentDate\": \"2026-09-16\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Payout By Id",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/v1/taxpayers/{{taxpayerId}}/payouts/{{payoutId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Withholding Certificate",
+      "item": [
+        {
+          "name": "Create Certificate",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res && res.data) {",
+                  "  if (res.data.id) pm.collectionVariables.set('certificateId', res.data.id);",
+                  "  if (res.data.lookupCode) pm.collectionVariables.set('lookupCode', res.data.lookupCode);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/withholding-certificates",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"payoutTransactionId\": \"{{payoutId}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Issue Certificate",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/withholding-certificates/{{certificateId}}/issue",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"digitalCertificateSerial\": \"\",\n  \"signatureMode\": \"DIGITAL_SIGNATURE\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Submit Certificate",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/withholding-certificates/{{certificateId}}/submit",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"submissionMode\": \"ELECTRONIC\",\n  \"idempotencyKey\": \"submit-{{certificateId}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Certificate Status",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/v1/withholding-certificates/{{certificateId}}/status"
+          }
+        },
+        {
+          "name": "Get Certificate PDF",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/v1/withholding-certificates/{{certificateId}}/pdf"
+          }
+        },
+        {
+          "name": "Get Certificate XML",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/v1/withholding-certificates/{{certificateId}}/xml"
+          }
+        },
+        {
+          "name": "Lookup Certificate (Public)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/withholding-certificates/lookup/{{lookupCode}}"
+          }
+        },
+        {
+          "name": "Cancel Certificate",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/withholding-certificates/{{certificateId}}/cancel",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Sai so tien do nhap lieu\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Incorrect Record Notification",
+      "item": [
+        {
+          "name": "Report Incorrect Record",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/incorrect-record-notifications",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"certificateId\": \"{{certificateId}}\",\n  \"errorType\": \"WRONG_AMOUNT\",\n  \"description\": \"So tien khau tru bi sai do nhap sai ty gia\",\n  \"requestedAction\": \"REPLACE\"\n}"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
