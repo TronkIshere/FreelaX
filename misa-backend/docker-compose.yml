@@ -3,14 +3,14 @@ services:
     image: mysql:8.4
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-bromeclean}
-      MYSQL_DATABASE: bromeclean
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-misa}
+      MYSQL_DATABASE: misa
     ports:
-      - "3307:3307"
+      - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${DB_PASSWORD:-bromeclean}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${DB_PASSWORD:-misa}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -19,7 +19,7 @@ services:
     image: redis:7-alpine
     restart: unless-stopped
     ports:
-      - "6380:6380"
+      - "6380:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -29,7 +29,7 @@ services:
   backend:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.maven
     restart: unless-stopped
     depends_on:
       mysql:
@@ -39,10 +39,12 @@ services:
     env_file:
       - .env
     environment:
-      DB_HOST: mysql
-      DB_PORT: 3307
+      DB_URL: jdbc:mysql://mysql:3306/misa?useUnicode=true&characterEncoding=UTF-8
+      DB_USERNAME: root
+      DB_PASSWORD: ${DB_PASSWORD:-misa}
       REDIS_HOST: redis
-      REDIS_PORT: 6380
+      REDIS_PORT: 6379
+      SERVER_PORT: 9192
     ports:
       - "9192:9192"
 
