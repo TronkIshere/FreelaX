@@ -43,6 +43,12 @@ security:
     secret: ${JWT_SECRET:}
     expiration-ms: ${JWT_EXPIRATION_MS:86400000}
 
+paypal:
+  fee:
+    commercial-fee-rate: ${PAYPAL_FEE_RATE:0.044}
+    fixed-fee-usd: ${PAYPAL_FIXED_FEE_USD:0.30}
+    fx-spread-rate: ${PAYPAL_FX_SPREAD:0.035}
+
 springdoc:
   api-docs:
     path: /api-docs

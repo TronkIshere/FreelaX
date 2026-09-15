@@ -25,6 +25,11 @@ public enum ErrorCode {
     INVALID_OTP(2012, "Mã OTP không đúng hoặc đã hết hạn", HttpStatus.BAD_REQUEST),
     PASSWORD_NOT_MATCH(2013, "Mật khẩu xác nhận không khớp", HttpStatus.BAD_REQUEST),
 
+    PAYEE_NOT_FOUND(3000, "Không tìm thấy hồ sơ nhận tiền PayPal: %s", HttpStatus.NOT_FOUND),
+    PAYOUT_NOT_FOUND(3001, "Không tìm thấy giao dịch payout: %s", HttpStatus.NOT_FOUND),
+    DUPLICATE_PLATFORM_PAYOUT_ID(3002, "Mã payout đã tồn tại: %s", HttpStatus.CONFLICT),
+    INVALID_TRANSACTION_STATUS(3003, "Trạng thái giao dịch không cho phép thao tác này", HttpStatus.CONFLICT),
+
     RATE_LIMIT_EXCEEDED(5000, "Bạn thao tác quá nhanh, vui lòng thử lại sau", HttpStatus.TOO_MANY_REQUESTS),
 
     INTERNAL_ERROR(9999, "Đã có lỗi xảy ra, vui lòng thử lại sau", HttpStatus.INTERNAL_SERVER_ERROR),
