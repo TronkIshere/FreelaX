@@ -42,7 +42,7 @@ import java.util.stream.Collectors;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class JwtServiceImpl implements JwtService {
 
-    private static final String ISSUER = "bromeclean-service";
+    private static final String ISSUER = "misa-service";
     private static final String RESET_TOKEN_TYPE_CLAIM = "type";
     private static final String RESET_TOKEN_TYPE_VALUE = "RESET_PASSWORD";
 

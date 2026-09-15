@@ -43,6 +43,19 @@ security:
     secret: ${JWT_SECRET:}
     expiration-ms: ${JWT_EXPIRATION_MS:86400000}
 
+misa:
+  organization:
+    id: ${MISA_ORG_ID:ORG-000001}
+    name: ${MISA_ORG_NAME:VIET FREELANCE PLATFORM JSC}
+    tax-code: ${MISA_ORG_TAX_CODE:0312345678}
+    address: ${MISA_ORG_ADDRESS:Ho Chi Minh City, Vietnam}
+    phone: ${MISA_ORG_PHONE:02812345678}
+    tax-authority: ${MISA_ORG_TAX_AUTHORITY:THUE_TP_HCM}
+  signing:
+    certificate-serial: ${MISA_CERT_SERIAL:CERT-ABC-2026}
+  tax:
+    withholding-rate: ${MISA_WITHHOLDING_RATE:0.10}
+
 springdoc:
   api-docs:
     path: /api-docs

@@ -1,7 +1,12 @@
 package com.misa.backend.service.impl;
 
 import com.misa.backend.configuration.UserPrincipal;
-import com.misa.backend.dto.request.auth.*;
+import com.misa.backend.dto.request.auth.ForgotPasswordRequest;
+import com.misa.backend.dto.request.auth.LogoutRequest;
+import com.misa.backend.dto.request.auth.RegisterRequest;
+import com.misa.backend.dto.request.auth.ResetPasswordRequest;
+import com.misa.backend.dto.request.auth.SignInRequest;
+import com.misa.backend.dto.request.auth.VerifyForgotPasswordOtpRequest;
 import com.misa.backend.dto.response.auth.RefreshTokenResponse;
 import com.misa.backend.dto.response.auth.SignInResponse;
 import com.misa.backend.dto.response.auth.SignInStatus;
@@ -13,7 +18,11 @@ import com.misa.backend.exception.ApplicationException;
 import com.misa.backend.exception.ErrorCode;
 import com.misa.backend.repository.RoleRepository;
 import com.misa.backend.repository.UserRepository;
-import com.misa.backend.service.*;
+import com.misa.backend.service.JwtService;
+import com.misa.backend.service.OTPService;
+import com.misa.backend.service.RedisService;
+import com.misa.backend.service.UserDetailsServiceCustomizer;
+import com.misa.backend.service.AuthenticationService;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jwt.SignedJWT;
 import jakarta.servlet.http.Cookie;

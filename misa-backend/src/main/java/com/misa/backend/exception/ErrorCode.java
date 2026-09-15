@@ -25,6 +25,16 @@ public enum ErrorCode {
     INVALID_OTP(2012, "Mã OTP không đúng hoặc đã hết hạn", HttpStatus.BAD_REQUEST),
     PASSWORD_NOT_MATCH(2013, "Mật khẩu xác nhận không khớp", HttpStatus.BAD_REQUEST),
 
+    TAXPAYER_NOT_FOUND(3000, "Không tìm thấy hồ sơ người nộp thuế: %s", HttpStatus.NOT_FOUND),
+    TAX_CODE_ALREADY_EXISTS(3001, "Mã số thuế đã được đăng ký: %s", HttpStatus.CONFLICT),
+    PAYOUT_NOT_FOUND(3002, "Không tìm thấy giao dịch payout: %s", HttpStatus.NOT_FOUND),
+    PAYOUT_ALREADY_HAS_CERTIFICATE(3003, "Giao dịch payout đã có chứng từ khấu trừ", HttpStatus.CONFLICT),
+    CERTIFICATE_NOT_FOUND(3004, "Không tìm thấy chứng từ khấu trừ: %s", HttpStatus.NOT_FOUND),
+    INVALID_CERTIFICATE_DATA(3005, "Dữ liệu chứng từ không hợp lệ", HttpStatus.UNPROCESSABLE_ENTITY),
+    INVALID_CERTIFICATE_STATUS(3006, "Trạng thái chứng từ không cho phép thao tác này", HttpStatus.CONFLICT),
+    CERTIFICATE_ALREADY_SUBMITTED(3007, "Chứng từ đã được gửi trước đó", HttpStatus.CONFLICT),
+    LOOKUP_CODE_NOT_FOUND(3008, "Mã tra cứu không hợp lệ hoặc không tồn tại", HttpStatus.NOT_FOUND),
+
     RATE_LIMIT_EXCEEDED(5000, "Bạn thao tác quá nhanh, vui lòng thử lại sau", HttpStatus.TOO_MANY_REQUESTS),
 
     INTERNAL_ERROR(9999, "Đã có lỗi xảy ra, vui lòng thử lại sau", HttpStatus.INTERNAL_SERVER_ERROR),

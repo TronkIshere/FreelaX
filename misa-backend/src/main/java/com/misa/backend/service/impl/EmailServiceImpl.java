@@ -18,7 +18,7 @@ public class EmailServiceImpl implements EmailService {
     public void sendOtpEmail(String toEmail, String otp) {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(toEmail);
-        message.setSubject("Mã xác nhận đặt lại mật khẩu BROME CLEAN");
+        message.setSubject("Mã xác nhận đặt lại mật khẩu MISA");
         message.setText("Mã OTP của bạn là: " + otp + ". Mã có hiệu lực trong 5 phút.");
 
         try {
