@@ -1,0 +1,49 @@
+# Compiled output
+target/
+build/
+out/
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+
+# Gradle
+.gradle/
+gradle-app.setting
+!gradle-wrapper.jar
+!gradle-wrapper.properties
+
+# Maven
+.mvn/wrapper/maven-wrapper.jar
+!.mvn/wrapper/maven-wrapper.properties
+
+# IDE
+.idea/
+*.iws
+*.iml
+*.ipr
+.vscode/
+.settings/
+.classpath
+.project
+.factorypath
+*.launch
+
+# Logs
+*.log
+logs/
+spring.log
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+application-local.yml
+application-local.yaml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test / coverage
+/coverage/
+*.hprof
