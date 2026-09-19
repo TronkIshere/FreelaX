@@ -9,7 +9,7 @@ import lombok.Setter;
 import lombok.experimental.FieldDefaults;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Getter
 @Setter
@@ -32,5 +32,5 @@ public class RecordPaypalPayoutRequest {
     BigDecimal midMarketRate;
 
     @NotNull(message = "Ngày nhận tiền không được để trống")
-    LocalDate paymentDate;
+    LocalDateTime paymentDate;
 }

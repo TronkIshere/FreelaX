@@ -25,10 +25,6 @@ public class PaypalPayoutTransactionController {
 
     private final PaypalPayoutTransactionService paypalPayoutTransactionService;
 
-    // SECURITY FIX: payeeId was accepted from the URL but never checked
-    // against the caller — any authenticated user could record a fake
-    // payout transaction under ANY other user's PayPal payee profile just
-    // by putting that payee's UUID in the path.
     @PostMapping
     public ResponseAPI<PaypalPayoutTransactionResponse> record(@AuthenticationPrincipal UserPrincipal principal,
                                                                @PathVariable UUID payeeId,
