@@ -26,7 +26,7 @@ public class PaypalPayeeController {
 
     @PostMapping
     public ResponseAPI<PaypalPayeeResponse> register(@AuthenticationPrincipal UserPrincipal principal,
-                                                       @Valid @RequestBody CreatePaypalPayeeRequest request) {
+                                                     @Valid @RequestBody CreatePaypalPayeeRequest request) {
         return ResponseAPI.<PaypalPayeeResponse>builder()
                 .code(200)
                 .message("Đăng ký hồ sơ nhận tiền PayPal thành công")
@@ -43,10 +43,11 @@ public class PaypalPayeeController {
     }
 
     @GetMapping("/{id}")
-    public ResponseAPI<PaypalPayeeResponse> getById(@PathVariable UUID id) {
+    public ResponseAPI<PaypalPayeeResponse> getById(@AuthenticationPrincipal UserPrincipal principal,
+                                                    @PathVariable UUID id) {
         return ResponseAPI.<PaypalPayeeResponse>builder()
                 .code(200)
-                .data(paypalPayeeService.getById(id))
+                .data(paypalPayeeService.getByIdForOwner(principal.getId(), id))
                 .build();
     }
 }

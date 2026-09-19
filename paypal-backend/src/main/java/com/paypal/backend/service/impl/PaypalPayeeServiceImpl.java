@@ -47,8 +47,9 @@ public class PaypalPayeeServiceImpl implements PaypalPayeeService {
     }
 
     @Override
-    public PaypalPayeeResponse getById(UUID payeeId) {
+    public PaypalPayeeResponse getByIdForOwner(UUID userId, UUID payeeId) {
         PaypalPayee payee = paypalPayeeRepository.findById(payeeId)
+                .filter(p -> p.getUserId().equals(userId))
                 .orElseThrow(() -> new ApplicationException(ErrorCode.PAYEE_NOT_FOUND, payeeId));
         return toResponse(payee);
     }

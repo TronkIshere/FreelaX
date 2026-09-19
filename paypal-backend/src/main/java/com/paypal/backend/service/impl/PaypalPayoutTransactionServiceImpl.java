@@ -33,12 +33,13 @@ public class PaypalPayoutTransactionServiceImpl implements PaypalPayoutTransacti
 
     @Override
     @Transactional
-    public PaypalPayoutTransactionResponse record(UUID payeeId, RecordPaypalPayoutRequest request) {
+    public PaypalPayoutTransactionResponse record(UUID userId, UUID payeeId, RecordPaypalPayoutRequest request) {
         if (paypalPayoutTransactionRepository.existsByPlatformPayoutId(request.getPlatformPayoutId())) {
             throw new ApplicationException(ErrorCode.DUPLICATE_PLATFORM_PAYOUT_ID, request.getPlatformPayoutId());
         }
 
         PaypalPayee payee = paypalPayeeRepository.findById(payeeId)
+                .filter(p -> p.getUserId().equals(userId))
                 .orElseThrow(() -> new ApplicationException(ErrorCode.PAYEE_NOT_FOUND, payeeId));
 
         PaypalFeeCalculatorService.FeeCalculationResult feeResult =
@@ -65,15 +66,16 @@ public class PaypalPayoutTransactionServiceImpl implements PaypalPayoutTransacti
     }
 
     @Override
-    public PaypalPayoutTransactionResponse getById(UUID transactionId) {
-        PaypalPayoutTransaction transaction = getOrThrow(transactionId);
+    public PaypalPayoutTransactionResponse getById(UUID userId, UUID payeeId, UUID transactionId) {
+        PaypalPayoutTransaction transaction = getOwnedOrThrow(userId, payeeId, transactionId);
         return toResponse(transaction);
     }
 
     @Override
     @Transactional
-    public PaypalPayoutTransactionResponse withdraw(UUID transactionId, WithdrawPaypalPayoutRequest request) {
-        PaypalPayoutTransaction transaction = getOrThrow(transactionId);
+    public PaypalPayoutTransactionResponse withdraw(UUID userId, UUID payeeId, UUID transactionId,
+                                                    WithdrawPaypalPayoutRequest request) {
+        PaypalPayoutTransaction transaction = getOwnedOrThrow(userId, payeeId, transactionId);
 
         if (transaction.getStatus() != PaypalTransactionStatus.RECEIVED) {
             throw new ApplicationException(ErrorCode.INVALID_TRANSACTION_STATUS);
@@ -87,9 +89,18 @@ public class PaypalPayoutTransactionServiceImpl implements PaypalPayoutTransacti
         return toResponse(transaction);
     }
 
-    private PaypalPayoutTransaction getOrThrow(UUID transactionId) {
-        return paypalPayoutTransactionRepository.findById(transactionId)
+    private PaypalPayoutTransaction getOwnedOrThrow(UUID userId, UUID payeeId, UUID transactionId) {
+        PaypalPayoutTransaction transaction = paypalPayoutTransactionRepository.findById(transactionId)
                 .orElseThrow(() -> new ApplicationException(ErrorCode.PAYOUT_NOT_FOUND, transactionId));
+
+        PaypalPayee payee = transaction.getPayee();
+        boolean matchesPathPayee = payee.getId().equals(payeeId);
+        boolean belongsToCaller = payee.getUserId().equals(userId);
+        if (!matchesPathPayee || !belongsToCaller) {
+            throw new ApplicationException(ErrorCode.PAYOUT_NOT_FOUND, transactionId);
+        }
+
+        return transaction;
     }
 
     private PaypalPayoutTransactionResponse toResponse(PaypalPayoutTransaction transaction) {

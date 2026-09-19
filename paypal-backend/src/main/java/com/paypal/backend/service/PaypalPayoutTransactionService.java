@@ -8,9 +8,9 @@ import java.util.UUID;
 
 public interface PaypalPayoutTransactionService {
 
-    PaypalPayoutTransactionResponse record(UUID payeeId, RecordPaypalPayoutRequest request);
+    PaypalPayoutTransactionResponse record(UUID userId, UUID payeeId, RecordPaypalPayoutRequest request);
 
-    PaypalPayoutTransactionResponse getById(UUID transactionId);
+    PaypalPayoutTransactionResponse getById(UUID userId, UUID payeeId, UUID transactionId);
 
-    PaypalPayoutTransactionResponse withdraw(UUID transactionId, WithdrawPaypalPayoutRequest request);
+    PaypalPayoutTransactionResponse withdraw(UUID userId, UUID payeeId, UUID transactionId, WithdrawPaypalPayoutRequest request);
 }

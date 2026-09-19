@@ -11,5 +11,5 @@ public interface PaypalPayeeService {
 
     PaypalPayeeResponse getByUserId(UUID userId);
 
-    PaypalPayeeResponse getById(UUID payeeId);
+    PaypalPayeeResponse getByIdForOwner(UUID userId, UUID payeeId);
 }
