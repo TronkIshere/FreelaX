@@ -8,8 +8,9 @@ import 'auth_service.dart';
 import 'http_json.dart';
 
 class ApiException implements Exception {
-  const ApiException(this.message);
+  const ApiException(this.message, {this.statusCode});
   final String message;
+  final int? statusCode;
   @override
   String toString() => message;
 }
@@ -61,7 +62,7 @@ class ApiClient {
     try {
       return await attemptRequest(request);
     } on HttpJsonException catch (e) {
-      throw ApiException(e.message);
+      throw ApiException(e.message, statusCode: e.statusCode);
     }
   }
 
@@ -69,7 +70,7 @@ class ApiClient {
     try {
       return parseJsonBody(response);
     } on HttpJsonException catch (e) {
-      throw ApiException(e.message);
+      throw ApiException(e.message, statusCode: e.statusCode);
     }
   }
 
