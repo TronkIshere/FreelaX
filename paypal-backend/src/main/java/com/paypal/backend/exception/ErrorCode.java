@@ -29,6 +29,11 @@ public enum ErrorCode {
     PAYOUT_NOT_FOUND(3001, "Không tìm thấy giao dịch payout: %s", HttpStatus.NOT_FOUND),
     DUPLICATE_PLATFORM_PAYOUT_ID(3002, "Mã payout đã tồn tại: %s", HttpStatus.CONFLICT),
     INVALID_TRANSACTION_STATUS(3003, "Trạng thái giao dịch không cho phép thao tác này", HttpStatus.CONFLICT),
+    CHECKOUT_ORDER_NOT_FOUND(3004, "Không tìm thấy giao dịch thanh toán: %s", HttpStatus.NOT_FOUND),
+    INVALID_CHECKOUT_ORDER_STATUS(3005, "Trạng thái giao dịch thanh toán không cho phép thao tác này", HttpStatus.CONFLICT),
+    PAYPAL_ORDER_FAILED(3006, "Giao dịch PayPal thất bại: %s", HttpStatus.BAD_GATEWAY),
+
+    JOB_NOT_FOUND(4000, "Không tìm thấy công việc: %s", HttpStatus.NOT_FOUND),
 
     RATE_LIMIT_EXCEEDED(5000, "Bạn thao tác quá nhanh, vui lòng thử lại sau", HttpStatus.TOO_MANY_REQUESTS),
 
