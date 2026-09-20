@@ -4,14 +4,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/constants/app_colors.dart';
 import 'core/constants/app_strings.dart';
 import 'core/constants/app_typography.dart';
+import 'core/data/mock_job_repository.dart';
 import 'core/data/remote_auth_repository.dart';
 import 'core/services/auth_service.dart';
+import 'core/services/job_service.dart';
 import 'core/utils/nav_key.dart';
 import 'features/splash/presentation/screens/splash_screen.dart';
 
 void main() {
   // Đổi thành MockAuthRepository() nếu muốn demo UI mà chưa cần bật backend.
   AuthService.instance.setRepository(RemoteAuthRepository());
+  // Chưa có backend marketplace (đang chờ docs) — đổi thành
+  // RemoteJobRepository() khi backend đó xong, không cần sửa UI.
+  JobService.instance.setRepository(MockJobRepository());
   runApp(const ProviderScope(child: PaySimApp()));
 }
 

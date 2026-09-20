@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../activity/presentation/screens/activity_screen.dart';
+import '../../../marketplace/presentation/screens/job_list_screen.dart';
 import '../../../settings/presentation/screens/settings_screen.dart';
 import '../../../simulation/presentation/screens/compare_fee_screen.dart';
 import 'wallet_tab.dart';
@@ -16,7 +17,7 @@ class HomeShellScreen extends StatefulWidget {
 class _HomeShellScreenState extends State<HomeShellScreen> {
   int _index = 0;
 
-  void _goToCompareFee() => setState(() => _index = 1);
+  void _goToCompareFee() => setState(() => _index = 2);
 
   @override
   Widget build(BuildContext context) {
@@ -24,6 +25,7 @@ class _HomeShellScreenState extends State<HomeShellScreen> {
 
     final tabs = <Widget>[
       WalletTab(onOpenCompareFee: _goToCompareFee),
+      const JobListScreen(),
       const CompareFeeScreen(),
       const ActivityScreen(),
       const SettingsScreen(),
@@ -41,6 +43,11 @@ class _HomeShellScreenState extends State<HomeShellScreen> {
             icon: Icon(Icons.account_balance_wallet_outlined),
             selectedIcon: Icon(Icons.account_balance_wallet),
             label: 'Trang chủ',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.work_outline_rounded),
+            selectedIcon: Icon(Icons.work_rounded),
+            label: 'Marketplace',
           ),
           NavigationDestination(
             icon: Icon(Icons.compare_arrows_outlined),
