@@ -17,4 +17,9 @@ abstract class JobRepository {
   Future<List<MarketplaceJob>> listOpenJobs();
 
   Future<MarketplaceJob> getJobById(String jobId);
+
+  Future<MarketplaceJob> linkCheckoutOrder({
+    required String jobId,
+    required String checkoutOrderId,
+  });
 }

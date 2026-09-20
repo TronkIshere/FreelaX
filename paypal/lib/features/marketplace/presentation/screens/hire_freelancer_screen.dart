@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -6,6 +7,7 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_spacing.dart';
 import '../../../../core/constants/app_typography.dart';
 import '../../../../core/models/marketplace_job.dart';
+import '../../../../core/services/job_service.dart';
 import '../../../../shared/widgets/app_background.dart';
 import '../../../../shared/widgets/app_top_bar.dart';
 import '../../../../shared/widgets/primary_button.dart';
@@ -13,17 +15,18 @@ import '../../../../shared/widgets/section_card.dart';
 import '../../data/checkout_models.dart';
 import '../../data/checkout_repository.dart';
 
-class HireFreelancerScreen extends StatefulWidget {
+class HireFreelancerScreen extends ConsumerStatefulWidget {
   const HireFreelancerScreen({super.key, required this.job});
 
   final MarketplaceJob job;
 
   @override
-  State<HireFreelancerScreen> createState() => _HireFreelancerScreenState();
+  ConsumerState<HireFreelancerScreen> createState() => _HireFreelancerScreenState();
 }
 
-class _HireFreelancerScreenState extends State<HireFreelancerScreen> {
+class _HireFreelancerScreenState extends ConsumerState<HireFreelancerScreen> {
   late final TextEditingController _amountController;
+  final _payeeIdController = TextEditingController();
   bool _creating = false;
   bool _capturing = false;
   String? _errorText;
@@ -40,11 +43,18 @@ class _HireFreelancerScreenState extends State<HireFreelancerScreen> {
   @override
   void dispose() {
     _amountController.dispose();
+    _payeeIdController.dispose();
     super.dispose();
   }
 
   Future<void> _createOrder() async {
     final amount = double.tryParse(_amountController.text.trim().replaceAll(',', '.'));
+    final payeeId = _payeeIdController.text.trim();
+
+    if (payeeId.isEmpty) {
+      setState(() => _errorText = 'Nhập payeeId của freelancer (lấy từ hồ sơ PayPal họ đã đăng ký).');
+      return;
+    }
     if (amount == null || amount <= 0) {
       setState(() => _errorText = 'Nhập số tiền hợp lệ (> 0).');
       return;
@@ -56,11 +66,18 @@ class _HireFreelancerScreenState extends State<HireFreelancerScreen> {
     });
     try {
       final order = await checkoutRepository.createOrder(
+        payeeId: payeeId,
         amountUsd: amount,
         referenceId: widget.job.id,
       );
       if (!mounted) return;
       setState(() => _order = order);
+
+      await ref.read(jobServiceProvider).linkCheckoutOrder(
+            jobId: widget.job.id,
+            checkoutOrderId: order.id,
+          );
+
       final approvalUrl = order.approvalUrl;
       if (approvalUrl != null) {
         await launchUrl(Uri.parse(approvalUrl), mode: LaunchMode.externalApplication);
@@ -127,6 +144,23 @@ class _HireFreelancerScreenState extends State<HireFreelancerScreen> {
                     Text('Tạo order PayPal thật, giữ tiền cho tới khi bạn xác nhận capture.',
                         style: AppTypography.bodyMuted(colors)),
                     const SizedBox(height: AppSpacing.md),
+                    Text('Payee ID của freelancer', style: AppTypography.caption(colors)),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: _payeeIdController,
+                      enabled: order == null,
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: colors.background,
+                        hintText: 'UUID hồ sơ PayPal freelancer đã đăng ký',
+                        prefixIcon: const Icon(Icons.person_outline),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
                     Text('Số tiền (USD)', style: AppTypography.caption(colors)),
                     const SizedBox(height: 6),
                     TextField(

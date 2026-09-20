@@ -39,6 +39,17 @@ class JobService extends ChangeNotifier {
     );
     await load();
   }
+
+  Future<void> linkCheckoutOrder({
+    required String jobId,
+    required String checkoutOrderId,
+  }) async {
+    await _repository.linkCheckoutOrder(
+      jobId: jobId,
+      checkoutOrderId: checkoutOrderId,
+    );
+    await load();
+  }
 }
 
 final jobServiceProvider = ChangeNotifierProvider<JobService>((ref) {

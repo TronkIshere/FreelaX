@@ -58,4 +58,22 @@ class RemoteJobRepository implements JobRepository {
       throw JobRepositoryException(e.message);
     }
   }
+
+  @override
+  Future<MarketplaceJob> linkCheckoutOrder({
+    required String jobId,
+    required String checkoutOrderId,
+  }) async {
+    try {
+      final data = await _client.post('/marketplace/jobs/$jobId/checkout-order', {
+        'checkoutOrderId': checkoutOrderId,
+      });
+      if (data is! Map<String, dynamic>) {
+        throw const JobRepositoryException('Phản hồi từ server không hợp lệ.');
+      }
+      return MarketplaceJob.fromJson(data);
+    } on ApiException catch (e) {
+      throw JobRepositoryException(e.message);
+    }
+  }
 }

@@ -3,6 +3,7 @@ library;
 class PaypalCheckoutOrder {
   const PaypalCheckoutOrder({
     required this.id,
+    required this.payeeId,
     required this.referenceId,
     required this.amountUsd,
     required this.paypalOrderId,
@@ -14,6 +15,7 @@ class PaypalCheckoutOrder {
   });
 
   final String id;
+  final String payeeId;
   final String referenceId;
   final double amountUsd;
   final String paypalOrderId;
@@ -26,6 +28,7 @@ class PaypalCheckoutOrder {
   factory PaypalCheckoutOrder.fromJson(Map<String, dynamic> json) =>
       PaypalCheckoutOrder(
         id: json['id'] as String? ?? '',
+        payeeId: json['payeeId'] as String? ?? '',
         referenceId: json['referenceId'] as String? ?? '',
         amountUsd: (json['amountUsd'] as num?)?.toDouble() ?? 0,
         paypalOrderId: json['paypalOrderId'] as String? ?? '',

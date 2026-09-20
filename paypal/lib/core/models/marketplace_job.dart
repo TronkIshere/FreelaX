@@ -7,6 +7,7 @@ class MarketplaceJob {
     this.clientUserId,
     this.status,
     this.createdAt,
+    this.checkoutOrderId,
   });
 
   final String id;
@@ -16,6 +17,7 @@ class MarketplaceJob {
   final String? clientUserId;
   final String? status;
   final DateTime? createdAt;
+  final String? checkoutOrderId;
 
   factory MarketplaceJob.fromJson(Map<String, dynamic> json) {
     return MarketplaceJob(
@@ -28,6 +30,20 @@ class MarketplaceJob {
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'] as String)
           : null,
+      checkoutOrderId: json['checkoutOrderId'] as String?,
+    );
+  }
+
+  MarketplaceJob copyWith({String? checkoutOrderId, String? status}) {
+    return MarketplaceJob(
+      id: id,
+      title: title,
+      description: description,
+      budgetUsd: budgetUsd,
+      clientUserId: clientUserId,
+      status: status ?? this.status,
+      createdAt: createdAt,
+      checkoutOrderId: checkoutOrderId ?? this.checkoutOrderId,
     );
   }
 }

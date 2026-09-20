@@ -13,11 +13,13 @@ class CheckoutRepository {
   final ApiClient _client;
 
   Future<PaypalCheckoutOrder> createOrder({
+    required String payeeId,
     required double amountUsd,
     required String referenceId,
   }) async {
     try {
       final data = await _client.post('/paypal/checkout/orders', {
+        'payeeId': payeeId,
         'amountUsd': amountUsd,
         'referenceId': referenceId,
       });

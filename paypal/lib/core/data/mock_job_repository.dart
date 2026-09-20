@@ -43,4 +43,22 @@ class MockJobRepository implements JobRepository {
       orElse: () => throw const JobRepositoryException('Không tìm thấy công việc.'),
     );
   }
+
+  @override
+  Future<MarketplaceJob> linkCheckoutOrder({
+    required String jobId,
+    required String checkoutOrderId,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 100));
+    final index = _jobs.indexWhere((job) => job.id == jobId);
+    if (index == -1) {
+      throw const JobRepositoryException('Không tìm thấy công việc.');
+    }
+    final updated = _jobs[index].copyWith(
+      checkoutOrderId: checkoutOrderId,
+      status: 'IN_PROGRESS',
+    );
+    _jobs[index] = updated;
+    return updated;
+  }
 }
