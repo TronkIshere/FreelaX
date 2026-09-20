@@ -46,6 +46,21 @@ mvn spring-boot:run
 5. `POST /api/v1/paypal/payees/{payeeId}/transactions/{transactionId}/withdraw`
    — transitions the transaction status from `RECEIVED` to `WITHDRAWN`.
 
+All five calls above must use the same logged-in user's access token — steps
+2–5 now enforce that `payeeId` (and, for steps 4–5, `transactionId`) belong to
+the caller. Calling any of them with someone else's `payeeId`/`transactionId`
+returns a not-found-style error rather than that user's data. See "Ownership
+/ access control" in `docs/PAYPAL_MODULE_REFERENCE.md` for exactly what
+changed.
+
+## Marketplace module
+
+Job posting and listing — `POST/GET /api/v1/marketplace/jobs`, `GET /api/v1/marketplace/jobs/{jobId}`, plus `POST /{jobId}/checkout-order` to record which real PayPal checkout order (see below) is paying for a job. See `docs/MARKETPLACE_MODULE_REFERENCE.md`. No hiring, escrow, or payout logic exists yet — that was drafted once and dropped pending real product docs.
+
+## PayPal checkout
+
+Real PayPal Orders API integration (`/v2/checkout/orders` create + capture), not the mock fee model described above — `POST /api/v1/paypal/checkout/orders` `{payeeId, amountUsd, referenceId}` then `POST /{id}/capture`. `payeeId` is validated against an existing `PaypalPayee` before a real order is created. Requires real sandbox or live PayPal credentials in `application.yml` (`paypal.checkout.*`) — without them, order creation fails at PayPal's OAuth step, not before.
+
 ## Known limitations
 
 - All fee rates (`paypal.fee.*` in `application.yml`) are **mock placeholder
@@ -53,7 +68,10 @@ mvn spring-boot:run
   full disclaimer in `docs/PAYPAL_MODULE_REFERENCE.md`.
 - Does not connect to the real PayPal API — `senderReference` and
   `platformPayoutId` are manually entered data used to simulate a transaction,
-  not an actual PayPal transaction.
+  not an actual PayPal transaction. **This applies only to the payee/
+  transaction module above.** The separate PayPal checkout module (see
+  "PayPal checkout" below) does call the real PayPal Orders API — don't
+  confuse the two when demoing.
 - There is no "tax withholding" step in this flow at all — this correctly
   reflects the nature of the old PayPal path (the freelancer is responsible for
   self-declaring taxes). This is precisely the differentiator to emphasize when
@@ -62,3 +80,8 @@ mvn spring-boot:run
 - `PaypalTransactionStatus` only has 2 states (`RECEIVED`/`WITHDRAWN`), with no
   complex state machine — this correctly reflects that the old flow has no
   certificate/tax-compliance process attached to it.
+- `GET /api/v1/paypal/payees/{payeeId}/transactions` (list) now exists,
+  ownership-checked like the other three — see
+  `docs/PAYPAL_MODULE_REFERENCE.md`. Requires a `findByPayeeId` method on
+  `PaypalPayoutTransactionRepository`, which needs adding by hand (that file
+  itself was never shared).

@@ -28,10 +28,47 @@ The Flutter side has been updated to match:
 - The USDC + off-ramp + MISA comparison and the `savingsVnd`/`savingsPercent`
   figure are **not shown anymore** — deliberately deferred until an
   equivalent exists on the backend, not a regression. See `REFERENCE.md` §9
-  for the full gap list, including a few backend DTO assumptions
-  (`CreatePaypalPayeeRequest`/`RecordPaypalPayoutRequest` field names, the
-  `paymentDate` Java type, the HTTP status for "no payee yet") that haven't
-  been confirmed against a running backend from this app.
+  for the full gap list.
+- The `CreatePaypalPayeeRequest`/`RecordPaypalPayoutRequest` field
+  assumptions flagged here previously are now **confirmed** against the real
+  DTO source files. Confirming them surfaced a real bug (now fixed) and then
+  a deliberate change: `paymentDate` was originally `LocalDate` on the Java
+  side while the app sent a full ISO datetime — that would have 400'd on
+  every single call. After fixing it to send date-only, the field was then
+  changed to `LocalDateTime` on request (time-of-day needed capturing too),
+  and the app reverted to sending the full datetime again. Current code and
+  current DTO agree, but this hasn't been re-tested end-to-end. The one
+  thing still **not** confirmed is the HTTP status `GET .../payees/me`
+  returns for "no payee yet" — the app assumes 404 (see `REFERENCE.md`
+  §8/§9).
+- A real PayPal checkout integration (`POST /api/v1/paypal/checkout/orders`
+  + `/capture`) was added on the backend and wired into a new marketplace UI
+    scaffold (post a job, browse jobs, "hire" a freelancer by paying via a
+    real PayPal order). Job posting/listing started as an in-memory mock
+    behind `core/services/job_service.dart`, structured the same way as auth
+    (`core/domain/job_repository.dart` interface, swappable
+    `MockJobRepository`/`RemoteJobRepository` in `core/data/`) — a **real
+    backend for jobs now exists too** (`MarketplaceJobController` etc.,
+    matching `RemoteJobRepository`'s contract exactly), though `main.dart`
+    still defaults to the mock; switching is one line.
+- Two gaps flagged here previously are now **partially fixed**:
+  `HireFreelancerScreen` has a `payeeId` field (validated against real
+  payees server-side before a payment is created), and a job now remembers
+  which checkout order paid for it (`MarketplaceJob.checkoutOrderId`, set
+  via a new `POST .../jobs/{jobId}/checkout-order` endpoint called right
+  after order creation). What's still missing: `payeeId` is a raw text
+  field — there is no freelancer directory or picker anywhere — see
+  `REFERENCE.md` §9 item 1, still the most important open item.
+- All four `ErrorCode` entries this feature set needed
+  (`CHECKOUT_ORDER_NOT_FOUND`, `INVALID_CHECKOUT_ORDER_STATUS`,
+  `PAYPAL_ORDER_FAILED`, `JOB_NOT_FOUND`) have been confirmed added to the
+  real `ErrorCode.java`. One backend dependency is still outstanding:
+  `PaypalPayoutTransactionRepository.findByPayeeId(UUID)`, needed for the
+  transaction-list endpoint below — that repository file itself was never
+  shared, so it may still need adding by hand.
+- `GET /api/v1/paypal/payees/{payeeId}/transactions` (list all transactions
+  for a payee, ownership-checked) now exists on the backend — nothing in
+  this app calls it yet; `ActivityScreen` is the natural place to.
 
 ## Blocking issue — not resolved in this drop
 
@@ -75,12 +112,14 @@ in `app_strings.dart` to override this.
 | Login / Register / Forgot password / OTP | **Real** — calls `/api/v1/auth/*` | `RemoteAuthRepository` already wired |
 | **Register PayPal payee profile** | **Real** — calls `GET /api/v1/paypal/payees/me`, `POST /api/v1/paypal/payees` | One-time step, required before recording a transaction |
 | **Record PayPal payout transaction** | **Real** — calls `POST /api/v1/paypal/payees/{payeeId}/transactions` | Shows the persisted `feeBreakdown` + `netVnd` the backend computes |
+| **PayPal checkout (create + capture order)** | **Real** — calls `POST /api/v1/paypal/checkout/orders` (+`/capture`) | Actual PayPal Orders API, used from the marketplace "hire" flow |
+| **Post job / browse jobs** | Real backend exists, **mock still wired by default** | `MarketplaceJobController` matches `RemoteJobRepository`'s contract; `main.dart` still uses `MockJobRepository` |
+| **Hire freelancer (choose who gets paid)** | ⚠️ Partial | `payeeId` field exists and is validated server-side, but it's a raw text box — no freelancer directory/picker anywhere, see `REFERENCE.md` §9 item 1 |
 | USDC + off-ramp + MISA comparison, savings figure | Not shown | Deferred — no backend equivalent wired up yet, see `REFERENCE.md` §9 |
-| Send money / Receive money | Placeholder → "Coming soon" sheet | No backing API yet |
+| Send money / Receive money (wallet tab) | Placeholder → "Coming soon" sheet | No backing API yet |
 | Top up / Withdraw / Scan QR / My cards | Placeholder → "Coming soon" sheet | No backing API yet |
 | Notifications bell | Placeholder | No backing API yet |
-| Activity tab (transaction history) | Static empty state | Backend persists transactions now, but has no "list" endpoint yet — see `REFERENCE.md` §9 |
-| **Send money to freelancer marketplace** | ❌ Not built | Blocked on the corrupted docx (see above) |
+| Activity tab (transaction history) | Static empty state, **backend list endpoint now exists** | `GET .../payees/{payeeId}/transactions` is real; nothing in the app calls it yet |
 
 Every UI-only placeholder calls the same helper:
 `showComingSoon(context, featureName: '...')` in
@@ -125,9 +164,9 @@ backend from this app. Static checks performed instead: every relative
 import resolves to a file that exists, and brace/paren counts balance in
 every file. Run `flutter pub get && flutter analyze` right after unzipping,
 before building an APK — and walk the payee-registration → transaction-
-recording flow once end-to-end before a demo, since a few backend DTO
-assumptions (see "Since this file was first written" above) haven't been
-confirmed.
+recording flow once end-to-end before a demo, since the "no payee yet" HTTP
+status assumption (see "Since this file was first written" above) still
+hasn't been confirmed against a running backend.
 
 ## What's in the zip
 

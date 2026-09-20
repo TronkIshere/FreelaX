@@ -18,11 +18,17 @@ pitch/hackathon context, not a production payment app. Package name is
 `paypal` (`pubspec.yaml` `name:`); the in-app display name is `PaySim`
 (`AppStrings.appName`) — the two are deliberately different, see §7.
 
-Only two things call a real backend:
+Only four things call — or have a real backend ready to call — a real backend:
 1. Auth (`/api/v1/auth/*`) — login, register, forgot password, OTP, refresh.
 2. **PayPal payee/transaction flow** (`/api/v1/paypal/payees/*`) — register a
    payee profile once, then record a payout transaction and read back its
    persisted fee breakdown. See §8 for the exact contract.
+3. **PayPal checkout** (`/api/v1/paypal/checkout/orders`) — a real PayPal
+   order create + capture, used from the marketplace "hire" flow (§5, §8).
+4. **Marketplace jobs** (`/api/v1/marketplace/jobs`) — a real backend now
+   exists for this (job CRUD, plus linking a job to the checkout order that
+   paid for it), but the app still defaults to an in-memory mock
+   (`MockJobRepository` in `main.dart`) rather than the real one — see §8.
 
 The USDC + off-ramp + MISA side and the savings comparison
 (`savingsVnd`/`savingsPercent`) are **not wired up yet** — deliberately
@@ -91,16 +97,23 @@ lib/
 │   │   ├── app_strings.dart           app name/tagline (§7)
 │   │   └── app_typography.dart        TextStyle helpers keyed off AppColors
 │   ├── domain/
-│   │   └── auth_repository.dart       AuthRepository interface + AuthException
+│   │   ├── auth_repository.dart       AuthRepository interface + AuthException
+│   │   └── job_repository.dart        JobRepository interface + JobRepositoryException
 │   ├── models/
-│   │   └── auth_user.dart             AuthUser (id/email/displayName/tokens)
+│   │   ├── auth_user.dart             AuthUser (id/email/displayName/tokens)
+│   │   └── marketplace_job.dart       MarketplaceJob (id/title/description/budgetUsd/status)
 │   ├── data/
 │   │   ├── mock_auth_repository.dart  offline AuthRepository impl (demo creds)
-│   │   └── remote_auth_repository.dart HTTP AuthRepository impl (/api/v1/auth)
+│   │   ├── remote_auth_repository.dart HTTP AuthRepository impl (/api/v1/auth)
+│   │   ├── mock_job_repository.dart   in-memory JobRepository impl — currently active
+│   │   └── remote_job_repository.dart HTTP JobRepository impl (/api/v1/marketplace/jobs)
+│   │                                  — written ahead of a real backend, unverified (§9)
 │   ├── services/
 │   │   ├── http_json.dart             URL building, timeout, envelope parsing
 │   │   ├── app_config_service.dart    backend base URL, persisted, ChangeNotifier
 │   │   ├── auth_service.dart          session state, ChangeNotifier singleton
+│   │   ├── job_service.dart           job list cache, ChangeNotifier singleton,
+│   │   │                              swappable repository (mirrors auth_service.dart)
 │   │   └── api_client.dart            generic /api/v1 client, 401 auto-refresh,
 │   │                                  ApiException now carries statusCode
 │   └── utils/
@@ -133,6 +146,19 @@ lib/
     │       presentation/screens/compare_fee_screen.dart
     │                           registration form → transaction form → result card
     ├── activity/presentation/screens/activity_screen.dart   static empty state
+    ├── marketplace/
+    │       data/checkout_models.dart             PaypalCheckoutOrder (+fromJson)
+    │       data/checkout_repository.dart         POST /paypal/checkout/orders (+capture) —
+    │       │                                     real, calls the checkout endpoint built
+    │       │                                     for this (see §8); job CRUD itself goes
+    │       │                                     through core/services/job_service.dart,
+    │       │                                     not a repository local to this feature
+    │       presentation/screens/post_job_screen.dart    form → JobService.createJob()
+    │       presentation/screens/job_list_screen.dart    watches JobService.jobs, FAB → post
+    │       presentation/screens/hire_freelancer_screen.dart
+    │                           payeeId (raw text) + amount form → real checkout
+    │                           order (linked to the job via checkoutOrderId) →
+    │                           real capture; no freelancer picker yet (§9 item 1)
     └── settings/presentation/
             screens/settings_screen.dart        profile row, server config, about, logout
             widgets/server_settings_section.dart backend base-URL editor (persisted)
@@ -161,7 +187,7 @@ brand palette (no live screenshot access when generated, see `README.md`):
 | `secondaryLight` | `#B6F0D8` | light tint |
 | `text` | `#15181D` | body text |
 | `textMuted` | `#6B7280` | captions, secondary text |
-| `success` | `#1E8E3E` | now used for the "payee profile" confirmation icon on `CompareFeeScreen` (was: the USDC+MISA rail's accent, before that rail was removed pending §9 item 1) |
+| `success` | `#1E8E3E` | now used for the "payee profile" confirmation icon on `CompareFeeScreen` (was: the USDC+MISA rail's accent, before that rail was removed pending §9 item 2) |
 | `warning` | `#B25E00` | not currently used in any screen |
 | `danger` | `#D64550` | errors, and the PayPal rail's accent on `CompareFeeScreen`'s result card |
 
@@ -171,7 +197,7 @@ brand palette (no live screenshot access when generated, see `README.md`):
 methods, each taking an `AppColors` instance and returning a themed
 `TextStyle`. `score()` (28px/w800, colored `primaryDark`) was used for the
 savings amount on the old compare screen — **currently unused** now that the
-savings summary has been removed pending §9 item 1; kept in
+savings summary has been removed pending §9 item 2; kept in
 `AppTypography` for when that comes back.
 
 To re-theme the whole app, edit only `AppColors.light` — every screen reads
@@ -183,20 +209,26 @@ exception, since that card is drawn on a dark gradient regardless of theme).
 
 `SplashScreen` → `LoginScreen` (not logged in) or `HomeShellScreen` (logged
 in). `HomeShellScreen` is a `Scaffold` with `IndexedStack` + `NavigationBar`,
-4 tabs, each already `Scaffold`-wrapped internally (nested `Scaffold` is
+5 tabs, each already `Scaffold`-wrapped internally (nested `Scaffold` is
 intentional and fine in Flutter for this bottom-nav pattern):
 
 0. `WalletTab` — home/balance
-1. `CompareFeeScreen` — the real feature (payee registration + transaction recording)
-2. `ActivityScreen` — placeholder
-3. `SettingsScreen`
+1. `JobListScreen` — marketplace (post/browse jobs; hire flow calls real checkout)
+2. `CompareFeeScreen` — the real feature (payee registration + transaction recording)
+3. `ActivityScreen` — placeholder
+4. `SettingsScreen`
 
 `WalletTab` takes an `onOpenCompareFee` callback from `HomeShellScreen` that
-just does `setState(() => _index = 1)` — switching tabs, not pushing a route
+just does `setState(() => _index = 2)` — switching tabs, not pushing a route
 — so the "Compare fees" highlight card on the home tab and the bottom-nav
 tab both land on the exact same `CompareFeeScreen` instance pattern. (The
 card's copy on `wallet_tab.dart` still says "see how much you'd save" —
-slightly ahead of what the screen currently does; see §9 item 1.)
+slightly ahead of what the screen currently does; see §9 item 2.)
+
+`JobListScreen` calls `ref.read(jobServiceProvider).load()` once in
+`initState` via `addPostFrameCallback`, then watches `JobService.jobs` for
+the list. `PostJobScreen` and `HireFreelancerScreen` are pushed on top with
+`MaterialPageRoute`, not tabs.
 
 Auth screens push/pop normally with `MaterialPageRoute` (not tab-based).
 `navigatorKey` (`core/utils/nav_key.dart`) exists for context-free navigation
@@ -256,16 +288,18 @@ used by this app, only `/me` is).
 - `GET /me` → `PaypalPayee` on success. **On no-payee-yet**: the repository
   treats an `ApiException` with `statusCode == 404` as "not registered" and
   returns `null` instead of throwing — this assumption about the backend's
-  HTTP status for `ErrorCode.PAYEE_NOT_FOUND` has **not been confirmed**
-  against a running instance or its `@ControllerAdvice`. If the real status
-  differs, a genuine network/server error would be misread as "not
-  registered" and the UI would show the registration form instead of an
-  error — worth testing end-to-end before trusting this in a demo.
+  HTTP status for `ErrorCode.PAYEE_NOT_FOUND` **still hasn't been confirmed**
+  (the `@ControllerAdvice`/global exception handler that maps it hasn't been
+  shared). If the real status differs, a genuine network/server error would
+  be misread as "not registered" and the UI would show the registration form
+  instead of an error — worth testing end-to-end before trusting this in a
+  demo. This is now the **only** remaining unconfirmed piece of this
+  endpoint.
 - `POST /` `{fullName, paypalEmail, phone?, address?, nationality?}` →
-  `PaypalPayee`. Field names inferred from `PaypalPayeeServiceImpl.register()`
-  reading `request.getXxx()` — the actual `CreatePaypalPayeeRequest` DTO
-  (validation annotations, required vs. optional) was never shared, so this
-  is a best-effort match, not a confirmed contract.
+  `PaypalPayee`. **Confirmed** against the real `CreatePaypalPayeeRequest.java`:
+  `fullName`/`paypalEmail` are `@NotBlank` (`paypalEmail` also `@Email`);
+  `phone`/`address`/`nationality` carry no validation annotation at all
+  (genuinely optional). Matches what the repository already sends.
 
 `PaypalPayee` shape: `{id, fullName, paypalEmail, phone, address,
 nationality, active}` — matches `PaypalPayeeServiceImpl.toResponse()`.
@@ -277,21 +311,33 @@ section) — a `payeeId` that isn't the caller's own returns a not-found-style
 error rather than someone else's data.
 
 - `POST /` `{platformPayoutId, grossAmountUsd, midMarketRate,
-  senderReference?, description?, paymentDate?}` → `PaypalPayoutTransaction`.
+  senderReference?, description?, paymentDate}` → `PaypalPayoutTransaction`.
   Only `record()` is wired up; the backend's `getById`/`withdraw` exist but
-  aren't called from this app yet. Field names/requiredness inferred the same
-  way as `CreatePaypalPayeeRequest` above — same caveat applies. Three
-  specific uncertainties baked into the repository, flagged in code comments:
-    - `platformPayoutId` must be globally unique (`existsByPlatformPayoutId`
-      check on the backend) — the repository generates one client-side with
-      `const Uuid().v4()` (package `uuid`, already a dependency) rather than
-      letting the backend assign it.
-    - `paymentDate` is sent as `DateTime.now().toIso8601String()` (a full
-      ISO-8601 datetime). If the Java field is `LocalDate` rather than
-      `LocalDateTime`, this may fail to deserialize — not confirmed either way.
-    - Whether `senderReference`/`description` are validated as required on the
-      backend is unknown; the repository only includes them in the request
-      body when non-empty.
+  aren't called from this app yet. **Confirmed** against the real
+  `RecordPaypalPayoutRequest.java`:
+    - `platformPayoutId` is `@NotBlank` and must be globally unique
+      (`existsByPlatformPayoutId` check on the backend) — the repository
+      generates one client-side with `const Uuid().v4()` (package `uuid`,
+      already a dependency) rather than letting the backend assign it.
+    - `grossAmountUsd`/`midMarketRate` are `@NotNull @DecimalMin("0.01")`
+      `BigDecimal` — sent as plain JSON numbers, which Jackson parses into
+      `BigDecimal` without issue; no special encoding needed on the Dart side.
+    - `senderReference`/`description` carry no validation annotation
+      (genuinely optional) — the repository only includes them in the request
+      body when non-empty, which matches.
+    - **`paymentDate` is `LocalDateTime`** and `@NotNull`. This field has a
+      two-step history worth knowing: it was originally `LocalDate`, and the
+      repository originally sent a full ISO datetime
+      (`DateTime.now().toIso8601String()`, e.g. `2026-09-19T18:24:00.123456`)
+      — which Jackson's default `LocalDate` deserializer would have rejected
+      with a 400 on every single call, since it only accepts a bare
+      `"yyyy-MM-dd"`. That mismatch was caught and fixed (send date-only).
+      The project owner then asked for time-of-day to be captured too, so the
+      Java field itself was changed to `LocalDateTime`, and the Dart side was
+      reverted back to sending the full `DateTime.now().toIso8601String()` —
+      the current code and the current DTO agree, but only because both sides
+      were changed together in the same pass; there's no independent
+      confirmation this was re-tested end-to-end.
 
 `PaypalPayoutTransaction` shape: `{id, platformPayoutId, payeeId, status,
 grossAmountUsd, midMarketRate, feeBreakdown, netVnd, paymentDate,
@@ -306,11 +352,83 @@ rate input form, and — after recording — a result card showing
 `feeBreakdown`'s two cost lines, the transaction status, and `netVnd`.
 Amounts are formatted with `intl`'s `NumberFormat.currency` (`en_US`/`$` for
 USD, `vi_VN`/`đ` for VND, 0 decimals). No USDC/MISA rail, no savings figure —
-see §9 item 1.
+see §9 item 2.
+
+### PayPal checkout — `/api/v1/paypal/checkout/orders` (see `CheckoutRepository`, `features/marketplace/data/`)
+Real PayPal integration, separate from the mock payee/transaction module
+above — the backend calls PayPal's actual REST API (`/v2/checkout/orders`).
+Requires real sandbox/live PayPal credentials configured server-side; there
+is nothing to configure on the Flutter side beyond the usual base URL.
+
+- `POST /` `{payeeId, amountUsd, referenceId}` → `PaypalCheckoutOrder` with
+  an `approvalUrl` the app opens via `url_launcher`
+  (`LaunchMode.externalApplication`) so the user can approve on paypal.com.
+  `payeeId` is validated against `PaypalPayeeRepository.existsById()` on the
+  backend before a real order is created — an unknown id fails the call
+  rather than silently creating an orphaned payment.
+- `POST /{id}/capture` (no body) → `PaypalCheckoutOrder` with `status`
+  updated to `CAPTURED` (or the request throws if PayPal reports anything
+  else). `{id}` here is the backend's own record id, **not** the PayPal
+  order id — `PaypalCheckoutOrder.id` vs `.paypalOrderId` are different
+  fields; `hire_freelancer_screen.dart` calls capture with `order.id`.
+
+`PaypalCheckoutOrder` shape: `{id, payeeId, referenceId, amountUsd,
+paypalOrderId, paypalCaptureId, status, approvalUrl, createdAt, capturedAt}`.
+`referenceId` is set to the job's id — the checkout module itself still just
+stores it as an opaque string and never validates it against a real job; the
+job ↔ order link is recorded from the *job* side instead (see below), not
+enforced here.
+
+### Marketplace jobs — `/api/v1/marketplace/jobs` (see `JobRepository`/`JobService`)
+**This one now has a real backend.** Unlike when this section was first
+written, `MarketplaceJobController`/`Service`/`Repository` on the backend
+are real, matching `RemoteJobRepository`'s contract exactly (both were
+written together in the same pass specifically to match). `main.dart` still
+wires `MockJobRepository()` by default — switching to
+`RemoteJobRepository()` is the one-line change described below, but hasn't
+been flipped in this drop, and neither implementation has been exercised
+against a *running* server from this Flutter app (see §9 item 4).
+
+- `POST /` `{title, description, budgetUsd}` → `JobResponse`, owned by the
+  caller (`clientUserId` set from the authenticated principal), status
+  `OPEN`.
+- `GET /` → all jobs with status `OPEN` (no ownership filter — public
+  listing, by design).
+- `GET /{jobId}` → a single job, also no ownership check.
+- `POST /{jobId}/checkout-order` `{checkoutOrderId}` → sets
+  `MarketplaceJob.checkoutOrderId` and flips status to `IN_PROGRESS`.
+  Ownership-checked (`clientUserId` must match the caller) the same way as
+  the PayPal payee/transaction endpoints — a job that isn't the caller's
+  throws `JOB_NOT_FOUND`, not a 403. `HireFreelancerScreen` calls this right
+  after successfully creating a checkout order, via
+  `JobService.linkCheckoutOrder()`.
+
+`MarketplaceJob` shape: `{id, title, description, budgetUsd, checkoutOrderId,
+clientUserId, status, createdAt}`. This is the one field the backend and the
+Dart model didn't originally share — `checkoutOrderId` was added to both
+sides together when the job ↔ order link was built. `MockJobRepository`
+never sets `clientUserId`/`checkoutOrderId`/a real `status` transition on its
+own — `copyWith()` on `MarketplaceJob` is what `linkCheckoutOrder()` uses
+locally to simulate the same status flip the real backend does.
 
 ## 9. Known gaps / next steps
 
-1. **USDC + off-ramp + MISA comparison and `savingsVnd`/`savingsPercent` are
+1. **`HireFreelancerScreen` now takes a `payeeId`, but only as a raw text
+   field — there is still no freelancer directory, search, or picker.**
+   Whoever is hiring must already know the freelancer's `PaypalPayee` UUID
+   and type it in by hand. The backend now validates that this id exists
+   (`PaypalPayeeRepository.existsById()` in `PaypalCheckoutOrderServiceImpl`)
+   before creating a real order, so a garbage id fails loudly rather than
+   silently — that part of the original gap (payments with no recorded
+   recipient at all) is closed. What's still missing is any UI for
+   discovering a freelancer's id in the first place. Separately, the job
+   and the resulting checkout order are now linked on the backend too:
+   `MarketplaceJob.checkoutOrderId` is set via
+   `POST /api/v1/marketplace/jobs/{jobId}/checkout-order`, called from
+   `HireFreelancerScreen` right after a successful order creation, via
+   `JobService.linkCheckoutOrder()` (mirrors `createJob()`/`load()` — same
+   repository-then-reload pattern). See §8 for both contracts.
+2. **USDC + off-ramp + MISA comparison and `savingsVnd`/`savingsPercent` are
    not implemented on either side.** The old `/api/v1/simulations/compare`
    endpoint used to return both rails plus a savings figure in one call; the
    new persisted `paypal-backend` module only records the PayPal side, and no
@@ -321,39 +439,61 @@ see §9 item 1.
    one of the backends, or two separate calls from this app with the savings
    math done client-side — an architectural decision the project owner
    hadn't settled as of this note.
-2. **Freelancer-marketplace money-transfer flow is not built.** The intended
-   workflow was documented in `Tong_quan_du_an_USDC_Freelancer.docx`, which
-   arrived corrupted (0-byte `word/document.xml`, confirmed via `extract-text`,
-   `pandoc`, and manual raw-deflate decompression — not a reading mistake, the
-   file's compressed bytes are genuinely damaged). Only the title survived:
-   *"Tổng quan dự án Cổng thanh toán USDC cho Freelancer"*. The doc's metadata
-   shows it was exported from Claude Docs (`Claude Docs node/de3e2a89-459a@15`),
-   so re-sharing via a claude.ai link (if it still exists there) avoids the
-   export/corruption step entirely. Until this content is available, "Send
-   money" stays a `showComingSoon()` placeholder.
-3. **Several backend DTO/behavior assumptions are unconfirmed** (listed in
-   detail in §8): the exact `CreatePaypalPayeeRequest`/`RecordPaypalPayoutRequest`
-   field requiredness and types, the `paymentDate` Java type
-   (`LocalDate` vs `LocalDateTime`), and the HTTP status the backend actually
-   returns for "no payee yet." None of these have been exercised against a
-   running backend from this Flutter app — only checked for internal
-   consistency (imports resolve, braces balance) in the generating sandbox.
-4. **No live PayPal UI reference was available** when this was generated (no
+3. **Escrow/hire/payout — the actual money-changes-hands part of the
+   marketplace flow — is still not built on the backend**, even though job
+   *posting* now is (see §8). The intended full workflow was documented in
+   `Tong_quan_du_an_USDC_Freelancer.docx`, which arrived corrupted (0-byte
+   `word/document.xml`, confirmed via `extract-text`, `pandoc`, and manual
+   raw-deflate decompression — not a reading mistake, the file's compressed
+   bytes are genuinely damaged). Only the title survived: *"Tổng quan dự án
+   Cổng thanh toán USDC cho Freelancer"*. A first, from-scratch attempt at a
+   Java marketplace module (job/contract entities, PayPal-order-backed
+   escrow, crypto on/off-ramp interface stubs) was drafted once while
+   waiting on this doc, then the contract/escrow/crypto parts were
+   explicitly shelved by the project owner pending the real docs — only the
+   job entity and its CRUD endpoints were kept and built out for real (§8).
+   `checkoutOrderId` linking a job to a real PayPal order (§8) is the
+   closest thing to "payment" this flow has right now; there is still no
+   contract, no escrow hold, no release-on-approval step, and no USDC/VND
+   conversion anywhere. Re-sharing the doc via a claude.ai link (if it still
+   exists there, per its Claude Docs export metadata) avoids the
+   export/corruption step entirely.
+4. **Two backend behavior assumptions are still unconfirmed**: the HTTP
+   status `GET /api/v1/paypal/payees/me` actually returns for "no payee yet"
+   (`ErrorCode.PAYEE_NOT_FOUND`) — the repository assumes 404 (see §8); and
+   whether `PaypalPayoutTransactionRepository` actually has the
+   `findByPayeeId(UUID)` method `list()` needs — it was specified but that
+   repository file itself was never shared, so it may still need adding by
+   hand. Everything else in this space is now confirmed: the
+   `CreatePaypalPayeeRequest`/`RecordPaypalPayoutRequest` field shapes
+   (`paymentDate` is `LocalDateTime`, changed from `LocalDate` per the
+   project owner to capture time-of-day), and all four new `ErrorCode`
+   entries this feature set needed (`CHECKOUT_ORDER_NOT_FOUND`,
+   `INVALID_CHECKOUT_ORDER_STATUS`, `PAYPAL_ORDER_FAILED`, `JOB_NOT_FOUND`)
+   have been added to the real `ErrorCode.java` and confirmed against it.
+   None of this has still been exercised against a *running* backend from
+   this Flutter app, though — only checked against source files, and for
+   internal consistency (imports resolve, braces balance) in the generating
+   sandbox.
+5. **No live PayPal UI reference was available** when this was generated (no
    browser/web-search tool in that session) — the visual match is "best
    general knowledge," not verified against current screenshots.
-5. Transaction history (`ActivityScreen`) still has no backing UI, even
-   though the backend now *does* persist `PaypalPayoutTransaction` rows (a
-   change from the original stateless design, which persisted nothing). The
-   blocker now is that `PaypalPayoutTransactionController` has no "list
-   transactions for a payee" endpoint yet (`PAYPAL_MODULE_REFERENCE.md`'s
-   "Known limitations" — only get-by-id exists). Once that endpoint exists,
-   `ActivityScreen` is the natural place to call it.
-6. Not verified against a real Flutter/Dart toolchain (sandbox that generated
+6. Transaction history (`ActivityScreen`) still has no backing UI — but this
+   is now purely a Flutter-side gap, not a backend one.
+   `GET /api/v1/paypal/payees/{payeeId}/transactions` (list, ownership-
+   checked) exists on the backend now; nothing in this app calls it yet.
+   `ActivityScreen` is the natural place to. The newer `PaypalCheckoutOrder`/
+   `MarketplaceJob` records have the same problem from the other direction —
+   `HireFreelancerScreen`'s order result is lost the moment the screen is
+   left, and there is no "my payments" or "my jobs I've hired for" list
+   screen calling `GET /marketplace/jobs` or any checkout-order equivalent
+   (no such list endpoint exists yet for checkout orders specifically).
+7. Not verified against a real Flutter/Dart toolchain (sandbox that generated
    this had neither installed, nor network access to pub.dev). Only static
    checks were done: relative-import resolution and brace/paren balance
    across every file. Run `flutter pub get && flutter analyze` before trusting
    this builds clean.
-7. `android/app/src/main/kotlin/.../MainActivity.kt`, the Gradle wrapper,
+8. `android/app/src/main/kotlin/.../MainActivity.kt`, the Gradle wrapper,
    `local.properties`, the `ios/` folder, and existing mipmap icons were never
    seen by the generator and are assumed to already exist in the project as
    standard `flutter create` boilerplate — they were not touched or
@@ -397,3 +537,53 @@ form and result). The feature folder is still named `simulation/` — kept
 as-is to avoid touching import paths in `home_shell_screen.dart` and
 elsewhere for a rename with no functional benefit; a future rename to
 something like `paypal_payout/` would be purely cosmetic.
+
+**Third pass — how `marketplace/` and the job/domain layer came about.**
+When the project owner first asked for the real marketplace flow (job
+posting → hire → client funds via PayPal escrow → payout via USDC/off-ramp),
+a full Java module was drafted from first principles (entities for job and
+contract, a real PayPal Orders/Checkout API client, stub interfaces for
+crypto on-ramp/off-ramp) since no real docs for this flow existed yet — the
+same corrupted-docx problem as item 3 in §9. The project owner then paused
+part of that: keep the real PayPal checkout capability (genuinely useful on
+its own, and it's what `CheckoutRepository`/the
+`/api/v1/paypal/checkout/orders` endpoints in §8 are), but drop the
+contract/escrow/crypto-stub entities until real docs arrive for that part
+specifically — the job entity itself was kept and, in the fourth pass below,
+actually built out for real. On the Flutter side, job posting/listing
+started as a single ad-hoc `ChangeNotifier` (`LocalJobBoard`) living inside
+the `marketplace` feature folder with no interface behind it at all. The
+project owner then asked for it to follow the same `core/domain` +
+`core/data` + `core/services` shape as auth — specifically so a real backend
+could be dropped in later without touching `PostJobScreen`/`JobListScreen`.
+That produced `core/domain/job_repository.dart`,
+`core/models/marketplace_job.dart`, `core/data/mock_job_repository.dart`
+(replaces `LocalJobBoard`, same in-memory behavior) and
+`core/data/remote_job_repository.dart`, orchestrated by
+`core/services/job_service.dart` (`ChangeNotifier` singleton, mirrors
+`auth_service.dart` exactly down to the `setRepository()` swap point in
+`main.dart`). At the time, `RemoteJobRepository`'s contract was speculative
+(no backend existed yet to check it against), and `HireFreelancerScreen`
+still had no freelancer/payee field at all — both were carried forward as
+known gaps rather than fixed in that pass.
+
+**Fourth pass — the job backend got built for real, and both gaps above got
+at least partially closed.** `MarketplaceJobController`/`Service`/
+`Repository` were written on the backend matching `RemoteJobRepository`'s
+contract exactly (both sides were written in the same pass specifically to
+match, rather than one being reverse-engineered from the other after the
+fact) — see §8. Separately, two real problems the project owner pointed out
+got fixed together: `HireFreelancerScreen` creating a real PayPal payment
+with no recorded recipient, and `MarketplaceJob` having no field remembering
+which checkout order paid for it. Both `payeeId` (on
+`CreateCheckoutOrderRequest`/`PaypalCheckoutOrder`) and `checkoutOrderId`
+(on `MarketplaceJob`, set via a new
+`POST /api/v1/marketplace/jobs/{jobId}/checkout-order` endpoint) were added
+to the backend and threaded through to `HireFreelancerScreen` in the same
+pass — see §8's checkout and marketplace-jobs subsections, and §9 item 1 for
+what's still missing (a freelancer picker; `payeeId` is still a raw text
+field). All four new `ErrorCode` entries this required
+(`CHECKOUT_ORDER_NOT_FOUND`, `INVALID_CHECKOUT_ORDER_STATUS`,
+`PAYPAL_ORDER_FAILED`, `JOB_NOT_FOUND`) were confirmed added to the real
+`ErrorCode.java` in this same pass — see §9 item 4 for the one dependency
+still outstanding (`PaypalPayoutTransactionRepository.findByPayeeId`).

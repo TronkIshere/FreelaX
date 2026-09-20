@@ -1,5 +1,11 @@
 # PayPal Module Reference — fee model & disclaimers
 
+**Scope note**: this document covers the mock payee/transaction module only
+(the fee calculator described below). The same backend also has a separate,
+**real** PayPal checkout integration (`/api/v1/paypal/checkout/orders`,
+actual PayPal Orders API) — see `README.md`'s "PayPal checkout" section.
+Don't conflate the two: this module never calls PayPal; checkout does.
+
 ## Purpose
 
 This module **does not connect to the real PayPal API**. It records and
@@ -54,12 +60,43 @@ data rather than two throwaway calculations.
 - Do not claim this module "replaces" PayPal — it only simulates the old flow
   to serve as a comparison baseline, not an actual payment gateway.
 
-## Known limitations
+## Ownership / access control (fixed)
 
-- `PaypalPayoutTransactionController` does not check whether the `payeeId` in
-  the path belongs to the currently authenticated user — this is a utility
-  endpoint for demo purposes; ownership validation should be added before real
-  use.
-- There is no endpoint to list all transactions for a payee (only
-  get-by-id exists) — if a full history view is needed on the UI, add
-  `GET /api/v1/paypal/payees/{payeeId}/transactions` returning a list.
+Both `PaypalPayeeController` and `PaypalPayoutTransactionController` now
+resolve the caller's identity via `@AuthenticationPrincipal UserPrincipal` and
+enforce ownership before returning or mutating any record:
+
+- `GET /api/v1/paypal/payees/{id}` — now `getByIdForOwner(userId, payeeId)`;
+  returns the same `PAYEE_NOT_FOUND` whether the payee doesn't exist or simply
+  isn't the caller's (existence is not leaked).
+- `POST /api/v1/paypal/payees/{payeeId}/transactions` — the `payeeId` path
+  segment is now resolved against the caller's own payee
+  (`paypalPayeeRepository.findById(payeeId).filter(p -> p.getUserId().equals(userId))`)
+  before a transaction can be recorded under it.
+- `GET .../transactions/{transactionId}` and
+  `POST .../transactions/{transactionId}/withdraw` — both now go through
+  `getOwnedOrThrow(userId, payeeId, transactionId)`, which checks that the
+  transaction's payee matches the path's `payeeId` **and** that this payee
+  belongs to the caller. Either mismatch throws the same `PAYOUT_NOT_FOUND` as
+  a nonexistent transaction, for the same "don't reveal existence" reason.
+
+Previously, the transaction endpoints accepted `payeeId` from the URL but
+never validated it — `getById`/`withdraw` didn't even pass it to the service
+layer, so any authenticated user could read or (for `withdraw`) mutate any
+other user's transaction by `transactionId` alone; `record` let any
+authenticated user attach a fabricated transaction to any other user's payee.
+Both are closed now.
+
+## New: list transactions for a payee
+
+`GET /api/v1/paypal/payees/{payeeId}/transactions` — returns every transaction for that payee, ownership-checked the same way as `record`/`getById`/`withdraw` (same `PAYEE_NOT_FOUND` on mismatch, not a 403). Requires a `findByPayeeId(UUID)` method on `PaypalPayoutTransactionRepository` — not included here since the actual repository file was never shared; add it or `PaypalPayoutTransactionServiceImpl.list()` won't compile.
+
+## Known limitations (remaining)
+
+- All fee rates (see Data disclaimer above) remain mock placeholder values,
+  independent of the ownership fix.
+- Ownership checks assume `PaypalPayee.getUserId()` is reliably set at payee
+  creation (`register()` in `PaypalPayeeServiceImpl`) and never null for a
+  persisted payee — this holds for the current single registration path, but
+  would need re-checking if payees are ever created any other way (e.g. an
+  admin/import tool).
