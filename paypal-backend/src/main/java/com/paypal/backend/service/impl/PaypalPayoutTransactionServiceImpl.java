@@ -20,7 +20,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -101,6 +103,18 @@ public class PaypalPayoutTransactionServiceImpl implements PaypalPayoutTransacti
         }
 
         return transaction;
+    }
+
+    @Override
+    public List<PaypalPayoutTransactionResponse> list(UUID userId, UUID payeeId) {
+        PaypalPayee payee = paypalPayeeRepository.findById(payeeId)
+                .filter(p -> p.getUserId().equals(userId))
+                .orElseThrow(() -> new ApplicationException(ErrorCode.PAYEE_NOT_FOUND, payeeId));
+
+        return paypalPayoutTransactionRepository.findByPayeeId(payee.getId())
+                .stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
     }
 
     private PaypalPayoutTransactionResponse toResponse(PaypalPayoutTransaction transaction) {

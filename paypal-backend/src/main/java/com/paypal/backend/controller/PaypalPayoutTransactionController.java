@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -24,6 +25,15 @@ import java.util.UUID;
 public class PaypalPayoutTransactionController {
 
     private final PaypalPayoutTransactionService paypalPayoutTransactionService;
+
+    @GetMapping
+    public ResponseAPI<List<PaypalPayoutTransactionResponse>> list(@AuthenticationPrincipal UserPrincipal principal,
+                                                                   @PathVariable UUID payeeId) {
+        return ResponseAPI.<List<PaypalPayoutTransactionResponse>>builder()
+                .code(200)
+                .data(paypalPayoutTransactionService.list(principal.getId(), payeeId))
+                .build();
+    }
 
     @PostMapping
     public ResponseAPI<PaypalPayoutTransactionResponse> record(@AuthenticationPrincipal UserPrincipal principal,

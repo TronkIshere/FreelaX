@@ -22,6 +22,6 @@ public class PaypalPayoutTransactionResponse {
     BigDecimal midMarketRate;
     PaypalFeeBreakdown feeBreakdown;
     BigDecimal netVnd;
-    LocalDate paymentDate;
+    LocalDateTime paymentDate;
     LocalDateTime withdrawnAt;
 }

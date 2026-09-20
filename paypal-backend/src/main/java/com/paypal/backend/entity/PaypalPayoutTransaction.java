@@ -69,7 +69,7 @@ public class PaypalPayoutTransaction extends AbstractEntity<UUID> {
     PaypalTransactionStatus status = PaypalTransactionStatus.RECEIVED;
 
     @Column(name = "payment_date", nullable = false)
-    LocalDate paymentDate;
+    LocalDateTime paymentDate;
 
     @Column(name = "withdrawn_at")
     LocalDateTime withdrawnAt;

@@ -4,6 +4,7 @@ import com.paypal.backend.dto.request.paypal.RecordPaypalPayoutRequest;
 import com.paypal.backend.dto.request.paypal.WithdrawPaypalPayoutRequest;
 import com.paypal.backend.dto.response.paypal.PaypalPayoutTransactionResponse;
 
+import java.util.List;
 import java.util.UUID;
 
 public interface PaypalPayoutTransactionService {
@@ -13,4 +14,6 @@ public interface PaypalPayoutTransactionService {
     PaypalPayoutTransactionResponse getById(UUID userId, UUID payeeId, UUID transactionId);
 
     PaypalPayoutTransactionResponse withdraw(UUID userId, UUID payeeId, UUID transactionId, WithdrawPaypalPayoutRequest request);
+
+    List<PaypalPayoutTransactionResponse> list(UUID userId, UUID payeeId);
 }
