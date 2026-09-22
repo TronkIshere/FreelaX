@@ -33,6 +33,9 @@ public enum ErrorCode {
     INVALID_CHECKOUT_ORDER_STATUS(3005, "Trạng thái giao dịch thanh toán không cho phép thao tác này", HttpStatus.CONFLICT),
     PAYPAL_ORDER_FAILED(3006, "Giao dịch PayPal thất bại: %s", HttpStatus.BAD_GATEWAY),
     PAYEE_NOT_ACTIVE(3007, "Hồ sơ nhận tiền PayPal chưa được kích hoạt: %s", HttpStatus.CONFLICT),
+    PAYOUT_RELEASE_NOT_FOUND(3008, "Không tìm thấy giao dịch giải ngân: %s", HttpStatus.NOT_FOUND),
+    PAYOUT_ALREADY_RELEASED(3009, "Giao dịch thanh toán này đã được giải ngân: %s", HttpStatus.CONFLICT),
+    PAYPAL_PAYOUT_FAILED(3010, "Giải ngân PayPal thất bại: %s", HttpStatus.BAD_GATEWAY),
 
     JOB_NOT_FOUND(4000, "Không tìm thấy công việc: %s", HttpStatus.NOT_FOUND),
 
