@@ -1,0 +1,578 @@
+{
+  "info": {
+    "name": "PayPal Backend API",
+    "_postman_id": "c7d2b0a0-8f1e-4a3d-9b2a-paypal-backend-0002",
+    "description": "Covers all four sub-modules of paypal-backend: mock Payee/Transaction, and the three internal (X-Internal-Api-Key) modules -- Payee Status, Checkout Order, Payout Release. See README.md and PAYPAL_MODULE_REFERENCE.md in the repo for the full module overview.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:9192"
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "refreshToken",
+      "value": ""
+    },
+    {
+      "key": "email",
+      "value": "freelancer1@example.com"
+    },
+    {
+      "key": "password",
+      "value": "123456"
+    },
+    {
+      "key": "resetToken",
+      "value": ""
+    },
+    {
+      "key": "freelancerUserId",
+      "value": ""
+    },
+    {
+      "key": "payeeId",
+      "value": ""
+    },
+    {
+      "key": "transactionId",
+      "value": ""
+    },
+    {
+      "key": "internalApiKey",
+      "value": "",
+      "description": "Must match internal.api.key / INTERNAL_API_KEY on the server."
+    },
+    {
+      "key": "payerUserId",
+      "value": "11111111-1111-1111-1111-111111111111",
+      "description": "Not validated by this service -- any UUID works. In a real deployment marketplace-backend supplies this."
+    },
+    {
+      "key": "jobId",
+      "value": "22222222-2222-2222-2222-222222222222",
+      "description": "Not validated by this service -- any UUID works. In a real deployment marketplace-backend supplies this."
+    },
+    {
+      "key": "checkoutOrderId",
+      "value": ""
+    },
+    {
+      "key": "approvalUrl",
+      "value": ""
+    },
+    {
+      "key": "payoutReleaseId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Luong dung binh thuong",
+      "description": "Basic account flow shared by anyone calling the JWT-protected endpoints of this service (used by the freelancer/payee persona below -- the payer persona never authenticates against this service directly, see Luong nguoi thue).",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\",\n  \"displayName\": \"Nguyen Van A\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Sign In",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/sign-in",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res && res.data && res.data.accessToken) {",
+                  "  pm.collectionVariables.set('accessToken', res.data.accessToken);",
+                  "  pm.collectionVariables.set('refreshToken', res.data.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/auth/refresh-token"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res && res.data && res.data.accessToken) {",
+                  "  pm.collectionVariables.set('accessToken', res.data.accessToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Me",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/me",
+            "description": "Captures the caller's own user id into {{freelancerUserId}} -- needed later by 'Payee Status' in Luong nguoi thue."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res && res.data && res.data.id) {",
+                  "  pm.collectionVariables.set('freelancerUserId', res.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Sign Out",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/sign-out",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accessToken\": \"{{accessToken}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Forgot Password - Send OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/forgot-password/send-otp",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Forgot Password - Verify OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/forgot-password/verify-otp",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"otp\": \"123456\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res && res.data) {",
+                  "  pm.collectionVariables.set('resetToken', res.data);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Forgot Password - Reset",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/forgot-password/reset",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"resetToken\": \"{{resetToken}}\",\n  \"newPassword\": \"newpass123\",\n  \"confirmPassword\": \"newpass123\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Luong nguoi nhan",
+      "description": "Freelancer / payee side. All requests use the User JWT captured in Luong dung binh thuong. Run Register Payee at least once before anything in Luong nguoi thue.",
+      "item": [
+        {
+          "name": "PayPal Payee",
+          "item": [
+            {
+              "name": "Register Payee",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/v1/paypal/payees",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"fullName\": \"Nguyen Van A\",\n  \"paypalEmail\": \"nguyenvana@paypal-mock.com\",\n  \"phone\": \"0900000000\",\n  \"address\": \"Quan 1, TP.HCM\",\n  \"nationality\": \"Vietnam\"\n}"
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const res = pm.response.json();",
+                      "if (res && res.data && res.data.id) {",
+                      "  pm.collectionVariables.set('payeeId', res.data.id);",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get My Payee",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/v1/paypal/payees/me"
+              }
+            },
+            {
+              "name": "Get Payee By Id",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/v1/paypal/payees/{{payeeId}}"
+              }
+            }
+          ]
+        },
+        {
+          "name": "PayPal Payout Transaction (mock)",
+          "description": "Mock fee-simulation module -- does not call the real PayPal API. See PAYPAL_MODULE_REFERENCE.md section 1.",
+          "item": [
+            {
+              "name": "Record Payout",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/v1/paypal/payees/{{payeeId}}/transactions",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"platformPayoutId\": \"PAYPAL-PAYOUT-0001\",\n  \"senderReference\": \"MOCK-TXN-abc123\",\n  \"description\": \"Thanh toan du an website thang 9\",\n  \"grossAmountUsd\": 500,\n  \"midMarketRate\": 25000,\n  \"paymentDate\": \"2026-09-16\"\n}"
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const res = pm.response.json();",
+                      "if (res && res.data && res.data.id) {",
+                      "  pm.collectionVariables.set('transactionId', res.data.id);",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "List Payouts",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/v1/paypal/payees/{{payeeId}}/transactions"
+              }
+            },
+            {
+              "name": "Get Payout By Id",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/v1/paypal/payees/{{payeeId}}/transactions/{{transactionId}}"
+              }
+            },
+            {
+              "name": "Withdraw Payout",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/v1/paypal/payees/{{payeeId}}/transactions/{{transactionId}}/withdraw",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"bankAccountNote\": \"Rut ve Vietcombank ...1234\"\n}"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Luong nguoi thue",
+      "description": "Payer / client side -- all internal, service-to-service endpoints (X-Internal-Api-Key, no JWT). This is what marketplace-backend calls; it is not meant to be exposed to an end-user client directly. Order to run: Payee Status -> Create Checkout Order -> (approve in browser) -> Capture Checkout Order -> Release Payout -> Get Payout Release By Id.",
+      "item": [
+        {
+          "name": "Payee Status",
+          "description": "What marketplace-backend calls first to get a payeeId before it can create a Checkout Order. See PAYPAL_MODULE_REFERENCE.md section 2.",
+          "item": [
+            {
+              "name": "Get Payee Status",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-Internal-Api-Key",
+                    "value": "{{internalApiKey}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/internal/paypal/users/{{freelancerUserId}}/payee-status",
+                "description": "registered:false + payeeId:null is a normal 200 response here, not an error -- run Register Payee in Luong nguoi nhan first if you want registered:true."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const res = pm.response.json();",
+                      "if (res && res.data && res.data.payeeId) {",
+                      "  pm.collectionVariables.set('payeeId', res.data.payeeId);",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Checkout Order",
+          "description": "Real PayPal Orders API. See PAYPAL_MODULE_REFERENCE.md section 3.",
+          "item": [
+            {
+              "name": "Create Checkout Order",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-Internal-Api-Key",
+                    "value": "{{internalApiKey}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/internal/paypal/checkout/orders",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"payeeId\": \"{{payeeId}}\",\n  \"payerUserId\": \"{{payerUserId}}\",\n  \"jobId\": \"{{jobId}}\",\n  \"amountUsd\": 500\n}"
+                },
+                "description": "Requires PAYPAL_CLIENT_ID/SECRET configured on the server (real sandbox app). Response's approvalUrl is captured into {{approvalUrl}} -- open it in a browser and approve with a PayPal sandbox buyer account before calling Capture."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const res = pm.response.json();",
+                      "if (res && res.data) {",
+                      "  if (res.data.id) pm.collectionVariables.set('checkoutOrderId', res.data.id);",
+                      "  if (res.data.approvalUrl) pm.collectionVariables.set('approvalUrl', res.data.approvalUrl);",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Capture Checkout Order",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-Internal-Api-Key",
+                    "value": "{{internalApiKey}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/internal/paypal/checkout/orders/{{checkoutOrderId}}/capture",
+                "description": "Will fail against the real PayPal sandbox unless {{approvalUrl}} was already approved by a sandbox buyer in a browser."
+              }
+            },
+            {
+              "name": "Get Checkout Order By Id",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-Internal-Api-Key",
+                    "value": "{{internalApiKey}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/internal/paypal/checkout/orders/{{checkoutOrderId}}"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Payout Release",
+          "description": "Real PayPal Payouts API. See PAYPAL_MODULE_REFERENCE.md section 4.",
+          "item": [
+            {
+              "name": "Release Payout",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-Internal-Api-Key",
+                    "value": "{{internalApiKey}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/internal/paypal/payouts",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"checkoutOrderId\": \"{{checkoutOrderId}}\"\n}"
+                },
+                "description": "Requires the checkout order above to be CAPTURED first. Response status is almost always PENDING -- PayPal Payouts is asynchronous and this service does not poll for the final result (see known limitations)."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const res = pm.response.json();",
+                      "if (res && res.data && res.data.id) {",
+                      "  pm.collectionVariables.set('payoutReleaseId', res.data.id);",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get Payout Release By Id",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-Internal-Api-Key",
+                    "value": "{{internalApiKey}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/internal/paypal/payouts/{{payoutReleaseId}}"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
