@@ -20,3 +20,11 @@ logging:
 security:
   jwt:
     secret: ${JWT_SECRET:b5fd25ae6b356494279acdbdac96bbdb98a56db973420a033b14cb27cf50116f1a051caca389fe0c2ac2aeb7a1c6fa98}
+
+internal:
+  api:
+    key: ${INTERNAL_API_KEY:dev-only-internal-key-do-not-use-in-prod}
+
+paypal:
+  checkout:
+    base-url: ${PAYPAL_BASE_URL:https://api-m.sandbox.paypal.com}

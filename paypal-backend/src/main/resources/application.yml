@@ -43,11 +43,21 @@ security:
     secret: ${JWT_SECRET:}
     expiration-ms: ${JWT_EXPIRATION_MS:86400000}
 
+internal:
+  api:
+    key: ${INTERNAL_API_KEY:}
+
 paypal:
   fee:
     commercial-fee-rate: ${PAYPAL_FEE_RATE:0.044}
     fixed-fee-usd: ${PAYPAL_FIXED_FEE_USD:0.30}
     fx-spread-rate: ${PAYPAL_FX_SPREAD:0.035}
+  checkout:
+    client-id: ${PAYPAL_CLIENT_ID:}
+    client-secret: ${PAYPAL_CLIENT_SECRET:}
+    currency: ${PAYPAL_CURRENCY:USD}
+    return-url: ${PAYPAL_RETURN_URL:http://localhost:${server.port:8080}/api/v1/paypal/checkout/return}
+    cancel-url: ${PAYPAL_CANCEL_URL:http://localhost:${server.port:8080}/api/v1/paypal/checkout/cancel}
 
 springdoc:
   api-docs:

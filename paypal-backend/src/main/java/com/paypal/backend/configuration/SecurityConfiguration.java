@@ -37,6 +37,7 @@ public class SecurityConfiguration {
     UserDetailsServiceCustomizer userDetailsService;
     JwtAuthenticationEntryPoint jwtAuthEntryPoint;
     JwtAccessDenied jwtAccessDenied;
+    InternalApiKeyFilter internalApiKeyFilter;
 
     @NonFinal
     @SuppressWarnings("SpringJavaInjectionPointsAutowiringInspection")
@@ -85,6 +86,7 @@ public class SecurityConfiguration {
 
         http.authenticationProvider(authenticationProvider());
 
+        http.addFilterBefore(internalApiKeyFilter, UsernamePasswordAuthenticationFilter.class);
         http.addFilterBefore(authenticationTokenFilter(), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

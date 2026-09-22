@@ -1,19 +1,22 @@
 package com.paypal.backend.client;
 
 import com.paypal.backend.configuration.PaypalCheckoutProperties;
+import com.paypal.backend.exception.ApplicationException;
+import com.paypal.backend.exception.ErrorCode;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
-import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 
@@ -22,60 +25,84 @@ import java.util.Map;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class PaypalCheckoutClient {
 
+    RestTemplate restTemplate;
     PaypalCheckoutProperties properties;
-
-    RestTemplate restTemplate = new RestTemplate();
-
-    public String fetchAccessToken() {
-        HttpHeaders headers = new HttpHeaders();
-        String credentials = properties.getClientId() + ":" + properties.getClientSecret();
-        headers.set(HttpHeaders.AUTHORIZATION,
-                "Basic " + Base64.getEncoder().encodeToString(credentials.getBytes()));
-        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-
-        MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
-        body.add("grant_type", "client_credentials");
-
-        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(body, headers);
-        Map<?, ?> response = restTemplate.postForObject(
-                properties.getBaseUrl() + "/v1/oauth2/token", request, Map.class);
-        return (String) response.get("access_token");
-    }
 
     public Map<String, Object> createOrder(BigDecimal amountUsd) {
         String accessToken = fetchAccessToken();
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(accessToken);
-        headers.setContentType(MediaType.APPLICATION_JSON);
-
-        Map<String, Object> amount = Map.of(
-                "currency_code", "USD",
-                "value", amountUsd.toPlainString());
-        Map<String, Object> purchaseUnit = Map.of("amount", amount);
-        Map<String, Object> applicationContext = Map.of(
-                "return_url", properties.getReturnUrl(),
-                "cancel_url", properties.getCancelUrl());
-        Map<String, Object> orderRequest = Map.of(
+        Map<String, Object> body = Map.of(
                 "intent", "CAPTURE",
-                "purchase_units", List.of(purchaseUnit),
-                "application_context", applicationContext);
+                "purchase_units", List.of(Map.of(
+                        "amount", Map.of(
+                                "currency_code", properties.getCurrency(),
+                                "value", amountUsd.toPlainString()
+                        )
+                )),
+                "application_context", Map.of(
+                        "return_url", properties.getReturnUrl(),
+                        "cancel_url", properties.getCancelUrl()
+                )
+        );
 
-        HttpEntity<Map<String, Object>> request = new HttpEntity<>(orderRequest, headers);
-        return (Map<String, Object>) (Map) restTemplate.postForObject(
-                properties.getBaseUrl() + "/v2/checkout/orders", request, Map.class);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(accessToken);
+
+        ResponseEntity<Map> response = restTemplate.exchange(
+                properties.getBaseUrl() + "/v2/checkout/orders",
+                HttpMethod.POST,
+                new HttpEntity<>(body, headers),
+                Map.class
+        );
+
+        if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+            throw new ApplicationException(ErrorCode.PAYPAL_ORDER_FAILED, "create");
+        }
+
+        return response.getBody();
     }
 
-    public Map<String, Object> captureOrder(String orderId) {
+    public Map<String, Object> captureOrder(String paypalOrderId) {
         String accessToken = fetchAccessToken();
 
         HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(accessToken);
         headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(accessToken);
 
-        HttpEntity<Void> request = new HttpEntity<>(headers);
-        return (Map<String, Object>) (Map) restTemplate.postForObject(
-                properties.getBaseUrl() + "/v2/checkout/orders/" + orderId + "/capture",
-                request, Map.class);
+        ResponseEntity<Map> response = restTemplate.exchange(
+                properties.getBaseUrl() + "/v2/checkout/orders/" + paypalOrderId + "/capture",
+                HttpMethod.POST,
+                new HttpEntity<>(headers),
+                Map.class
+        );
+
+        if (response.getBody() == null) {
+            throw new ApplicationException(ErrorCode.PAYPAL_ORDER_FAILED, paypalOrderId);
+        }
+
+        return response.getBody();
+    }
+
+    private String fetchAccessToken() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+        headers.setBasicAuth(properties.getClientId(), properties.getClientSecret());
+
+        MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
+        form.add("grant_type", "client_credentials");
+
+        ResponseEntity<Map> response = restTemplate.exchange(
+                properties.getBaseUrl() + "/v1/oauth2/token",
+                HttpMethod.POST,
+                new HttpEntity<>(form, headers),
+                Map.class
+        );
+
+        if (response.getBody() == null || response.getBody().get("access_token") == null) {
+            throw new ApplicationException(ErrorCode.PAYPAL_ORDER_FAILED, "oauth");
+        }
+
+        return (String) response.getBody().get("access_token");
     }
 }

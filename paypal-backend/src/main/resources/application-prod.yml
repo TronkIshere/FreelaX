@@ -17,3 +17,7 @@ logging:
   level:
     com.paypal.backend: INFO
     org.springframework.security: WARN
+
+paypal:
+  checkout:
+    base-url: ${PAYPAL_BASE_URL:https://api-m.paypal.com}
