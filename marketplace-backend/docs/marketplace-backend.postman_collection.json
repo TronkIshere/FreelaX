@@ -1,0 +1,398 @@
+{
+  "info": {
+    "name": "Marketplace Backend API",
+    "_postman_id": "a1b2c3d4-5e6f-4a3b-9c8d-marketplace-backend-0001",
+    "description": "Covers marketplace-backend: Auth (own JWT, separate from paypal-backend's) and the Job module, including its calls out to paypal-backend's three internal modules. See docs/README.md and docs/MARKETPLACE_MODULE_REFERENCE.md in the repo for the full overview.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8081"
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "refreshToken",
+      "value": ""
+    },
+    {
+      "key": "email",
+      "value": "client1@example.com"
+    },
+    {
+      "key": "password",
+      "value": "123456"
+    },
+    {
+      "key": "resetToken",
+      "value": ""
+    },
+    {
+      "key": "freelancerUserId",
+      "value": "",
+      "description": "This must be a user id that paypal-backend's Payee Status endpoint recognizes -- i.e. a userId from paypal-backend's own Auth, not from this service. Get it from paypal-backend's GET /api/v1/auth/me after that freelancer registers a payee there."
+    },
+    {
+      "key": "jobId",
+      "value": ""
+    },
+    {
+      "key": "checkoutOrderId",
+      "value": ""
+    },
+    {
+      "key": "approvalUrl",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "description": "This service's own login -- independent from paypal-backend's Auth. A token from one is not valid on the other.",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\",\n  \"displayName\": \"Client One\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Sign In",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/sign-in",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res && res.data && res.data.accessToken) {",
+                  "  pm.collectionVariables.set('accessToken', res.data.accessToken);",
+                  "  pm.collectionVariables.set('refreshToken', res.data.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/auth/refresh-token",
+            "description": "Reads the refreshToken cookie Sign In set -- run in the same Postman session/cookie jar as Sign In."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res && res.data && res.data.accessToken) {",
+                  "  pm.collectionVariables.set('accessToken', res.data.accessToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Me",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/me"
+          }
+        },
+        {
+          "name": "Sign Out",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/sign-out",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accessToken\": \"{{accessToken}}\"\n}"
+            },
+            "description": "Blacklists this access token in Redis for its remaining lifetime -- but only checked on refresh-token, not on ordinary requests (see MARKETPLACE_MODULE_REFERENCE.md)."
+          }
+        },
+        {
+          "name": "Forgot Password - Send OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/forgot-password/send-otp",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\"\n}"
+            },
+            "description": "OTP is logged server-side, not emailed -- check the app console/logs for the 6-digit code."
+          }
+        },
+        {
+          "name": "Forgot Password - Verify OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/forgot-password/verify-otp",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"otp\": \"123456\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res && res.data) {",
+                  "  pm.collectionVariables.set('resetToken', res.data);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Forgot Password - Reset",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/forgot-password/reset",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"resetToken\": \"{{resetToken}}\",\n  \"newPassword\": \"newpass123\",\n  \"confirmPassword\": \"newpass123\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Jobs",
+      "description": "Run order for the full happy path: Create -> Pay -> Confirm Payment -> Approve. Cancel is an alternate path, only valid on a fresh OPEN job.",
+      "item": [
+        {
+          "name": "Create Job",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/marketplace/jobs",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"freelancerUserId\": \"{{freelancerUserId}}\",\n  \"title\": \"Landing page redesign\",\n  \"description\": \"Redesign the marketing landing page, mobile-first.\",\n  \"budgetUsd\": 500\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res && res.data && res.data.id) {",
+                  "  pm.collectionVariables.set('jobId', res.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Jobs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/marketplace/jobs?page=0&size=10",
+            "description": "Only jobs where you're the client or the freelancer. page/size are optional -- size caps at 100."
+          }
+        },
+        {
+          "name": "Get Job By Id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/marketplace/jobs/{{jobId}}"
+          }
+        },
+        {
+          "name": "Update Job",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/marketplace/jobs/{{jobId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Landing page redesign (updated scope)\",\n  \"budgetUsd\": 600\n}"
+            },
+            "description": "Client only, and only while the job is still OPEN. Leave a field out of the JSON (or null) to keep it unchanged."
+          }
+        },
+        {
+          "name": "Pay Job",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/marketplace/jobs/{{jobId}}/pay",
+            "description": "Fails with FREELANCER_NOT_LINKED_TO_PAYPAL unless freelancerUserId already has an active payee on paypal-backend. On success, open {{approvalUrl}} in a browser and approve with a PayPal sandbox buyer before calling Confirm Payment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res && res.data) {",
+                  "  if (res.data.checkoutOrderId) pm.collectionVariables.set('checkoutOrderId', res.data.checkoutOrderId);",
+                  "  if (res.data.approvalUrl) pm.collectionVariables.set('approvalUrl', res.data.approvalUrl);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirm Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/marketplace/jobs/{{jobId}}/confirm-payment",
+            "description": "Will fail unless {{approvalUrl}} was already approved by a sandbox buyer in a browser -- paypal-backend calls the real PayPal Orders API here."
+          }
+        },
+        {
+          "name": "Approve Job",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/marketplace/jobs/{{jobId}}/approve",
+            "description": "Releases the payout on paypal-backend. Job moves to COMPLETED even though the payout itself is almost always still PENDING on PayPal's side -- check Get Payment Status for the real status."
+          }
+        },
+        {
+          "name": "Get Payment Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/marketplace/jobs/{{jobId}}/payment-status",
+            "description": "Live status pulled from paypal-backend, not this service's own stored status."
+          }
+        },
+        {
+          "name": "Cancel Job",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/marketplace/jobs/{{jobId}}/cancel",
+            "description": "Only works while the job is still OPEN -- run this on a separate freshly-created job, not one already paid for above."
+          }
+        }
+      ]
+    }
+  ]
+}
