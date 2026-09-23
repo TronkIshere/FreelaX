@@ -4,14 +4,14 @@ services:
     container_name: shared-mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
     ports:
       - "3307:3306"
     volumes:
       - mysql-data:/var/lib/mysql
       - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${DB_ROOT_PASSWORD:-root}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${MYSQL_ROOT_PASSWORD:-root}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -46,7 +46,7 @@ services:
       SERVER_PORT: 9190
       DB_URL: jdbc:mysql://mysql:3306/paypal?useUnicode=true&characterEncoding=UTF-8
       DB_USERNAME: root
-      DB_PASSWORD: ${DB_ROOT_PASSWORD:-root}
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
       REDIS_HOST: redis
       REDIS_PORT: 6379
       SPRING_DATA_REDIS_DATABASE: 0
@@ -73,7 +73,7 @@ services:
       SERVER_PORT: 9191
       DB_URL: jdbc:mysql://mysql:3306/marketplace?useUnicode=true&characterEncoding=UTF-8
       DB_USERNAME: root
-      DB_PASSWORD: ${DB_ROOT_PASSWORD:-root}
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
       REDIS_HOST: redis
       REDIS_PORT: 6379
       SPRING_DATA_REDIS_DATABASE: 1
@@ -99,7 +99,7 @@ services:
       SERVER_PORT: 9192
       DB_URL: jdbc:mysql://mysql:3306/misa?useUnicode=true&characterEncoding=UTF-8
       DB_USERNAME: root
-      DB_PASSWORD: ${DB_ROOT_PASSWORD:-root}
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
       REDIS_HOST: redis
       REDIS_PORT: 6379
       SPRING_DATA_REDIS_DATABASE: 2
