@@ -1,14 +1,18 @@
 # syntax=docker/dockerfile:1.7
 
 FROM maven:3.9-eclipse-temurin-17 AS builder
+ARG MODULE
 WORKDIR /build
 
 COPY pom.xml .
-RUN --mount=type=cache,target=/root/.m2 mvn -B dependency:go-offline
+COPY paypal-backend/pom.xml paypal-backend/pom.xml
+COPY marketplace-backend/pom.xml marketplace-backend/pom.xml
+COPY misa-backend/pom.xml misa-backend/pom.xml
+RUN --mount=type=cache,target=/root/.m2 mvn -B -pl ${MODULE} -am dependency:go-offline
 
-COPY src src
-RUN --mount=type=cache,target=/root/.m2 mvn -B -DskipTests package \
-    && java -Djarmode=layertools -jar target/*.jar extract --destination /build/extracted
+COPY ${MODULE}/src ${MODULE}/src
+RUN --mount=type=cache,target=/root/.m2 mvn -B -pl ${MODULE} -am -DskipTests package \
+    && java -Djarmode=layertools -jar ${MODULE}/target/*.jar extract --destination /build/extracted
 
 FROM eclipse-temurin:17-jre-alpine AS runtime
 WORKDIR /app
@@ -20,5 +24,4 @@ COPY --from=builder /build/extracted/spring-boot-loader/ ./
 COPY --from=builder /build/extracted/snapshot-dependencies/ ./
 COPY --from=builder /build/extracted/application/ ./
 
-EXPOSE 9192
 ENTRYPOINT ["java", "org.springframework.boot.loader.launch.JarLauncher"]

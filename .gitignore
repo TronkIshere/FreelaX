@@ -17,7 +17,7 @@ gradle-app.setting
 !.mvn/wrapper/maven-wrapper.properties
 
 # IDE
-.idea/
+marketplace-backend/.idea/
 *.iws
 *.iml
 *.ipr
