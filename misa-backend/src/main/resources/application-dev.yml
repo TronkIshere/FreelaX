@@ -16,3 +16,7 @@ springdoc:
 logging:
   level:
     com.misa.backend: DEBUG
+
+security:
+  jwt:
+    secret: ${JWT_SECRET:dev-only-misa-jwt-secret-do-not-use-in-prod-1234567890}
