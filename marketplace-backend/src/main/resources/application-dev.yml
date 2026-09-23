@@ -1,0 +1,22 @@
+spring:
+  jpa:
+    show-sql: false
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+
+logging:
+  level:
+    com.marketplace.backend: DEBUG
+
+security:
+  jwt:
+    secret: ${JWT_SECRET:dev-only-marketplace-jwt-secret-do-not-use-in-prod-1234567890}
