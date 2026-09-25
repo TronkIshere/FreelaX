@@ -3,6 +3,7 @@ package com.paypal.backend.service.impl;
 import com.paypal.backend.client.PaypalCheckoutClient;
 import com.paypal.backend.dto.request.paypal.CreateCheckoutOrderRequest;
 import com.paypal.backend.dto.response.paypal.PaypalCheckoutOrderResponse;
+import com.paypal.backend.entity.PaypalAccountRole;
 import com.paypal.backend.entity.PaypalCheckoutOrder;
 import com.paypal.backend.entity.PaypalCheckoutOrderStatus;
 import com.paypal.backend.entity.PaypalPayee;
@@ -10,6 +11,7 @@ import com.paypal.backend.exception.ApplicationException;
 import com.paypal.backend.exception.ErrorCode;
 import com.paypal.backend.repository.PaypalCheckoutOrderRepository;
 import com.paypal.backend.repository.PaypalPayeeRepository;
+import com.paypal.backend.service.PaypalAccountBalanceService;
 import com.paypal.backend.service.PaypalCheckoutOrderService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -27,9 +29,12 @@ import java.util.UUID;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class PaypalCheckoutOrderServiceImpl implements PaypalCheckoutOrderService {
 
+    private static final String USD = "USD";
+
     PaypalCheckoutOrderRepository paypalCheckoutOrderRepository;
     PaypalPayeeRepository paypalPayeeRepository;
     PaypalCheckoutClient paypalCheckoutClient;
+    PaypalAccountBalanceService paypalAccountBalanceService;
 
     @Override
     @Transactional
@@ -82,6 +87,8 @@ public class PaypalCheckoutOrderServiceImpl implements PaypalCheckoutOrderServic
         entity.setStatus(PaypalCheckoutOrderStatus.CAPTURED);
         entity.setCapturedAt(LocalDateTime.now());
         paypalCheckoutOrderRepository.save(entity);
+
+        paypalAccountBalanceService.credit(entity.getPayerUserId(), PaypalAccountRole.PAYER, USD, entity.getAmountUsd());
 
         return toResponse(entity, null);
     }

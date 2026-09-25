@@ -30,6 +30,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -38,11 +40,41 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class JobServiceImpl implements JobService {
+
+    private static final int USDC_SCALE = 6;
+    private static final int VND_SCALE = 0;
+
+    private static final BigDecimal USD_TO_USDC_PEG_RATE = BigDecimal.ONE;
+
+    private static final BigDecimal PLACEHOLDER_USDC_TO_VND_RATE = new BigDecimal("25000");
+
     UserRepository userRepository;
     JobRepository jobRepository;
     PaypalBackendClient paypalBackendClient;
     MisaBackendClient misaBackendClient;
 
+    @Override
+    @Transactional
+    public JobResponse create(UUID clientUserId, CreateJobRequest request) {
+        User freelancer = userRepository.findById(request.getFreelancerId())
+                .orElseThrow(() -> new ApplicationException(ErrorCode.FREELANCER_NOT_FOUND, request.getFreelancerId()));
+
+        if (freelancer.getUserType() != UserType.FREELANCER) {
+            throw new ApplicationException(ErrorCode.USER_IS_NOT_FREELANCER, request.getFreelancerId());
+        }
+
+        Job job = new Job();
+        job.setClientUserId(clientUserId);
+        job.setFreelancerId(freelancer.getId());
+        job.setTitle(request.getTitle());
+        job.setDescription(request.getDescription());
+        job.setBudgetUsd(request.getBudgetUsd());
+        job.setStatus(JobStatus.OPEN);
+
+        jobRepository.save(job);
+
+        return toResponse(job);
+    }
 
     @Override
     public PageResponse<JobResponse> listForUser(UUID userId, int page, int size) {
@@ -50,7 +82,7 @@ public class JobServiceImpl implements JobService {
         int safeSize = size <= 0 ? 10 : Math.min(size, 100);
 
         Pageable pageable = PageRequest.of(safePage, safeSize, Sort.by("createdAt").descending());
-        Page<Job> jobPage = jobRepository.findByClientUserIdOrFreelancerUserId(userId, userId, pageable);
+        Page<Job> jobPage = jobRepository.findByClientUserIdOrFreelancerId(userId, userId, pageable);
 
         return PageResponse.<JobResponse>builder()
                 .currentPage(jobPage.getNumber())
@@ -99,10 +131,13 @@ public class JobServiceImpl implements JobService {
             throw new ApplicationException(ErrorCode.INVALID_JOB_STATUS);
         }
 
-        PayeeStatusResult payeeStatus = paypalBackendClient.getPayeeStatus(job.getFreelancerUserId());
+        User freelancer = userRepository.findById(job.getFreelancerId())
+                .orElseThrow(() -> new ApplicationException(ErrorCode.FREELANCER_NOT_FOUND, job.getFreelancerId()));
+
+        PayeeStatusResult payeeStatus = paypalBackendClient.getPayeeStatus(freelancer.getPaypalUserId());
 
         if (!payeeStatus.isRegistered() || !payeeStatus.isActive()) {
-            throw new ApplicationException(ErrorCode.FREELANCER_NOT_LINKED_TO_PAYPAL, job.getFreelancerUserId());
+            throw new ApplicationException(ErrorCode.FREELANCER_NOT_LINKED_TO_PAYPAL, freelancer.getPaypalUserId());
         }
 
         CheckoutOrderResult checkoutOrder = paypalBackendClient.createCheckoutOrder(
@@ -147,6 +182,26 @@ public class JobServiceImpl implements JobService {
 
     @Override
     @Transactional
+    public JobResponse approve(UUID clientUserId, UUID jobId) {
+        Job job = getOwnedByClientOrThrow(clientUserId, jobId);
+
+        if (job.getStatus() != JobStatus.IN_PROGRESS || job.getCheckoutOrderId() == null) {
+            throw new ApplicationException(ErrorCode.INVALID_JOB_STATUS);
+        }
+
+        PayoutReleaseResult release = paypalBackendClient.releasePayout(job.getCheckoutOrderId());
+
+        job.setPayoutReleaseId(release.getId());
+        job.setStatus(JobStatus.COMPLETED);
+        jobRepository.save(job);
+
+        exportTaxRecordSafely(job);
+
+        return toResponse(job);
+    }
+
+    @Override
+    @Transactional
     public JobResponse cancel(UUID clientUserId, UUID jobId) {
         Job job = getOwnedByClientOrThrow(clientUserId, jobId);
 
@@ -185,6 +240,52 @@ public class JobServiceImpl implements JobService {
                 .build();
     }
 
+    private void exportTaxRecordSafely(Job job) {
+        try {
+            User freelancer = userRepository.findById(job.getFreelancerId())
+                    .orElseThrow(() -> new ApplicationException(ErrorCode.FREELANCER_NOT_FOUND, job.getFreelancerId()));
+
+            if (freelancer.getMisaTaxpayerId() == null) {
+                job.setTaxExportStatus(TaxExportStatus.SKIPPED_NO_TAXPAYER);
+                jobRepository.save(job);
+                log.warn("Job {} approved nhưng freelancer {} chưa liên kết misaTaxpayerId -- bỏ qua xuất chứng từ",
+                        job.getId(), freelancer.getId());
+                return;
+            }
+
+            // Buoc quy doi tho: USD client tra -> USDC -> VND freelancer nhan (quy doi),
+            // theo dung mo hinh USD -> USDC -> VND cua he thong -- KHONG de paypal-backend
+            // hay module rieng nao khac tu quyet dinh so nay.
+            BigDecimal amountUsdc = convertUsdToUsdc(job.getBudgetUsd());
+            BigDecimal usdcToVndRate = getUsdcToVndRatePlaceholder();
+
+            log.warn("Job {}: dang dung ty gia USDC->VND PLACEHOLDER ({}), CHUA phai ty gia thuc -- " +
+                    "thay bang module ty gia thuc truoc khi dung cho bao cao thue thuc te", job.getId(), usdcToVndRate);
+
+            MisaPayoutTransactionResult payoutTx = misaBackendClient.recordPayoutTransaction(
+                    freelancer.getMisaTaxpayerId(), job.getPayoutReleaseId(), amountUsdc, usdcToVndRate);
+
+            MisaCertificateResult certificate = misaBackendClient.createWithholdingCertificate(payoutTx.getId());
+
+            job.setMisaPayoutTransactionId(payoutTx.getId());
+            job.setMisaCertificateId(certificate.getId());
+            job.setTaxExportStatus(TaxExportStatus.SUCCESS);
+            jobRepository.save(job);
+        } catch (Exception e) {
+            job.setTaxExportStatus(TaxExportStatus.FAILED);
+            jobRepository.save(job);
+            log.error("Xuất chứng từ MISA thất bại cho job {}: {}", job.getId(), e.getMessage(), e);
+        }
+    }
+
+    private BigDecimal convertUsdToUsdc(BigDecimal amountUsd) {
+        return amountUsd.multiply(USD_TO_USDC_PEG_RATE).setScale(USDC_SCALE, RoundingMode.HALF_UP);
+    }
+
+    private BigDecimal getUsdcToVndRatePlaceholder() {
+        return PLACEHOLDER_USDC_TO_VND_RATE;
+    }
+
     private Job getOrThrow(UUID jobId) {
         return jobRepository.findById(jobId)
                 .orElseThrow(() -> new ApplicationException(ErrorCode.JOB_NOT_FOUND, jobId));
@@ -200,7 +301,7 @@ public class JobServiceImpl implements JobService {
 
     private Job getParticipantOrThrow(UUID userId, UUID jobId) {
         Job job = getOrThrow(jobId);
-        if (!job.getClientUserId().equals(userId) && !job.getFreelancerUserId().equals(userId)) {
+        if (!job.getClientUserId().equals(userId) && !job.getFreelancerId().equals(userId)) {
             throw new ApplicationException(ErrorCode.JOB_NOT_FOUND, jobId);
         }
         return job;
@@ -213,83 +314,13 @@ public class JobServiceImpl implements JobService {
                 .description(job.getDescription())
                 .budgetUsd(job.getBudgetUsd())
                 .clientUserId(job.getClientUserId())
-                .freelancerUserId(job.getFreelancerUserId())
+                .freelancerId(job.getFreelancerId())
                 .status(job.getStatus().name())
                 .checkoutOrderId(job.getCheckoutOrderId())
                 .payoutReleaseId(job.getPayoutReleaseId())
+                .taxExportStatus(job.getTaxExportStatus() != null ? job.getTaxExportStatus().name() : null)
                 .createdAt(job.getCreatedAt())
                 .updatedAt(job.getUpdatedAt())
                 .build();
-    }
-
-    @Override
-    @Transactional
-    public JobResponse create(UUID clientUserId, CreateJobRequest request) {
-        User freelancer = userRepository.findById(request.getFreelancerId())
-                .orElseThrow(() -> new ApplicationException(ErrorCode.FREELANCER_NOT_FOUND, request.getFreelancerId()));
-
-        if (freelancer.getUserType() != UserType.FREELANCER) {
-            throw new ApplicationException(ErrorCode.USER_IS_NOT_FREELANCER, request.getFreelancerId());
-        }
-
-        Job job = new Job();
-        job.setClientUserId(clientUserId);
-        job.setFreelancerId(freelancer.getId());
-        job.setTitle(request.getTitle());
-        job.setDescription(request.getDescription());
-        job.setBudgetUsd(request.getBudgetUsd());
-        job.setStatus(JobStatus.OPEN);
-
-        jobRepository.save(job);
-        return toResponse(job);
-    }
-
-    @Override
-    @Transactional
-    public JobResponse approve(UUID clientUserId, UUID jobId) {
-        Job job = getOwnedByClientOrThrow(clientUserId, jobId);
-
-        if (job.getStatus() != JobStatus.IN_PROGRESS || job.getCheckoutOrderId() == null) {
-            throw new ApplicationException(ErrorCode.INVALID_JOB_STATUS);
-        }
-
-        PayoutReleaseResult release = paypalBackendClient.releasePayout(job.getCheckoutOrderId());
-
-        job.setPayoutReleaseId(release.getId());
-        job.setStatus(JobStatus.COMPLETED);
-        jobRepository.save(job);
-
-        exportTaxRecordSafely(job);
-
-        return toResponse(job);
-    }
-
-    private void exportTaxRecordSafely(Job job) {
-        try {
-            User freelancer = userRepository.findById(job.getFreelancerId())
-                    .orElseThrow(() -> new ApplicationException(ErrorCode.FREELANCER_NOT_FOUND, job.getFreelancerId()));
-
-            if (freelancer.getMisaTaxpayerId() == null) {
-                job.setTaxExportStatus(TaxExportStatus.SKIPPED_NO_TAXPAYER);
-                jobRepository.save(job);
-                log.warn("Job {} approved nhưng freelancer {} chưa liên kết misaTaxpayerId -- bỏ qua xuất chứng từ",
-                        job.getId(), freelancer.getId());
-                return;
-            }
-
-            MisaPayoutTransactionResult payoutTx = misaBackendClient.recordPayoutTransaction(
-                    freelancer.getMisaTaxpayerId(), job.getPayoutReleaseId(), job.getBudgetUsd());
-
-            MisaCertificateResult certificate = misaBackendClient.createWithholdingCertificate(payoutTx.getId());
-
-            job.setMisaPayoutTransactionId(payoutTx.getId());
-            job.setMisaCertificateId(certificate.getId());
-            job.setTaxExportStatus(TaxExportStatus.SUCCESS);
-            jobRepository.save(job);
-        } catch (Exception e) {
-            job.setTaxExportStatus(TaxExportStatus.FAILED);
-            jobRepository.save(job);
-            log.error("Xuất chứng từ MISA thất bại cho job {}: {}", job.getId(), e.getMessage(), e);
-        }
     }
 }

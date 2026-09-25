@@ -18,10 +18,11 @@ public class JobResponse {
     String description;
     BigDecimal budgetUsd;
     UUID clientUserId;
-    UUID freelancerUserId;
+    UUID freelancerId;
     String status;
     UUID checkoutOrderId;
     UUID payoutReleaseId;
+    String taxExportStatus;
     LocalDateTime createdAt;
     LocalDateTime updatedAt;
 }

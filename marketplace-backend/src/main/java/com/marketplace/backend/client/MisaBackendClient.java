@@ -41,13 +41,13 @@ public class MisaBackendClient {
     private volatile Instant cachedTokenExpiresAt;
 
     public MisaPayoutTransactionResult recordPayoutTransaction(UUID taxpayerId, UUID payoutReleaseId,
-                                                               BigDecimal budgetUsd) {
+                                                               BigDecimal amountUsdc, BigDecimal exchangeRate) {
         Map<String, Object> body = Map.of(
                 "platformPayoutId", payoutReleaseId.toString(),
                 "transactionHash", "paypal:" + payoutReleaseId,
                 "blockchain", "paypal",
-                "amountUsdc", budgetUsd,
-                "exchangeRate", BigDecimal.ONE,
+                "amountUsdc", amountUsdc,
+                "exchangeRate", exchangeRate,
                 "paymentDate", LocalDate.now(),
                 "description", "Payout PayPal cho job marketplace, payoutReleaseId=" + payoutReleaseId
         );

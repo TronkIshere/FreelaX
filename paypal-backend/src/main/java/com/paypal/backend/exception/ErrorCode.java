@@ -36,6 +36,7 @@ public enum ErrorCode {
     PAYOUT_RELEASE_NOT_FOUND(3008, "Không tìm thấy giao dịch giải ngân: %s", HttpStatus.NOT_FOUND),
     PAYOUT_ALREADY_RELEASED(3009, "Giao dịch thanh toán này đã được giải ngân: %s", HttpStatus.CONFLICT),
     PAYPAL_PAYOUT_FAILED(3010, "Giải ngân PayPal thất bại: %s", HttpStatus.BAD_GATEWAY),
+    INSUFFICIENT_BALANCE(3011, "Số dư ledger nội bộ không đủ cho tài khoản: %s", HttpStatus.CONFLICT),
 
     JOB_NOT_FOUND(4000, "Không tìm thấy công việc: %s", HttpStatus.NOT_FOUND),
 

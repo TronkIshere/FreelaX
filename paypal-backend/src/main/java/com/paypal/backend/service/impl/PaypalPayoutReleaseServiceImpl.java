@@ -3,6 +3,7 @@ package com.paypal.backend.service.impl;
 import com.paypal.backend.client.PaypalPayoutClient;
 import com.paypal.backend.dto.request.paypal.ReleasePayoutRequest;
 import com.paypal.backend.dto.response.paypal.PaypalPayoutReleaseResponse;
+import com.paypal.backend.entity.PaypalAccountRole;
 import com.paypal.backend.entity.PaypalCheckoutOrder;
 import com.paypal.backend.entity.PaypalCheckoutOrderStatus;
 import com.paypal.backend.entity.PaypalPayee;
@@ -13,6 +14,7 @@ import com.paypal.backend.exception.ErrorCode;
 import com.paypal.backend.repository.PaypalCheckoutOrderRepository;
 import com.paypal.backend.repository.PaypalPayeeRepository;
 import com.paypal.backend.repository.PaypalPayoutReleaseRepository;
+import com.paypal.backend.service.PaypalAccountBalanceService;
 import com.paypal.backend.service.PaypalPayoutReleaseService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -29,10 +31,13 @@ import java.util.UUID;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class PaypalPayoutReleaseServiceImpl implements PaypalPayoutReleaseService {
 
+    private static final String USD = "USD";
+
     PaypalPayoutReleaseRepository paypalPayoutReleaseRepository;
     PaypalCheckoutOrderRepository paypalCheckoutOrderRepository;
     PaypalPayeeRepository paypalPayeeRepository;
     PaypalPayoutClient paypalPayoutClient;
+    PaypalAccountBalanceService paypalAccountBalanceService;
 
     @Override
     @Transactional
@@ -77,6 +82,7 @@ public class PaypalPayoutReleaseServiceImpl implements PaypalPayoutReleaseServic
 
         if (entity.getStatus() == PaypalPayoutReleaseStatus.SUCCESS) {
             entity.setReleasedAt(LocalDateTime.now());
+            paypalAccountBalanceService.credit(payee.getUserId(), PaypalAccountRole.PAYEE, USD, entity.getAmountUsd());
         }
 
         if (entity.getStatus() == PaypalPayoutReleaseStatus.FAILED) {
