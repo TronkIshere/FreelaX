@@ -4,14 +4,18 @@ import com.marketplace.backend.dto.response.misa.MisaCertificateResult;
 import com.marketplace.backend.dto.response.misa.MisaPayoutTransactionResult;
 import com.marketplace.backend.exception.ApplicationException;
 import com.marketplace.backend.exception.ErrorCode;
+import com.nimbusds.jwt.SignedJWT;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
+import java.text.ParseException;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Date;
 import java.util.Map;
 import java.util.UUID;
 
@@ -27,16 +31,17 @@ public class MisaBackendClient {
     @Value("${misa-backend.base-url}")
     private String baseUrl;
 
-    @Value("${misa-backend.provider-client-id}")
-    private String clientId;
+    @Value("${misa-backend.platform-account-email}")
+    private String platformAccountEmail;
 
-    @Value("${misa-backend.provider-client-secret}")
-    private String clientSecret;
+    @Value("${misa-backend.platform-account-password}")
+    private String platformAccountPassword;
 
     private volatile String cachedAccessToken;
     private volatile Instant cachedTokenExpiresAt;
 
-    public MisaPayoutTransactionResult recordPayoutTransaction(UUID taxpayerId, UUID payoutReleaseId, BigDecimal budgetUsd) {
+    public MisaPayoutTransactionResult recordPayoutTransaction(UUID taxpayerId, UUID payoutReleaseId,
+                                                               BigDecimal budgetUsd) {
         Map<String, Object> body = Map.of(
                 "platformPayoutId", payoutReleaseId.toString(),
                 "transactionHash", "paypal:" + payoutReleaseId,
@@ -84,23 +89,45 @@ public class MisaBackendClient {
             return cachedAccessToken;
         }
 
-        Map<String, Object> tokenRequest = Map.of(
-                "clientId", clientId, "clientSecret", clientSecret, "grantType", "client_credentials");
-
+        Map<String, Object> body = Map.of("email", platformAccountEmail, "password", platformAccountPassword);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
 
-        @SuppressWarnings("unchecked")
-        Map<String, Object> response = restTemplate.postForObject(
-                baseUrl + "/api/v1/auth/token", new HttpEntity<>(tokenRequest, headers), Map.class);
-
-        if (response == null || response.get("accessToken") == null) {
-            throw new ApplicationException(ErrorCode.MISA_BACKEND_CALL_FAILED, "token: empty response");
+        Map<String, Object> response;
+        try {
+            response = restTemplate.postForObject(
+                    baseUrl + "/api/v1/auth/sign-in", new HttpEntity<>(body, headers), Map.class);
+        } catch (HttpClientErrorException.Unauthorized e) {
+            throw new ApplicationException(ErrorCode.MISA_BACKEND_CALL_FAILED,
+                    "sign-in: sai email/password cua tai khoan platform -- kiem tra lai " +
+                            "misa-backend.platform-account-email/password co khop voi seed ben misa-backend khong");
         }
 
-        cachedAccessToken = (String) response.get("accessToken");
-        Object expiresIn = response.getOrDefault("expiresInSeconds", 300);
-        cachedTokenExpiresAt = Instant.now().plusSeconds(((Number) expiresIn).longValue() - 30);
+        if (response == null || response.get("data") == null) {
+            throw new ApplicationException(ErrorCode.MISA_BACKEND_CALL_FAILED, "sign-in: empty response");
+        }
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> data = (Map<String, Object>) response.get("data");
+        Object accessToken = data.get("accessToken");
+        if (accessToken == null) {
+            throw new ApplicationException(ErrorCode.MISA_BACKEND_CALL_FAILED, "sign-in: missing accessToken");
+        }
+
+        cachedAccessToken = accessToken.toString();
+        cachedTokenExpiresAt = extractExpiry(cachedAccessToken);
         return cachedAccessToken;
+    }
+
+    private Instant extractExpiry(String jwt) {
+        try {
+            Date exp = SignedJWT.parse(jwt).getJWTClaimsSet().getExpirationTime();
+            if (exp == null) {
+                return Instant.now().plusSeconds(300);
+            }
+            return exp.toInstant().minusSeconds(30);
+        } catch (ParseException e) {
+            return Instant.now().plusSeconds(300);
+        }
     }
 }
