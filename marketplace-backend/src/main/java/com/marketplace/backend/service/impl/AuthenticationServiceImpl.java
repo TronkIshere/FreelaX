@@ -1,19 +1,17 @@
 package com.marketplace.backend.service.impl;
 
+import com.marketplace.backend.client.PaypalBackendClient;
 import com.marketplace.backend.configuration.UserPrincipal;
-import com.marketplace.backend.dto.request.auth.ForgotPasswordRequest;
-import com.marketplace.backend.dto.request.auth.LogoutRequest;
-import com.marketplace.backend.dto.request.auth.RegisterRequest;
-import com.marketplace.backend.dto.request.auth.ResetPasswordRequest;
-import com.marketplace.backend.dto.request.auth.SignInRequest;
-import com.marketplace.backend.dto.request.auth.VerifyForgotPasswordOtpRequest;
+import com.marketplace.backend.dto.request.auth.*;
 import com.marketplace.backend.dto.response.auth.RefreshTokenResponse;
 import com.marketplace.backend.dto.response.auth.SignInResponse;
 import com.marketplace.backend.dto.response.auth.SignInStatus;
 import com.marketplace.backend.dto.response.auth.UserResponse;
+import com.marketplace.backend.dto.response.paypal.PayeeStatusResult;
 import com.marketplace.backend.entity.AuthProvider;
 import com.marketplace.backend.entity.Role;
 import com.marketplace.backend.entity.User;
+import com.marketplace.backend.entity.UserType;
 import com.marketplace.backend.exception.ApplicationException;
 import com.marketplace.backend.exception.ErrorCode;
 import com.marketplace.backend.repository.RoleRepository;
@@ -44,6 +42,7 @@ import org.springframework.util.StringUtils;
 import java.text.ParseException;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
@@ -51,9 +50,9 @@ import java.util.concurrent.TimeUnit;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class AuthenticationServiceImpl implements AuthenticationService {
-
     UserDetailsServiceCustomizer userDetailsServiceCustomizer;
     AuthenticationManager authenticationManager;
+    PaypalBackendClient paypalBackendClient;
     PasswordEncoder passwordEncoder;
     UserRepository userRepository;
     RoleRepository roleRepository;
@@ -68,6 +67,10 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             throw new ApplicationException(ErrorCode.EMAIL_ALREADY_EXISTS);
         }
 
+        if (request.getUserType() == UserType.FREELANCER) {
+            validateFreelancerPaypalLink(request.getPaypalUserId());
+        }
+
         Role userRole = roleRepository.findByName("ROLE_USER")
                 .orElseThrow(() -> new ApplicationException(ErrorCode.DATA_NOT_FOUND, (Object) "ROLE_USER"));
 
@@ -78,14 +81,32 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         user.setAuthProvider(AuthProvider.LOCAL);
         user.setEnabled(true);
         user.setRoles(Set.of(userRole));
+        user.setUserType(request.getUserType());
+        if (request.getUserType() == UserType.FREELANCER) {
+            user.setPaypalUserId(request.getPaypalUserId());
+        }
         userRepository.save(user);
-
 
         return UserResponse.builder()
                 .id(user.getId())
                 .email(user.getEmail())
                 .displayName(user.getDisplayName())
+                .userType(user.getUserType())
                 .build();
+    }
+
+    private void validateFreelancerPaypalLink(UUID paypalUserId) {
+        if (paypalUserId == null) {
+            throw new ApplicationException(ErrorCode.PAYPAL_USER_ID_REQUIRED);
+        }
+        if (userRepository.existsByPaypalUserId(paypalUserId)) {
+            throw new ApplicationException(ErrorCode.PAYPAL_USER_ID_ALREADY_LINKED, paypalUserId);
+        }
+
+        PayeeStatusResult payeeStatus = paypalBackendClient.getPayeeStatus(paypalUserId);
+        if (!payeeStatus.isRegistered() || !payeeStatus.isActive()) {
+            throw new ApplicationException(ErrorCode.FREELANCER_NOT_LINKED_TO_PAYPAL, paypalUserId);
+        }
     }
 
     @Override
@@ -229,5 +250,27 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
+    }
+
+    @Override
+    @Transactional
+    public UserResponse linkMisaTaxpayer(UUID userId, LinkMisaTaxpayerRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ApplicationException(ErrorCode.USER_NOT_EXISTED));
+
+        if (user.getUserType() != UserType.FREELANCER) {
+            throw new ApplicationException(ErrorCode.NOT_A_FREELANCER);
+        }
+
+        user.setMisaTaxpayerId(request.getMisaTaxpayerId());
+        userRepository.save(user);
+
+        return UserResponse.builder()
+                .id(user.getId())
+                .email(user.getEmail())
+                .displayName(user.getDisplayName())
+                .userType(user.getUserType())
+                .misaTaxpayerId(user.getMisaTaxpayerId())
+                .build();
     }
 }

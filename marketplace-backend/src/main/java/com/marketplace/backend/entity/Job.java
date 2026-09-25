@@ -40,4 +40,13 @@ public class Job extends AbstractEntity<UUID> {
     private UUID checkoutOrderId;
 
     private UUID payoutReleaseId;
+
+    private UUID freelancerId;
+
+    private UUID misaPayoutTransactionId;
+    private UUID misaCertificateId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 30)
+    private TaxExportStatus taxExportStatus = TaxExportStatus.NOT_ATTEMPTED;
 }

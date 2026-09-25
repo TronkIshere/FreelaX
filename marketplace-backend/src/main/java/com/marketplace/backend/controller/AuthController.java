@@ -1,12 +1,7 @@
 package com.marketplace.backend.controller;
 
 import com.marketplace.backend.configuration.UserPrincipal;
-import com.marketplace.backend.dto.request.auth.ForgotPasswordRequest;
-import com.marketplace.backend.dto.request.auth.LogoutRequest;
-import com.marketplace.backend.dto.request.auth.RegisterRequest;
-import com.marketplace.backend.dto.request.auth.ResetPasswordRequest;
-import com.marketplace.backend.dto.request.auth.SignInRequest;
-import com.marketplace.backend.dto.request.auth.VerifyForgotPasswordOtpRequest;
+import com.marketplace.backend.dto.request.auth.*;
 import com.marketplace.backend.dto.response.auth.RefreshTokenResponse;
 import com.marketplace.backend.dto.response.auth.SignInResponse;
 import com.marketplace.backend.dto.response.auth.UserResponse;
@@ -21,12 +16,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.CookieValue;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.text.ParseException;
 
@@ -115,6 +105,16 @@ public class AuthController {
                         .email(user.getEmail())
                         .displayName(user.getDisplayName())
                         .build())
+                .build();
+    }
+
+    @PatchMapping("/me/misa-taxpayer")
+    public ResponseAPI<UserResponse> linkMisaTaxpayer(@AuthenticationPrincipal UserPrincipal principal,
+                                                      @Valid @RequestBody LinkMisaTaxpayerRequest request) {
+        return ResponseAPI.<UserResponse>builder()
+                .code(200)
+                .message("Liên kết hồ sơ người nộp thuế MISA thành công")
+                .data(authenticationService.linkMisaTaxpayer(principal.getId(), request))
                 .build();
     }
 }

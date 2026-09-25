@@ -25,11 +25,21 @@ public enum ErrorCode {
     INVALID_OTP(2012, "Mã OTP không đúng hoặc đã hết hạn", HttpStatus.BAD_REQUEST),
     PASSWORD_NOT_MATCH(2013, "Mật khẩu xác nhận không khớp", HttpStatus.BAD_REQUEST),
 
+    // Đăng ký/định danh vai trò freelancer (userType, liên kết paypal-backend, misa-backend)
+    PAYPAL_USER_ID_REQUIRED(2014, "Freelancer phải cung cấp paypalUserId khi đăng ký", HttpStatus.BAD_REQUEST),
+    PAYPAL_USER_ID_ALREADY_LINKED(2015, "paypalUserId này đã được liên kết với một tài khoản freelancer khác: %s", HttpStatus.CONFLICT),
+    NOT_A_FREELANCER(2016, "Tài khoản này không phải freelancer, không thể liên kết hồ sơ người nộp thuế", HttpStatus.FORBIDDEN),
+
     JOB_NOT_FOUND(4000, "Không tìm thấy công việc: %s", HttpStatus.NOT_FOUND),
     INVALID_JOB_STATUS(4001, "Trạng thái công việc không cho phép thao tác này", HttpStatus.CONFLICT),
     FREELANCER_NOT_LINKED_TO_PAYPAL(4002, "Freelancer chưa liên kết hoặc chưa kích hoạt PayPal: %s", HttpStatus.CONFLICT),
     JOB_NOT_PAID(4003, "Công việc chưa được thanh toán", HttpStatus.CONFLICT),
     PAYPAL_BACKEND_CALL_FAILED(4004, "Gọi paypal-backend thất bại: %s", HttpStatus.BAD_GATEWAY),
+    FREELANCER_NOT_FOUND(4005, "Không tìm thấy freelancer: %s", HttpStatus.NOT_FOUND),
+    USER_IS_NOT_FREELANCER(4006, "Tài khoản được chọn không phải freelancer: %s", HttpStatus.BAD_REQUEST),
+
+    // Tích hợp misa-backend (xuất chứng từ khấu trừ thuế sau khi approve job)
+    MISA_BACKEND_CALL_FAILED(5000, "Gọi misa-backend thất bại: %s", HttpStatus.BAD_GATEWAY),
 
     INTERNAL_ERROR(9999, "Đã có lỗi xảy ra, vui lòng thử lại sau", HttpStatus.INTERNAL_SERVER_ERROR),
     ACCOUNT_NOT_FOUND(9997, "Không tìm thấy tài khoản", HttpStatus.NOT_FOUND);

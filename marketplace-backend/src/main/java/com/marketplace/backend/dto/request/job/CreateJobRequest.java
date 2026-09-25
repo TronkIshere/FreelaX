@@ -1,8 +1,8 @@
 package com.marketplace.backend.dto.request.job;
 
-import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
@@ -16,15 +16,15 @@ import java.util.UUID;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class CreateJobRequest {
 
-    @NotNull(message = "freelancerUserId không được để trống")
-    UUID freelancerUserId;
+    @NotNull(message = "Freelancer không được để trống")
+    UUID freelancerId;
 
-    @NotBlank(message = "title không được để trống")
+    @NotBlank(message = "Tiêu đề không được để trống")
     String title;
 
     String description;
 
-    @NotNull(message = "budgetUsd không được để trống")
-    @DecimalMin(value = "0.01", message = "budgetUsd phải lớn hơn 0")
+    @NotNull(message = "Ngân sách không được để trống")
+    @Positive(message = "Ngân sách phải lớn hơn 0")
     BigDecimal budgetUsd;
 }

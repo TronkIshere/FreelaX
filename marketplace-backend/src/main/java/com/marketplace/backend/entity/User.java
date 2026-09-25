@@ -40,6 +40,16 @@ public class User extends AbstractEntity<UUID> {
     @Column(length = 512)
     private String refreshToken;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private UserType userType;
+
+    @Column(unique = true)
+    private UUID paypalUserId;
+
+    @Column(unique = true)
+    private UUID misaTaxpayerId;
+
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
             name = "user_roles",

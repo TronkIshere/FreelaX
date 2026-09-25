@@ -37,6 +37,11 @@ paypal-backend:
   base-url: ${PAYPAL_BACKEND_BASE_URL:http://localhost:9190}
   internal-api-key: ${PAYPAL_BACKEND_INTERNAL_API_KEY:}
 
+misa-backend:
+  base-url: ${MISA_BACKEND_BASE_URL:http://localhost:9192}
+  provider-client-id: ${MISA_PROVIDER_CLIENT_ID}
+  provider-client-secret: ${MISA_PROVIDER_CLIENT_SECRET}
+
 internal:
   api:
     key: ${INTERNAL_API_KEY:}

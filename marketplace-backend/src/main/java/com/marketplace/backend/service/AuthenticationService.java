@@ -1,10 +1,6 @@
 package com.marketplace.backend.service;
 
-import com.marketplace.backend.dto.request.auth.LogoutRequest;
-import com.marketplace.backend.dto.request.auth.RegisterRequest;
-import com.marketplace.backend.dto.request.auth.ResetPasswordRequest;
-import com.marketplace.backend.dto.request.auth.SignInRequest;
-import com.marketplace.backend.dto.request.auth.VerifyForgotPasswordOtpRequest;
+import com.marketplace.backend.dto.request.auth.*;
 import com.marketplace.backend.dto.response.auth.RefreshTokenResponse;
 import com.marketplace.backend.dto.response.auth.SignInResponse;
 import com.marketplace.backend.dto.response.auth.UserResponse;
@@ -12,6 +8,7 @@ import com.nimbusds.jose.JOSEException;
 import jakarta.servlet.http.HttpServletResponse;
 
 import java.text.ParseException;
+import java.util.UUID;
 
 public interface AuthenticationService {
 
@@ -28,4 +25,6 @@ public interface AuthenticationService {
     String verifyOtp(VerifyForgotPasswordOtpRequest request);
 
     void resetPassword(ResetPasswordRequest request);
+
+    UserResponse linkMisaTaxpayer(UUID userId, LinkMisaTaxpayerRequest request);
 }

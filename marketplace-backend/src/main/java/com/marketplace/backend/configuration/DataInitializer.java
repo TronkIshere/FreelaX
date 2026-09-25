@@ -5,6 +5,7 @@ import com.marketplace.backend.entity.Job;
 import com.marketplace.backend.entity.JobStatus;
 import com.marketplace.backend.entity.Role;
 import com.marketplace.backend.entity.User;
+import com.marketplace.backend.entity.UserType;
 import com.marketplace.backend.repository.JobRepository;
 import com.marketplace.backend.repository.RoleRepository;
 import com.marketplace.backend.repository.UserRepository;
@@ -23,9 +24,13 @@ import java.util.UUID;
 @Slf4j(topic = "INIT-APPLICATION")
 public class DataInitializer {
 
-    private static final String SEED_EMAIL = "nguyenhuutrong11133@gmail.com";
-    private static final String SEED_PASSWORD = "123456789";
-    private static final UUID SEED_FREELANCER_USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
+    private static final String SEED_CLIENT_EMAIL = "nguyenhuutrong11133@gmail.com";
+    private static final String SEED_CLIENT_PASSWORD = "123456789";
+
+    private static final String SEED_FREELANCER_EMAIL = "freelancer.seed@example.com";
+    private static final String SEED_FREELANCER_PASSWORD = "123456789";
+    private static final UUID SEED_FREELANCER_PLACEHOLDER_PAYPAL_USER_ID =
+            UUID.fromString("00000000-0000-0000-0000-000000000001");
 
     @Bean
     public ApplicationRunner initData(RoleRepository roleRepository,
@@ -44,30 +49,49 @@ public class DataInitializer {
             Role userRole = roleRepository.findByName("ROLE_USER")
                     .orElseThrow(() -> new IllegalStateException("ROLE_USER not found after seeding"));
 
-            User client = userRepository.findByEmail(SEED_EMAIL).orElseGet(() -> {
+            User client = userRepository.findByEmail(SEED_CLIENT_EMAIL).orElseGet(() -> {
                 User u = new User();
-                u.setEmail(SEED_EMAIL);
-                u.setPassword(passwordEncoder.encode(SEED_PASSWORD));
+                u.setEmail(SEED_CLIENT_EMAIL);
+                u.setPassword(passwordEncoder.encode(SEED_CLIENT_PASSWORD));
                 u.setDisplayName("Nguyen Huu Trong");
                 u.setAuthProvider(AuthProvider.LOCAL);
                 u.setEnabled(true);
                 u.setRoles(Set.of(userRole));
+                u.setUserType(UserType.CLIENT);
                 User saved = userRepository.save(u);
-                log.info("Seed user created: {}", SEED_EMAIL);
+                log.info("Seed client created: {}", SEED_CLIENT_EMAIL);
+                return saved;
+            });
+
+            User freelancer = userRepository.findByEmail(SEED_FREELANCER_EMAIL).orElseGet(() -> {
+                User u = new User();
+                u.setEmail(SEED_FREELANCER_EMAIL);
+                u.setPassword(passwordEncoder.encode(SEED_FREELANCER_PASSWORD));
+                u.setDisplayName("Freelancer Seed");
+                u.setAuthProvider(AuthProvider.LOCAL);
+                u.setEnabled(true);
+                u.setRoles(Set.of(userRole));
+                u.setUserType(UserType.FREELANCER);
+                u.setPaypalUserId(SEED_FREELANCER_PLACEHOLDER_PAYPAL_USER_ID);
+                User saved = userRepository.save(u);
+                log.info("Seed freelancer created: {}", SEED_FREELANCER_EMAIL);
                 return saved;
             });
 
             if (jobRepository.findByClientUserId(client.getId()).isEmpty()) {
                 jobRepository.saveAll(List.of(
-                        createJob(client.getId(), "Landing page redesign",
+                        createJob(client.getId(), freelancer.getId(), "Landing page redesign",
                                 "Redesign trang landing page, mobile-first.", new BigDecimal("500")),
-                        createJob(client.getId(), "Viet REST API cho module giao dich",
+                        createJob(client.getId(), freelancer.getId(), "Viet REST API cho module giao dich",
                                 "Xay dung CRUD + validation cho module giao dich, tich hop don vi tien te.", new BigDecimal("750")),
-                        createJob(client.getId(), "Toi uu SEO trang chu",
+                        createJob(client.getId(), freelancer.getId(), "Toi uu SEO trang chu",
                                 "Audit va toi uu SEO on-page cho trang chu va 5 landing page chinh.", new BigDecimal("300"))
                 ));
-                log.info("Seed jobs created for client {}", SEED_EMAIL);
-                log.warn("Seed jobs use placeholder freelancerUserId={} - update to a real paypal-backend userId before calling /pay", SEED_FREELANCER_USER_ID);
+                log.info("Seed jobs created for client {} / freelancer {}", SEED_CLIENT_EMAIL, SEED_FREELANCER_EMAIL);
+                log.warn("Seed freelancer {} co paypalUserId placeholder={} -- dang nhap tai khoan freelancer " +
+                                "seed ben paypal-backend, GET /api/v1/auth/me lay userId thuc, roi UPDATE lai " +
+                                "field paypalUserId cua user nay truoc khi goi /pay",
+                        freelancer.getId(), SEED_FREELANCER_PLACEHOLDER_PAYPAL_USER_ID);
             }
         };
     }
@@ -78,10 +102,10 @@ public class DataInitializer {
         return role;
     }
 
-    private Job createJob(UUID clientUserId, String title, String description, BigDecimal budgetUsd) {
+    private Job createJob(UUID clientUserId, UUID freelancerId, String title, String description, BigDecimal budgetUsd) {
         Job job = new Job();
         job.setClientUserId(clientUserId);
-        job.setFreelancerUserId(SEED_FREELANCER_USER_ID);
+        job.setFreelancerId(freelancerId);
         job.setTitle(title);
         job.setDescription(description);
         job.setBudgetUsd(budgetUsd);
