@@ -1,7 +1,7 @@
 package com.marketplace.backend.service.impl;
 
 import com.marketplace.backend.client.MisaBackendClient;
-import com.marketplace.backend.client.PaypalBackendClient;
+import com.marketplace.backend.client.PaymentBackendClient;
 import com.marketplace.backend.dto.request.job.AssignFreelancerRequest;
 import com.marketplace.backend.dto.request.job.CreateJobRequest;
 import com.marketplace.backend.dto.request.job.UpdateJobRequest;
@@ -11,7 +11,7 @@ import com.marketplace.backend.dto.response.job.JobResponse;
 import com.marketplace.backend.dto.response.job.PayJobResponse;
 import com.marketplace.backend.dto.response.misa.MisaCertificateResult;
 import com.marketplace.backend.dto.response.misa.MisaPayoutTransactionResult;
-import com.marketplace.backend.dto.response.paypal.CheckoutOrderResult;
+import com.marketplace.backend.dto.response.bofa.CheckoutOrderResult;
 import com.marketplace.backend.entity.*;
 import com.marketplace.backend.exception.ApplicationException;
 import com.marketplace.backend.exception.ErrorCode;
@@ -47,7 +47,7 @@ public class JobServiceImpl implements JobService {
 
     UserRepository userRepository;
     JobRepository jobRepository;
-    PaypalBackendClient paypalBackendClient;
+    PaymentBackendClient paymentBackendClient;
     MisaBackendClient misaBackendClient;
     NotificationService notificationService;
 
@@ -164,11 +164,11 @@ public class JobServiceImpl implements JobService {
         }
 
         // Freelancer giờ chỉ cần tồn tại đúng loại tài khoản -- không còn phụ thuộc
-        // paypal-backend/payee nữa (freelancer nhận tiền qua ngân hàng đã đăng ký, xử lý thủ công).
+        // payment-backend/payee nữa (freelancer nhận tiền qua ngân hàng đã đăng ký, xử lý thủ công).
         userRepository.findById(job.getFreelancerId())
                 .orElseThrow(() -> new ApplicationException(ErrorCode.FREELANCER_NOT_FOUND, job.getFreelancerId()));
 
-        CheckoutOrderResult checkoutOrder = paypalBackendClient.createCheckoutOrder(
+        CheckoutOrderResult checkoutOrder = paymentBackendClient.createCheckoutOrder(
                 job.getClientUserId(),
                 job.getId(),
                 job.getBudgetUsd()
@@ -195,10 +195,10 @@ public class JobServiceImpl implements JobService {
             throw new ApplicationException(ErrorCode.INVALID_JOB_STATUS);
         }
 
-        CheckoutOrderResult captured = paypalBackendClient.captureCheckoutOrder(job.getCheckoutOrderId());
+        CheckoutOrderResult captured = paymentBackendClient.captureCheckoutOrder(job.getCheckoutOrderId());
 
         if (!"CAPTURED".equals(captured.getStatus())) {
-            throw new ApplicationException(ErrorCode.PAYPAL_BACKEND_CALL_FAILED, "capture:" + captured.getStatus());
+            throw new ApplicationException(ErrorCode.PAYMENT_BACKEND_CALL_FAILED, "capture:" + captured.getStatus());
         }
 
         job.setStatus(JobStatus.IN_PROGRESS);
@@ -223,8 +223,8 @@ public class JobServiceImpl implements JobService {
             throw new ApplicationException(ErrorCode.INVALID_JOB_STATUS);
         }
 
-        // ĐÃ BỎ HOÀN TOÀN: paypalBackendClient.releasePayout(...) -- không còn chuyển tiền
-        // ngược lại paypal-backend để trả cho freelancer. Freelancer nhận tiền qua ngân hàng
+        // ĐÃ BỎ HOÀN TOÀN: paymentBackendClient.releasePayout(...) -- không còn chuyển tiền
+        // ngược lại payment-backend để trả cho freelancer. Freelancer nhận tiền qua ngân hàng
         // đã đăng ký, xử lý thủ công ngoài hệ thống; marketplace-backend chỉ ghi nhận,
         // xuất chứng từ thuế, và gửi thông báo.
         job.setStatus(JobStatus.COMPLETED);
@@ -258,7 +258,7 @@ public class JobServiceImpl implements JobService {
             throw new ApplicationException(ErrorCode.JOB_NOT_PAID);
         }
 
-        CheckoutOrderResult checkoutOrder = paypalBackendClient.getCheckoutOrder(job.getCheckoutOrderId());
+        CheckoutOrderResult checkoutOrder = paymentBackendClient.getCheckoutOrder(job.getCheckoutOrderId());
 
         return JobPaymentStatusResponse.builder()
                 .jobId(job.getId())
@@ -288,7 +288,7 @@ public class JobServiceImpl implements JobService {
             log.warn("Job {}: dang dung ty gia USDC->VND PLACEHOLDER ({}), CHUA phai ty gia thuc",
                     job.getId(), usdcToVndRate);
 
-            // Không còn payoutReleaseId của paypal-backend -- dùng job.getId() làm định danh
+            // Không còn payoutReleaseId của payment-backend -- dùng job.getId() làm định danh
             // tham chiếu duy nhất gửi sang misa-backend (thay cho platformPayoutId cũ).
             MisaPayoutTransactionResult payoutTx = misaBackendClient.recordPayoutTransaction(
                     freelancer.getMisaTaxpayerId(), job.getId(), amountUsdc, usdcToVndRate);

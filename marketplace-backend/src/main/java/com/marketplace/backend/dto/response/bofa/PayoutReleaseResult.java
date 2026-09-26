@@ -1,4 +1,4 @@
-package com.marketplace.backend.dto.response.paypal;
+package com.marketplace.backend.dto.response.bofa;
 
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -18,8 +18,8 @@ public class PayoutReleaseResult {
     UUID payeeId;
     UUID jobId;
     BigDecimal amountUsd;
-    String paypalPayoutBatchId;
-    String paypalPayoutItemId;
+    String bofaPayoutBatchId;
+    String bofaPayoutItemId;
     String status;
     LocalDateTime createdAt;
     LocalDateTime releasedAt;

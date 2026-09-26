@@ -1,4 +1,4 @@
-package com.marketplace.backend.dto.response.paypal;
+package com.marketplace.backend.dto.response.bofa;
 
 import lombok.AccessLevel;
 import lombok.Getter;

@@ -1,8 +1,8 @@
 package com.marketplace.backend.client;
 
-import com.marketplace.backend.configuration.PaypalBackendProperties;
+import com.marketplace.backend.configuration.PaymentBackendProperties;
 import com.marketplace.backend.dto.response.common.ResponseAPI;
-import com.marketplace.backend.dto.response.paypal.CheckoutOrderResult;
+import com.marketplace.backend.dto.response.bofa.CheckoutOrderResult;
 import com.marketplace.backend.exception.ApplicationException;
 import com.marketplace.backend.exception.ErrorCode;
 import lombok.AccessLevel;
@@ -25,10 +25,10 @@ import java.util.UUID;
 @Component
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
-public class PaypalBackendClient {
+public class PaymentBackendClient {
 
     RestTemplate restTemplate;
-    PaypalBackendProperties properties;
+    PaymentBackendProperties properties;
 
     public CheckoutOrderResult createCheckoutOrder(UUID payerUserId, UUID jobId, BigDecimal amountUsd) {
         Map<String, Object> body = Map.of(
@@ -37,7 +37,7 @@ public class PaypalBackendClient {
                 "amountUsd", amountUsd
         );
         return exchange(
-                "/internal/paypal/checkout/orders",
+                "/internal/BofA/checkout/orders",
                 HttpMethod.POST,
                 body,
                 new ParameterizedTypeReference<ResponseAPI<CheckoutOrderResult>>() {}
@@ -46,7 +46,7 @@ public class PaypalBackendClient {
 
     public CheckoutOrderResult captureCheckoutOrder(UUID checkoutOrderId) {
         return exchange(
-                "/internal/paypal/checkout/orders/" + checkoutOrderId + "/capture",
+                "/internal/BofA/checkout/orders/" + checkoutOrderId + "/capture",
                 HttpMethod.POST,
                 null,
                 new ParameterizedTypeReference<ResponseAPI<CheckoutOrderResult>>() {}
@@ -55,7 +55,7 @@ public class PaypalBackendClient {
 
     public CheckoutOrderResult getCheckoutOrder(UUID checkoutOrderId) {
         return exchange(
-                "/internal/paypal/checkout/orders/" + checkoutOrderId,
+                "/internal/BofA/checkout/orders/" + checkoutOrderId,
                 HttpMethod.GET,
                 null,
                 new ParameterizedTypeReference<ResponseAPI<CheckoutOrderResult>>() {}
@@ -77,7 +77,7 @@ public class PaypalBackendClient {
             );
             return response.getBody() != null ? response.getBody().getData() : null;
         } catch (RestClientException ex) {
-            throw new ApplicationException(ErrorCode.PAYPAL_BACKEND_CALL_FAILED, path);
+            throw new ApplicationException(ErrorCode.PAYMENT_BACKEND_CALL_FAILED, path);
         }
     }
 }

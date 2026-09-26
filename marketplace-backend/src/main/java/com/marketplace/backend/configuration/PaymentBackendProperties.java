@@ -8,11 +8,11 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
 @Component
-@ConfigurationProperties(prefix = "paypal-backend")
+@ConfigurationProperties(prefix = "payment-backend")
 @Getter
 @Setter
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class PaypalBackendProperties {
+public class PaymentBackendProperties {
     String baseUrl;
     String internalApiKey;
 }

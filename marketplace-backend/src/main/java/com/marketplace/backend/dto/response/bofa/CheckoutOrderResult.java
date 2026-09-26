@@ -1,4 +1,4 @@
-package com.marketplace.backend.dto.response.paypal;
+package com.marketplace.backend.dto.response.bofa;
 
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -17,8 +17,8 @@ public class CheckoutOrderResult {
     UUID payerUserId;
     UUID jobId;
     BigDecimal amountUsd;
-    String paypalOrderId;
-    String paypalCaptureId;
+    String bofaOrderId;
+    String bofaCaptureId;
     String status;
     String approvalUrl;
     LocalDateTime createdAt;

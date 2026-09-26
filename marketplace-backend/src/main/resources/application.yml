@@ -33,9 +33,9 @@ security:
     secret: ${JWT_SECRET}
     expiration-ms: ${JWT_EXPIRATION_MS:86400000}
 
-paypal-backend:
-  base-url: ${PAYPAL_BACKEND_BASE_URL:http://localhost:9190}
-  internal-api-key: ${PAYPAL_BACKEND_INTERNAL_API_KEY:}
+payment-backend:
+  base-url: ${PAYMENT_BACKEND_BASE_URL:http://localhost:9190}
+  internal-api-key: ${PAYMENT_BACKEND_INTERNAL_API_KEY:}
 
 misa-backend:
   base-url: ${MISA_BACKEND_BASE_URL:http://localhost:9192}
