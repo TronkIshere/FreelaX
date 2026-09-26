@@ -26,7 +26,7 @@
     </properties>
 
     <modules>
-        <module>paypal-backend</module>
+        <module>payment-backend</module>
         <module>marketplace-backend</module>
         <module>misa-backend</module>
     </modules>

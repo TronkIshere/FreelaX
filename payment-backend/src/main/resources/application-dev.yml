@@ -1,0 +1,30 @@
+spring:
+  jpa:
+    show-sql: false
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+
+logging:
+  level:
+    com.payment.backend: DEBUG
+
+security:
+  jwt:
+    secret: ${JWT_SECRET:b5fd25ae6b356494279acdbdac96bbdb98a56db973420a033b14cb27cf50116f1a051caca389fe0c2ac2aeb7a1c6fa98}
+
+internal:
+  api:
+    key: ${INTERNAL_API_KEY:dev-only-internal-key-do-not-use-in-prod}
+
+bofa:
+  checkout:
+    base-url: ${BOFA_BASE_URL:https://api-m.sandbox.paypal.com}
