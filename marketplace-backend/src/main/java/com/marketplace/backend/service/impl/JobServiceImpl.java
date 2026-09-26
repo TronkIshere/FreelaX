@@ -2,6 +2,7 @@ package com.marketplace.backend.service.impl;
 
 import com.marketplace.backend.client.MisaBackendClient;
 import com.marketplace.backend.client.PaypalBackendClient;
+import com.marketplace.backend.dto.request.job.AssignFreelancerRequest;
 import com.marketplace.backend.dto.request.job.CreateJobRequest;
 import com.marketplace.backend.dto.request.job.UpdateJobRequest;
 import com.marketplace.backend.dto.response.common.PageResponse;
@@ -43,9 +44,7 @@ public class JobServiceImpl implements JobService {
 
     private static final int USDC_SCALE = 6;
     private static final int VND_SCALE = 0;
-
     private static final BigDecimal USD_TO_USDC_PEG_RATE = BigDecimal.ONE;
-
     private static final BigDecimal PLACEHOLDER_USDC_TO_VND_RATE = new BigDecimal("25000");
 
     UserRepository userRepository;
@@ -56,24 +55,48 @@ public class JobServiceImpl implements JobService {
     @Override
     @Transactional
     public JobResponse create(UUID clientUserId, CreateJobRequest request) {
-        User freelancer = userRepository.findById(request.getFreelancerId())
-                .orElseThrow(() -> new ApplicationException(ErrorCode.FREELANCER_NOT_FOUND, request.getFreelancerId()));
-
-        if (freelancer.getUserType() != UserType.FREELANCER) {
-            throw new ApplicationException(ErrorCode.USER_IS_NOT_FREELANCER, request.getFreelancerId());
-        }
-
         Job job = new Job();
         job.setClientUserId(clientUserId);
-        job.setFreelancerId(freelancer.getId());
         job.setTitle(request.getTitle());
         job.setDescription(request.getDescription());
         job.setBudgetUsd(request.getBudgetUsd());
         job.setStatus(JobStatus.OPEN);
 
+        // freelancerId gio la TUY CHON luc tao -- job co the "dang tin" truoc, gan nguoi lam sau.
+        if (request.getFreelancerId() != null) {
+            job.setFreelancerId(validateAndGetFreelancer(request.getFreelancerId()).getId());
+        }
+
         jobRepository.save(job);
 
         return toResponse(job);
+    }
+
+    @Override
+    @Transactional
+    public JobResponse assignFreelancer(UUID clientUserId, UUID jobId, AssignFreelancerRequest request) {
+        Job job = getOwnedByClientOrThrow(clientUserId, jobId);
+
+        if (job.getStatus() != JobStatus.OPEN) {
+            throw new ApplicationException(ErrorCode.INVALID_JOB_STATUS);
+        }
+
+        User freelancer = validateAndGetFreelancer(request.getFreelancerId());
+        job.setFreelancerId(freelancer.getId());
+        jobRepository.save(job);
+
+        return toResponse(job);
+    }
+
+    private User validateAndGetFreelancer(UUID freelancerId) {
+        User freelancer = userRepository.findById(freelancerId)
+                .orElseThrow(() -> new ApplicationException(ErrorCode.FREELANCER_NOT_FOUND, freelancerId));
+
+        if (freelancer.getUserType() != UserType.FREELANCER) {
+            throw new ApplicationException(ErrorCode.USER_IS_NOT_FREELANCER, freelancerId);
+        }
+
+        return freelancer;
     }
 
     @Override
@@ -129,6 +152,12 @@ public class JobServiceImpl implements JobService {
 
         if (job.getStatus() != JobStatus.OPEN) {
             throw new ApplicationException(ErrorCode.INVALID_JOB_STATUS);
+        }
+
+        // Chan o day -- khong the tra tien cho "chua ai" ca. Day la ly do freelancerId duoc
+        // phep null luc tao nhung KHONG duoc phep null tu diem nay tro di.
+        if (job.getFreelancerId() == null) {
+            throw new ApplicationException(ErrorCode.JOB_FREELANCER_NOT_ASSIGNED, jobId);
         }
 
         User freelancer = userRepository.findById(job.getFreelancerId())
@@ -253,14 +282,11 @@ public class JobServiceImpl implements JobService {
                 return;
             }
 
-            // Buoc quy doi tho: USD client tra -> USDC -> VND freelancer nhan (quy doi),
-            // theo dung mo hinh USD -> USDC -> VND cua he thong -- KHONG de paypal-backend
-            // hay module rieng nao khac tu quyet dinh so nay.
             BigDecimal amountUsdc = convertUsdToUsdc(job.getBudgetUsd());
             BigDecimal usdcToVndRate = getUsdcToVndRatePlaceholder();
 
-            log.warn("Job {}: dang dung ty gia USDC->VND PLACEHOLDER ({}), CHUA phai ty gia thuc -- " +
-                    "thay bang module ty gia thuc truoc khi dung cho bao cao thue thuc te", job.getId(), usdcToVndRate);
+            log.warn("Job {}: dang dung ty gia USDC->VND PLACEHOLDER ({}), CHUA phai ty gia thuc",
+                    job.getId(), usdcToVndRate);
 
             MisaPayoutTransactionResult payoutTx = misaBackendClient.recordPayoutTransaction(
                     freelancer.getMisaTaxpayerId(), job.getPayoutReleaseId(), amountUsdc, usdcToVndRate);
@@ -301,7 +327,9 @@ public class JobServiceImpl implements JobService {
 
     private Job getParticipantOrThrow(UUID userId, UUID jobId) {
         Job job = getOrThrow(jobId);
-        if (!job.getClientUserId().equals(userId) && !job.getFreelancerId().equals(userId)) {
+        boolean isClient = job.getClientUserId().equals(userId);
+        boolean isFreelancer = job.getFreelancerId() != null && job.getFreelancerId().equals(userId);
+        if (!isClient && !isFreelancer) {
             throw new ApplicationException(ErrorCode.JOB_NOT_FOUND, jobId);
         }
         return job;

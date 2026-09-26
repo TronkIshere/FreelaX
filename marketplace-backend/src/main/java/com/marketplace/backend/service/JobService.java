@@ -1,5 +1,6 @@
 package com.marketplace.backend.service;
 
+import com.marketplace.backend.dto.request.job.AssignFreelancerRequest;
 import com.marketplace.backend.dto.request.job.CreateJobRequest;
 import com.marketplace.backend.dto.request.job.UpdateJobRequest;
 import com.marketplace.backend.dto.response.common.PageResponse;
@@ -28,4 +29,6 @@ public interface JobService {
     JobResponse cancel(UUID clientUserId, UUID jobId);
 
     JobPaymentStatusResponse getPaymentStatus(UUID userId, UUID jobId);
+
+    JobResponse assignFreelancer(UUID clientUserId, UUID jobId, AssignFreelancerRequest request);
 }

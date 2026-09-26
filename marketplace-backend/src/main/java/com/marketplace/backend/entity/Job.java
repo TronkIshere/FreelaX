@@ -30,7 +30,7 @@ public class Job extends AbstractEntity<UUID> {
     @Column(nullable = false)
     private UUID clientUserId;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private UUID freelancerUserId;
 
     @Enumerated(EnumType.STRING)

@@ -16,7 +16,6 @@ import java.util.UUID;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class CreateJobRequest {
 
-    @NotNull(message = "Freelancer không được để trống")
     UUID freelancerId;
 
     @NotBlank(message = "Tiêu đề không được để trống")

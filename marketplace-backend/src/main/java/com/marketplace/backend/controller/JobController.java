@@ -1,6 +1,7 @@
 package com.marketplace.backend.controller;
 
 import com.marketplace.backend.configuration.UserPrincipal;
+import com.marketplace.backend.dto.request.job.AssignFreelancerRequest;
 import com.marketplace.backend.dto.request.job.CreateJobRequest;
 import com.marketplace.backend.dto.request.job.UpdateJobRequest;
 import com.marketplace.backend.dto.response.common.PageResponse;
@@ -110,6 +111,17 @@ public class JobController {
         return ResponseAPI.<JobPaymentStatusResponse>builder()
                 .code(200)
                 .data(jobService.getPaymentStatus(principal.getId(), jobId))
+                .build();
+    }
+
+    @PatchMapping("/{jobId}/assign-freelancer")
+    public ResponseAPI<JobResponse> assignFreelancer(@AuthenticationPrincipal UserPrincipal principal,
+                                                     @PathVariable UUID jobId,
+                                                     @Valid @RequestBody AssignFreelancerRequest request) {
+        return ResponseAPI.<JobResponse>builder()
+                .code(200)
+                .message("Đã gán freelancer cho công việc")
+                .data(jobService.assignFreelancer(principal.getId(), jobId, request))
                 .build();
     }
 }
