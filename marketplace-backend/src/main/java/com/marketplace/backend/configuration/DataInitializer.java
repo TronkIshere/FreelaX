@@ -74,23 +74,26 @@ public class DataInitializer {
                 u.setUserType(UserType.FREELANCER);
                 u.setPaypalUserId(SEED_FREELANCER_PLACEHOLDER_PAYPAL_USER_ID);
                 User saved = userRepository.save(u);
-                log.info("Seed freelancer created: {}", SEED_FREELANCER_EMAIL);
+                log.info("Seed freelancer created (chua nhan job nao): {}", SEED_FREELANCER_EMAIL);
                 return saved;
             });
 
             if (jobRepository.findByClientUserId(client.getId()).isEmpty()) {
                 jobRepository.saveAll(List.of(
-                        createJob(client.getId(), freelancer.getId(), "Landing page redesign",
+                        createOpenJob(client.getId(), "Landing page redesign",
                                 "Redesign trang landing page, mobile-first.", new BigDecimal("500")),
-                        createJob(client.getId(), freelancer.getId(), "Viet REST API cho module giao dich",
+                        createOpenJob(client.getId(), "Viet REST API cho module giao dich",
                                 "Xay dung CRUD + validation cho module giao dich, tich hop don vi tien te.", new BigDecimal("750")),
-                        createJob(client.getId(), freelancer.getId(), "Toi uu SEO trang chu",
+                        createOpenJob(client.getId(), "Toi uu SEO trang chu",
                                 "Audit va toi uu SEO on-page cho trang chu va 5 landing page chinh.", new BigDecimal("300"))
                 ));
-                log.info("Seed jobs created for client {} / freelancer {}", SEED_CLIENT_EMAIL, SEED_FREELANCER_EMAIL);
-                log.warn("Seed freelancer {} co paypalUserId placeholder={} -- dang nhap tai khoan freelancer " +
+                log.info("Seed 3 job OPEN cho client {} -- CHUA gan freelancer nao ca", SEED_CLIENT_EMAIL);
+                log.info("Freelancer seed {} (id={}) dang co 0 job -- goi PATCH /jobs/{{jobId}}/assign-freelancer " +
+                                "voi freelancerId nay de gan thu 1 trong 3 job tren.",
+                        SEED_FREELANCER_EMAIL, freelancer.getId());
+                log.warn("Freelancer seed {} co paypalUserId placeholder={} -- dang nhap tai khoan freelancer " +
                                 "seed ben paypal-backend, GET /api/v1/auth/me lay userId thuc, roi UPDATE lai " +
-                                "field paypalUserId cua user nay truoc khi goi /pay",
+                                "field paypalUserId cua user nay truoc khi goi /pay cho job da gan freelancer nay",
                         freelancer.getId(), SEED_FREELANCER_PLACEHOLDER_PAYPAL_USER_ID);
             }
         };
@@ -102,10 +105,9 @@ public class DataInitializer {
         return role;
     }
 
-    private Job createJob(UUID clientUserId, UUID freelancerId, String title, String description, BigDecimal budgetUsd) {
+    private Job createOpenJob(UUID clientUserId, String title, String description, BigDecimal budgetUsd) {
         Job job = new Job();
         job.setClientUserId(clientUserId);
-        job.setFreelancerId(freelancerId);
         job.setTitle(title);
         job.setDescription(description);
         job.setBudgetUsd(budgetUsd);

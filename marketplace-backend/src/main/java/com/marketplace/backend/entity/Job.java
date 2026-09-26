@@ -41,6 +41,7 @@ public class Job extends AbstractEntity<UUID> {
 
     private UUID payoutReleaseId;
 
+    @Column(name = "freelancer_id")
     private UUID freelancerId;
 
     private UUID misaPayoutTransactionId;
