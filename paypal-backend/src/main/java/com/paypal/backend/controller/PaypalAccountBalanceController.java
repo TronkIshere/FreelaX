@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -22,21 +21,11 @@ public class PaypalAccountBalanceController {
     private final PaypalAccountBalanceService paypalAccountBalanceService;
 
     @GetMapping("/{accountId}")
-    public ResponseAPI<List<PaypalAccountBalanceResponse>> list(@PathVariable UUID accountId,
-                                                                @RequestParam PaypalAccountRole role) {
-        return ResponseAPI.<List<PaypalAccountBalanceResponse>>builder()
-                .code(200)
-                .data(paypalAccountBalanceService.listBalances(accountId, role))
-                .build();
-    }
-
-    @GetMapping("/{accountId}/{currency}")
     public ResponseAPI<PaypalAccountBalanceResponse> get(@PathVariable UUID accountId,
-                                                         @RequestParam PaypalAccountRole role,
-                                                         @PathVariable String currency) {
+                                                         @RequestParam PaypalAccountRole role) {
         return ResponseAPI.<PaypalAccountBalanceResponse>builder()
                 .code(200)
-                .data(paypalAccountBalanceService.getBalance(accountId, role, currency))
+                .data(paypalAccountBalanceService.getBalance(accountId, role))
                 .build();
     }
 }

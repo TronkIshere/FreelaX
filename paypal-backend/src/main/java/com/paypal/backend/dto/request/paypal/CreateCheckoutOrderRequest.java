@@ -15,9 +15,6 @@ import java.util.UUID;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class CreateCheckoutOrderRequest {
 
-    @NotNull(message = "payeeId không được để trống")
-    UUID payeeId;
-
     @NotNull(message = "payerUserId không được để trống")
     UUID payerUserId;
 

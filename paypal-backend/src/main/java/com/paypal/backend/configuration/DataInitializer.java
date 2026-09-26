@@ -1,10 +1,8 @@
 package com.paypal.backend.configuration;
 
 import com.paypal.backend.entity.AuthProvider;
-import com.paypal.backend.entity.PaypalPayee;
 import com.paypal.backend.entity.Role;
 import com.paypal.backend.entity.User;
-import com.paypal.backend.repository.PaypalPayeeRepository;
 import com.paypal.backend.repository.RoleRepository;
 import com.paypal.backend.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
@@ -28,15 +26,9 @@ public class DataInitializer {
     private static final String RECEIVER_PASSWORD = "123456789";
     private static final String RECEIVER_DISPLAY_NAME = "freelancer";
 
-    private static final String RECEIVER_PAYPAL_EMAIL = "freelancer-sandbox@personal.example.com";
-    private static final String RECEIVER_PHONE = "0900000000";
-    private static final String RECEIVER_ADDRESS = "Ho Chi Minh City, Vietnam";
-    private static final String RECEIVER_NATIONALITY = "Vietnamese";
-
     @Bean
     public ApplicationRunner initData(RoleRepository roleRepository,
                                       UserRepository userRepository,
-                                      PaypalPayeeRepository paypalPayeeRepository,
                                       PasswordEncoder passwordEncoder) {
         return args -> {
             if (roleRepository.count() == 0) {
@@ -56,7 +48,6 @@ public class DataInitializer {
             User receiver = createUserIfMissing(userRepository, passwordEncoder, userRole,
                     RECEIVER_EMAIL, RECEIVER_PASSWORD, RECEIVER_DISPLAY_NAME);
 
-            createPayeeIfMissing(paypalPayeeRepository, receiver);
         };
     }
 
@@ -74,28 +65,6 @@ public class DataInitializer {
             log.info("Seed user created: {}", email);
             return saved;
         });
-    }
-
-    private void createPayeeIfMissing(PaypalPayeeRepository paypalPayeeRepository, User receiver) {
-        if (paypalPayeeRepository.findByUserId(receiver.getId()).isPresent()) {
-            return;
-        }
-
-        PaypalPayee payee = new PaypalPayee();
-        payee.setUserId(receiver.getId());
-        payee.setFullName(RECEIVER_DISPLAY_NAME);
-        payee.setPaypalEmail(RECEIVER_PAYPAL_EMAIL);
-        payee.setPhone(RECEIVER_PHONE);
-        payee.setAddress(RECEIVER_ADDRESS);
-        payee.setNationality(RECEIVER_NATIONALITY);
-        payee.setActive(true);
-        paypalPayeeRepository.save(payee);
-
-        log.info("Seed PaypalPayee created for receiver {} (userId={})", RECEIVER_EMAIL, receiver.getId());
-        log.warn("Seed PaypalPayee dang dung paypalEmail PLACEHOLDER='{}' -- PHAI thay bang email " +
-                        "nguoi nhan sandbox PayPal THAT truoc khi goi /approve de test payout thuc su, " +
-                        "neu khong PayPal se khong gui duoc tien toi dia chi khong ton tai nay.",
-                RECEIVER_PAYPAL_EMAIL);
     }
 
     private Role createRole(String name) {

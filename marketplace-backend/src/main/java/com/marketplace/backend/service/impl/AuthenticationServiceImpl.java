@@ -1,12 +1,12 @@
+package com.marketplace.backend.service.impl;
+
 import com.marketplace.backend.client.MisaBackendClient;
-import com.marketplace.backend.client.PaypalBackendClient;
 import com.marketplace.backend.configuration.UserPrincipal;
 import com.marketplace.backend.dto.request.auth.*;
 import com.marketplace.backend.dto.response.auth.RefreshTokenResponse;
 import com.marketplace.backend.dto.response.auth.SignInResponse;
 import com.marketplace.backend.dto.response.auth.SignInStatus;
 import com.marketplace.backend.dto.response.auth.UserResponse;
-import com.marketplace.backend.dto.response.paypal.PayeeStatusResult;
 import com.marketplace.backend.entity.AuthProvider;
 import com.marketplace.backend.entity.Role;
 import com.marketplace.backend.entity.User;
@@ -51,7 +51,6 @@ import java.util.concurrent.TimeUnit;
 public class AuthenticationServiceImpl implements AuthenticationService {
     UserDetailsServiceCustomizer userDetailsServiceCustomizer;
     AuthenticationManager authenticationManager;
-    PaypalBackendClient paypalBackendClient;
     MisaBackendClient misaBackendClient;
     PasswordEncoder passwordEncoder;
     UserRepository userRepository;
@@ -68,8 +67,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         }
 
         if (request.getUserType() == UserType.FREELANCER) {
-            validateFreelancerPaypalLink(request.getPaypalUserId());
             validateFreelancerTaxInfo(request);
+            validateFreelancerBankInfo(request);
         }
 
         Role userRole = roleRepository.findByName("ROLE_USER")
@@ -84,11 +83,16 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         user.setRoles(Set.of(userRole));
         user.setUserType(request.getUserType());
         if (request.getUserType() == UserType.FREELANCER) {
-            user.setPaypalUserId(request.getPaypalUserId());
             user.setTaxCode(request.getTaxCode());
             user.setIdentityNumber(request.getIdentityNumber());
             user.setNationality(request.getNationality());
             user.setTaxAddress(request.getTaxAddress());
+            user.setBankCode(request.getBankCode());
+            user.setBankAccountNumber(request.getBankAccountNumber());
+            user.setBankAccountHolderName(
+                    StringUtils.hasText(request.getBankAccountHolderName())
+                            ? request.getBankAccountHolderName()
+                            : request.getDisplayName());
         }
         userRepository.save(user);
 
@@ -107,26 +111,18 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 .build();
     }
 
-    private void validateFreelancerPaypalLink(UUID paypalUserId) {
-        if (paypalUserId == null) {
-            throw new ApplicationException(ErrorCode.PAYPAL_USER_ID_REQUIRED);
-        }
-        if (userRepository.existsByPaypalUserId(paypalUserId)) {
-            throw new ApplicationException(ErrorCode.PAYPAL_USER_ID_ALREADY_LINKED, paypalUserId);
-        }
-
-        PayeeStatusResult payeeStatus = paypalBackendClient.getPayeeStatus(paypalUserId);
-        if (!payeeStatus.isRegistered() || !payeeStatus.isActive()) {
-            throw new ApplicationException(ErrorCode.FREELANCER_NOT_LINKED_TO_PAYPAL, paypalUserId);
-        }
-    }
-
     private void validateFreelancerTaxInfo(RegisterRequest request) {
         if (!StringUtils.hasText(request.getTaxCode())
                 || !StringUtils.hasText(request.getIdentityNumber())
                 || !StringUtils.hasText(request.getNationality())
                 || !StringUtils.hasText(request.getTaxAddress())) {
             throw new ApplicationException(ErrorCode.TAX_INFO_REQUIRED);
+        }
+    }
+
+    private void validateFreelancerBankInfo(RegisterRequest request) {
+        if (request.getBankCode() == null || !StringUtils.hasText(request.getBankAccountNumber())) {
+            throw new ApplicationException(ErrorCode.BANK_INFO_REQUIRED);
         }
     }
 

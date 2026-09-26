@@ -1,5 +1,6 @@
 package com.marketplace.backend.dto.request.auth;
 
+import com.marketplace.backend.entity.BankCode;
 import com.marketplace.backend.entity.UserType;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -9,8 +10,6 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.FieldDefaults;
-
-import java.util.UUID;
 
 @Getter
 @Setter
@@ -31,8 +30,6 @@ public class RegisterRequest {
     @NotNull(message = "Loại tài khoản không được để trống")
     UserType userType;
 
-    UUID paypalUserId;
-
     String taxCode;
 
     String identityNumber;
@@ -40,4 +37,10 @@ public class RegisterRequest {
     String nationality;
 
     String taxAddress;
+
+    BankCode bankCode;
+
+    String bankAccountNumber;
+
+    String bankAccountHolderName;
 }

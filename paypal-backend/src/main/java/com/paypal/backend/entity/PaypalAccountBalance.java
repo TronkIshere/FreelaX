@@ -24,7 +24,7 @@ import java.util.UUID;
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @Table(name = "paypal_account_balance",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"account_id", "account_role", "currency"}))
+        uniqueConstraints = @UniqueConstraint(columnNames = {"account_id", "account_role"}))
 public class PaypalAccountBalance extends AbstractEntity<UUID> {
 
     @Column(name = "account_id", nullable = false)
@@ -33,9 +33,6 @@ public class PaypalAccountBalance extends AbstractEntity<UUID> {
     @Enumerated(EnumType.STRING)
     @Column(name = "account_role", nullable = false, length = 10)
     PaypalAccountRole accountRole;
-
-    @Column(name = "currency", nullable = false, length = 10)
-    String currency;
 
     @Column(name = "balance", nullable = false, precision = 20, scale = 6)
     BigDecimal balance = BigDecimal.ZERO;

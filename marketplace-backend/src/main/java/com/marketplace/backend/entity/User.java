@@ -45,9 +45,6 @@ public class User extends AbstractEntity<UUID> {
     private UserType userType;
 
     @Column(unique = true)
-    private UUID paypalUserId;
-
-    @Column(unique = true)
     private UUID misaTaxpayerId;
 
     private String taxCode;
@@ -57,6 +54,14 @@ public class User extends AbstractEntity<UUID> {
     private String nationality;
 
     private String taxAddress;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 30)
+    private BankCode bankCode;
+
+    private String bankAccountNumber;
+
+    private String bankAccountHolderName;
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(

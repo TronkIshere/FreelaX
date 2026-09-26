@@ -24,15 +24,13 @@ public enum ErrorCode {
     SIGN_OUT_FAILED(2011, "Đăng xuất thất bại", HttpStatus.BAD_REQUEST),
     INVALID_OTP(2012, "Mã OTP không đúng hoặc đã hết hạn", HttpStatus.BAD_REQUEST),
     PASSWORD_NOT_MATCH(2013, "Mật khẩu xác nhận không khớp", HttpStatus.BAD_REQUEST),
-
-    PAYPAL_USER_ID_REQUIRED(2014, "Freelancer phải cung cấp paypalUserId khi đăng ký", HttpStatus.BAD_REQUEST),
-    PAYPAL_USER_ID_ALREADY_LINKED(2015, "paypalUserId này đã được liên kết với một tài khoản freelancer khác: %s", HttpStatus.CONFLICT),
     NOT_A_FREELANCER(2016, "Tài khoản này không phải freelancer", HttpStatus.FORBIDDEN),
     TAX_INFO_REQUIRED(2017, "Freelancer phải cung cấp đầy đủ thông tin thuế (taxCode, identityNumber, nationality, taxAddress) khi đăng ký", HttpStatus.BAD_REQUEST),
+    BANK_INFO_REQUIRED(2018, "Freelancer phải chọn ngân hàng và cung cấp số tài khoản nhận tiền khi đăng ký", HttpStatus.BAD_REQUEST),
+    NOTIFICATION_NOT_FOUND(2019, "Không tìm thấy thông báo: %s", HttpStatus.NOT_FOUND),
 
     JOB_NOT_FOUND(4000, "Không tìm thấy công việc: %s", HttpStatus.NOT_FOUND),
     INVALID_JOB_STATUS(4001, "Trạng thái công việc không cho phép thao tác này", HttpStatus.CONFLICT),
-    FREELANCER_NOT_LINKED_TO_PAYPAL(4002, "Freelancer chưa liên kết hoặc chưa kích hoạt PayPal: %s", HttpStatus.CONFLICT),
     JOB_NOT_PAID(4003, "Công việc chưa được thanh toán", HttpStatus.CONFLICT),
     PAYPAL_BACKEND_CALL_FAILED(4004, "Gọi paypal-backend thất bại: %s", HttpStatus.BAD_GATEWAY),
     FREELANCER_NOT_FOUND(4005, "Không tìm thấy freelancer: %s", HttpStatus.NOT_FOUND),

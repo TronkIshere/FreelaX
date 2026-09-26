@@ -14,9 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -27,12 +25,11 @@ public class PaypalAccountBalanceServiceImpl implements PaypalAccountBalanceServ
 
     @Override
     @Transactional
-    public synchronized PaypalAccountBalanceResponse credit(UUID accountId, PaypalAccountRole role,
-                                                            String currency, BigDecimal amount) {
+    public synchronized PaypalAccountBalanceResponse credit(UUID accountId, PaypalAccountRole role, BigDecimal amount) {
         if (amount == null || amount.signum() <= 0) {
             throw new ApplicationException(ErrorCode.INVALID_DATA, "amount phải > 0");
         }
-        PaypalAccountBalance balance = getOrCreate(accountId, role, currency);
+        PaypalAccountBalance balance = getOrCreate(accountId, role);
         balance.setBalance(balance.getBalance().add(amount));
         paypalAccountBalanceRepository.save(balance);
         return toResponse(balance);
@@ -40,12 +37,11 @@ public class PaypalAccountBalanceServiceImpl implements PaypalAccountBalanceServ
 
     @Override
     @Transactional
-    public synchronized PaypalAccountBalanceResponse debit(UUID accountId, PaypalAccountRole role,
-                                                           String currency, BigDecimal amount) {
+    public synchronized PaypalAccountBalanceResponse debit(UUID accountId, PaypalAccountRole role, BigDecimal amount) {
         if (amount == null || amount.signum() <= 0) {
             throw new ApplicationException(ErrorCode.INVALID_DATA, "amount phải > 0");
         }
-        PaypalAccountBalance balance = getOrCreate(accountId, role, currency);
+        PaypalAccountBalance balance = getOrCreate(accountId, role);
         if (balance.getBalance().compareTo(amount) < 0) {
             throw new ApplicationException(ErrorCode.INSUFFICIENT_BALANCE, accountId);
         }
@@ -55,30 +51,22 @@ public class PaypalAccountBalanceServiceImpl implements PaypalAccountBalanceServ
     }
 
     @Override
-    public PaypalAccountBalanceResponse getBalance(UUID accountId, PaypalAccountRole role, String currency) {
-        return paypalAccountBalanceRepository.findByAccountIdAndAccountRoleAndCurrency(accountId, role, currency)
+    public PaypalAccountBalanceResponse getBalance(UUID accountId, PaypalAccountRole role) {
+        return paypalAccountBalanceRepository.findByAccountIdAndAccountRole(accountId, role)
                 .map(this::toResponse)
                 .orElseGet(() -> PaypalAccountBalanceResponse.builder()
                         .accountId(accountId)
                         .accountRole(role.name())
-                        .currency(currency)
                         .balance(BigDecimal.ZERO)
                         .build());
     }
 
-    @Override
-    public List<PaypalAccountBalanceResponse> listBalances(UUID accountId, PaypalAccountRole role) {
+    private PaypalAccountBalance getOrCreate(UUID accountId, PaypalAccountRole role) {
         return paypalAccountBalanceRepository.findByAccountIdAndAccountRole(accountId, role)
-                .stream().map(this::toResponse).collect(Collectors.toList());
-    }
-
-    private PaypalAccountBalance getOrCreate(UUID accountId, PaypalAccountRole role, String currency) {
-        return paypalAccountBalanceRepository.findByAccountIdAndAccountRoleAndCurrency(accountId, role, currency)
                 .orElseGet(() -> {
                     PaypalAccountBalance b = new PaypalAccountBalance();
                     b.setAccountId(accountId);
                     b.setAccountRole(role);
-                    b.setCurrency(currency);
                     b.setBalance(BigDecimal.ZERO);
                     return b;
                 });
@@ -88,7 +76,6 @@ public class PaypalAccountBalanceServiceImpl implements PaypalAccountBalanceServ
         return PaypalAccountBalanceResponse.builder()
                 .accountId(b.getAccountId())
                 .accountRole(b.getAccountRole().name())
-                .currency(b.getCurrency())
                 .balance(b.getBalance())
                 .build();
     }

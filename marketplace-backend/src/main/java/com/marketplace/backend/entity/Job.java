@@ -30,16 +30,11 @@ public class Job extends AbstractEntity<UUID> {
     @Column(nullable = false)
     private UUID clientUserId;
 
-    @Column(nullable = true)
-    private UUID freelancerUserId;
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private JobStatus status;
 
     private UUID checkoutOrderId;
-
-    private UUID payoutReleaseId;
 
     @Column(name = "freelancer_id")
     private UUID freelancerId;

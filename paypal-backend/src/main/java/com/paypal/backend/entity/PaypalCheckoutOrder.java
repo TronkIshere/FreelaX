@@ -28,9 +28,6 @@ public class PaypalCheckoutOrder {
     UUID id;
 
     @Column(nullable = false)
-    UUID payeeId;
-
-    @Column(nullable = false)
     UUID payerUserId;
 
     @Column(nullable = false)

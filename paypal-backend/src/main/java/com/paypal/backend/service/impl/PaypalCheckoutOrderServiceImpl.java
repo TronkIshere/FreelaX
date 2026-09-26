@@ -6,11 +6,9 @@ import com.paypal.backend.dto.response.paypal.PaypalCheckoutOrderResponse;
 import com.paypal.backend.entity.PaypalAccountRole;
 import com.paypal.backend.entity.PaypalCheckoutOrder;
 import com.paypal.backend.entity.PaypalCheckoutOrderStatus;
-import com.paypal.backend.entity.PaypalPayee;
 import com.paypal.backend.exception.ApplicationException;
 import com.paypal.backend.exception.ErrorCode;
 import com.paypal.backend.repository.PaypalCheckoutOrderRepository;
-import com.paypal.backend.repository.PaypalPayeeRepository;
 import com.paypal.backend.service.PaypalAccountBalanceService;
 import com.paypal.backend.service.PaypalCheckoutOrderService;
 import lombok.AccessLevel;
@@ -29,30 +27,19 @@ import java.util.UUID;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class PaypalCheckoutOrderServiceImpl implements PaypalCheckoutOrderService {
 
-    private static final String USD = "USD";
-
     PaypalCheckoutOrderRepository paypalCheckoutOrderRepository;
-    PaypalPayeeRepository paypalPayeeRepository;
     PaypalCheckoutClient paypalCheckoutClient;
     PaypalAccountBalanceService paypalAccountBalanceService;
 
     @Override
     @Transactional
     public PaypalCheckoutOrderResponse create(CreateCheckoutOrderRequest request) {
-        PaypalPayee payee = paypalPayeeRepository.findById(request.getPayeeId())
-                .orElseThrow(() -> new ApplicationException(ErrorCode.PAYEE_NOT_FOUND, request.getPayeeId()));
-
-        if (!payee.isActive()) {
-            throw new ApplicationException(ErrorCode.PAYEE_NOT_ACTIVE, payee.getId());
-        }
-
         Map<String, Object> order = paypalCheckoutClient.createOrder(request.getAmountUsd());
 
         String paypalOrderId = (String) order.get("id");
         String approvalUrl = extractApprovalUrl(order);
 
         PaypalCheckoutOrder entity = new PaypalCheckoutOrder();
-        entity.setPayeeId(request.getPayeeId());
         entity.setPayerUserId(request.getPayerUserId());
         entity.setJobId(request.getJobId());
         entity.setAmountUsd(request.getAmountUsd());
@@ -88,7 +75,7 @@ public class PaypalCheckoutOrderServiceImpl implements PaypalCheckoutOrderServic
         entity.setCapturedAt(LocalDateTime.now());
         paypalCheckoutOrderRepository.save(entity);
 
-        paypalAccountBalanceService.credit(entity.getPayerUserId(), PaypalAccountRole.PAYER, USD, entity.getAmountUsd());
+        paypalAccountBalanceService.credit(entity.getPayerUserId(), PaypalAccountRole.PAYER, entity.getAmountUsd());
 
         return toResponse(entity, null);
     }
@@ -120,7 +107,6 @@ public class PaypalCheckoutOrderServiceImpl implements PaypalCheckoutOrderServic
     private PaypalCheckoutOrderResponse toResponse(PaypalCheckoutOrder entity, String approvalUrl) {
         return PaypalCheckoutOrderResponse.builder()
                 .id(entity.getId())
-                .payeeId(entity.getPayeeId())
                 .payerUserId(entity.getPayerUserId())
                 .jobId(entity.getJobId())
                 .amountUsd(entity.getAmountUsd())

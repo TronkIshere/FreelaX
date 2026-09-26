@@ -14,7 +14,6 @@ import java.util.UUID;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class CheckoutOrderResult {
     UUID id;
-    UUID payeeId;
     UUID payerUserId;
     UUID jobId;
     BigDecimal amountUsd;

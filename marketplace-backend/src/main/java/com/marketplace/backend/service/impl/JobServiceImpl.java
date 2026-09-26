@@ -12,14 +12,13 @@ import com.marketplace.backend.dto.response.job.PayJobResponse;
 import com.marketplace.backend.dto.response.misa.MisaCertificateResult;
 import com.marketplace.backend.dto.response.misa.MisaPayoutTransactionResult;
 import com.marketplace.backend.dto.response.paypal.CheckoutOrderResult;
-import com.marketplace.backend.dto.response.paypal.PayeeStatusResult;
-import com.marketplace.backend.dto.response.paypal.PayoutReleaseResult;
 import com.marketplace.backend.entity.*;
 import com.marketplace.backend.exception.ApplicationException;
 import com.marketplace.backend.exception.ErrorCode;
 import com.marketplace.backend.repository.JobRepository;
 import com.marketplace.backend.repository.UserRepository;
 import com.marketplace.backend.service.JobService;
+import com.marketplace.backend.service.NotificationService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -43,7 +42,6 @@ import java.util.stream.Collectors;
 public class JobServiceImpl implements JobService {
 
     private static final int USDC_SCALE = 6;
-    private static final int VND_SCALE = 0;
     private static final BigDecimal USD_TO_USDC_PEG_RATE = BigDecimal.ONE;
     private static final BigDecimal PLACEHOLDER_USDC_TO_VND_RATE = new BigDecimal("25000");
 
@@ -51,6 +49,7 @@ public class JobServiceImpl implements JobService {
     JobRepository jobRepository;
     PaypalBackendClient paypalBackendClient;
     MisaBackendClient misaBackendClient;
+    NotificationService notificationService;
 
     @Override
     @Transactional
@@ -62,7 +61,6 @@ public class JobServiceImpl implements JobService {
         job.setBudgetUsd(request.getBudgetUsd());
         job.setStatus(JobStatus.OPEN);
 
-        // freelancerId gio la TUY CHON luc tao -- job co the "dang tin" truoc, gan nguoi lam sau.
         if (request.getFreelancerId() != null) {
             job.setFreelancerId(validateAndGetFreelancer(request.getFreelancerId()).getId());
         }
@@ -84,6 +82,13 @@ public class JobServiceImpl implements JobService {
         User freelancer = validateAndGetFreelancer(request.getFreelancerId());
         job.setFreelancerId(freelancer.getId());
         jobRepository.save(job);
+
+        notificationService.notify(
+                freelancer.getId(),
+                NotificationType.JOB_ASSIGNED,
+                "Bạn được giao 1 công việc mới",
+                "Bạn vừa được gán vào công việc \"" + job.getTitle() + "\".",
+                job.getId());
 
         return toResponse(job);
     }
@@ -154,23 +159,16 @@ public class JobServiceImpl implements JobService {
             throw new ApplicationException(ErrorCode.INVALID_JOB_STATUS);
         }
 
-        // Chan o day -- khong the tra tien cho "chua ai" ca. Day la ly do freelancerId duoc
-        // phep null luc tao nhung KHONG duoc phep null tu diem nay tro di.
         if (job.getFreelancerId() == null) {
             throw new ApplicationException(ErrorCode.JOB_FREELANCER_NOT_ASSIGNED, jobId);
         }
 
-        User freelancer = userRepository.findById(job.getFreelancerId())
+        // Freelancer giờ chỉ cần tồn tại đúng loại tài khoản -- không còn phụ thuộc
+        // paypal-backend/payee nữa (freelancer nhận tiền qua ngân hàng đã đăng ký, xử lý thủ công).
+        userRepository.findById(job.getFreelancerId())
                 .orElseThrow(() -> new ApplicationException(ErrorCode.FREELANCER_NOT_FOUND, job.getFreelancerId()));
 
-        PayeeStatusResult payeeStatus = paypalBackendClient.getPayeeStatus(freelancer.getPaypalUserId());
-
-        if (!payeeStatus.isRegistered() || !payeeStatus.isActive()) {
-            throw new ApplicationException(ErrorCode.FREELANCER_NOT_LINKED_TO_PAYPAL, freelancer.getPaypalUserId());
-        }
-
         CheckoutOrderResult checkoutOrder = paypalBackendClient.createCheckoutOrder(
-                payeeStatus.getPayeeId(),
                 job.getClientUserId(),
                 job.getId(),
                 job.getBudgetUsd()
@@ -206,6 +204,13 @@ public class JobServiceImpl implements JobService {
         job.setStatus(JobStatus.IN_PROGRESS);
         jobRepository.save(job);
 
+        notificationService.notify(
+                clientUserId,
+                NotificationType.PAYMENT_SENT,
+                "Thanh toán thành công",
+                "Bạn đã thanh toán thành công cho công việc \"" + job.getTitle() + "\".",
+                job.getId());
+
         return toResponse(job);
     }
 
@@ -218,9 +223,10 @@ public class JobServiceImpl implements JobService {
             throw new ApplicationException(ErrorCode.INVALID_JOB_STATUS);
         }
 
-        PayoutReleaseResult release = paypalBackendClient.releasePayout(job.getCheckoutOrderId());
-
-        job.setPayoutReleaseId(release.getId());
+        // ĐÃ BỎ HOÀN TOÀN: paypalBackendClient.releasePayout(...) -- không còn chuyển tiền
+        // ngược lại paypal-backend để trả cho freelancer. Freelancer nhận tiền qua ngân hàng
+        // đã đăng ký, xử lý thủ công ngoài hệ thống; marketplace-backend chỉ ghi nhận,
+        // xuất chứng từ thuế, và gửi thông báo.
         job.setStatus(JobStatus.COMPLETED);
         jobRepository.save(job);
 
@@ -254,18 +260,11 @@ public class JobServiceImpl implements JobService {
 
         CheckoutOrderResult checkoutOrder = paypalBackendClient.getCheckoutOrder(job.getCheckoutOrderId());
 
-        String payoutStatus = null;
-        if (job.getPayoutReleaseId() != null) {
-            PayoutReleaseResult release = paypalBackendClient.getPayoutRelease(job.getPayoutReleaseId());
-            payoutStatus = release.getStatus();
-        }
-
         return JobPaymentStatusResponse.builder()
                 .jobId(job.getId())
                 .checkoutOrderId(job.getCheckoutOrderId())
                 .checkoutOrderStatus(checkoutOrder.getStatus())
-                .payoutReleaseId(job.getPayoutReleaseId())
-                .payoutReleaseStatus(payoutStatus)
+                .taxExportStatus(job.getTaxExportStatus() != null ? job.getTaxExportStatus().name() : null)
                 .build();
     }
 
@@ -284,12 +283,15 @@ public class JobServiceImpl implements JobService {
 
             BigDecimal amountUsdc = convertUsdToUsdc(job.getBudgetUsd());
             BigDecimal usdcToVndRate = getUsdcToVndRatePlaceholder();
+            BigDecimal amountVnd = amountUsdc.multiply(usdcToVndRate).setScale(0, RoundingMode.HALF_UP);
 
             log.warn("Job {}: dang dung ty gia USDC->VND PLACEHOLDER ({}), CHUA phai ty gia thuc",
                     job.getId(), usdcToVndRate);
 
+            // Không còn payoutReleaseId của paypal-backend -- dùng job.getId() làm định danh
+            // tham chiếu duy nhất gửi sang misa-backend (thay cho platformPayoutId cũ).
             MisaPayoutTransactionResult payoutTx = misaBackendClient.recordPayoutTransaction(
-                    freelancer.getMisaTaxpayerId(), job.getPayoutReleaseId(), amountUsdc, usdcToVndRate);
+                    freelancer.getMisaTaxpayerId(), job.getId(), amountUsdc, usdcToVndRate);
 
             MisaCertificateResult certificate = misaBackendClient.createWithholdingCertificate(payoutTx.getId());
 
@@ -297,10 +299,27 @@ public class JobServiceImpl implements JobService {
             job.setMisaCertificateId(certificate.getId());
             job.setTaxExportStatus(TaxExportStatus.SUCCESS);
             jobRepository.save(job);
+
+            notificationService.notify(
+                    freelancer.getId(),
+                    NotificationType.PAYMENT_RECEIVED,
+                    "Đã nhận được tiền",
+                    "Công việc \"" + job.getTitle() + "\" đã hoàn tất. Khoản thu nhập ~" + amountVnd
+                            + " VNĐ đã được ghi nhận và xuất chứng từ khấu trừ thuế. Tiền sẽ được chuyển khoản thủ công tới "
+                            + freelancer.getBankCode() + " - " + freelancer.getBankAccountNumber() + ".",
+                    job.getId());
         } catch (Exception e) {
             job.setTaxExportStatus(TaxExportStatus.FAILED);
             jobRepository.save(job);
             log.error("Xuất chứng từ MISA thất bại cho job {}: {}", job.getId(), e.getMessage(), e);
+
+            notificationService.notify(
+                    job.getFreelancerId(),
+                    NotificationType.TAX_EXPORT_FAILED,
+                    "Xuất chứng từ thất bại",
+                    "Công việc \"" + job.getTitle() + "\" đã hoàn tất nhưng xuất chứng từ thuế thất bại, "
+                            + "hệ thống sẽ cần xử lý lại thủ công.",
+                    job.getId());
         }
     }
 
@@ -345,7 +364,6 @@ public class JobServiceImpl implements JobService {
                 .freelancerId(job.getFreelancerId())
                 .status(job.getStatus().name())
                 .checkoutOrderId(job.getCheckoutOrderId())
-                .payoutReleaseId(job.getPayoutReleaseId())
                 .taxExportStatus(job.getTaxExportStatus() != null ? job.getTaxExportStatus().name() : null)
                 .createdAt(job.getCreatedAt())
                 .updatedAt(job.getUpdatedAt())

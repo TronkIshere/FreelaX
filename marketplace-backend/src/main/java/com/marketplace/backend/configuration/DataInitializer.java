@@ -1,6 +1,7 @@
 package com.marketplace.backend.configuration;
 
 import com.marketplace.backend.entity.AuthProvider;
+import com.marketplace.backend.entity.BankCode;
 import com.marketplace.backend.entity.Job;
 import com.marketplace.backend.entity.JobStatus;
 import com.marketplace.backend.entity.Role;
@@ -29,8 +30,8 @@ public class DataInitializer {
 
     private static final String SEED_FREELANCER_EMAIL = "freelancer.seed@example.com";
     private static final String SEED_FREELANCER_PASSWORD = "123456789";
-    private static final UUID SEED_FREELANCER_PLACEHOLDER_PAYPAL_USER_ID =
-            UUID.fromString("00000000-0000-0000-0000-000000000001");
+    private static final BankCode SEED_FREELANCER_BANK_CODE = BankCode.VIETCOMBANK;
+    private static final String SEED_FREELANCER_BANK_ACCOUNT_NUMBER = "0011002233";
 
     @Bean
     public ApplicationRunner initData(RoleRepository roleRepository,
@@ -72,7 +73,9 @@ public class DataInitializer {
                 u.setEnabled(true);
                 u.setRoles(Set.of(userRole));
                 u.setUserType(UserType.FREELANCER);
-                u.setPaypalUserId(SEED_FREELANCER_PLACEHOLDER_PAYPAL_USER_ID);
+                u.setBankCode(SEED_FREELANCER_BANK_CODE);
+                u.setBankAccountNumber(SEED_FREELANCER_BANK_ACCOUNT_NUMBER);
+                u.setBankAccountHolderName("Freelancer Seed");
                 User saved = userRepository.save(u);
                 log.info("Seed freelancer created (chua nhan job nao): {}", SEED_FREELANCER_EMAIL);
                 return saved;
@@ -91,10 +94,10 @@ public class DataInitializer {
                 log.info("Freelancer seed {} (id={}) dang co 0 job -- goi PATCH /jobs/{{jobId}}/assign-freelancer " +
                                 "voi freelancerId nay de gan thu 1 trong 3 job tren.",
                         SEED_FREELANCER_EMAIL, freelancer.getId());
-                log.warn("Freelancer seed {} co paypalUserId placeholder={} -- dang nhap tai khoan freelancer " +
-                                "seed ben paypal-backend, GET /api/v1/auth/me lay userId thuc, roi UPDATE lai " +
-                                "field paypalUserId cua user nay truoc khi goi /pay cho job da gan freelancer nay",
-                        freelancer.getId(), SEED_FREELANCER_PLACEHOLDER_PAYPAL_USER_ID);
+                log.warn("Freelancer seed {} chua co misaTaxpayerId (seed tao truc tiep, khong qua registerUser() " +
+                                "nen khong tu goi misa-backend) -- job cua freelancer nay van thanh toan binh thuong, " +
+                                "chi buoc xuat chung tu thue tu dong se bi SKIPPED_NO_TAXPAYER.",
+                        freelancer.getId());
             }
         };
     }

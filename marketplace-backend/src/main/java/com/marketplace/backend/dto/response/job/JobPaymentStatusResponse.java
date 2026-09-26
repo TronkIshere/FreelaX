@@ -14,6 +14,5 @@ public class JobPaymentStatusResponse {
     UUID jobId;
     UUID checkoutOrderId;
     String checkoutOrderStatus;
-    UUID payoutReleaseId;
-    String payoutReleaseStatus;
+    String taxExportStatus;
 }

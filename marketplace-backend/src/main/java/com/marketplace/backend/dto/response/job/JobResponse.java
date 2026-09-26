@@ -21,7 +21,6 @@ public class JobResponse {
     UUID freelancerId;
     String status;
     UUID checkoutOrderId;
-    UUID payoutReleaseId;
     String taxExportStatus;
     LocalDateTime createdAt;
     LocalDateTime updatedAt;
