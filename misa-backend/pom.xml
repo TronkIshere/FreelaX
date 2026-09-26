@@ -5,8 +5,8 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.unihackfest2026</groupId>
-        <artifactId>unihackfest2026-parent</artifactId>
+        <groupId>com.FreelaX</groupId>
+        <artifactId>FreelaX-parent</artifactId>
         <version>0.1.0</version>
         <relativePath>../pom.xml</relativePath>
     </parent>

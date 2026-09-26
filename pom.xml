@@ -11,11 +11,11 @@
         <relativePath/>
     </parent>
 
-    <groupId>com.unihackfest2026</groupId>
-    <artifactId>unihackfest2026-parent</artifactId>
+    <groupId>com.FreelaX</groupId>
+    <artifactId>FreelaX-parent</artifactId>
     <version>0.1.0</version>
     <packaging>pom</packaging>
-    <name>unihackfest2026-parent</name>
+    <name>FreelaX-parent</name>
     <description>Parent aggregator for paypal-backend, marketplace-backend, misa-backend</description>
 
     <properties>
