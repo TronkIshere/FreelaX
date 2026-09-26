@@ -50,6 +50,14 @@ public class User extends AbstractEntity<UUID> {
     @Column(unique = true)
     private UUID misaTaxpayerId;
 
+    private String taxCode;
+
+    private String identityNumber;
+
+    private String nationality;
+
+    private String taxAddress;
+
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
             name = "user_roles",

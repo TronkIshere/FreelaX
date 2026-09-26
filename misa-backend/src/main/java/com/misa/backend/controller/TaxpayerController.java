@@ -7,6 +7,7 @@ import com.misa.backend.dto.response.misa.TaxpayerResponse;
 import com.misa.backend.service.TaxpayerService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -26,11 +27,21 @@ public class TaxpayerController {
 
     @PostMapping
     public ResponseAPI<TaxpayerResponse> register(@AuthenticationPrincipal UserPrincipal principal,
-                                                    @Valid @RequestBody CreateTaxpayerRequest request) {
+                                                  @Valid @RequestBody CreateTaxpayerRequest request) {
         return ResponseAPI.<TaxpayerResponse>builder()
                 .code(200)
                 .message("Đăng ký hồ sơ người nộp thuế thành công")
                 .data(taxpayerService.register(principal.getId(), request))
+                .build();
+    }
+
+    @PostMapping("/external")
+    @PreAuthorize("hasRole('PLATFORM_INTEGRATION')")
+    public ResponseAPI<TaxpayerResponse> registerForExternal(@Valid @RequestBody CreateTaxpayerRequest request) {
+        return ResponseAPI.<TaxpayerResponse>builder()
+                .code(200)
+                .message("Đăng ký hồ sơ người nộp thuế (B2B) thành công")
+                .data(taxpayerService.registerForExternal(request))
                 .build();
     }
 

@@ -107,14 +107,4 @@ public class AuthController {
                         .build())
                 .build();
     }
-
-    @PatchMapping("/me/misa-taxpayer")
-    public ResponseAPI<UserResponse> linkMisaTaxpayer(@AuthenticationPrincipal UserPrincipal principal,
-                                                      @Valid @RequestBody LinkMisaTaxpayerRequest request) {
-        return ResponseAPI.<UserResponse>builder()
-                .code(200)
-                .message("Liên kết hồ sơ người nộp thuế MISA thành công")
-                .data(authenticationService.linkMisaTaxpayer(principal.getId(), request))
-                .build();
-    }
 }

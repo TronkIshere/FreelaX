@@ -1,5 +1,6 @@
 package com.marketplace.backend.client;
 
+import com.marketplace.backend.dto.request.auth.RegisterRequest;
 import com.marketplace.backend.dto.response.misa.MisaCertificateResult;
 import com.marketplace.backend.dto.response.misa.MisaPayoutTransactionResult;
 import com.marketplace.backend.exception.ApplicationException;
@@ -16,6 +17,7 @@ import java.text.ParseException;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -39,6 +41,34 @@ public class MisaBackendClient {
 
     private volatile String cachedAccessToken;
     private volatile Instant cachedTokenExpiresAt;
+
+    public UUID registerTaxpayerForExternal(UUID freelancerId, RegisterRequest request) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("externalId", freelancerId.toString());
+        body.put("fullName", request.getDisplayName());
+        body.put("taxCode", request.getTaxCode());
+        body.put("identityNumber", request.getIdentityNumber());
+        body.put("nationality", request.getNationality());
+        body.put("address", request.getTaxAddress());
+
+        ResponseEntity<Map> response = restTemplate.exchange(
+                baseUrl + "/api/v1/taxpayers/external",
+                HttpMethod.POST, new HttpEntity<>(body, authorizedJsonHeaders()),
+                Map.class);
+
+        if (response.getBody() == null || response.getBody().get("data") == null) {
+            throw new ApplicationException(ErrorCode.MISA_BACKEND_CALL_FAILED, "register-taxpayer-external: empty body");
+        }
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> data = (Map<String, Object>) response.getBody().get("data");
+        Object id = data.get("id");
+        if (id == null) {
+            throw new ApplicationException(ErrorCode.MISA_BACKEND_CALL_FAILED, "register-taxpayer-external: missing id");
+        }
+
+        return UUID.fromString(id.toString());
+    }
 
     public MisaPayoutTransactionResult recordPayoutTransaction(UUID taxpayerId, UUID payoutReleaseId,
                                                                BigDecimal amountUsdc, BigDecimal exchangeRate) {

@@ -22,8 +22,11 @@ import java.util.UUID;
 @Table(name = "taxpayer")
 public class Taxpayer extends AbstractEntity<UUID> {
 
-    @Column(name = "user_id", nullable = false, unique = true)
+    @Column(name = "user_id", unique = true)
     UUID userId;
+
+    @Column(name = "external_id", unique = true)
+    String externalId;
 
     @Column(name = "full_name", nullable = false)
     String fullName;

@@ -25,4 +25,6 @@ public class CreateTaxpayerRequest {
 
     @NotBlank(message = "Quốc tịch không được để trống")
     String nationality;
+
+    String externalId;
 }

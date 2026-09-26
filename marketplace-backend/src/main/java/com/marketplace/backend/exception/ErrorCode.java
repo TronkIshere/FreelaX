@@ -27,7 +27,8 @@ public enum ErrorCode {
 
     PAYPAL_USER_ID_REQUIRED(2014, "Freelancer phải cung cấp paypalUserId khi đăng ký", HttpStatus.BAD_REQUEST),
     PAYPAL_USER_ID_ALREADY_LINKED(2015, "paypalUserId này đã được liên kết với một tài khoản freelancer khác: %s", HttpStatus.CONFLICT),
-    NOT_A_FREELANCER(2016, "Tài khoản này không phải freelancer, không thể liên kết hồ sơ người nộp thuế", HttpStatus.FORBIDDEN),
+    NOT_A_FREELANCER(2016, "Tài khoản này không phải freelancer", HttpStatus.FORBIDDEN),
+    TAX_INFO_REQUIRED(2017, "Freelancer phải cung cấp đầy đủ thông tin thuế (taxCode, identityNumber, nationality, taxAddress) khi đăng ký", HttpStatus.BAD_REQUEST),
 
     JOB_NOT_FOUND(4000, "Không tìm thấy công việc: %s", HttpStatus.NOT_FOUND),
     INVALID_JOB_STATUS(4001, "Trạng thái công việc không cho phép thao tác này", HttpStatus.CONFLICT),

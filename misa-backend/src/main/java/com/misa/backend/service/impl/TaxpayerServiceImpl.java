@@ -46,6 +46,31 @@ public class TaxpayerServiceImpl implements TaxpayerService {
     }
 
     @Override
+    @Transactional
+    public TaxpayerResponse registerForExternal(CreateTaxpayerRequest request) {
+        if (!StringUtils.hasText(request.getExternalId())) {
+            throw new ApplicationException(ErrorCode.EXTERNAL_ID_REQUIRED);
+        }
+        if (StringUtils.hasText(request.getTaxCode()) && taxpayerRepository.existsByTaxCode(request.getTaxCode())) {
+            throw new ApplicationException(ErrorCode.TAX_CODE_ALREADY_EXISTS, request.getTaxCode());
+        }
+
+        Taxpayer taxpayer = taxpayerRepository.findByExternalId(request.getExternalId()).orElseGet(Taxpayer::new);
+        taxpayer.setExternalId(request.getExternalId());
+        taxpayer.setFullName(request.getFullName());
+        taxpayer.setAddress(request.getAddress());
+        taxpayer.setPhone(request.getPhone());
+        taxpayer.setTaxCode(request.getTaxCode());
+        taxpayer.setIdentityNumber(request.getIdentityNumber());
+        taxpayer.setNationality(request.getNationality());
+        taxpayer.setActive(true);
+
+        taxpayerRepository.save(taxpayer);
+
+        return toResponse(taxpayer);
+    }
+
+    @Override
     public TaxpayerResponse getByUserId(UUID userId) {
         Taxpayer taxpayer = taxpayerRepository.findByUserId(userId)
                 .orElseThrow(() -> new ApplicationException(ErrorCode.TAXPAYER_NOT_FOUND, userId));

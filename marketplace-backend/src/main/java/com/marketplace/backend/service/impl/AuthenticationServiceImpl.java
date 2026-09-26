@@ -1,5 +1,4 @@
-package com.marketplace.backend.service.impl;
-
+import com.marketplace.backend.client.MisaBackendClient;
 import com.marketplace.backend.client.PaypalBackendClient;
 import com.marketplace.backend.configuration.UserPrincipal;
 import com.marketplace.backend.dto.request.auth.*;
@@ -53,6 +52,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     UserDetailsServiceCustomizer userDetailsServiceCustomizer;
     AuthenticationManager authenticationManager;
     PaypalBackendClient paypalBackendClient;
+    MisaBackendClient misaBackendClient;
     PasswordEncoder passwordEncoder;
     UserRepository userRepository;
     RoleRepository roleRepository;
@@ -69,6 +69,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
         if (request.getUserType() == UserType.FREELANCER) {
             validateFreelancerPaypalLink(request.getPaypalUserId());
+            validateFreelancerTaxInfo(request);
         }
 
         Role userRole = roleRepository.findByName("ROLE_USER")
@@ -84,14 +85,25 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         user.setUserType(request.getUserType());
         if (request.getUserType() == UserType.FREELANCER) {
             user.setPaypalUserId(request.getPaypalUserId());
+            user.setTaxCode(request.getTaxCode());
+            user.setIdentityNumber(request.getIdentityNumber());
+            user.setNationality(request.getNationality());
+            user.setTaxAddress(request.getTaxAddress());
         }
         userRepository.save(user);
+
+        if (request.getUserType() == UserType.FREELANCER) {
+            UUID misaTaxpayerId = misaBackendClient.registerTaxpayerForExternal(user.getId(), request);
+            user.setMisaTaxpayerId(misaTaxpayerId);
+            userRepository.save(user);
+        }
 
         return UserResponse.builder()
                 .id(user.getId())
                 .email(user.getEmail())
                 .displayName(user.getDisplayName())
                 .userType(user.getUserType())
+                .misaTaxpayerId(user.getMisaTaxpayerId())
                 .build();
     }
 
@@ -106,6 +118,15 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         PayeeStatusResult payeeStatus = paypalBackendClient.getPayeeStatus(paypalUserId);
         if (!payeeStatus.isRegistered() || !payeeStatus.isActive()) {
             throw new ApplicationException(ErrorCode.FREELANCER_NOT_LINKED_TO_PAYPAL, paypalUserId);
+        }
+    }
+
+    private void validateFreelancerTaxInfo(RegisterRequest request) {
+        if (!StringUtils.hasText(request.getTaxCode())
+                || !StringUtils.hasText(request.getIdentityNumber())
+                || !StringUtils.hasText(request.getNationality())
+                || !StringUtils.hasText(request.getTaxAddress())) {
+            throw new ApplicationException(ErrorCode.TAX_INFO_REQUIRED);
         }
     }
 
@@ -250,27 +271,5 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
-    }
-
-    @Override
-    @Transactional
-    public UserResponse linkMisaTaxpayer(UUID userId, LinkMisaTaxpayerRequest request) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ApplicationException(ErrorCode.USER_NOT_EXISTED));
-
-        if (user.getUserType() != UserType.FREELANCER) {
-            throw new ApplicationException(ErrorCode.NOT_A_FREELANCER);
-        }
-
-        user.setMisaTaxpayerId(request.getMisaTaxpayerId());
-        userRepository.save(user);
-
-        return UserResponse.builder()
-                .id(user.getId())
-                .email(user.getEmail())
-                .displayName(user.getDisplayName())
-                .userType(user.getUserType())
-                .misaTaxpayerId(user.getMisaTaxpayerId())
-                .build();
     }
 }

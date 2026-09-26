@@ -32,4 +32,12 @@ public class RegisterRequest {
     UserType userType;
 
     UUID paypalUserId;
+
+    String taxCode;
+
+    String identityNumber;
+
+    String nationality;
+
+    String taxAddress;
 }

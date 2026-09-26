@@ -9,6 +9,8 @@ public interface TaxpayerService {
 
     TaxpayerResponse register(UUID userId, CreateTaxpayerRequest request);
 
+    TaxpayerResponse registerForExternal(CreateTaxpayerRequest request);
+
     TaxpayerResponse getByUserId(UUID userId);
 
     TaxpayerResponse getById(UUID taxpayerId);

@@ -34,6 +34,7 @@ public enum ErrorCode {
     INVALID_CERTIFICATE_STATUS(3006, "Trạng thái chứng từ không cho phép thao tác này", HttpStatus.CONFLICT),
     CERTIFICATE_ALREADY_SUBMITTED(3007, "Chứng từ đã được gửi trước đó", HttpStatus.CONFLICT),
     LOOKUP_CODE_NOT_FOUND(3008, "Mã tra cứu không hợp lệ hoặc không tồn tại", HttpStatus.NOT_FOUND),
+    EXTERNAL_ID_REQUIRED(3009, "externalId là bắt buộc khi đăng ký người nộp thuế qua đường B2B", HttpStatus.BAD_REQUEST),
 
     RATE_LIMIT_EXCEEDED(5000, "Bạn thao tác quá nhanh, vui lòng thử lại sau", HttpStatus.TOO_MANY_REQUESTS),
 

@@ -10,5 +10,7 @@ public interface TaxpayerRepository extends JpaRepository<Taxpayer, UUID> {
 
     Optional<Taxpayer> findByUserId(UUID userId);
 
+    Optional<Taxpayer> findByExternalId(String externalId);
+
     boolean existsByTaxCode(String taxCode);
 }

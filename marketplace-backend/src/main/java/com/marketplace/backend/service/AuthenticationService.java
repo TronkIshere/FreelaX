@@ -8,7 +8,6 @@ import com.nimbusds.jose.JOSEException;
 import jakarta.servlet.http.HttpServletResponse;
 
 import java.text.ParseException;
-import java.util.UUID;
 
 public interface AuthenticationService {
 
@@ -25,6 +24,4 @@ public interface AuthenticationService {
     String verifyOtp(VerifyForgotPasswordOtpRequest request);
 
     void resetPassword(ResetPasswordRequest request);
-
-    UserResponse linkMisaTaxpayer(UUID userId, LinkMisaTaxpayerRequest request);
 }
