@@ -70,7 +70,7 @@ public class MisaBackendClient {
         return UUID.fromString(id.toString());
     }
 
-    public MisaPayoutTransactionResult recordPayoutTransaction(UUID taxpayerId, UUID payoutReleaseId,
+    public MisaPayoutTransactionResult recordPayoutTransaction(UUID taxpayerId, UUID payoutReference,
                                                                BigDecimal amountUsdc, BigDecimal exchangeRate) {
         Map<String, Object> body = Map.of(
                 "platformPayoutId", payoutReference.toString(),

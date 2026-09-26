@@ -20,6 +20,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
 @Configuration
 @Slf4j(topic = "INIT-APPLICATION")
@@ -30,8 +31,7 @@ public class DataInitializer {
 
     private static final String SEED_FREELANCER_EMAIL = "freelancer.seed@example.com";
     private static final String SEED_FREELANCER_PASSWORD = "123456789";
-    private static final BankCode SEED_FREELANCER_BANK_CODE = BankCode.VIETCOMBANK;
-    private static final String SEED_FREELANCER_BANK_ACCOUNT_NUMBER = "0011002233";
+    private static final BankCode SEED_FREELANCER_BANK_CODE = BankCode.BIDV;
 
     @Bean
     public ApplicationRunner initData(RoleRepository roleRepository,
@@ -74,10 +74,11 @@ public class DataInitializer {
                 u.setRoles(Set.of(userRole));
                 u.setUserType(UserType.FREELANCER);
                 u.setBankCode(SEED_FREELANCER_BANK_CODE);
-                u.setBankAccountNumber(SEED_FREELANCER_BANK_ACCOUNT_NUMBER);
+                u.setBankAccountNumber(generateRandomBankAccountNumber());
                 u.setBankAccountHolderName("Freelancer Seed");
                 User saved = userRepository.save(u);
-                log.info("Seed freelancer created (chua nhan job nao): {}", SEED_FREELANCER_EMAIL);
+                log.info("Seed freelancer created (chua nhan job nao): {} -- bankCode={}, bankAccountNumber={}",
+                        SEED_FREELANCER_EMAIL, SEED_FREELANCER_BANK_CODE, saved.getBankAccountNumber());
                 return saved;
             });
 
@@ -100,6 +101,11 @@ public class DataInitializer {
                         freelancer.getId());
             }
         };
+    }
+
+    private String generateRandomBankAccountNumber() {
+        long number = ThreadLocalRandom.current().nextLong(1_000_000_000L, 9_999_999_999L);
+        return String.valueOf(number);
     }
 
     private Role createRole(String name) {
