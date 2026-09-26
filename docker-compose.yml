@@ -28,12 +28,12 @@ services:
       timeout: 5s
       retries: 10
 
-  paypal-backend:
+  payment-backend:
     build:
       context: .
       dockerfile: Dockerfile.maven
       args:
-        MODULE: paypal-backend
+        MODULE: payment-backend
     restart: unless-stopped
     depends_on:
       mysql:
@@ -41,10 +41,10 @@ services:
       redis:
         condition: service_healthy
     env_file:
-      - paypal-backend/.env
+      - payment-backend/.env
     environment:
       SERVER_PORT: 9190
-      DB_URL: jdbc:mysql://mysql:3306/paypal?useUnicode=true&characterEncoding=UTF-8
+      DB_URL: jdbc:mysql://mysql:3306/payment?useUnicode=true&characterEncoding=UTF-8
       DB_USERNAME: root
       DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
       REDIS_HOST: redis
@@ -65,7 +65,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      paypal-backend:
+      payment-backend:
         condition: service_started
     env_file:
       - marketplace-backend/.env
@@ -77,7 +77,7 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       SPRING_DATA_REDIS_DATABASE: 1
-      PAYPAL_BACKEND_BASE_URL: http://paypal-backend:9190
+      PAYMENT_BACKEND_BASE_URL: http://payment-backend:9190
     ports:
       - "9191:9191"
 
