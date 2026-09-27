@@ -285,13 +285,14 @@ public class JobServiceImpl implements JobService {
             User freelancer = userRepository.findById(job.getFreelancerId())
                     .orElseThrow(() -> new ApplicationException(ErrorCode.FREELANCER_NOT_FOUND, job.getFreelancerId()));
 
-            if (freelancer.getMisaTaxpayerId() == null) {
-                job.setTaxExportStatus(TaxExportStatus.SKIPPED_NO_TAXPAYER);
-                jobRepository.save(job);
-                log.warn("Job {} approved nhưng freelancer {} chưa liên kết misaTaxpayerId -- bỏ qua xuất chứng từ",
-                        job.getId(), freelancer.getId());
-                return;
-            }
+            UUID taxpayerId = misaBackendClient.registerTaxpayerForExternal(
+                    freelancer.getId(),
+                    freelancer.getDisplayName(),
+                    freelancer.getTaxCode(),
+                    freelancer.getIdentityNumber(),
+                    freelancer.getNationality(),
+                    freelancer.getTaxAddress()
+            );
 
             BigDecimal amountUsdc = convertUsdToUsdc(job.getBudgetUsd());
             BigDecimal usdcToVndRate = getUsdcToVndRatePlaceholder();
@@ -301,7 +302,7 @@ public class JobServiceImpl implements JobService {
                     job.getId(), usdcToVndRate);
 
             MisaPayoutTransactionResult payoutTx = misaBackendClient.recordPayoutTransaction(
-                    freelancer.getMisaTaxpayerId(), job.getId(), amountUsdc, usdcToVndRate);
+                    taxpayerId, job.getId(), amountUsdc, usdcToVndRate);
 
             MisaCertificateResult certificate = misaBackendClient.createWithholdingCertificate(payoutTx.getId());
 

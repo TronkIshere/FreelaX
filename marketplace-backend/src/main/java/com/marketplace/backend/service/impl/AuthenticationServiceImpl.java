@@ -1,6 +1,5 @@
 package com.marketplace.backend.service.impl;
 
-import com.marketplace.backend.client.MisaBackendClient;
 import com.marketplace.backend.configuration.UserPrincipal;
 import com.marketplace.backend.dto.request.auth.*;
 import com.marketplace.backend.dto.response.auth.RefreshTokenResponse;
@@ -41,7 +40,6 @@ import org.springframework.util.StringUtils;
 import java.text.ParseException;
 import java.util.Objects;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
@@ -51,7 +49,6 @@ import java.util.concurrent.TimeUnit;
 public class AuthenticationServiceImpl implements AuthenticationService {
     UserDetailsServiceCustomizer userDetailsServiceCustomizer;
     AuthenticationManager authenticationManager;
-    MisaBackendClient misaBackendClient;
     PasswordEncoder passwordEncoder;
     UserRepository userRepository;
     RoleRepository roleRepository;
@@ -96,18 +93,11 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         }
         userRepository.save(user);
 
-        if (request.getUserType() == UserType.FREELANCER) {
-            UUID misaTaxpayerId = misaBackendClient.registerTaxpayerForExternal(user.getId(), request);
-            user.setMisaTaxpayerId(misaTaxpayerId);
-            userRepository.save(user);
-        }
-
         return UserResponse.builder()
                 .id(user.getId())
                 .email(user.getEmail())
                 .displayName(user.getDisplayName())
                 .userType(user.getUserType())
-                .misaTaxpayerId(user.getMisaTaxpayerId())
                 .build();
     }
 

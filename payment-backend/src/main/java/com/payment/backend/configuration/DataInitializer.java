@@ -1,18 +1,23 @@
 package com.payment.backend.configuration;
 
+import com.payment.backend.entity.AuthProvider;
 import com.payment.backend.entity.BofaCheckoutOrder;
 import com.payment.backend.entity.BofaCheckoutOrderStatus;
 import com.payment.backend.entity.Role;
+import com.payment.backend.entity.User;
 import com.payment.backend.repository.BofaCheckoutOrderRepository;
 import com.payment.backend.repository.RoleRepository;
+import com.payment.backend.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Configuration
@@ -24,9 +29,15 @@ public class DataInitializer {
     private static final String DEMO_BANK_ACCOUNT_HOLDER_NAME = "NGUYEN HUU TRONG";
     private static final BigDecimal DEMO_AMOUNT_USD = new BigDecimal("500");
 
+    private static final String SEED_USER_EMAIL = "test@example.com";
+    private static final String SEED_USER_PASSWORD = "123456789";
+    private static final String SEED_USER_DISPLAY_NAME = "Test User";
+
     @Bean
     public ApplicationRunner initData(RoleRepository roleRepository,
-                                      BofaCheckoutOrderRepository bofaCheckoutOrderRepository) {
+                                      UserRepository userRepository,
+                                      BofaCheckoutOrderRepository bofaCheckoutOrderRepository,
+                                      PasswordEncoder passwordEncoder) {
         return args -> {
             if (roleRepository.count() == 0) {
                 roleRepository.saveAll(List.of(
@@ -35,6 +46,22 @@ public class DataInitializer {
                 ));
                 log.info("Initial roles inserted");
             }
+
+            Role userRole = roleRepository.findByName("ROLE_USER")
+                    .orElseThrow(() -> new IllegalStateException("ROLE_USER not found after seeding"));
+
+            userRepository.findByEmail(SEED_USER_EMAIL).orElseGet(() -> {
+                User user = new User();
+                user.setEmail(SEED_USER_EMAIL);
+                user.setPassword(passwordEncoder.encode(SEED_USER_PASSWORD));
+                user.setDisplayName(SEED_USER_DISPLAY_NAME);
+                user.setAuthProvider(AuthProvider.LOCAL);
+                user.setEnabled(true);
+                user.setRoles(Set.of(userRole));
+                User saved = userRepository.save(user);
+                log.info("Seed user created: {}", SEED_USER_EMAIL);
+                return saved;
+            });
 
             if (bofaCheckoutOrderRepository.count() == 0) {
                 BofaCheckoutOrder demo = new BofaCheckoutOrder();

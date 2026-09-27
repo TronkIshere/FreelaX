@@ -1,6 +1,5 @@
 package com.marketplace.backend.client;
 
-import com.marketplace.backend.dto.request.auth.RegisterRequest;
 import com.marketplace.backend.dto.response.misa.MisaCertificateResult;
 import com.marketplace.backend.dto.response.misa.MisaPayoutTransactionResult;
 import com.marketplace.backend.exception.ApplicationException;
@@ -42,14 +41,15 @@ public class MisaBackendClient {
     private volatile String cachedAccessToken;
     private volatile Instant cachedTokenExpiresAt;
 
-    public UUID registerTaxpayerForExternal(UUID freelancerId, RegisterRequest request) {
+    public UUID registerTaxpayerForExternal(UUID freelancerId, String fullName, String taxCode,
+                                            String identityNumber, String nationality, String address) {
         Map<String, Object> body = new HashMap<>();
         body.put("externalId", freelancerId.toString());
-        body.put("fullName", request.getDisplayName());
-        body.put("taxCode", request.getTaxCode());
-        body.put("identityNumber", request.getIdentityNumber());
-        body.put("nationality", request.getNationality());
-        body.put("address", request.getTaxAddress());
+        body.put("fullName", fullName);
+        body.put("taxCode", taxCode);
+        body.put("identityNumber", identityNumber);
+        body.put("nationality", nationality);
+        body.put("address", address);
 
         ResponseEntity<Map> response = restTemplate.exchange(
                 baseUrl + "/api/v1/taxpayers/external",

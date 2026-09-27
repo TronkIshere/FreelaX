@@ -44,9 +44,6 @@ public class User extends AbstractEntity<UUID> {
     @Column(nullable = false, length = 20)
     private UserType userType;
 
-    @Column(unique = true)
-    private UUID misaTaxpayerId;
-
     private String taxCode;
 
     private String identityNumber;
