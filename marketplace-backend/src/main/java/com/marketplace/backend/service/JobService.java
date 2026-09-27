@@ -4,6 +4,7 @@ import com.marketplace.backend.dto.request.job.AssignFreelancerRequest;
 import com.marketplace.backend.dto.request.job.CreateJobRequest;
 import com.marketplace.backend.dto.request.job.UpdateJobRequest;
 import com.marketplace.backend.dto.response.common.PageResponse;
+import com.marketplace.backend.dto.response.job.CertificateSummaryResponse;
 import com.marketplace.backend.dto.response.job.JobApplicationResponse;
 import com.marketplace.backend.dto.response.job.JobPaymentStatusResponse;
 import com.marketplace.backend.dto.response.job.JobResponse;
@@ -32,4 +33,8 @@ public interface JobService {
     JobApplicationResponse apply(UUID freelancerId, UUID jobId);
 
     List<JobApplicationResponse> listApplications(UUID clientUserId, UUID jobId);
+
+    List<CertificateSummaryResponse> listCertificatesForFreelancer(UUID freelancerId);
+
+    byte[] downloadCertificatePdf(UUID freelancerId, UUID certificateId);
 }

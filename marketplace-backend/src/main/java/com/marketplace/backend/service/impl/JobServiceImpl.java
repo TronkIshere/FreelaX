@@ -6,6 +6,7 @@ import com.marketplace.backend.dto.request.job.AssignFreelancerRequest;
 import com.marketplace.backend.dto.request.job.CreateJobRequest;
 import com.marketplace.backend.dto.request.job.UpdateJobRequest;
 import com.marketplace.backend.dto.response.common.PageResponse;
+import com.marketplace.backend.dto.response.job.CertificateSummaryResponse;
 import com.marketplace.backend.dto.response.job.JobApplicationResponse;
 import com.marketplace.backend.dto.response.job.JobPaymentStatusResponse;
 import com.marketplace.backend.dto.response.job.JobResponse;
@@ -278,6 +279,26 @@ public class JobServiceImpl implements JobService {
                 .checkoutOrderStatus(checkoutOrder.getStatus())
                 .taxExportStatus(job.getTaxExportStatus() != null ? job.getTaxExportStatus().name() : null)
                 .build();
+    }
+
+    @Override
+    public List<CertificateSummaryResponse> listCertificatesForFreelancer(UUID freelancerId) {
+        return jobRepository.findByFreelancerIdAndMisaCertificateIdIsNotNull(freelancerId).stream()
+                .map(job -> CertificateSummaryResponse.builder()
+                        .certificateId(job.getMisaCertificateId())
+                        .jobId(job.getId())
+                        .jobTitle(job.getTitle())
+                        .createdAt(job.getUpdatedAt())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public byte[] downloadCertificatePdf(UUID freelancerId, UUID certificateId) {
+        jobRepository.findByFreelancerIdAndMisaCertificateId(freelancerId, certificateId)
+                .orElseThrow(() -> new ApplicationException(ErrorCode.JOB_NOT_FOUND, certificateId));
+
+        return misaBackendClient.getCertificatePdf(certificateId);
     }
 
     private void exportTaxRecordSafely(Job job) {

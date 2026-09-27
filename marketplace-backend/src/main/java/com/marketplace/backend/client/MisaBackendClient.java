@@ -107,6 +107,21 @@ public class MisaBackendClient {
         return response.getBody();
     }
 
+    public byte[] getCertificatePdf(UUID certificateId) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(getOrRefreshAccessToken());
+
+        ResponseEntity<byte[]> response = restTemplate.exchange(
+                baseUrl + "/api/v1/withholding-certificates/" + certificateId + "/pdf",
+                HttpMethod.GET, new HttpEntity<>(headers),
+                byte[].class);
+
+        if (response.getBody() == null) {
+            throw new ApplicationException(ErrorCode.MISA_BACKEND_CALL_FAILED, "get-certificate-pdf: empty body");
+        }
+        return response.getBody();
+    }
+
     private HttpHeaders authorizedJsonHeaders() {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
