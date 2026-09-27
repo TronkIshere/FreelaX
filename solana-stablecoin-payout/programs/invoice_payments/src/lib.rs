@@ -56,8 +56,9 @@ pub mod invoice_payments {
         invoice_id: u64,
         client: Pubkey,
         amount: u64,
+        expires_at: i64,
     ) -> Result<()> {
-        crate::instructions::handle_create_invoice(ctx, invoice_id, client, amount)
+        crate::instructions::handle_create_invoice(ctx, invoice_id, client, amount, expires_at)
     }
 
     pub fn pay_invoice(ctx: Context<PayInvoice>) -> Result<()> {
@@ -106,5 +107,16 @@ pub mod invoice_payments {
 
     pub fn record_offramp(ctx: Context<RecordOfframp>) -> Result<()> {
         crate::instructions::record_offramp::handle_record_offramp(ctx)
+    }
+
+    pub fn mark_offramp_failed(
+        ctx: Context<MarkOfframpFailed>,
+        failure_hash: [u8; 32],
+    ) -> Result<()> {
+        crate::instructions::mark_offramp_failed::handle_mark_offramp_failed(ctx, failure_hash)
+    }
+
+    pub fn resolve_offramp(ctx: Context<ResolveOfframp>, resolution_hash: [u8; 32]) -> Result<()> {
+        crate::instructions::resolve_offramp::handle_resolve_offramp(ctx, resolution_hash)
     }
 }

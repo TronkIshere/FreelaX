@@ -25,6 +25,17 @@ pub struct InitializeConfig<'info> {
     )]
     pub accepted_mint: Account<'info, Mint>,
 
+    #[account(address = crate::ID)]
+    pub program: Program<'info, crate::program::InvoicePayments>,
+
+    #[account(
+        constraint = program.programdata_address()? == Some(program_data.key())
+            @ ErrorCode::UnauthorizedInitializer,
+        constraint = program_data.upgrade_authority_address == Some(admin.key())
+            @ ErrorCode::UnauthorizedInitializer
+    )]
+    pub program_data: Account<'info, ProgramData>,
+
     pub system_program: Program<'info, System>,
 }
 

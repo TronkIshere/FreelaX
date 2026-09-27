@@ -125,6 +125,11 @@ pub fn handle_request_offramp(
     withdrawal_record.status = WithdrawalStatus::Pending;
     withdrawal_record.requested_at = current_time;
     withdrawal_record.completed_at = None;
+    withdrawal_record.failure_hash = None;
+    withdrawal_record.failed_at = None;
+    withdrawal_record.resolution_hash = None;
+    withdrawal_record.resolved_at = None;
+    withdrawal_record.resolved_by = None;
     withdrawal_record.bump = ctx.bumps.withdrawal_record;
 
     emit!(OfframpRequested {

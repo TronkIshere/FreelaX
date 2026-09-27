@@ -31,6 +31,12 @@ pub struct Invoice {
     /// Mint được chấp nhận tại thời điểm tạo hóa đơn.
     pub mint: Pubkey,
 
+    /// Snapshot tỷ giá được khóa để ghi nhận thu nhập khi hóa đơn được trả.
+    pub rate_snapshot: Pubkey,
+
+    /// Hạn cuối thanh toán. Không được vượt quá hạn của RateSnapshot.
+    pub expires_at: i64,
+
     /// Pending, Paid hoặc Cancelled.
     pub status: InvoiceStatus,
 

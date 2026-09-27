@@ -3,6 +3,7 @@ use anchor_lang::prelude::*;
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, PartialEq, Eq, InitSpace)]
 pub enum WithdrawalStatus {
     Pending,
+    FailedPendingReview,
     Completed,
 }
 
@@ -19,5 +20,10 @@ pub struct WithdrawalRecord {
     pub status: WithdrawalStatus,
     pub requested_at: i64,
     pub completed_at: Option<i64>,
+    pub failure_hash: Option<[u8; 32]>,
+    pub failed_at: Option<i64>,
+    pub resolution_hash: Option<[u8; 32]>,
+    pub resolved_at: Option<i64>,
+    pub resolved_by: Option<Pubkey>,
     pub bump: u8,
 }

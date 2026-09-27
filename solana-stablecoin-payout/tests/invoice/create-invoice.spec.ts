@@ -108,6 +108,7 @@ describe("Create Invoice", () => {
         invoiceId,
         client.publicKey,
         amount,
+        environment.defaultRateExpiresAt.subn(1),
       )
       .accountsStrict({
         /**
@@ -121,6 +122,7 @@ describe("Create Invoice", () => {
          * - lấy accepted_mint.
          */
         config: configPda,
+        rateSnapshot: environment.defaultRateSnapshot,
 
         /**
          * Account chứa dữ liệu hóa đơn sẽ được tạo.
@@ -165,6 +167,8 @@ describe("Create Invoice", () => {
     expect(
       invoice.mint.equals(mockUsdc.mint),
     ).to.equal(true);
+    expect(invoice.rateSnapshot.equals(environment.defaultRateSnapshot)).to.equal(true);
+    expect(invoice.expiresAt.eq(environment.defaultRateExpiresAt.subn(1))).to.equal(true);
 
     /**
      * Hóa đơn vừa tạo phải ở trạng thái Pending.
@@ -237,10 +241,12 @@ describe("Create Invoice", () => {
             invoiceId,
             mockUsdc.client.publicKey,
             invalidAmount,
+            environment.defaultRateExpiresAt.subn(1),
         )
         .accountsStrict({
             freelancer: payer.publicKey,
             config: configPda,
+            rateSnapshot: environment.defaultRateSnapshot,
             invoice: invoicePda,
             systemProgram: SystemProgram.programId,
         })
@@ -318,10 +324,12 @@ describe("Create Invoice", () => {
         invoiceId,
         invalidClient,
         amount,
+        environment.defaultRateExpiresAt.subn(1),
       )
       .accountsStrict({
         freelancer: payer.publicKey,
         config: configPda,
+        rateSnapshot: environment.defaultRateSnapshot,
         invoice: invoicePda,
         systemProgram: SystemProgram.programId,
       })
@@ -395,10 +403,12 @@ describe("Create Invoice", () => {
         invoiceId,
         mockUsdc.client.publicKey,
         originalAmount,
+        environment.defaultRateExpiresAt.subn(1),
         )
         .accountsStrict({
         freelancer: freelancer.publicKey,
         config: configPda,
+        rateSnapshot: environment.defaultRateSnapshot,
         invoice: invoicePda,
         systemProgram: SystemProgram.programId,
         })
@@ -425,10 +435,12 @@ describe("Create Invoice", () => {
             invoiceId,
             differentClient.publicKey,
             differentAmount,
+            environment.defaultRateExpiresAt.subn(1),
         )
         .accountsStrict({
             freelancer: freelancer.publicKey,
             config: configPda,
+            rateSnapshot: environment.defaultRateSnapshot,
 
             /**
              * Cùng freelancer + cùng invoice ID
@@ -475,6 +487,43 @@ describe("Create Invoice", () => {
     expect(invoiceAfter.status).to.deep.equal({
         pending: {},
     });
+  });
+  it("rejects an Invoice expiry later than its locked RateSnapshot", async () => {
+    const { program, payer, configPda, mockUsdc } = environment;
+    const invoiceId = new anchor.BN(150);
+    const [invoicePda] = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("invoice"),
+        payer.publicKey.toBuffer(),
+        invoiceId.toArrayLike(Buffer, "le", 8),
+      ],
+      program.programId,
+    );
+
+    let message = "";
+    try {
+      await program.methods
+        .createInvoice(
+          invoiceId,
+          mockUsdc.client.publicKey,
+          new anchor.BN(10_000_000),
+          environment.defaultRateExpiresAt.addn(1),
+        )
+        .accountsStrict({
+          freelancer: payer.publicKey,
+          config: configPda,
+          rateSnapshot: environment.defaultRateSnapshot,
+          invoice: invoicePda,
+          systemProgram: SystemProgram.programId,
+        })
+        .rpc();
+    } catch (error) {
+      message = String(error);
+    }
+    expect(message).to.include("InvalidInvoiceExpiration");
+    expect(await environment.provider.connection.getAccountInfo(invoicePda)).to.equal(
+      null,
+    );
   });
   it("rejects invoice creation while the system is paused", async () => {
     const {
@@ -538,10 +587,12 @@ describe("Create Invoice", () => {
             invoiceId,
             mockUsdc.client.publicKey,
             amount,
+            environment.defaultRateExpiresAt.subn(1),
             )
             .accountsStrict({
             freelancer: payer.publicKey,
             config: configPda,
+            rateSnapshot: environment.defaultRateSnapshot,
             invoice: invoicePda,
             systemProgram: SystemProgram.programId,
             })

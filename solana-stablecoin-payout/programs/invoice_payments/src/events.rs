@@ -8,6 +8,8 @@ pub struct InvoiceCreated {
     pub amount: u64,
     pub client: Pubkey,
     pub mint: Pubkey,
+    pub rate_snapshot: Pubkey,
+    pub expires_at: i64,
     pub created_at: i64,
 }
 
@@ -18,6 +20,7 @@ pub struct InvoicePaid {
     pub freelancer: Pubkey,
     pub amount: u64,
     pub mint: Pubkey,
+    pub rate_snapshot: Pubkey,
     pub paid_at: i64,
 }
 
@@ -61,4 +64,23 @@ pub struct OfframpCompleted {
     pub freelancer: Pubkey,
     pub fiat_amount_vnd: u64,
     pub completed_at: i64,
+}
+
+#[event]
+pub struct OfframpFailedPendingReview {
+    pub withdrawal_record: Pubkey,
+    pub withdrawal_id: u64,
+    pub freelancer: Pubkey,
+    pub failure_hash: [u8; 32],
+    pub failed_at: i64,
+}
+
+#[event]
+pub struct OfframpResolved {
+    pub withdrawal_record: Pubkey,
+    pub withdrawal_id: u64,
+    pub freelancer: Pubkey,
+    pub resolution_hash: [u8; 32],
+    pub resolved_by: Pubkey,
+    pub resolved_at: i64,
 }

@@ -108,6 +108,8 @@ describe("Config PDA", () => {
       rateAuthority,
       oracleAuthority,
       maxRateAgeSeconds,
+      configPda,
+      programData,
     } = environment;
 
     let duplicateInitializationFailed = false;
@@ -120,9 +122,13 @@ describe("Config PDA", () => {
           oracleAuthority.publicKey,
           maxRateAgeSeconds,
         )
-        .accounts({
+        .accountsStrict({
           admin: payer.publicKey,
+          config: configPda,
           acceptedMint: mockUsdc.mint,
+          program: program.programId,
+          programData,
+          systemProgram: anchor.web3.SystemProgram.programId,
         })
         .rpc();
     } catch {

@@ -30,6 +30,7 @@ describe("Pay Invoice", () => {
     invoiceId: anchor.BN,
     amount: anchor.BN,
     client = environment.mockUsdc.client,
+    expiresAt = environment.defaultRateExpiresAt.subn(1),
   ) {
     const { provider, program, payer, configPda, mockUsdc } = environment;
     const freelancer = Keypair.generate();
@@ -60,10 +61,16 @@ describe("Pay Invoice", () => {
     );
 
     await program.methods
-      .createInvoice(invoiceId, client.publicKey, amount)
+      .createInvoice(
+        invoiceId,
+        client.publicKey,
+        amount,
+        expiresAt,
+      )
       .accountsStrict({
         freelancer: freelancer.publicKey,
         config: configPda,
+        rateSnapshot: environment.defaultRateSnapshot,
         invoice: invoicePda,
         systemProgram: SystemProgram.programId,
       })
@@ -175,10 +182,12 @@ describe("Pay Invoice", () => {
         invoiceId,
         mockUsdc.client.publicKey,
         invoiceAmount,
+        environment.defaultRateExpiresAt.subn(1),
       )
       .accountsStrict({
         freelancer: freelancer.publicKey,
         config: configPda,
+        rateSnapshot: environment.defaultRateSnapshot,
         invoice: invoicePda,
         systemProgram: SystemProgram.programId,
       })
@@ -340,10 +349,12 @@ describe("Pay Invoice", () => {
       invoiceId,
       mockUsdc.client.publicKey,
       invoiceAmount,
+      environment.defaultRateExpiresAt.subn(1),
     )
     .accountsStrict({
       freelancer: freelancer.publicKey,
       config: configPda,
+      rateSnapshot: environment.defaultRateSnapshot,
       invoice: invoicePda,
       systemProgram: SystemProgram.programId,
     })
@@ -448,6 +459,40 @@ describe("Pay Invoice", () => {
   expect(invoiceAfterSecondPayment.paidAt).to.not.equal(null);
 });
 
+  it("rejects payment after the locked Invoice expiry", async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const fixture = await createPendingInvoice(
+      new anchor.BN(1_031),
+      new anchor.BN(10_000_000),
+      environment.mockUsdc.client,
+      new anchor.BN(now + 2),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 3_000));
+
+    await expectRejected(
+      () =>
+        environment.program.methods
+          .payInvoice()
+          .accountsStrict({
+            client: environment.mockUsdc.client.publicKey,
+            config: environment.configPda,
+            invoice: fixture.invoicePda,
+            freelancer: fixture.freelancer.publicKey,
+            acceptedMint: environment.mockUsdc.mint,
+            clientAta: environment.mockUsdc.clientAta,
+            freelancerAta: fixture.freelancerAta,
+            tokenProgram: TOKEN_PROGRAM_ID,
+          })
+          .signers([environment.mockUsdc.client])
+          .rpc(),
+      "InvoiceExpired",
+    );
+    const invoice = await environment.program.account.invoice.fetch(
+      fixture.invoicePda,
+    );
+    expect(invoice.status).to.deep.equal({ pending: {} });
+  });
+
   it("rejects a client signer that is not assigned to the invoice", async () => {
     const { provider, program, payer, configPda, mockUsdc } = environment;
     const fixture = await createPendingInvoice(
@@ -546,6 +591,82 @@ describe("Pay Invoice", () => {
       clientBefore.amount,
       freelancerBefore.amount,
     );
+  });
+
+  it("pays with the Invoice-locked mint after Config rotates to a new mint", async () => {
+    const {
+      provider,
+      program,
+      payer,
+      configPda,
+      mockUsdc,
+      treasuryAuthority,
+      rateAuthority,
+      oracleAuthority,
+      maxRateAgeSeconds,
+    } = environment;
+    const fixture = await createPendingInvoice(
+      new anchor.BN(1_030),
+      new anchor.BN(10_000_000),
+    );
+    const rotatedMint = await createMint(
+      provider.connection,
+      payer,
+      mockUsdc.mintAuthority.publicKey,
+      null,
+      6,
+    );
+
+    await program.methods
+      .updateConfig(
+        treasuryAuthority.publicKey,
+        rateAuthority.publicKey,
+        oracleAuthority.publicKey,
+        maxRateAgeSeconds,
+        false,
+      )
+      .accountsStrict({
+        admin: payer.publicKey,
+        config: configPda,
+        acceptedMint: rotatedMint,
+      })
+      .rpc();
+
+    try {
+      await program.methods
+        .payInvoice()
+        .accountsStrict({
+          client: mockUsdc.client.publicKey,
+          config: configPda,
+          invoice: fixture.invoicePda,
+          freelancer: fixture.freelancer.publicKey,
+          acceptedMint: mockUsdc.mint,
+          clientAta: mockUsdc.clientAta,
+          freelancerAta: fixture.freelancerAta,
+          tokenProgram: TOKEN_PROGRAM_ID,
+        })
+        .signers([mockUsdc.client])
+        .rpc();
+    } finally {
+      await program.methods
+        .updateConfig(
+          treasuryAuthority.publicKey,
+          rateAuthority.publicKey,
+          oracleAuthority.publicKey,
+          maxRateAgeSeconds,
+          false,
+        )
+        .accountsStrict({
+          admin: payer.publicKey,
+          config: configPda,
+          acceptedMint: mockUsdc.mint,
+        })
+        .rpc();
+    }
+
+    const invoice = await program.account.invoice.fetch(fixture.invoicePda);
+    expect(invoice.status).to.deep.equal({ paid: {} });
+    expect(invoice.mint.equals(mockUsdc.mint)).to.equal(true);
   });
 
   it("rejects a Client ATA that is not owned by the Client", async () => {

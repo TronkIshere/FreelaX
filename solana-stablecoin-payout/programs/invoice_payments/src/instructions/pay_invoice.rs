@@ -35,9 +35,7 @@ pub struct PayInvoice<'info> {
         bump = invoice.bump,
         has_one = client @ ErrorCode::UnauthorizedClient,
         constraint = invoice.status == InvoiceStatus::Pending
-            @ ErrorCode::InvoiceNotPending,
-        constraint = invoice.mint == config.accepted_mint
-            @ ErrorCode::InvalidInvoiceMint
+            @ ErrorCode::InvoiceNotPending
     )]
     pub invoice: Account<'info, Invoice>,
 
@@ -47,9 +45,9 @@ pub struct PayInvoice<'info> {
     )]
     pub freelancer: SystemAccount<'info>,
 
-    /// Mint phải đúng bằng accepted_mint trong Config.
+    /// Mint phải đúng bằng mint đã khóa trong Invoice, kể cả sau Config rotation.
     #[account(
-        address = config.accepted_mint
+        address = invoice.mint
             @ ErrorCode::InvalidInvoiceMint
     )]
     pub accepted_mint: Account<'info, Mint>,
@@ -83,6 +81,10 @@ pub struct PayInvoice<'info> {
 }
 
 pub fn handle_pay_invoice(ctx: Context<PayInvoice>) -> Result<()> {
+    require!(
+        Clock::get()?.unix_timestamp < ctx.accounts.invoice.expires_at,
+        ErrorCode::InvoiceExpired
+    );
     /*
      * Lấy amount từ Invoice đã lưu trên blockchain.
      *
@@ -133,6 +135,7 @@ pub fn handle_pay_invoice(ctx: Context<PayInvoice>) -> Result<()> {
         freelancer: invoice.freelancer,
         amount,
         mint: invoice.mint,
+        rate_snapshot: invoice.rate_snapshot,
         paid_at,
     });
 

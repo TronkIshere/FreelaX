@@ -245,6 +245,143 @@ describe("Record Off-ramp", () => {
     );
   });
 
+  it("moves a failed withdrawal to review and records an audited manual resolution", async () => {
+    const fixture = await createPendingWithdrawal();
+    const failureHash = Array.from({ length: 32 }, (_, index) => index + 1);
+    const resolutionHash = Array.from({ length: 32 }, (_, index) => 255 - index);
+
+    const failureSignature = await environment.program.methods
+      .markOfframpFailed(failureHash)
+      .accountsStrict({
+        oracleAuthority: environment.oracleAuthority.publicKey,
+        config: environment.configPda,
+        withdrawalRecord: fixture.withdrawalRecord,
+      })
+      .signers([environment.oracleAuthority])
+      .rpc();
+
+    const failed = await environment.program.account.withdrawalRecord.fetch(
+      fixture.withdrawalRecord,
+    );
+    expect(failed.status).to.deep.equal({ failedPendingReview: {} });
+    expect(failed.failureHash).to.deep.equal(failureHash);
+    expect(failed.failedAt).to.not.equal(null);
+    expect(failed.completedAt).to.equal(null);
+
+    const resolveSignature = await environment.program.methods
+      .resolveOfframp(resolutionHash)
+      .accountsStrict({
+        admin: environment.payer.publicKey,
+        config: environment.configPda,
+        withdrawalRecord: fixture.withdrawalRecord,
+      })
+      .rpc();
+
+    const resolved = await environment.program.account.withdrawalRecord.fetch(
+      fixture.withdrawalRecord,
+    );
+    expect(resolved.status).to.deep.equal({ completed: {} });
+    expect(resolved.failureHash).to.deep.equal(failureHash);
+    expect(resolved.resolutionHash).to.deep.equal(resolutionHash);
+    expect(resolved.resolvedAt).to.not.equal(null);
+    expect(resolved.completedAt!.eq(resolved.resolvedAt!)).to.equal(true);
+    expect(resolved.resolvedBy!.equals(environment.payer.publicKey)).to.equal(true);
+
+    for (const [signature, eventName] of [
+      [failureSignature, "offrampfailedpendingreview"],
+      [resolveSignature, "offrampresolved"],
+    ] as const) {
+      await environment.provider.connection.confirmTransaction(signature, "confirmed");
+      const transaction = await environment.provider.connection.getTransaction(
+        signature,
+        { commitment: "confirmed", maxSupportedTransactionVersion: 0 },
+      );
+      const parser = new anchor.EventParser(
+        environment.program.programId,
+        environment.program.coder,
+      );
+      const events = Array.from(
+        parser.parseLogs(transaction!.meta!.logMessages!),
+      ).filter((event) => event.name.toLowerCase() === eventName);
+      expect(events).to.have.length(1);
+    }
+  });
+
+  it("rejects invalid failure evidence and invalid/manual unauthorized transitions", async () => {
+    const fixture = await createPendingWithdrawal();
+    const fakeAdmin = Keypair.generate();
+
+    await expectRejected(
+      () =>
+        environment.program.methods
+          .markOfframpFailed(new Array(32).fill(0))
+          .accountsStrict({
+            oracleAuthority: environment.oracleAuthority.publicKey,
+            config: environment.configPda,
+            withdrawalRecord: fixture.withdrawalRecord,
+          })
+          .signers([environment.oracleAuthority])
+          .rpc(),
+      "InvalidFailureHash",
+    );
+
+    await environment.program.methods
+      .markOfframpFailed(new Array(32).fill(7))
+      .accountsStrict({
+        oracleAuthority: environment.oracleAuthority.publicKey,
+        config: environment.configPda,
+        withdrawalRecord: fixture.withdrawalRecord,
+      })
+      .signers([environment.oracleAuthority])
+      .rpc();
+
+    await expectRejected(
+      () =>
+        environment.program.methods
+          .resolveOfframp(new Array(32).fill(0))
+          .accountsStrict({
+            admin: environment.payer.publicKey,
+            config: environment.configPda,
+            withdrawalRecord: fixture.withdrawalRecord,
+          })
+          .rpc(),
+      "InvalidResolutionHash",
+    );
+
+    await expectRejected(
+      () =>
+        environment.program.methods
+          .resolveOfframp(new Array(32).fill(9))
+          .accountsStrict({
+            admin: fakeAdmin.publicKey,
+            config: environment.configPda,
+            withdrawalRecord: fixture.withdrawalRecord,
+          })
+          .signers([fakeAdmin])
+          .rpc(),
+      "UnauthorizedAdmin",
+    );
+    await expectRejected(
+      () =>
+        environment.program.methods
+          .recordOfframp()
+          .accountsStrict({
+            oracleAuthority: environment.oracleAuthority.publicKey,
+            config: environment.configPda,
+            withdrawalRecord: fixture.withdrawalRecord,
+          })
+          .signers([environment.oracleAuthority])
+          .rpc(),
+      "WithdrawalNotPending",
+    );
+
+    const record = await environment.program.account.withdrawalRecord.fetch(
+      fixture.withdrawalRecord,
+    );
+    expect(record.status).to.deep.equal({ failedPendingReview: {} });
+    expect(record.resolutionHash).to.equal(null);
+  });
+
   it("rejects completion while Config is paused", async () => {
     const {
       program,

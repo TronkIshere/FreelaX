@@ -96,4 +96,22 @@ pub enum ErrorCode {
 
     #[msg("Only a pending withdrawal can be completed")]
     WithdrawalNotPending,
+
+    #[msg("Only the program upgrade authority can initialize Config")]
+    UnauthorizedInitializer,
+
+    #[msg("The invoice expiration must be in the future and no later than the rate expiration")]
+    InvalidInvoiceExpiration,
+
+    #[msg("The invoice has expired")]
+    InvoiceExpired,
+
+    #[msg("Failure audit hash cannot be all zeroes")]
+    InvalidFailureHash,
+
+    #[msg("Only a withdrawal pending manual review can be resolved")]
+    WithdrawalNotPendingReview,
+
+    #[msg("Resolution audit hash cannot be all zeroes")]
+    InvalidResolutionHash,
 }

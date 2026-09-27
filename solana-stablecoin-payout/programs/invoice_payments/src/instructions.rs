@@ -24,3 +24,9 @@ pub use request_offramp::*;
 
 pub mod record_offramp;
 pub use record_offramp::*;
+
+pub mod mark_offramp_failed;
+pub use mark_offramp_failed::*;
+
+pub mod resolve_offramp;
+pub use resolve_offramp::*;

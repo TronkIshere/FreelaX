@@ -4,7 +4,7 @@ use crate::{
     constants::*,
     error::ErrorCode,
     events::InvoiceCreated,
-    state::{Config, Invoice, InvoiceStatus},
+    state::{Config, Invoice, InvoiceStatus, RateSnapshot},
 };
 
 #[derive(Accounts)]
@@ -19,6 +19,14 @@ pub struct CreateInvoice<'info> {
         constraint = !config.paused @ ErrorCode::SystemPaused
     )]
     pub config: Account<'info, Config>,
+
+    #[account(
+        seeds = [RATE_SEED, rate_snapshot.rate_id.to_le_bytes().as_ref()],
+        bump = rate_snapshot.bump,
+        constraint = rate_snapshot.publisher == config.rate_authority
+            @ ErrorCode::InvalidRatePublisher
+    )]
+    pub rate_snapshot: Account<'info, RateSnapshot>,
 
     #[account(
         init,
@@ -41,12 +49,29 @@ pub fn handle_create_invoice(
     invoice_id: u64,
     client: Pubkey,
     amount: u64,
+    expires_at: i64,
 ) -> Result<()> {
     require!(amount > 0, ErrorCode::InvalidInvoiceAmount);
 
     require!(client != Pubkey::default(), ErrorCode::InvalidClient);
 
     let created_at = Clock::get()?.unix_timestamp;
+    let rate_snapshot = &ctx.accounts.rate_snapshot;
+    require!(
+        created_at < rate_snapshot.expires_at,
+        ErrorCode::RateSnapshotExpired
+    );
+    let oldest_allowed_observation = created_at
+        .checked_sub(ctx.accounts.config.max_rate_age_seconds)
+        .ok_or(ErrorCode::FiatCalculationOverflow)?;
+    require!(
+        rate_snapshot.observed_at >= oldest_allowed_observation,
+        ErrorCode::RateSnapshotTooOld
+    );
+    require!(
+        expires_at > created_at && expires_at <= rate_snapshot.expires_at,
+        ErrorCode::InvalidInvoiceExpiration
+    );
     let invoice = &mut ctx.accounts.invoice;
 
     invoice.invoice_id = invoice_id;
@@ -55,6 +80,8 @@ pub fn handle_create_invoice(
     invoice.amount = amount;
 
     invoice.mint = ctx.accounts.config.accepted_mint;
+    invoice.rate_snapshot = rate_snapshot.key();
+    invoice.expires_at = expires_at;
     invoice.status = InvoiceStatus::Pending;
     invoice.created_at = created_at;
     invoice.paid_at = None;
@@ -67,6 +94,8 @@ pub fn handle_create_invoice(
         client,
         amount,
         mint: invoice.mint,
+        rate_snapshot: invoice.rate_snapshot,
+        expires_at,
         created_at,
     });
 

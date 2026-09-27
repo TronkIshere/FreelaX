@@ -32,7 +32,7 @@ export async function createInvoiceFixture(
   amount = new anchor.BN(10_000_000),
   client = environment.mockUsdc.client,
 ): Promise<InvoiceFixture> {
-  const { provider, program, configPda } = environment;
+  const { provider, program, configPda, defaultRateSnapshot, defaultRateExpiresAt } = environment;
   const freelancer = Keypair.generate();
   const airdropSignature = await provider.connection.requestAirdrop(
     freelancer.publicKey,
@@ -47,10 +47,11 @@ export async function createInvoiceFixture(
   );
 
   await program.methods
-    .createInvoice(invoiceId, client.publicKey, amount)
+    .createInvoice(invoiceId, client.publicKey, amount, defaultRateExpiresAt.subn(1))
     .accountsStrict({
       freelancer: freelancer.publicKey,
       config: configPda,
+      rateSnapshot: defaultRateSnapshot,
       invoice: invoicePda,
       systemProgram: SystemProgram.programId,
     })
