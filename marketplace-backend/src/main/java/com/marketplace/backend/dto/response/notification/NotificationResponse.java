@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.experimental.FieldDefaults;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -18,5 +19,8 @@ public class NotificationResponse {
     String type;
     UUID jobId;
     boolean read;
+
+    BigDecimal amount;
+
     LocalDateTime createdAt;
 }

@@ -18,6 +18,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -31,6 +32,13 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     @Transactional
     public void notify(UUID recipientUserId, NotificationType type, String title, String message, UUID jobId) {
+        notify(recipientUserId, type, title, message, jobId, null);
+    }
+
+    @Override
+    @Transactional
+    public void notify(UUID recipientUserId, NotificationType type, String title, String message, UUID jobId,
+                       BigDecimal amount) {
         if (recipientUserId == null) {
             return;
         }
@@ -41,6 +49,7 @@ public class NotificationServiceImpl implements NotificationService {
         notification.setMessage(message);
         notification.setJobId(jobId);
         notification.setRead(false);
+        notification.setAmount(amount);
         notificationRepository.save(notification);
     }
 
@@ -82,6 +91,7 @@ public class NotificationServiceImpl implements NotificationService {
                 .type(n.getType().name())
                 .jobId(n.getJobId())
                 .read(n.isRead())
+                .amount(n.getAmount())
                 .createdAt(n.getCreatedAt())
                 .build();
     }

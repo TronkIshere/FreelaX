@@ -16,6 +16,13 @@ import com.marketplace.backend.dto.response.bofa.CheckoutOrderResult;
 import com.marketplace.backend.entity.*;
 import com.marketplace.backend.exception.ApplicationException;
 import com.marketplace.backend.exception.ErrorCode;
+import com.marketplace.backend.provider.currency.ExchangeRateProvider;
+import com.marketplace.backend.provider.currency.ExchangeRateResult;
+import com.marketplace.backend.provider.currency.OffRampProvider;
+import com.marketplace.backend.provider.currency.OffRampResult;
+import com.marketplace.backend.provider.currency.OnRampProvider;
+import com.marketplace.backend.provider.currency.OnRampResult;
+import com.marketplace.backend.repository.FreelancerPayoutRecordRepository;
 import com.marketplace.backend.repository.JobApplicationRepository;
 import com.marketplace.backend.repository.JobRepository;
 import com.marketplace.backend.repository.UserRepository;
@@ -44,16 +51,18 @@ import java.util.stream.Collectors;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class JobServiceImpl implements JobService {
 
-    private static final int USDC_SCALE = 6;
-    private static final BigDecimal USD_TO_USDC_PEG_RATE = BigDecimal.ONE;
-    private static final BigDecimal PLACEHOLDER_USDC_TO_VND_RATE = new BigDecimal("25000");
-
     UserRepository userRepository;
     JobRepository jobRepository;
     JobApplicationRepository jobApplicationRepository;
     PaymentBackendClient paymentBackendClient;
     MisaBackendClient misaBackendClient;
     NotificationService notificationService;
+
+    // ----- Quy doi tien te USD -> USDC -> VND (them moi) -----
+    OnRampProvider onRampProvider;
+    OffRampProvider offRampProvider;
+    ExchangeRateProvider exchangeRateProvider;
+    FreelancerPayoutRecordRepository freelancerPayoutRecordRepository;
 
     @Override
     @Transactional
@@ -301,6 +310,19 @@ public class JobServiceImpl implements JobService {
         return misaBackendClient.getCertificatePdf(certificateId);
     }
 
+    /**
+     * Chuoi quy doi tien te + xuat chung tu thue cho 1 job vua duoc approve():
+     *
+     *  1) USD (ngan sach job)  -[on-ramp, tru phi gia lap]->  USDC (net)
+     *  2) Lay ty gia USDC->VND hien tai (uu tien API song, fallback neu loi)
+     *  3) USDC (net)  -[off-ramp, tru phi gia lap]->  VND (net)
+     *     => day la SO TIEN FREELANCER THUC SU NHAN DUOC (amountVndActual)
+     *
+     *  Rieng so gui sang misa-backend de khai thue dung amountUsdcGross
+     *  (KHONG tru phi on-ramp) + ty gia hien tai -- tuc "so tien cua cong
+     *  viec do quy doi sang VND theo ty gia hien tai", khac voi so thuc
+     *  nhan o tren.
+     */
     private void exportTaxRecordSafely(Job job) {
         try {
             User freelancer = userRepository.findById(job.getFreelancerId())
@@ -315,17 +337,50 @@ public class JobServiceImpl implements JobService {
                     freelancer.getTaxAddress()
             );
 
-            BigDecimal amountUsdc = convertUsdToUsdc(job.getBudgetUsd());
-            BigDecimal usdcToVndRate = getUsdcToVndRatePlaceholder();
-            BigDecimal amountVnd = amountUsdc.multiply(usdcToVndRate).setScale(0, RoundingMode.HALF_UP);
+            // 1) USD -> USDC (on-ramp, co tru phi gia lap)
+            OnRampResult onRamp = onRampProvider.convertUsdToUsdc(job.getBudgetUsd());
 
-            log.warn("Job {}: dang dung ty gia USDC->VND PLACEHOLDER ({}), CHUA phai ty gia thuc",
-                    job.getId(), usdcToVndRate);
+            // 2) Ty gia USDC -> VND hien tai
+            ExchangeRateResult rate = exchangeRateProvider.getUsdcToVndRate();
+            if (rate.source() == ExchangeRateResult.RateSource.FALLBACK_PLACEHOLDER) {
+                log.warn("Job {}: khong lay duoc ty gia USDC->VND song, dang dung FALLBACK PLACEHOLDER ({})",
+                        job.getId(), rate.rate());
+            }
 
+            // 3) USDC (net, da tru phi on-ramp) -> VND (off-ramp, co tru phi gia lap)
+            //    => so tien freelancer THUC SU nhan duoc
+            OffRampResult offRamp = offRampProvider.convertUsdcToVnd(onRamp.amountUsdcNet(), rate.rate());
+
+            // Gui sang Misa: dung amountUsdcGross (KHONG tru phi on-ramp) + ty gia HIEN TAI
+            // -- misa-backend se tu tinh amountVndGross = amountUsdc * exchangeRate (Muc 9.4.3)
             MisaPayoutTransactionResult payoutTx = misaBackendClient.recordPayoutTransaction(
-                    taxpayerId, job.getId(), amountUsdc, usdcToVndRate);
+                    taxpayerId, job.getId(), onRamp.amountUsdcGross(), rate.rate());
 
             MisaCertificateResult certificate = misaBackendClient.createWithholdingCertificate(payoutTx.getId());
+
+            BigDecimal amountVndGross = onRamp.amountUsdcGross()
+                    .multiply(rate.rate())
+                    .setScale(0, RoundingMode.HALF_UP);
+
+            // Luu lai ban ghi payout day du: ca so khai thue lan so thuc nhan
+            FreelancerPayoutRecord payoutRecord = new FreelancerPayoutRecord();
+            payoutRecord.setJobId(job.getId());
+            payoutRecord.setFreelancerId(freelancer.getId());
+            payoutRecord.setClientUserId(job.getClientUserId());
+            payoutRecord.setAmountUsd(onRamp.amountUsdSource());
+            payoutRecord.setAmountUsdcGross(onRamp.amountUsdcGross());
+            payoutRecord.setOnRampFeeUsdc(onRamp.feeUsdc());
+            payoutRecord.setAmountUsdcNet(onRamp.amountUsdcNet());
+            payoutRecord.setExchangeRateUsed(rate.rate());
+            payoutRecord.setRateSource(rate.source() == ExchangeRateResult.RateSource.LIVE_COINGECKO
+                    ? FreelancerPayoutRecord.RateSource.LIVE_COINGECKO
+                    : FreelancerPayoutRecord.RateSource.FALLBACK_PLACEHOLDER);
+            payoutRecord.setAmountVndGross(amountVndGross);
+            payoutRecord.setOffRampFeeVnd(offRamp.feeVnd());
+            payoutRecord.setAmountVndActual(offRamp.amountVndNet());
+            payoutRecord.setMisaPayoutTransactionId(payoutTx.getId());
+            payoutRecord.setMisaCertificateId(certificate.getId());
+            freelancerPayoutRecordRepository.save(payoutRecord);
 
             job.setMisaPayoutTransactionId(payoutTx.getId());
             job.setMisaCertificateId(certificate.getId());
@@ -336,10 +391,13 @@ public class JobServiceImpl implements JobService {
                     freelancer.getId(),
                     NotificationType.PAYMENT_RECEIVED,
                     "Đã nhận được tiền",
-                    "Công việc \"" + job.getTitle() + "\" đã hoàn tất. Khoản thu nhập ~" + amountVnd
-                            + " VNĐ đã được ghi nhận và xuất chứng từ khấu trừ thuế. Tiền sẽ được chuyển khoản thủ công tới "
+                    "Công việc \"" + job.getTitle() + "\" đã hoàn tất. Khoản thu nhập chịu thuế ghi nhận ~"
+                            + amountVndGross + " VNĐ. Số tiền thực nhận sau quy đổi USD → USDC → VNĐ là "
+                            + offRamp.amountVndNet() + " VNĐ, sẽ được chuyển khoản thủ công tới "
                             + freelancer.getBankCode() + " - " + freelancer.getBankAccountNumber() + ".",
-                    job.getId());
+                    job.getId(),
+                    offRamp.amountVndNet());
+
         } catch (Exception e) {
             job.setTaxExportStatus(TaxExportStatus.FAILED);
             jobRepository.save(job);
@@ -353,14 +411,6 @@ public class JobServiceImpl implements JobService {
                             + "hệ thống sẽ cần xử lý lại thủ công.",
                     job.getId());
         }
-    }
-
-    private BigDecimal convertUsdToUsdc(BigDecimal amountUsd) {
-        return amountUsd.multiply(USD_TO_USDC_PEG_RATE).setScale(USDC_SCALE, RoundingMode.HALF_UP);
-    }
-
-    private BigDecimal getUsdcToVndRatePlaceholder() {
-        return PLACEHOLDER_USDC_TO_VND_RATE;
     }
 
     private Job getOrThrow(UUID jobId) {

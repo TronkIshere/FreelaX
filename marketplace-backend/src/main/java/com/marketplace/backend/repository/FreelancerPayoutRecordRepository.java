@@ -1,0 +1,15 @@
+package com.marketplace.backend.repository;
+
+import com.marketplace.backend.entity.FreelancerPayoutRecord;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+public interface FreelancerPayoutRecordRepository extends JpaRepository<FreelancerPayoutRecord, UUID> {
+
+    Optional<FreelancerPayoutRecord> findByJobId(UUID jobId);
+
+    List<FreelancerPayoutRecord> findByFreelancerId(UUID freelancerId);
+}

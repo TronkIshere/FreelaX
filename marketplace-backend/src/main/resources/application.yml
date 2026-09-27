@@ -60,3 +60,13 @@ cors:
 logging:
   level:
     com.marketplace.backend: INFO
+
+exchange-rate:
+  fallback-usdc-vnd-rate: 25000
+  cache-ttl-seconds: 60
+
+onramp:
+  fee-rate: 0.005   # 0.5% phí giả lập on-ramp (USD -> USDC)
+
+offramp:
+  fee-rate: 0.003   # 0.3% phí giả lập off-ramp (USDC -> VND)
