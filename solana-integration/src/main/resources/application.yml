@@ -1,0 +1,32 @@
+server:
+  port: ${SERVER_PORT:9193}
+
+spring:
+  application:
+    name: solana-integration
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3307/solana_gateway?useUnicode=true&characterEncoding=UTF-8&createDatabaseIfNotExist=true}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:root}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+
+solana:
+  rpc-url: ${SOLANA_RPC_HTTP_URL:http://127.0.0.1:9123}
+  program-id: ${SOLANA_PROGRAM_ID:CwuaAPrxYLK6avPUbMRBerBYt1apdNU829TDZmoAnhEf}
+  commitment: ${SOLANA_COMMITMENT:confirmed}
+  system-fee-payer: ${SOLANA_SYSTEM_FEE_PAYER:}
+  internal-api-key: ${SOLANA_INTERNAL_API_KEY:}
+  require-build-session: ${SOLANA_REQUIRE_BUILD_SESSION:true}
+  build-session-ttl-seconds: ${SOLANA_BUILD_SESSION_TTL_SECONDS:120}
+  local-private-keys: ${SOLANA_LOCAL_PRIVATE_KEYS:}
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html

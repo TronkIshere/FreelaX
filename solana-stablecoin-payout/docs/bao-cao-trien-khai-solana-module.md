@@ -738,6 +738,7 @@ typecheck hoặc test và chưa được sửa vì không thuộc contract Solan
 | `tests/helpers/test-environment.ts` | Sửa | Cấu hình authority và nạp 10.000 Mock USDC vào PDA treasury | shared fixture |
 | `docs/bao-cao-trien-khai-solana-module.md` | Sửa | Ghi Phase 10, mock on-ramp, 13 instruction, 67 test | tài liệu triển khai |
 | `docs/dac-ta-api-gateway-solana-spring-boot.md` | Mới | Ánh xạ 21 REST/RPC endpoint, JSON contract và DTO Java | tích hợp Spring Boot |
+| `docs/huong-dan-tich-hop-solana-api-gateway-backend.md` | Mới | Flow Invoice/payment/on-off-ramp, payload JSON và mô hình Backend fee payer | hướng dẫn tích hợp Gateway |
 | `target/idl/invoice_payments.json`, `target/types/*` | Sinh lại | IDL/type mới từ `anchor build` | client contract |
 
 Các đường dẫn `src/...` trong bảng thuộc

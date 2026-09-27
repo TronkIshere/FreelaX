@@ -8,6 +8,7 @@ test-ledger/
 .surfpool/
 docs/*
 !docs/dac-ta-api-gateway-solana-spring-boot.md
+!docs/huong-dan-tich-hop-solana-api-gateway-backend.md
 coverage/
 .env
 .env.*

@@ -1,0 +1,21 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:solana_gateway;MODE=MySQL;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  flyway:
+    enabled: true
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+solana:
+  rpc-url: http://127.0.0.1:9123
+  program-id: CwuaAPrxYLK6avPUbMRBerBYt1apdNU829TDZmoAnhEf
+  commitment: confirmed
+  system-fee-payer: ""
+  internal-api-key: test-internal-key
+  require-build-session: true
+  build-session-ttl-seconds: 120
+  local-private-keys: ""
