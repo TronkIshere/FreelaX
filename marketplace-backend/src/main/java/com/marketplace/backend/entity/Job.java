@@ -36,6 +36,14 @@ public class Job extends AbstractEntity<UUID> {
 
     private UUID checkoutOrderId;
 
+    @Column(length = 20)
+    private String payerBankCode;
+
+    @Column(length = 34)
+    private String payerBankAccountNumber;
+
+    private String payerBankAccountHolderName;
+
     @Column(name = "freelancer_id")
     private UUID freelancerId;
 

@@ -19,8 +19,10 @@ public class CheckoutOrderResult {
     BigDecimal amountUsd;
     String bofaOrderId;
     String bofaCaptureId;
+    String payerBankCode;
+    String payerBankAccountNumber;
+    String payerBankAccountHolderName;
     String status;
-    String approvalUrl;
     LocalDateTime createdAt;
     LocalDateTime capturedAt;
 }

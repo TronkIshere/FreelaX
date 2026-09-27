@@ -30,11 +30,16 @@ public class PaymentBackendClient {
     RestTemplate restTemplate;
     PaymentBackendProperties properties;
 
-    public CheckoutOrderResult createCheckoutOrder(UUID payerUserId, UUID jobId, BigDecimal amountUsd) {
+    public CheckoutOrderResult createCheckoutOrder(UUID payerUserId, UUID jobId, BigDecimal amountUsd,
+                                                   String payerBankCode, String payerBankAccountNumber,
+                                                   String payerBankAccountHolderName) {
         Map<String, Object> body = Map.of(
                 "payerUserId", payerUserId,
                 "jobId", jobId,
-                "amountUsd", amountUsd
+                "amountUsd", amountUsd,
+                "payerBankCode", payerBankCode,
+                "payerBankAccountNumber", payerBankAccountNumber,
+                "payerBankAccountHolderName", payerBankAccountHolderName
         );
         return exchange(
                 "/internal/BofA/checkout/orders",

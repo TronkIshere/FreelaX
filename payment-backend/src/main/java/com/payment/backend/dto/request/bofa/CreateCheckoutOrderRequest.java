@@ -1,6 +1,7 @@
 package com.payment.backend.dto.request.bofa;
 
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -24,4 +25,13 @@ public class CreateCheckoutOrderRequest {
     @NotNull(message = "amountUsd không được để trống")
     @DecimalMin(value = "0.01", message = "amountUsd phải lớn hơn 0")
     BigDecimal amountUsd;
+
+    @NotBlank(message = "payerBankCode không được để trống")
+    String payerBankCode;
+
+    @NotBlank(message = "payerBankAccountNumber không được để trống")
+    String payerBankAccountNumber;
+
+    @NotBlank(message = "payerBankAccountHolderName không được để trống")
+    String payerBankAccountHolderName;
 }

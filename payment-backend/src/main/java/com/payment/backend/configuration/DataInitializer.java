@@ -1,35 +1,32 @@
 package com.payment.backend.configuration;
 
-import com.payment.backend.entity.AuthProvider;
+import com.payment.backend.entity.BofaCheckoutOrder;
+import com.payment.backend.entity.BofaCheckoutOrderStatus;
 import com.payment.backend.entity.Role;
-import com.payment.backend.entity.User;
+import com.payment.backend.repository.BofaCheckoutOrderRepository;
 import com.payment.backend.repository.RoleRepository;
-import com.payment.backend.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Set;
+import java.util.UUID;
 
 @Configuration
 @Slf4j(topic = "INIT-APPLICATION")
 public class DataInitializer {
 
-    private static final String PAYER_EMAIL = "nguyenhuutrong11133@gmail.com";
-    private static final String PAYER_PASSWORD = "123456789";
-    private static final String PAYER_DISPLAY_NAME = "Nguyen Huu Trong";
-
-    private static final String RECEIVER_EMAIL = "freelancer@example.com";
-    private static final String RECEIVER_PASSWORD = "123456789";
-    private static final String RECEIVER_DISPLAY_NAME = "freelancer";
+    private static final String DEMO_BANK_CODE = "BANK_OF_AMERICA";
+    private static final String DEMO_BANK_ACCOUNT_NUMBER = "483920175610";
+    private static final String DEMO_BANK_ACCOUNT_HOLDER_NAME = "NGUYEN HUU TRONG";
+    private static final BigDecimal DEMO_AMOUNT_USD = new BigDecimal("500");
 
     @Bean
     public ApplicationRunner initData(RoleRepository roleRepository,
-                                      UserRepository userRepository,
-                                      PasswordEncoder passwordEncoder) {
+                                      BofaCheckoutOrderRepository bofaCheckoutOrderRepository) {
         return args -> {
             if (roleRepository.count() == 0) {
                 roleRepository.saveAll(List.of(
@@ -39,32 +36,22 @@ public class DataInitializer {
                 log.info("Initial roles inserted");
             }
 
-            Role userRole = roleRepository.findByName("ROLE_USER")
-                    .orElseThrow(() -> new IllegalStateException("ROLE_USER not found after seeding"));
-
-            createUserIfMissing(userRepository, passwordEncoder, userRole,
-                    PAYER_EMAIL, PAYER_PASSWORD, PAYER_DISPLAY_NAME);
-
-            User receiver = createUserIfMissing(userRepository, passwordEncoder, userRole,
-                    RECEIVER_EMAIL, RECEIVER_PASSWORD, RECEIVER_DISPLAY_NAME);
-
+            if (bofaCheckoutOrderRepository.count() == 0) {
+                BofaCheckoutOrder demo = new BofaCheckoutOrder();
+                demo.setPayerUserId(UUID.randomUUID());
+                demo.setJobId(UUID.randomUUID());
+                demo.setAmountUsd(DEMO_AMOUNT_USD);
+                demo.setBofaOrderId(UUID.randomUUID().toString());
+                demo.setPayerBankCode(DEMO_BANK_CODE);
+                demo.setPayerBankAccountNumber(DEMO_BANK_ACCOUNT_NUMBER);
+                demo.setPayerBankAccountHolderName(DEMO_BANK_ACCOUNT_HOLDER_NAME);
+                demo.setStatus(BofaCheckoutOrderStatus.CREATED);
+                demo.setCreatedAt(LocalDateTime.now());
+                bofaCheckoutOrderRepository.save(demo);
+                log.info("Seed 1 BofaCheckoutOrder demo (id={}, status=CREATED) -- goi POST /internal/BofA/checkout/orders/{}/capture de test truc tiep",
+                        demo.getId(), demo.getId());
+            }
         };
-    }
-
-    private User createUserIfMissing(UserRepository userRepository, PasswordEncoder passwordEncoder,
-                                     Role userRole, String email, String password, String displayName) {
-        return userRepository.findByEmail(email).orElseGet(() -> {
-            User user = new User();
-            user.setEmail(email);
-            user.setPassword(passwordEncoder.encode(password));
-            user.setDisplayName(displayName);
-            user.setAuthProvider(AuthProvider.LOCAL);
-            user.setEnabled(true);
-            user.setRoles(Set.of(userRole));
-            User saved = userRepository.save(user);
-            log.info("Seed user created: {}", email);
-            return saved;
-        });
     }
 
     private Role createRole(String name) {

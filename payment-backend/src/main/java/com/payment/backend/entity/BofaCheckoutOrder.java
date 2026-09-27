@@ -41,6 +41,15 @@ public class BofaCheckoutOrder {
 
     String bofaCaptureId;
 
+    @Column(nullable = false, length = 20)
+    String payerBankCode;
+
+    @Column(nullable = false, length = 34)
+    String payerBankAccountNumber;
+
+    @Column(nullable = false)
+    String payerBankAccountHolderName;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     BofaCheckoutOrderStatus status;

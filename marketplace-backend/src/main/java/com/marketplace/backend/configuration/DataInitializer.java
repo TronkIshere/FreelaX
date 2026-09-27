@@ -1,5 +1,7 @@
 package com.marketplace.backend.configuration;
 
+import com.marketplace.backend.client.PaymentBackendClient;
+import com.marketplace.backend.dto.response.bofa.CheckoutOrderResult;
 import com.marketplace.backend.entity.AuthProvider;
 import com.marketplace.backend.entity.BankCode;
 import com.marketplace.backend.entity.Job;
@@ -28,6 +30,9 @@ public class DataInitializer {
 
     private static final String SEED_CLIENT_EMAIL = "nguyenhuutrong11133@gmail.com";
     private static final String SEED_CLIENT_PASSWORD = "123456789";
+    private static final String SEED_CLIENT_BANK_CODE = "BANK_OF_AMERICA";
+    private static final String SEED_CLIENT_BANK_ACCOUNT_NUMBER = "483920175610";
+    private static final String SEED_CLIENT_BANK_ACCOUNT_HOLDER_NAME = "NGUYEN HUU TRONG";
 
     private static final String SEED_FREELANCER_EMAIL = "freelancer.seed@example.com";
     private static final String SEED_FREELANCER_PASSWORD = "123456789";
@@ -37,6 +42,7 @@ public class DataInitializer {
     public ApplicationRunner initData(RoleRepository roleRepository,
                                       UserRepository userRepository,
                                       JobRepository jobRepository,
+                                      PaymentBackendClient paymentBackendClient,
                                       PasswordEncoder passwordEncoder) {
         return args -> {
             if (roleRepository.count() == 0) {
@@ -83,7 +89,7 @@ public class DataInitializer {
             });
 
             if (jobRepository.findByClientUserId(client.getId()).isEmpty()) {
-                jobRepository.saveAll(List.of(
+                List<Job> seedJobs = jobRepository.saveAll(List.of(
                         createOpenJob(client.getId(), "Landing page redesign",
                                 "Redesign trang landing page, mobile-first.", new BigDecimal("500")),
                         createOpenJob(client.getId(), "Viet REST API cho module giao dich",
@@ -91,7 +97,25 @@ public class DataInitializer {
                         createOpenJob(client.getId(), "Toi uu SEO trang chu",
                                 "Audit va toi uu SEO on-page cho trang chu va 5 landing page chinh.", new BigDecimal("300"))
                 ));
-                log.info("Seed 3 job OPEN cho client {} -- CHUA gan freelancer nao ca", SEED_CLIENT_EMAIL);
+
+                for (Job job : seedJobs) {
+                    CheckoutOrderResult checkoutOrder = paymentBackendClient.createCheckoutOrder(
+                            client.getId(),
+                            job.getId(),
+                            job.getBudgetUsd(),
+                            SEED_CLIENT_BANK_CODE,
+                            SEED_CLIENT_BANK_ACCOUNT_NUMBER,
+                            SEED_CLIENT_BANK_ACCOUNT_HOLDER_NAME
+                    );
+                    job.setCheckoutOrderId(checkoutOrder.getId());
+                    job.setPayerBankCode(SEED_CLIENT_BANK_CODE);
+                    job.setPayerBankAccountNumber(SEED_CLIENT_BANK_ACCOUNT_NUMBER);
+                    job.setPayerBankAccountHolderName(SEED_CLIENT_BANK_ACCOUNT_HOLDER_NAME);
+                    jobRepository.save(job);
+                }
+
+                log.info("Seed 3 job OPEN cho client {} -- CHUA gan freelancer nao ca, da tao checkout order tren payment-backend",
+                        SEED_CLIENT_EMAIL);
                 log.info("Freelancer seed {} (id={}) dang co 0 job -- goi PATCH /jobs/{{jobId}}/assign-freelancer " +
                                 "voi freelancerId nay de gan thu 1 trong 3 job tren.",
                         SEED_FREELANCER_EMAIL, freelancer.getId());

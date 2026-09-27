@@ -6,15 +6,16 @@ import com.marketplace.backend.dto.request.job.AssignFreelancerRequest;
 import com.marketplace.backend.dto.request.job.CreateJobRequest;
 import com.marketplace.backend.dto.request.job.UpdateJobRequest;
 import com.marketplace.backend.dto.response.common.PageResponse;
+import com.marketplace.backend.dto.response.job.JobApplicationResponse;
 import com.marketplace.backend.dto.response.job.JobPaymentStatusResponse;
 import com.marketplace.backend.dto.response.job.JobResponse;
-import com.marketplace.backend.dto.response.job.PayJobResponse;
 import com.marketplace.backend.dto.response.misa.MisaCertificateResult;
 import com.marketplace.backend.dto.response.misa.MisaPayoutTransactionResult;
 import com.marketplace.backend.dto.response.bofa.CheckoutOrderResult;
 import com.marketplace.backend.entity.*;
 import com.marketplace.backend.exception.ApplicationException;
 import com.marketplace.backend.exception.ErrorCode;
+import com.marketplace.backend.repository.JobApplicationRepository;
 import com.marketplace.backend.repository.JobRepository;
 import com.marketplace.backend.repository.UserRepository;
 import com.marketplace.backend.service.JobService;
@@ -32,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -47,6 +49,7 @@ public class JobServiceImpl implements JobService {
 
     UserRepository userRepository;
     JobRepository jobRepository;
+    JobApplicationRepository jobApplicationRepository;
     PaymentBackendClient paymentBackendClient;
     MisaBackendClient misaBackendClient;
     NotificationService notificationService;
@@ -67,7 +70,56 @@ public class JobServiceImpl implements JobService {
 
         jobRepository.save(job);
 
+        CheckoutOrderResult checkoutOrder = paymentBackendClient.createCheckoutOrder(
+                clientUserId,
+                job.getId(),
+                request.getBudgetUsd(),
+                request.getPayerBankCode(),
+                request.getPayerBankAccountNumber(),
+                request.getPayerBankAccountHolderName()
+        );
+        job.setCheckoutOrderId(checkoutOrder.getId());
+
+        if (job.getFreelancerId() != null) {
+            job.setStatus(JobStatus.IN_PROGRESS);
+        }
+
+        jobRepository.save(job);
+
         return toResponse(job);
+    }
+
+    @Override
+    @Transactional
+    public JobApplicationResponse apply(UUID freelancerId, UUID jobId) {
+        Job job = getOrThrow(jobId);
+
+        if (job.getStatus() != JobStatus.OPEN) {
+            throw new ApplicationException(ErrorCode.INVALID_JOB_STATUS);
+        }
+
+        validateAndGetFreelancer(freelancerId);
+
+        if (jobApplicationRepository.findByJobIdAndFreelancerId(jobId, freelancerId).isPresent()) {
+            throw new ApplicationException(ErrorCode.ALREADY_APPLIED, jobId);
+        }
+
+        JobApplication application = new JobApplication();
+        application.setJobId(jobId);
+        application.setFreelancerId(freelancerId);
+        application.setStatus(JobApplicationStatus.PENDING);
+        jobApplicationRepository.save(application);
+
+        return toApplicationResponse(application);
+    }
+
+    @Override
+    public List<JobApplicationResponse> listApplications(UUID clientUserId, UUID jobId) {
+        getOwnedByClientOrThrow(clientUserId, jobId);
+
+        return jobApplicationRepository.findByJobId(jobId).stream()
+                .map(this::toApplicationResponse)
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -80,7 +132,22 @@ public class JobServiceImpl implements JobService {
         }
 
         User freelancer = validateAndGetFreelancer(request.getFreelancerId());
+
+        JobApplication acceptedApplication = jobApplicationRepository
+                .findByJobIdAndFreelancerId(jobId, freelancer.getId())
+                .filter(a -> a.getStatus() == JobApplicationStatus.PENDING)
+                .orElseThrow(() -> new ApplicationException(ErrorCode.FREELANCER_NOT_APPLIED, jobId));
+
+        acceptedApplication.setStatus(JobApplicationStatus.ACCEPTED);
+        jobApplicationRepository.save(acceptedApplication);
+
+        for (JobApplication other : jobApplicationRepository.findByJobIdAndStatus(jobId, JobApplicationStatus.PENDING)) {
+            other.setStatus(JobApplicationStatus.REJECTED);
+            jobApplicationRepository.save(other);
+        }
+
         job.setFreelancerId(freelancer.getId());
+        job.setStatus(JobStatus.IN_PROGRESS);
         jobRepository.save(job);
 
         notificationService.notify(
@@ -152,46 +219,10 @@ public class JobServiceImpl implements JobService {
 
     @Override
     @Transactional
-    public PayJobResponse pay(UUID clientUserId, UUID jobId) {
+    public JobResponse approve(UUID clientUserId, UUID jobId) {
         Job job = getOwnedByClientOrThrow(clientUserId, jobId);
 
-        if (job.getStatus() != JobStatus.OPEN) {
-            throw new ApplicationException(ErrorCode.INVALID_JOB_STATUS);
-        }
-
-        if (job.getFreelancerId() == null) {
-            throw new ApplicationException(ErrorCode.JOB_FREELANCER_NOT_ASSIGNED, jobId);
-        }
-
-        // Freelancer giờ chỉ cần tồn tại đúng loại tài khoản -- không còn phụ thuộc
-        // payment-backend/payee nữa (freelancer nhận tiền qua ngân hàng đã đăng ký, xử lý thủ công).
-        userRepository.findById(job.getFreelancerId())
-                .orElseThrow(() -> new ApplicationException(ErrorCode.FREELANCER_NOT_FOUND, job.getFreelancerId()));
-
-        CheckoutOrderResult checkoutOrder = paymentBackendClient.createCheckoutOrder(
-                job.getClientUserId(),
-                job.getId(),
-                job.getBudgetUsd()
-        );
-
-        job.setCheckoutOrderId(checkoutOrder.getId());
-        job.setStatus(JobStatus.AWAITING_PAYMENT);
-        jobRepository.save(job);
-
-        return PayJobResponse.builder()
-                .jobId(job.getId())
-                .checkoutOrderId(checkoutOrder.getId())
-                .approvalUrl(checkoutOrder.getApprovalUrl())
-                .status(job.getStatus().name())
-                .build();
-    }
-
-    @Override
-    @Transactional
-    public JobResponse confirmPayment(UUID clientUserId, UUID jobId) {
-        Job job = getOwnedByClientOrThrow(clientUserId, jobId);
-
-        if (job.getStatus() != JobStatus.AWAITING_PAYMENT || job.getCheckoutOrderId() == null) {
+        if (job.getStatus() != JobStatus.IN_PROGRESS || job.getCheckoutOrderId() == null) {
             throw new ApplicationException(ErrorCode.INVALID_JOB_STATUS);
         }
 
@@ -201,7 +232,7 @@ public class JobServiceImpl implements JobService {
             throw new ApplicationException(ErrorCode.PAYMENT_BACKEND_CALL_FAILED, "capture:" + captured.getStatus());
         }
 
-        job.setStatus(JobStatus.IN_PROGRESS);
+        job.setStatus(JobStatus.COMPLETED);
         jobRepository.save(job);
 
         notificationService.notify(
@@ -210,25 +241,6 @@ public class JobServiceImpl implements JobService {
                 "Thanh toán thành công",
                 "Bạn đã thanh toán thành công cho công việc \"" + job.getTitle() + "\".",
                 job.getId());
-
-        return toResponse(job);
-    }
-
-    @Override
-    @Transactional
-    public JobResponse approve(UUID clientUserId, UUID jobId) {
-        Job job = getOwnedByClientOrThrow(clientUserId, jobId);
-
-        if (job.getStatus() != JobStatus.IN_PROGRESS || job.getCheckoutOrderId() == null) {
-            throw new ApplicationException(ErrorCode.INVALID_JOB_STATUS);
-        }
-
-        // ĐÃ BỎ HOÀN TOÀN: paymentBackendClient.releasePayout(...) -- không còn chuyển tiền
-        // ngược lại payment-backend để trả cho freelancer. Freelancer nhận tiền qua ngân hàng
-        // đã đăng ký, xử lý thủ công ngoài hệ thống; marketplace-backend chỉ ghi nhận,
-        // xuất chứng từ thuế, và gửi thông báo.
-        job.setStatus(JobStatus.COMPLETED);
-        jobRepository.save(job);
 
         exportTaxRecordSafely(job);
 
@@ -288,8 +300,6 @@ public class JobServiceImpl implements JobService {
             log.warn("Job {}: dang dung ty gia USDC->VND PLACEHOLDER ({}), CHUA phai ty gia thuc",
                     job.getId(), usdcToVndRate);
 
-            // Không còn payoutReleaseId của payment-backend -- dùng job.getId() làm định danh
-            // tham chiếu duy nhất gửi sang misa-backend (thay cho platformPayoutId cũ).
             MisaPayoutTransactionResult payoutTx = misaBackendClient.recordPayoutTransaction(
                     freelancer.getMisaTaxpayerId(), job.getId(), amountUsdc, usdcToVndRate);
 
@@ -352,6 +362,16 @@ public class JobServiceImpl implements JobService {
             throw new ApplicationException(ErrorCode.JOB_NOT_FOUND, jobId);
         }
         return job;
+    }
+
+    private JobApplicationResponse toApplicationResponse(JobApplication application) {
+        return JobApplicationResponse.builder()
+                .id(application.getId())
+                .jobId(application.getJobId())
+                .freelancerId(application.getFreelancerId())
+                .status(application.getStatus().name())
+                .createdAt(application.getCreatedAt())
+                .build();
     }
 
     private JobResponse toResponse(Job job) {

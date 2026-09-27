@@ -6,9 +6,9 @@ import com.marketplace.backend.dto.request.job.CreateJobRequest;
 import com.marketplace.backend.dto.request.job.UpdateJobRequest;
 import com.marketplace.backend.dto.response.common.PageResponse;
 import com.marketplace.backend.dto.response.common.ResponseAPI;
+import com.marketplace.backend.dto.response.job.JobApplicationResponse;
 import com.marketplace.backend.dto.response.job.JobPaymentStatusResponse;
 import com.marketplace.backend.dto.response.job.JobResponse;
-import com.marketplace.backend.dto.response.job.PayJobResponse;
 import com.marketplace.backend.service.JobService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -33,7 +34,7 @@ public class JobController {
 
     @PostMapping
     public ResponseAPI<JobResponse> create(@AuthenticationPrincipal UserPrincipal principal,
-                                            @Valid @RequestBody CreateJobRequest request) {
+                                           @Valid @RequestBody CreateJobRequest request) {
         return ResponseAPI.<JobResponse>builder()
                 .code(200)
                 .data(jobService.create(principal.getId(), request))
@@ -42,8 +43,8 @@ public class JobController {
 
     @GetMapping
     public ResponseAPI<PageResponse<JobResponse>> list(@AuthenticationPrincipal UserPrincipal principal,
-                                                        @RequestParam(defaultValue = "0") int page,
-                                                        @RequestParam(defaultValue = "10") int size) {
+                                                       @RequestParam(defaultValue = "0") int page,
+                                                       @RequestParam(defaultValue = "10") int size) {
         return ResponseAPI.<PageResponse<JobResponse>>builder()
                 .code(200)
                 .data(jobService.listForUser(principal.getId(), page, size))
@@ -52,7 +53,7 @@ public class JobController {
 
     @GetMapping("/{jobId}")
     public ResponseAPI<JobResponse> getById(@AuthenticationPrincipal UserPrincipal principal,
-                                             @PathVariable UUID jobId) {
+                                            @PathVariable UUID jobId) {
         return ResponseAPI.<JobResponse>builder()
                 .code(200)
                 .data(jobService.getByIdForParticipant(principal.getId(), jobId))
@@ -61,35 +62,17 @@ public class JobController {
 
     @PatchMapping("/{jobId}")
     public ResponseAPI<JobResponse> update(@AuthenticationPrincipal UserPrincipal principal,
-                                            @PathVariable UUID jobId,
-                                            @Valid @RequestBody UpdateJobRequest request) {
+                                           @PathVariable UUID jobId,
+                                           @Valid @RequestBody UpdateJobRequest request) {
         return ResponseAPI.<JobResponse>builder()
                 .code(200)
                 .data(jobService.update(principal.getId(), jobId, request))
                 .build();
     }
 
-    @PostMapping("/{jobId}/pay")
-    public ResponseAPI<PayJobResponse> pay(@AuthenticationPrincipal UserPrincipal principal,
-                                            @PathVariable UUID jobId) {
-        return ResponseAPI.<PayJobResponse>builder()
-                .code(200)
-                .data(jobService.pay(principal.getId(), jobId))
-                .build();
-    }
-
-    @PostMapping("/{jobId}/confirm-payment")
-    public ResponseAPI<JobResponse> confirmPayment(@AuthenticationPrincipal UserPrincipal principal,
-                                                    @PathVariable UUID jobId) {
-        return ResponseAPI.<JobResponse>builder()
-                .code(200)
-                .data(jobService.confirmPayment(principal.getId(), jobId))
-                .build();
-    }
-
     @PostMapping("/{jobId}/approve")
     public ResponseAPI<JobResponse> approve(@AuthenticationPrincipal UserPrincipal principal,
-                                             @PathVariable UUID jobId) {
+                                            @PathVariable UUID jobId) {
         return ResponseAPI.<JobResponse>builder()
                 .code(200)
                 .data(jobService.approve(principal.getId(), jobId))
@@ -98,7 +81,7 @@ public class JobController {
 
     @PostMapping("/{jobId}/cancel")
     public ResponseAPI<JobResponse> cancel(@AuthenticationPrincipal UserPrincipal principal,
-                                            @PathVariable UUID jobId) {
+                                           @PathVariable UUID jobId) {
         return ResponseAPI.<JobResponse>builder()
                 .code(200)
                 .data(jobService.cancel(principal.getId(), jobId))
@@ -107,10 +90,29 @@ public class JobController {
 
     @GetMapping("/{jobId}/payment-status")
     public ResponseAPI<JobPaymentStatusResponse> getPaymentStatus(@AuthenticationPrincipal UserPrincipal principal,
-                                                                    @PathVariable UUID jobId) {
+                                                                  @PathVariable UUID jobId) {
         return ResponseAPI.<JobPaymentStatusResponse>builder()
                 .code(200)
                 .data(jobService.getPaymentStatus(principal.getId(), jobId))
+                .build();
+    }
+
+    @PostMapping("/{jobId}/apply")
+    public ResponseAPI<JobApplicationResponse> apply(@AuthenticationPrincipal UserPrincipal principal,
+                                                     @PathVariable UUID jobId) {
+        return ResponseAPI.<JobApplicationResponse>builder()
+                .code(200)
+                .message("Ứng tuyển thành công")
+                .data(jobService.apply(principal.getId(), jobId))
+                .build();
+    }
+
+    @GetMapping("/{jobId}/applications")
+    public ResponseAPI<List<JobApplicationResponse>> listApplications(@AuthenticationPrincipal UserPrincipal principal,
+                                                                      @PathVariable UUID jobId) {
+        return ResponseAPI.<List<JobApplicationResponse>>builder()
+                .code(200)
+                .data(jobService.listApplications(principal.getId(), jobId))
                 .build();
     }
 

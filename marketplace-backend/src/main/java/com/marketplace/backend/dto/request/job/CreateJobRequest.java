@@ -26,4 +26,13 @@ public class CreateJobRequest {
     @NotNull(message = "Ngân sách không được để trống")
     @Positive(message = "Ngân sách phải lớn hơn 0")
     BigDecimal budgetUsd;
+
+    @NotBlank(message = "payerBankCode không được để trống")
+    String payerBankCode;
+
+    @NotBlank(message = "payerBankAccountNumber không được để trống")
+    String payerBankAccountNumber;
+
+    @NotBlank(message = "payerBankAccountHolderName không được để trống")
+    String payerBankAccountHolderName;
 }

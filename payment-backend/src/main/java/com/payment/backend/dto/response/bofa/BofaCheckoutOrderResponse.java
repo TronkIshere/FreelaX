@@ -14,14 +14,15 @@ import java.util.UUID;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class BofaCheckoutOrderResponse {
     UUID id;
-    UUID payeeId;
     UUID payerUserId;
     UUID jobId;
     BigDecimal amountUsd;
     String bofaOrderId;
     String bofaCaptureId;
+    String payerBankCode;
+    String payerBankAccountNumber;
+    String payerBankAccountHolderName;
     String status;
-    String approvalUrl;
     LocalDateTime createdAt;
     LocalDateTime capturedAt;
 }

@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/internal/bofa/checkout/orders")
+@RequestMapping("/internal/BofA/checkout/orders")
 @RequiredArgsConstructor
 public class BofaCheckoutOrderController {
 

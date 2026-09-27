@@ -1,9 +1,7 @@
 package com.payment.backend.service.impl;
 
-import com.payment.backend.client.BofaCheckoutClient;
 import com.payment.backend.dto.request.bofa.CreateCheckoutOrderRequest;
 import com.payment.backend.dto.response.bofa.BofaCheckoutOrderResponse;
-import com.payment.backend.entity.BofaAccountRole;
 import com.payment.backend.entity.BofaCheckoutOrder;
 import com.payment.backend.entity.BofaCheckoutOrderStatus;
 import com.payment.backend.exception.ApplicationException;
@@ -18,8 +16,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -28,28 +24,25 @@ import java.util.UUID;
 public class BofaCheckoutOrderServiceImpl implements BofaCheckoutOrderService {
 
     BofaCheckoutOrderRepository bofaCheckoutOrderRepository;
-    BofaCheckoutClient bofaCheckoutClient;
     BofaAccountBalanceService bofaAccountBalanceService;
 
     @Override
     @Transactional
     public BofaCheckoutOrderResponse create(CreateCheckoutOrderRequest request) {
-        Map<String, Object> order = bofaCheckoutClient.createOrder(request.getAmountUsd());
-
-        String bofaOrderId = (String) order.get("id");
-        String approvalUrl = extractApprovalUrl(order);
-
         BofaCheckoutOrder entity = new BofaCheckoutOrder();
         entity.setPayerUserId(request.getPayerUserId());
         entity.setJobId(request.getJobId());
         entity.setAmountUsd(request.getAmountUsd());
-        entity.setBofaOrderId(bofaOrderId);
+        entity.setBofaOrderId(UUID.randomUUID().toString());
+        entity.setPayerBankCode(request.getPayerBankCode());
+        entity.setPayerBankAccountNumber(request.getPayerBankAccountNumber());
+        entity.setPayerBankAccountHolderName(request.getPayerBankAccountHolderName());
         entity.setStatus(BofaCheckoutOrderStatus.CREATED);
         entity.setCreatedAt(LocalDateTime.now());
 
         bofaCheckoutOrderRepository.save(entity);
 
-        return toResponse(entity, approvalUrl);
+        return toResponse(entity);
     }
 
     @Override
@@ -61,28 +54,19 @@ public class BofaCheckoutOrderServiceImpl implements BofaCheckoutOrderService {
             throw new ApplicationException(ErrorCode.INVALID_CHECKOUT_ORDER_STATUS, entity.getStatus());
         }
 
-        Map<String, Object> capture = bofaCheckoutClient.captureOrder(entity.getBofaOrderId());
-        String status = (String) capture.get("status");
+        bofaAccountBalanceService.debit(entity.getPayerBankAccountNumber(), entity.getAmountUsd());
 
-        if (!"COMPLETED".equals(status)) {
-            entity.setStatus(BofaCheckoutOrderStatus.FAILED);
-            bofaCheckoutOrderRepository.save(entity);
-            throw new ApplicationException(ErrorCode.BOFA_ORDER_FAILED, entity.getBofaOrderId());
-        }
-
-        entity.setBofaCaptureId((String) capture.get("id"));
+        entity.setBofaCaptureId(UUID.randomUUID().toString());
         entity.setStatus(BofaCheckoutOrderStatus.CAPTURED);
         entity.setCapturedAt(LocalDateTime.now());
         bofaCheckoutOrderRepository.save(entity);
 
-        bofaAccountBalanceService.credit(entity.getPayerUserId(), BofaAccountRole.PAYER, entity.getAmountUsd());
-
-        return toResponse(entity, null);
+        return toResponse(entity);
     }
 
     @Override
     public BofaCheckoutOrderResponse getById(UUID orderId) {
-        return toResponse(getOrThrow(orderId), null);
+        return toResponse(getOrThrow(orderId));
     }
 
     private BofaCheckoutOrder getOrThrow(UUID orderId) {
@@ -90,21 +74,7 @@ public class BofaCheckoutOrderServiceImpl implements BofaCheckoutOrderService {
                 .orElseThrow(() -> new ApplicationException(ErrorCode.CHECKOUT_ORDER_NOT_FOUND, orderId));
     }
 
-    @SuppressWarnings("unchecked")
-    private String extractApprovalUrl(Map<String, Object> order) {
-        List<Map<String, Object>> links = (List<Map<String, Object>>) (List<?>) order.get("links");
-        if (links == null) {
-            return null;
-        }
-        for (Map<String, Object> link : links) {
-            if ("approve".equals(link.get("rel"))) {
-                return (String) link.get("href");
-            }
-        }
-        return null;
-    }
-
-    private BofaCheckoutOrderResponse toResponse(BofaCheckoutOrder entity, String approvalUrl) {
+    private BofaCheckoutOrderResponse toResponse(BofaCheckoutOrder entity) {
         return BofaCheckoutOrderResponse.builder()
                 .id(entity.getId())
                 .payerUserId(entity.getPayerUserId())
@@ -112,8 +82,10 @@ public class BofaCheckoutOrderServiceImpl implements BofaCheckoutOrderService {
                 .amountUsd(entity.getAmountUsd())
                 .bofaOrderId(entity.getBofaOrderId())
                 .bofaCaptureId(entity.getBofaCaptureId())
+                .payerBankCode(entity.getPayerBankCode())
+                .payerBankAccountNumber(entity.getPayerBankAccountNumber())
+                .payerBankAccountHolderName(entity.getPayerBankAccountHolderName())
                 .status(entity.getStatus().name())
-                .approvalUrl(approvalUrl)
                 .createdAt(entity.getCreatedAt())
                 .capturedAt(entity.getCapturedAt())
                 .build();

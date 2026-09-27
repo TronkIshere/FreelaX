@@ -36,6 +36,8 @@ public enum ErrorCode {
     FREELANCER_NOT_FOUND(4005, "Không tìm thấy freelancer: %s", HttpStatus.NOT_FOUND),
     USER_IS_NOT_FREELANCER(4006, "Tài khoản được chọn không phải freelancer: %s", HttpStatus.BAD_REQUEST),
     JOB_FREELANCER_NOT_ASSIGNED(4007, "Công việc chưa được gán cho freelancer nào, không thể thanh toán: %s", HttpStatus.CONFLICT),
+    ALREADY_APPLIED(4008, "Bạn đã ứng tuyển công việc này rồi: %s", HttpStatus.CONFLICT),
+    FREELANCER_NOT_APPLIED(4009, "Freelancer chưa ứng tuyển công việc này: %s", HttpStatus.CONFLICT),
 
     MISA_BACKEND_CALL_FAILED(5000, "Gọi misa-backend thất bại: %s", HttpStatus.BAD_GATEWAY),
 

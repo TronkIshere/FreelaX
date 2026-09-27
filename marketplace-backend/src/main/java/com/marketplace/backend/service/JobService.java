@@ -4,10 +4,11 @@ import com.marketplace.backend.dto.request.job.AssignFreelancerRequest;
 import com.marketplace.backend.dto.request.job.CreateJobRequest;
 import com.marketplace.backend.dto.request.job.UpdateJobRequest;
 import com.marketplace.backend.dto.response.common.PageResponse;
+import com.marketplace.backend.dto.response.job.JobApplicationResponse;
 import com.marketplace.backend.dto.response.job.JobPaymentStatusResponse;
 import com.marketplace.backend.dto.response.job.JobResponse;
-import com.marketplace.backend.dto.response.job.PayJobResponse;
 
+import java.util.List;
 import java.util.UUID;
 
 public interface JobService {
@@ -20,10 +21,6 @@ public interface JobService {
 
     JobResponse update(UUID clientUserId, UUID jobId, UpdateJobRequest request);
 
-    PayJobResponse pay(UUID clientUserId, UUID jobId);
-
-    JobResponse confirmPayment(UUID clientUserId, UUID jobId);
-
     JobResponse approve(UUID clientUserId, UUID jobId);
 
     JobResponse cancel(UUID clientUserId, UUID jobId);
@@ -31,4 +28,8 @@ public interface JobService {
     JobPaymentStatusResponse getPaymentStatus(UUID userId, UUID jobId);
 
     JobResponse assignFreelancer(UUID clientUserId, UUID jobId, AssignFreelancerRequest request);
+
+    JobApplicationResponse apply(UUID freelancerId, UUID jobId);
+
+    List<JobApplicationResponse> listApplications(UUID clientUserId, UUID jobId);
 }
