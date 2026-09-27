@@ -6,8 +6,8 @@ import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 
 @SpringBootApplication
 @EnableJpaAuditing(auditorAwareRef = "auditorAware")
-public class BofaBackendApplication {
+public class PaymentBackendApplication {
     public static void main(String[] args) {
-        SpringApplication.run(BofaBackendApplication.class, args);
+        SpringApplication.run(PaymentBackendApplication.class, args);
     }
 }

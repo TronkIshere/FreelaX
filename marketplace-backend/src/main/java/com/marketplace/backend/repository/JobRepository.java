@@ -12,9 +12,5 @@ public interface JobRepository extends JpaRepository<Job, UUID> {
 
     List<Job> findByClientUserId(UUID clientUserId);
 
-    List<Job> findByFreelancerUserId(UUID freelancerUserId);
-
-    Page<Job> findByClientUserIdOrFreelancerUserId(UUID clientUserId, UUID freelancerUserId, Pageable pageable);
-
     Page<Job> findByClientUserIdOrFreelancerId(UUID userId, UUID userId1, Pageable pageable);
 }
