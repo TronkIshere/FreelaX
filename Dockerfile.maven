@@ -5,9 +5,10 @@ ARG MODULE
 WORKDIR /build
 
 COPY pom.xml .
-COPY paypal-backend/pom.xml paypal-backend/pom.xml
+COPY payment-backend/pom.xml payment-backend/pom.xml
 COPY marketplace-backend/pom.xml marketplace-backend/pom.xml
 COPY misa-backend/pom.xml misa-backend/pom.xml
+COPY solana-integration/pom.xml solana-integration/pom.xml
 RUN --mount=type=cache,target=/root/.m2 mvn -B -pl ${MODULE} -am dependency:go-offline
 
 COPY ${MODULE}/src ${MODULE}/src

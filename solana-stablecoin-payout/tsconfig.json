@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "types": ["mocha", "chai"],
+    "typeRoots": ["./node_modules/@types"],
+    "lib": ["ES2020"],
+    "module": "commonjs",
+    "target": "ES2020",
+    "esModuleInterop": true
+  },
+
+  "include": ["tests/**/*.ts"],
+  "exclude": ["backup", "node_modules"]
+}

@@ -29,6 +29,7 @@
         <module>payment-backend</module>
         <module>marketplace-backend</module>
         <module>misa-backend</module>
+        <module>solana-integration</module>
     </modules>
 
     <dependencyManagement>

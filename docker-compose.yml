@@ -106,5 +106,31 @@ services:
     ports:
       - "9192:9192"
 
+  solana-integration:
+    build:
+      context: .
+      dockerfile: Dockerfile.maven
+      args:
+        MODULE: solana-integration
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      SERVER_PORT: 9193
+      DB_URL: jdbc:mysql://mysql:3306/solana_gateway?useUnicode=true&characterEncoding=UTF-8
+      DB_USERNAME: root
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      SOLANA_RPC_HTTP_URL: ${SOLANA_RPC_HTTP_URL:-http://host.docker.internal:9123}
+      SOLANA_PROGRAM_ID: ${SOLANA_PROGRAM_ID:-CwuaAPrxYLK6avPUbMRBerBYt1apdNU829TDZmoAnhEf}
+      SOLANA_COMMITMENT: ${SOLANA_COMMITMENT:-confirmed}
+      SOLANA_SYSTEM_FEE_PAYER: ${SOLANA_SYSTEM_FEE_PAYER:-}
+      SOLANA_INTERNAL_API_KEY: ${SOLANA_INTERNAL_API_KEY:-change-me}
+      SOLANA_LOCAL_PRIVATE_KEYS: ${SOLANA_LOCAL_PRIVATE_KEYS:-}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "9193:9193"
+
 volumes:
   mysql-data:
