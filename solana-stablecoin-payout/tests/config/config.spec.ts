@@ -65,6 +65,8 @@ describe("Config PDA", () => {
       rateAuthority,
       oracleAuthority,
       maxRateAgeSeconds,
+      mockOnrampAuthority,
+      maxMockOnrampAmount,
     } = environment;
 
     const config = await program.account.config.fetch(configPda);
@@ -92,6 +94,12 @@ describe("Config PDA", () => {
     ).to.equal(true);
 
     expect(config.maxRateAgeSeconds.eq(maxRateAgeSeconds)).to.equal(true);
+
+    expect(
+      config.mockOnrampAuthority.equals(mockOnrampAuthority.publicKey),
+    ).to.equal(true);
+    expect(config.maxMockOnrampAmount.eq(maxMockOnrampAmount)).to.equal(true);
+    expect(config.mockOnrampEnabled).to.equal(true);
 
     expect(config.paused).to.equal(false);
     expect(config.bump).to.equal(configBump);

@@ -114,4 +114,22 @@ pub enum ErrorCode {
 
     #[msg("Resolution audit hash cannot be all zeroes")]
     InvalidResolutionHash,
+
+    #[msg("Mock on-ramp authority cannot be the default public key")]
+    InvalidMockOnrampAuthority,
+
+    #[msg("Maximum mock on-ramp amount must be greater than zero")]
+    InvalidMaxMockOnrampAmount,
+
+    #[msg("Only the configured mock on-ramp authority can approve a purchase")]
+    UnauthorizedMockOnrampAuthority,
+
+    #[msg("Mock on-ramp is disabled")]
+    MockOnrampDisabled,
+
+    #[msg("Mock USD amount must be greater than zero")]
+    InvalidMockOnrampAmount,
+
+    #[msg("Mock on-ramp amount exceeds the configured per-purchase limit")]
+    MockOnrampAmountTooLarge,
 }

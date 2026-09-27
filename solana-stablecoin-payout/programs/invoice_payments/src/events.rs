@@ -84,3 +84,24 @@ pub struct OfframpResolved {
     pub resolved_by: Pubkey,
     pub resolved_at: i64,
 }
+
+#[event]
+pub struct MockOnrampConfigured {
+    pub authority: Pubkey,
+    pub max_amount: u64,
+    pub enabled: bool,
+    pub updated_by: Pubkey,
+}
+
+#[event]
+pub struct MockOnrampCompleted {
+    pub receipt: Pubkey,
+    pub purchase_id: u64,
+    pub client: Pubkey,
+    pub client_ata: Pubkey,
+    pub mint: Pubkey,
+    pub treasury: Pubkey,
+    pub usd_amount_e6: u64,
+    pub token_amount: u64,
+    pub completed_at: i64,
+}

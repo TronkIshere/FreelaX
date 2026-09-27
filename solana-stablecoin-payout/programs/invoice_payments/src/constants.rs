@@ -21,5 +21,11 @@ pub const MAX_RATE_FUTURE_DRIFT_SECONDS: i64 = 60;
 #[constant]
 pub const WITHDRAWAL_SEED: &[u8] = b"withdrawal";
 
+#[constant]
+pub const MOCK_ONRAMP_TREASURY_AUTHORITY_SEED: &[u8] = b"mock_onramp_treasury";
+
+#[constant]
+pub const MOCK_ONRAMP_RECEIPT_SEED: &[u8] = b"mock_onramp";
+
 /// USDC base-unit scale (10^6) multiplied by the rate scale (10^6).
 pub const FIAT_CALCULATION_SCALE: u128 = 1_000_000_000_000;

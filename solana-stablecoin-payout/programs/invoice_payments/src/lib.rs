@@ -119,4 +119,23 @@ pub mod invoice_payments {
     pub fn resolve_offramp(ctx: Context<ResolveOfframp>, resolution_hash: [u8; 32]) -> Result<()> {
         crate::instructions::resolve_offramp::handle_resolve_offramp(ctx, resolution_hash)
     }
+
+    pub fn configure_mock_onramp(
+        ctx: Context<ConfigureMockOnramp>,
+        authority: Pubkey,
+        max_amount: u64,
+        enabled: bool,
+    ) -> Result<()> {
+        crate::instructions::configure_mock_onramp::handle_configure_mock_onramp(
+            ctx, authority, max_amount, enabled,
+        )
+    }
+
+    pub fn mock_onramp(
+        ctx: Context<MockOnramp>,
+        purchase_id: u64,
+        usd_amount_e6: u64,
+    ) -> Result<()> {
+        crate::instructions::mock_onramp::handle_mock_onramp(ctx, purchase_id, usd_amount_e6)
+    }
 }

@@ -77,6 +77,9 @@ pub fn handle_initialize_config(
     config.rate_authority = rate_authority;
     config.oracle_authority = oracle_authority;
     config.max_rate_age_seconds = max_rate_age_seconds;
+    config.mock_onramp_authority = Pubkey::default();
+    config.max_mock_onramp_amount = 0;
+    config.mock_onramp_enabled = false;
     config.paused = false;
     config.bump = ctx.bumps.config;
 

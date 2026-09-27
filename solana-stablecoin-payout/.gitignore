@@ -6,7 +6,8 @@ node_modules/
 test-ledger/
 .yarn/
 .surfpool/
-docs/
+docs/*
+!docs/dac-ta-api-gateway-solana-spring-boot.md
 coverage/
 .env
 .env.*

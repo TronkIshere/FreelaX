@@ -21,19 +21,22 @@ Solana module hiện hỗ trợ các nghiệp vụ sau:
 8. Settlement Oracle xác nhận off-ramp đã hoàn tất ngoài blockchain hoặc đưa
    lỗi không chắc chắn vào `FailedPendingReview`; Admin resolve thủ công với
    hash bằng chứng được lưu và emit event.
+9. Trong môi trường demo, Mock On-ramp Authority xác nhận giả lập USD payment
+   và program chuyển Mock USDC từ Treasury PDA ATA sang Client ATA.
 
 | Thành phần | Số lượng thực tế |
 |---|---:|
-| Instruction trong IDL | 11 |
-| Anchor state/account PDA | 4 |
-| Event | 8 |
-| Custom error | 37 |
-| Test passing ở lần chạy cuối | 60 |
+| Instruction trong IDL | 13 |
+| Anchor state/account PDA | 5 |
+| Event | 10 |
+| Custom error | 43 |
+| Test passing ở lần chạy cuối | 67 |
 
-Bốn state/PDA là `Config`, `Invoice`, `RateSnapshot` và `WithdrawalRecord`.
-Tám event là `InvoiceCreated`, `InvoicePaid`, `InvoiceCancelled`,
+Năm state/PDA là `Config`, `Invoice`, `RateSnapshot`, `WithdrawalRecord` và
+`MockOnrampReceipt`. Mười event là `InvoiceCreated`, `InvoicePaid`, `InvoiceCancelled`,
 `RatePublished`, `OfframpRequested`, `OfframpCompleted`,
-`OfframpFailedPendingReview` và `OfframpResolved`.
+`OfframpFailedPendingReview`, `OfframpResolved`, `MockOnrampConfigured` và
+`MockOnrampCompleted`.
 
 ### Hardening Phase 10 hoàn thành ngày 27/09/2026
 
@@ -53,6 +56,25 @@ Tám event là `InvoiceCreated`, `InvoicePaid`, `InvoiceCancelled`,
 - Đây là account-layout và IDL breaking change. Deployment cũ phải dùng Program
   ID/config mới hoặc có migration/reallocation được audit; không upgrade rồi
   deserialize trực tiếp account Invoice/Withdrawal layout cũ.
+
+### Mock on-ramp demo triển khai ngày 27/09/2026
+
+- Bổ sung `configure_mock_onramp` để Admin cấu hình authority, hạn mức mỗi
+  purchase và cờ bật/tắt; mặc định sau `initialize_config` là disabled.
+- Bổ sung `mock_onramp(purchase_id, usd_amount_e6)`. Đây là xác nhận **giả lập**
+  USD payment, không nhận hoặc giữ USD thật. Tỷ lệ demo là `1 USD = 1 Mock
+  USDC`, cả hai dùng scale `10^6`, không dùng floating point.
+- Mock USDC được chuyển bằng `transfer_checked` từ Mock On-ramp Treasury ATA
+  sang Client ATA. Treasury ATA thuộc PDA `[b"mock_onramp_treasury"]`; program
+  ký CPI bằng seeds, backend authority không trực tiếp sở hữu treasury.
+- Client ATA được tạo bằng `init_if_needed` nếu chưa tồn tại. Toàn bộ tạo ATA,
+  chuyển token và tạo receipt nằm trong một transaction atomic.
+- Mỗi lần cấp token tạo `MockOnrampReceipt` PDA theo
+  `[b"mock_onramp", client, purchase_id_le]`; retry cùng purchase không thể
+  chuyển token lần hai.
+- `MockOnrampCompleted` ghi Client, ATA, mint, treasury, USD amount, token amount
+  và timestamp. Tính năng chỉ dành cho local/dev demo; production phải thay
+  simulation bằng provider webhook đã verify và on-ramp thật.
 
 Các phần chưa hoàn tất:
 
@@ -82,9 +104,11 @@ programs/invoice_payments/src/
 ├── instructions/
 │   ├── cancel_invoice.rs
 │   ├── close_invoice.rs
+│   ├── configure_mock_onramp.rs
 │   ├── create_invoice.rs
 │   ├── initialize_config.rs
 │   ├── mark_offramp_failed.rs
+│   ├── mock_onramp.rs
 │   ├── pay_invoice.rs
 │   ├── publish_rate.rs
 │   ├── record_offramp.rs
@@ -94,6 +118,7 @@ programs/invoice_payments/src/
 └── state/
     ├── config.rs
     ├── invoice.rs
+    ├── mock_onramp_receipt.rs
     ├── rate_snapshot.rs
     └── withdrawal_record.rs
 
@@ -110,6 +135,8 @@ tests/
 │   ├── close-invoice.spec.ts
 │   ├── create-invoice.spec.ts
 │   └── pay-invoice.spec.ts
+├── onramp/
+│   └── mock-onramp.spec.ts
 ├── offramp/
 │   ├── record-offramp.spec.ts
 │   └── request-offramp.spec.ts
@@ -121,14 +148,15 @@ tests/
 
 | File | Trách nhiệm |
 |---|---|
-| `src/lib.rs` | Khai báo Program ID và 11 entrypoint xuất ra IDL. |
+| `src/lib.rs` | Khai báo Program ID và 13 entrypoint xuất ra IDL. |
 | `src/constants.rs` | Seeds, decimals, `RATE_SCALE`, giới hạn lệch thời gian và mẫu số tính VNĐ. |
-| `src/error.rs` | 37 custom error của program. |
-| `src/events.rs` | Tám event phục vụ quan sát/indexing sau này. |
+| `src/error.rs` | 43 custom error của program. |
+| `src/events.rs` | Mười event phục vụ quan sát/indexing sau này. |
 | `src/instructions.rs` | Đăng ký và re-export các module instruction. |
 | `src/state.rs` | Đăng ký và re-export các module state. |
-| `state/config.rs` | Cấu hình authority, mint, tuổi rate và paused. |
+| `state/config.rs` | Cấu hình authority, mint, tuổi rate, mock on-ramp và paused. |
 | `state/invoice.rs` | `InvoiceStatus` và dữ liệu Invoice. |
+| `state/mock_onramp_receipt.rs` | Biên nhận bất biến chống cấp Mock USDC hai lần. |
 | `state/rate_snapshot.rs` | Snapshot tỷ giá bất biến. |
 | `state/withdrawal_record.rs` | `WithdrawalStatus` và dữ liệu off-ramp. |
 | `instructions/*.rs` | Mỗi file chứa accounts validation và handler cho một instruction cùng tên. |
@@ -147,13 +175,14 @@ tests/
 | `tests/invoice/cancel-invoice.spec.ts` | Test hủy Invoice. |
 | `tests/invoice/close-invoice.spec.ts` | Test đóng Invoice và hoàn rent. |
 | `tests/rates/rate-snapshot.spec.ts` | Test công bố và kiểm tra RateSnapshot. |
+| `tests/onramp/mock-onramp.spec.ts` | Test cấu hình, cấp Mock USDC, receipt, phân quyền và rollback. |
 | `tests/offramp/request-offramp.spec.ts` | Test chuyển token vào Treasury và tạo WithdrawalRecord. |
 | `tests/offramp/record-offramp.spec.ts` | Test Settlement Oracle hoàn tất WithdrawalRecord. |
 
 ## 3. Giải thích từng instruction
 
 Danh sách dưới đây lấy từ `target/idl/invoice_payments.json`; không có
-instruction nào khác ngoài 11 instruction này.
+instruction nào khác ngoài 13 instruction này.
 
 ### 3.1 `initialize_config`
 
@@ -345,22 +374,63 @@ instruction nào khác ngoài 11 instruction này.
   `OfframpResolved`.
 - **Thất bại:** sai/thiếu Admin, paused, hash zero hoặc record không ở review.
 
+### 3.12 `configure_mock_onramp`
+
+- **Nghiệp vụ:** Admin cấu hình Mock On-ramp Authority, hạn mức token cho mỗi
+  purchase và bật/tắt tính năng demo.
+- **Người gọi/ký:** Admin hiện tại trong Config.
+- **Accounts:** Admin signer và Config mutable; không cần Mint/ATA/Token Program.
+- **PDA:** xác minh `[b"config"]` và stored bump.
+- **Token/CPI:** không chuyển token, không CPI.
+- **State:** cập nhật `mock_onramp_authority`, `max_mock_onramp_amount` và
+  `mock_onramp_enabled`; emit `MockOnrampConfigured`.
+- **Thất bại:** sai/thiếu Admin, authority default hoặc hạn mức bằng zero.
+- **Code/test:** `src/instructions/configure_mock_onramp.rs`;
+  `tests/onramp/mock-onramp.spec.ts`.
+
+### 3.13 `mock_onramp`
+
+- **Nghiệp vụ:** sau khi backend demo giả lập USD payment thành công, cấp số
+  Mock USDC tương ứng cho Client theo tỷ lệ cố định `1:1` ở scale `10^6`.
+- **Người gọi/ký:** Mock On-ramp Authority hiện tại; authority trả rent cho
+  Client ATA nếu cần và `MockOnrampReceipt`.
+- **Accounts:** authority signer, Config, accepted Mint, treasury-authority PDA,
+  treasury ATA, Client, Client ATA, receipt PDA, Token/Associated Token/System
+  Program.
+- **PDA:** treasury authority `[b"mock_onramp_treasury"]`; receipt
+  `[b"mock_onramp", client, purchase_id.to_le_bytes()]`.
+- **Token/CPI:** `transfer_checked` từ treasury ATA sang Client ATA; program ký
+  bằng treasury PDA seeds. Client ATA dùng `init_if_needed` và phải đúng
+  Client/mint/token program.
+- **State:** tạo receipt bất biến chứa purchase ID, Client/ATA, mint, treasury,
+  USD amount, token amount, authority, timestamp và bump; emit
+  `MockOnrampCompleted`.
+- **Thất bại:** tính năng disabled/paused, authority sai, amount bằng zero hoặc
+  vượt hạn mức, mint/ATA sai, treasury thiếu balance hoặc purchase ID đã dùng.
+  Vì transaction atomic, CPI thất bại không để lại receipt hoặc Client ATA mới.
+- **Giới hạn:** instruction không xử lý USD thật và không xác minh ngân hàng hay
+  webhook; nó chỉ là adapter demo để cấp Mock USDC đã mint sẵn.
+- **Code/test:** `src/instructions/mock_onramp.rs`;
+  `tests/onramp/mock-onramp.spec.ts`.
+
 ## 4. Giải thích từng state/account
 
 | Account | Tạo và rent | Owner | Dữ liệu/quyền sửa | Seeds, bump, đóng | Có token balance? |
 |---|---|---|---|---|---|
-| Config PDA | Admin tạo/trả rent qua `initialize_config` | Invoice Program | Lưu Admin, mint, ba authority, max rate age, paused; chỉ Admin update | `[b"config"]`, stored bump; chưa có close instruction | Không |
+| Config PDA | Admin tạo/trả rent qua `initialize_config` | Invoice Program | Lưu Admin, mint, Treasury/Rate/Oracle/Mock On-ramp authorities, các hạn mức và paused; chỉ Admin update | `[b"config"]`, stored bump; chưa có close instruction | Không |
 | Invoice PDA | Freelancer tạo/trả rent | Invoice Program | Lưu id, hai bên, amount, locked mint/rate/expiry, status, timestamps; Client pay, Freelancer cancel/close | `[b"invoice", freelancer, id_le]`; close khi Paid/Cancelled | Không |
 | RateSnapshot PDA | Rate Authority tạo/trả rent | Invoice Program | Lưu ba rate, timestamps, hash, publisher; không có instruction sửa/đóng | `[b"rate", rate_id_le]`; bất biến | Không |
 | WithdrawalRecord PDA | Freelancer tạo/trả rent | Invoice Program | Lưu request, failure/resolution audit; Oracle complete/fail, Admin resolve review | `[b"withdrawal", freelancer, id_le]`; chưa có close | Không |
+| MockOnrampReceipt PDA | Mock On-ramp Authority tạo/trả rent | Invoice Program | Lưu một purchase đã cấp token; không có instruction sửa/đóng | `[b"mock_onramp", client, purchase_id_le]`; bất biến | Không |
 | Mint Account | Test tạo bằng SPL helper, test payer trả rent | Legacy Token Program | Decimals, supply, mint authority; fixture dùng mint authority để phát Mock USDC | Không phải PDA của Invoice Program; không đóng trong suite | Không giữ balance người dùng; giữ metadata/supply |
-| Client ATA | SPL helper tạo, test payer trả rent | Legacy Token Program | Token Program đổi balance khi Client trả Invoice | ATA suy ra từ Client + mint + Token Program; không đóng | Có |
+| Client ATA | `mock_onramp` tạo nếu cần, authority trả rent | Legacy Token Program | Nhận token từ on-ramp và bị trừ khi Client trả Invoice | ATA suy ra từ Client + mint + Token Program; không đóng | Có |
 | Freelancer ATA | SPL helper tạo, thường test payer trả rent | Legacy Token Program | Nhận payment; bị trừ khi request off-ramp | ATA suy ra từ Freelancer + mint + Token Program; không đóng | Có |
 | Treasury ATA | SPL helper tạo, test payer trả rent | Legacy Token Program | Nhận token đúng một lần ở `request_offramp` | ATA suy ra từ Treasury Authority + mint + Token Program; không đóng | Có |
+| Mock On-ramp Treasury ATA | Test fixture tạo và nạp sẵn 10.000 Mock USDC | Legacy Token Program | Gửi token qua CPI do treasury-authority PDA ký | ATA suy ra từ PDA `[b"mock_onramp_treasury"]` + mint; không đóng | Có |
 
-Điểm quan trọng: wallet address, Config, Invoice, RateSnapshot và
-WithdrawalRecord không chứa SPL token balance. Balance nằm trong ATA do Legacy
-Token Program sở hữu.
+Điểm quan trọng: wallet address, Config, Invoice, RateSnapshot,
+WithdrawalRecord và MockOnrampReceipt không chứa SPL token balance. Balance nằm
+trong ATA do Legacy Token Program sở hữu.
 
 ## 5. Toàn bộ luồng nghiệp vụ
 
@@ -368,18 +438,30 @@ Token Program sở hữu.
 
 1. **Trong test, ngoài nghiệp vụ production:** tạo Mint 6 decimals.
 2. **Trên Solana:** Legacy Token Program lưu Mint Account.
-3. **Trong test:** tạo Client keypair và Client ATA.
-4. **Trên Solana:** mint 1.000 Mock USDC vào Client ATA.
-5. **Không có backend/frontend:** fixture gọi RPC trực tiếp.
+3. **Trong test:** derive Mock On-ramp Treasury Authority PDA và tạo ATA của PDA.
+4. **Trong test:** mint sẵn 10.000 Mock USDC vào Treasury ATA.
+5. **Không có USD thật:** đây chỉ là nguồn token demo để test luồng on-ramp.
 
-### 5.2 Freelancer tạo Invoice
+### 5.2 Demo mock on-ramp cấp USDC cho Client
+
+1. **Frontend tương lai:** gửi `usdAmount` và `clientWallet` cho backend; không
+   gửi USD vào backend.
+2. **Backend demo:** giả lập USD payment thành công, chọn `purchase_id` duy nhất
+   và ký `mock_onramp` bằng Mock On-ramp Authority.
+3. **Trên Solana:** program kiểm tra Config, authority, mint, hạn mức và treasury.
+4. **Trên Solana:** tạo Client ATA nếu cần, chuyển Mock USDC từ Treasury ATA và
+   tạo receipt trong cùng transaction.
+5. **Khi production:** thay bước giả lập bằng webhook đã xác minh và on-ramp
+   provider thật; không dùng instruction demo làm bằng chứng USD payment.
+
+### 5.3 Freelancer tạo Invoice
 
 1. **Frontend tương lai:** thu Client pubkey, invoice ID và amount; hiện test làm việc này.
 2. **Trên Solana:** Freelancer ký `create_invoice`.
 3. **Trên Solana:** program đọc accepted mint/paused từ Config.
 4. **Trên Solana:** tạo Invoice PDA `Pending`; chưa chuyển token.
 
-### 5.3 Client thanh toán Invoice
+### 5.4 Client thanh toán Invoice
 
 1. **Backend tương lai:** Client-Mock có thể được backend điều phối; hiện test ký trực tiếp.
 2. **Trên Solana:** Client ký `pay_invoice`.
@@ -387,7 +469,7 @@ Token Program sở hữu.
 4. **Trên Solana:** CPI `transfer_checked` chuyển đúng amount từ Client ATA sang Freelancer ATA.
 5. **Trên Solana:** chỉ sau CPI thành công, Invoice thành `Paid` và phát `InvoicePaid`.
 
-### 5.4 Công bố tỷ giá
+### 5.5 Công bố tỷ giá
 
 1. **Ngoài blockchain, chưa triển khai:** nguồn thật/Rate Collector lấy USDC/USD và USD/VND.
 2. **Trong test:** test cung cấp rate fixed-point và source hash.
@@ -395,7 +477,7 @@ Token Program sở hữu.
 4. **Trên Solana:** program kiểm tra thời gian/giới hạn và tự tính USDC/VND.
 5. **Trên Solana:** tạo RateSnapshot mới, không sửa snapshot cũ.
 
-### 5.5 Freelancer yêu cầu off-ramp
+### 5.6 Freelancer yêu cầu off-ramp
 
 1. **Frontend/backend tương lai:** chọn snapshot và token amount; hiện test làm trực tiếp.
 2. **Trên Solana:** Freelancer ký `request_offramp`.
@@ -405,14 +487,14 @@ Token Program sở hữu.
 6. **Trên Solana:** tạo WithdrawalRecord `Pending` và phát event.
 7. **Ngoài blockchain, chưa triển khai:** bên vận hành thực hiện/mô phỏng chuyển VNĐ.
 
-### 5.6 Oracle xác nhận off-ramp
+### 5.7 Oracle xác nhận off-ramp
 
 1. **Ngoài blockchain:** hệ thống vận hành xác định settlement đã hoàn tất; phần này chưa có backend.
 2. **Trên Solana:** Oracle ký `record_offramp`.
 3. **Trên Solana:** record thành `Completed`, ghi `completed_at` và phát event.
 4. **Trên Solana:** không chuyển token lần nữa.
 
-### 5.7 Đóng Invoice và hoàn rent
+### 5.8 Đóng Invoice và hoàn rent
 
 1. **Trên Solana:** Invoice phải `Paid` hoặc `Cancelled`.
 2. **Trên Solana:** đúng Freelancer ký `close_invoice`.
@@ -467,16 +549,19 @@ frontend không thể thay rate hoặc tự khai số VNĐ.
 | Đúng Freelancer cancel/close/request | `has_one`, seeds, `Signer` | Hủy/đóng/rút token trái phép | cancel/close signer tests; request thiếu chữ ký |
 | Đúng Rate Authority | `address=config.rate_authority`, `Signer` | Giá giả | hai signer tests trong rate spec |
 | Đúng Settlement Oracle | `address=config.oracle_authority`, `Signer` | Hoàn tất withdrawal giả | hai Oracle negative tests |
+| Đúng Mock On-ramp Authority | `address=config.mock_onramp_authority`, `Signer` | Cấp Mock USDC trái phép | wrong-authority on-ramp test |
 | Accepted mint | `address=config.accepted_mint`, Mint 6 decimals | Token giả/sai decimals | Config mint fixture; wrong mint payment/off-ramp |
 | ATA đúng owner và mint | `associated_token::authority/mint/token_program` | Chuyển sai nguồn/đích | Client/Freelancer/Treasury ATA tests |
 | Invoice status hợp lệ | so sánh enum trước pay/cancel/close | double pay, cancel paid, close pending | payment twice, cancel Paid/twice, close Pending |
 | Withdrawal chỉ complete một lần | `status == Pending` | settlement lặp | `rejects completing...twice` |
 | Không trùng PDA | `init` với deterministic seeds | ghi đè lịch sử | duplicate Invoice/Rate/Withdrawal tests |
+| Một purchase chỉ cấp một lần | receipt PDA deterministic + `init` | retry làm tăng balance hai lần | duplicate purchase on-ramp test |
 | Paused chặn nghiệp vụ | constraint trên Config | hoạt động khi khẩn cấp | create/pay/cancel/rate/request/record paused tests |
 | Checked arithmetic | `checked_mul`, `checked_div`, `try_from` | wrap số tiền | rate/fiat overflow tests |
 | Snapshot còn hạn | `current < expires_at` và max age | quote cũ | expired/stale snapshot tests |
 | Không double payment | Invoice phải Pending | trừ Client hai lần | `rejects paying the same invoice twice` |
 | Atomic rollback | Solana transaction atomic + assertions | PDA rác hoặc mất token | zero/insufficient off-ramp; payment balance assertions |
+| Treasury on-ramp do program kiểm soát | ATA authority là PDA, CPI ký bằng seeds | backend key trực tiếp giữ kho token | on-ramp happy path và insufficient treasury test |
 
 ## 8. Giải thích tests
 
@@ -580,7 +665,19 @@ frontend không thể thay rate hoặc tự khai số VNĐ.
 | Negative | hash/signer/transition sai | fail, record giữ `FailedPendingReview` |
 | Negative | Config paused | fail, status Pending và completed_at vẫn null |
 
-Tổng cộng: `6 + 6 + 10 + 5 + 4 + 10 + 12 + 7 = 60` test. Fixture
+### `tests/onramp/mock-onramp.spec.ts` — 7 tests
+
+| Loại | Test | Assertion chính |
+|---|---|---|
+| Happy | cấp 100 Mock USDC vào Client ATA mới | hai balance đổi đúng; receipt/event đủ field; supply không đổi |
+| Negative/idempotency | gọi lại cùng purchase ID | fail; Client không nhận token lần hai; receipt cũ giữ nguyên |
+| Negative | sai Mock On-ramp Authority | fail; không tạo ATA/receipt và treasury không đổi |
+| Negative | amount zero hoặc vượt hạn mức | cả hai fail; không chuyển token |
+| Negative | tính năng bị disable | fail; không tạo receipt và balance giữ nguyên |
+| Config/security | chỉ Admin cấu hình authority/hạn mức hợp lệ | fake Admin, default authority và limit zero đều fail |
+| Atomic rollback | treasury thiếu token | CPI fail; receipt và Client ATA vừa yêu cầu đều không tồn tại |
+
+Tổng cộng: `6 + 6 + 10 + 5 + 4 + 10 + 12 + 7 + 7 = 67` test. Fixture
 Config còn chủ động thử signer giả trước init hợp lệ để chứng minh chống
 front-run; assertion này chạy trong `before` dùng chung nên không tính thêm một
 Mocha test.
@@ -604,6 +701,7 @@ triển khai.
 | Rate fixture | Default Invoice rate từng trùng rate ID `1` của rate test | Fixture dùng chung namespace PDA | Đổi fixture rate ID sang `9_000_000` |
 | Program identity | `anchor build` cảnh báo deploy keypair `2Tx2...` khác source `Cwua...` | Artifact keypair hiện tại không thuộc Program ID đã khai báo | Chưa tự ý `anchor keys sync`; phải chốt canonical ID trước devnet rồi cập nhật source/config/docs cùng một lần |
 | CPI | Không có CPI bug ngoài ý muốn; insufficient funds được test chủ đích | Token Program từ chối nguồn thiếu balance | Chỉ đổi state sau CPI và kiểm tra rollback |
+| Thứ tự account validation | Test sai authority ban đầu fail vì signer giả không đủ SOL để Anchor tạo ATA | `init_if_needed` có thể chạy trước custom address constraint trong validation | Airdrop signer giả trong fixture và assert transaction vẫn bị từ chối bởi authority; không suy diễn error từ một constraint duy nhất |
 
 Node phát cảnh báo `MODULE_TYPELESS_PACKAGE_JSON`, nhưng đây không phải lỗi build,
 typecheck hoặc test và chưa được sửa vì không thuộc contract Solana.
@@ -612,19 +710,23 @@ typecheck hoặc test và chưa được sửa vì không thuộc contract Solan
 
 | Đường dẫn | Loại | Trách nhiệm/thay đổi chính | Liên quan |
 |---|---|---|---|
-| `src/lib.rs` | Sửa | Xuất 11 entrypoint | toàn bộ instruction |
-| `src/constants.rs` | Sửa | Withdrawal seed, fiat calculation scale | request off-ramp |
+| `src/lib.rs` | Sửa | Xuất 13 entrypoint | toàn bộ instruction |
+| `src/constants.rs` | Sửa | Withdrawal, rate và mock on-ramp PDA seeds/scales | toàn module |
 | `src/error.rs` | Sửa | Lỗi authority/state/rate/off-ramp; giữ mã cũ ổn định | toàn module |
-| `src/events.rs` | Sửa | Event cancel và off-ramp | cancel/request/record |
-| `src/instructions.rs` | Sửa | Đăng ký instruction module | 11 instruction |
-| `src/state.rs` | Sửa | Đăng ký WithdrawalRecord | off-ramp |
+| `src/events.rs` | Sửa | Event Invoice, rate, off-ramp và mock on-ramp | indexing/audit |
+| `src/instructions.rs` | Sửa | Đăng ký instruction module | 13 instruction |
+| `src/state.rs` | Sửa | Đăng ký WithdrawalRecord và MockOnrampReceipt | state registry |
+| `src/state/config.rs` | Sửa | Lưu authority, hạn mức và cờ mock on-ramp | cấu hình demo |
 | `src/instructions/cancel_invoice.rs` | Mới | Pending → Cancelled | Invoice |
 | `src/instructions/close_invoice.rs` | Mới | Close Paid/Cancelled, hoàn rent | Invoice |
 | `src/instructions/request_offramp.rs` | Mới | Rate validation, tính fiat, token CPI, tạo record | off-ramp |
 | `src/instructions/record_offramp.rs` | Mới | Oracle hoàn tất record | off-ramp |
 | `src/instructions/mark_offramp_failed.rs` | Mới | Oracle đưa failure vào review, lưu audit hash | off-ramp |
 | `src/instructions/resolve_offramp.rs` | Mới | Admin resolve review có audit | off-ramp |
+| `src/instructions/configure_mock_onramp.rs` | Mới | Admin cấu hình mock on-ramp | on-ramp demo |
+| `src/instructions/mock_onramp.rs` | Mới | Chuyển token từ PDA treasury và tạo receipt | on-ramp demo |
 | `src/state/withdrawal_record.rs` | Mới | WithdrawalStatus/WithdrawalRecord | off-ramp |
+| `src/state/mock_onramp_receipt.rs` | Mới | Receipt idempotent/audit cho mỗi purchase | on-ramp demo |
 | `tests/helpers/invoice.ts` | Mới | Invoice fixture/rejection helper | invoice tests |
 | `tests/helpers/rate.ts` | Mới | Rate fixture | off-ramp tests |
 | `tests/invoice/pay-invoice.spec.ts` | Sửa | Hoàn tất negative tests và atomic assertions | pay |
@@ -632,7 +734,10 @@ typecheck hoặc test và chưa được sửa vì không thuộc contract Solan
 | `tests/invoice/close-invoice.spec.ts` | Mới | 4 close/rent tests | close |
 | `tests/offramp/request-offramp.spec.ts` | Mới | 12 request tests | request |
 | `tests/offramp/record-offramp.spec.ts` | Sửa | 7 completion/failure/resolution tests | off-ramp lifecycle |
-| `docs/bao-cao-trien-khai-solana-module.md` | Sửa | Ghi Phase 10, 11 instruction, 60 test và safe-init runbook | tài liệu triển khai |
+| `tests/onramp/mock-onramp.spec.ts` | Mới | 7 test transfer, authority, limit, idempotency và rollback | on-ramp demo |
+| `tests/helpers/test-environment.ts` | Sửa | Cấu hình authority và nạp 10.000 Mock USDC vào PDA treasury | shared fixture |
+| `docs/bao-cao-trien-khai-solana-module.md` | Sửa | Ghi Phase 10, mock on-ramp, 13 instruction, 67 test | tài liệu triển khai |
+| `docs/dac-ta-api-gateway-solana-spring-boot.md` | Mới | Ánh xạ 21 REST/RPC endpoint, JSON contract và DTO Java | tích hợp Spring Boot |
 | `target/idl/invoice_payments.json`, `target/types/*` | Sinh lại | IDL/type mới từ `anchor build` | client contract |
 
 Các đường dẫn `src/...` trong bảng thuộc
@@ -654,26 +759,28 @@ Kết quả thực tế lần cuối:
 
 - Format check: exit code 0.
 - Anchor build: exit code 0.
-- IDL: đủ 11 instruction được liệt kê ở mục 3.
+- IDL: đủ 13 instruction được liệt kê ở mục 3.
 - TypeScript typecheck: exit code 0.
 - Anchor test với legacy validator/upgradable program: exit code 0,
-  **60 passing**.
+  **67 passing**.
 
 ## 12. Tiến độ và phần còn lại
 
 ### Đã hoàn thành
 
-- [x] 11 instruction on-chain.
-- [x] 4 PDA/state chính.
-- [x] Legacy SPL Token CPI cho payment và request off-ramp.
+- [x] 13 instruction on-chain.
+- [x] 5 PDA/state chính.
+- [x] Legacy SPL Token CPI cho payment, request off-ramp và mock on-ramp.
 - [x] Rate fixed-point và checked arithmetic.
 - [x] Invoice lifecycle: create, pay/cancel, close.
 - [x] Withdrawal lifecycle: request, completion, failed pending review và
   audited manual resolution.
 - [x] Invoice locked RateSnapshot/expiry và rotation-safe mint payment.
 - [x] Config initialization chỉ bởi program upgrade authority.
+- [x] Mock on-ramp demo từ PDA treasury, receipt idempotent và Client ATA
+  `init_if_needed`; không nhận USD thật.
 - [x] Authority, signer, mint, ATA, status, paused và rollback tests.
-- [x] IDL/types mới và 60 test local passing.
+- [x] IDL/types mới và 67 test local passing.
 
 ### Đang dở
 

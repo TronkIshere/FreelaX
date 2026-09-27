@@ -1,5 +1,9 @@
 import * as anchor from "@anchor-lang/core";
 import { Keypair, PublicKey, SystemProgram } from "@solana/web3.js";
+import {
+  getOrCreateAssociatedTokenAccount,
+  mintTo,
+} from "@solana/spl-token";
 
 import type { InvoicePayments } from "../../target/types/invoice_payments";
 import {
@@ -24,6 +28,10 @@ export interface TestEnvironment {
   rateAuthority: Keypair;
   oracleAuthority: Keypair;
   maxRateAgeSeconds: anchor.BN;
+  mockOnrampAuthority: Keypair;
+  mockOnrampTreasuryAuthority: PublicKey;
+  mockOnrampTreasuryAta: PublicKey;
+  maxMockOnrampAmount: anchor.BN;
   defaultRateSnapshot: PublicKey;
   defaultRateExpiresAt: anchor.BN;
 }
@@ -67,6 +75,7 @@ async function createTestEnvironment(): Promise<TestEnvironment> {
   const treasuryAuthority = Keypair.generate();
   const rateAuthority = Keypair.generate();
   const oracleAuthority = Keypair.generate();
+  const mockOnrampAuthority = Keypair.generate();
   const maxRateAgeSeconds = new anchor.BN(300);
   const [programData] = PublicKey.findProgramAddressSync(
     [program.programId.toBuffer()],
@@ -125,6 +134,46 @@ async function createTestEnvironment(): Promise<TestEnvironment> {
     })
     .rpc();
 
+  const maxMockOnrampAmount = new anchor.BN(20_000_000_000);
+  await program.methods
+    .configureMockOnramp(
+      mockOnrampAuthority.publicKey,
+      maxMockOnrampAmount,
+      true,
+    )
+    .accountsStrict({
+      admin: payer.publicKey,
+      config: configPda,
+    })
+    .rpc();
+
+  const [mockOnrampTreasuryAuthority] = PublicKey.findProgramAddressSync(
+    [Buffer.from("mock_onramp_treasury")],
+    program.programId,
+  );
+  const mockOnrampTreasuryAta = (
+    await getOrCreateAssociatedTokenAccount(
+      provider.connection,
+      payer,
+      mockUsdc.mint,
+      mockOnrampTreasuryAuthority,
+      true,
+    )
+  ).address;
+  await mintTo(
+    provider.connection,
+    payer,
+    mockUsdc.mint,
+    mockOnrampTreasuryAta,
+    mockUsdc.mintAuthority,
+    10_000_000_000n,
+  );
+  const mockOnrampAirdrop = await provider.connection.requestAirdrop(
+    mockOnrampAuthority.publicKey,
+    anchor.web3.LAMPORTS_PER_SOL,
+  );
+  await provider.connection.confirmTransaction(mockOnrampAirdrop, "confirmed");
+
   const environment: TestEnvironment = {
     provider,
     program,
@@ -137,6 +186,10 @@ async function createTestEnvironment(): Promise<TestEnvironment> {
     rateAuthority,
     oracleAuthority,
     maxRateAgeSeconds,
+    mockOnrampAuthority,
+    mockOnrampTreasuryAuthority,
+    mockOnrampTreasuryAta,
+    maxMockOnrampAmount,
     defaultRateSnapshot: PublicKey.default,
     defaultRateExpiresAt: new anchor.BN(0),
   };
