@@ -9,6 +9,7 @@ test-ledger/
 docs/*
 !docs/dac-ta-api-gateway-solana-spring-boot.md
 !docs/huong-dan-tich-hop-solana-api-gateway-backend.md
+!docs/checklist-sua-loi-tich-hop-marketplace-solana-mvp.md
 coverage/
 .env
 .env.*
