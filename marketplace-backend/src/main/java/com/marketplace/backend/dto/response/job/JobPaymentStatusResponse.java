@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.experimental.FieldDefaults;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 @Getter
@@ -15,4 +16,7 @@ public class JobPaymentStatusResponse {
     UUID checkoutOrderId;
     String checkoutOrderStatus;
     String taxExportStatus;
+    BigDecimal taxableAmountVnd;
+    BigDecimal amountVndActual;
+    String onRampTransactionSignature;
 }

@@ -4,7 +4,11 @@ import java.math.BigDecimal;
 
 public record OnRampResult(
         BigDecimal amountUsdSource,
-        BigDecimal amountUsdcGross,
-        BigDecimal feeUsdc,
-        BigDecimal amountUsdcNet
+        BigDecimal feeUsd,
+        BigDecimal amountUsdNet,
+        BigDecimal amountUsdcReceived,
+        String purchaseId,
+        String transactionSignature,
+        String clientUsdcAta,
+        String receiptPda
 ) {}

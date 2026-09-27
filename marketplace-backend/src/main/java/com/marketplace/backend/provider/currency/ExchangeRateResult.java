@@ -1,15 +1,12 @@
 package com.marketplace.backend.provider.currency;
 
+import com.marketplace.backend.entity.ExchangeRateSource;
+
 import java.math.BigDecimal;
 import java.time.Instant;
 
 public record ExchangeRateResult(
         BigDecimal rate,
-        RateSource source,
+        ExchangeRateSource source,
         Instant fetchedAt
-) {
-    public enum RateSource {
-        LIVE_COINGECKO,
-        FALLBACK_PLACEHOLDER
-    }
-}
+) {}

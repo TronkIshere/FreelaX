@@ -71,15 +71,17 @@ public class MisaBackendClient {
     }
 
     public MisaPayoutTransactionResult recordPayoutTransaction(UUID taxpayerId, UUID payoutReference,
-                                                               BigDecimal amountUsdc, BigDecimal exchangeRate) {
+                                                               BigDecimal amountUsd, BigDecimal usdToVndRate,
+                                                               String transactionHash, String blockchain) {
         Map<String, Object> body = Map.of(
                 "platformPayoutId", payoutReference.toString(),
-                "transactionHash", "internal:" + payoutReference,
-                "blockchain", "internal",
-                "amountUsdc", amountUsdc,
-                "exchangeRate", exchangeRate,
+                "transactionHash", transactionHash,
+                "blockchain", blockchain,
+                "amountUsdc", amountUsd,
+                "exchangeRate", usdToVndRate,
                 "paymentDate", LocalDate.now(),
-                "description", "Ghi nhan thu nhap cho job marketplace, jobId=" + payoutReference
+                "description", "Ghi nhan thu nhap cho job marketplace (quy doi tu USD goc theo ty gia USD/VND), jobId="
+                        + payoutReference
         );
 
         ResponseEntity<MisaPayoutTransactionResult> response = restTemplate.exchange(

@@ -1,7 +1,5 @@
 package com.marketplace.backend.entity;
 
-// Da xac nhan qua Notification.java (uploaded): AbstractEntity<UUID> cung
-// cap san id/createdAt/updatedAt.
 import com.marketplace.backend.entity.common.AbstractEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -22,7 +20,7 @@ import java.util.UUID;
 @Table(name = "freelancer_payout_records")
 public class FreelancerPayoutRecord extends AbstractEntity<UUID> {
 
-    @Column(nullable = false)
+    @Column(nullable = false, unique = true)
     private UUID jobId;
 
     @Column(nullable = false)
@@ -31,51 +29,60 @@ public class FreelancerPayoutRecord extends AbstractEntity<UUID> {
     @Column(nullable = false)
     private UUID clientUserId;
 
-    // ----- USD -> USDC (on-ramp) -----
-
-    /** So tien goc cua job (ngan sach USD), truoc khi quy doi. */
     @Column(nullable = false, precision = 20, scale = 6)
     private BigDecimal amountUsd;
 
-    /** Quy doi peg 1:1, CHUA tru phi on-ramp -- dung lam co so khai thue. */
     @Column(nullable = false, precision = 20, scale = 6)
-    private BigDecimal amountUsdcGross;
+    private BigDecimal onRampFeeUsd;
 
     @Column(nullable = false, precision = 20, scale = 6)
-    private BigDecimal onRampFeeUsdc;
+    private BigDecimal amountUsdNet;
 
-    /** amountUsdcGross - onRampFeeUsdc -- so thuc di tiep sang off-ramp. */
     @Column(nullable = false, precision = 20, scale = 6)
-    private BigDecimal amountUsdcNet;
+    private BigDecimal amountUsdcReceived;
 
-    // ----- USDC -> VND (off-ramp) -----
+    @Column(nullable = false, length = 20)
+    private String onRampPurchaseId;
+
+    @Column(nullable = false, length = 128)
+    private String onRampTransactionSignature;
+
+    @Column(length = 64)
+    private String onRampClientUsdcAta;
+
+    @Column(length = 64)
+    private String onRampReceiptPda;
 
     @Column(nullable = false, precision = 20, scale = 2)
-    private BigDecimal exchangeRateUsed;
+    private BigDecimal usdcToVndRate;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 32)
-    private RateSource rateSource;
+    private ExchangeRateSource usdcToVndRateSource;
 
-    /** = amountUsdcGross * exchangeRateUsed -- so gui bao cao thue (Misa). */
     @Column(nullable = false, precision = 20, scale = 0)
-    private BigDecimal amountVndGross;
+    private BigDecimal amountVndBeforeOffRampFee;
 
     @Column(nullable = false, precision = 20, scale = 0)
     private BigDecimal offRampFeeVnd;
 
-    /** So tien freelancer THUC SU nhan duoc (sau tat ca cac buoc/phi). */
     @Column(nullable = false, precision = 20, scale = 0)
     private BigDecimal amountVndActual;
 
-    // ----- Lien ket tham chieu sang misa-backend -----
+    @Column(length = 64)
+    private String offRampReference;
+
+    @Column(nullable = false, precision = 20, scale = 2)
+    private BigDecimal taxUsdToVndRate;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 32)
+    private ExchangeRateSource taxRateSource;
+
+    @Column(nullable = false, precision = 20, scale = 0)
+    private BigDecimal taxableAmountVnd;
 
     private UUID misaPayoutTransactionId;
 
     private UUID misaCertificateId;
-
-    public enum RateSource {
-        LIVE_COINGECKO,
-        FALLBACK_PLACEHOLDER
-    }
 }

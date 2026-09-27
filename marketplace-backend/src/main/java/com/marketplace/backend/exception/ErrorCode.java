@@ -41,6 +41,10 @@ public enum ErrorCode {
 
     MISA_BACKEND_CALL_FAILED(5000, "Gọi misa-backend thất bại: %s", HttpStatus.BAD_GATEWAY),
 
+    SOLANA_CPR_CALL_FAILED(5100, "Gọi solana-cpr thất bại: %s", HttpStatus.BAD_GATEWAY),
+    SOLANA_ONRAMP_NOT_CONFIRMED(5101, "Giao dịch on-ramp trên Solana chưa được xác nhận: %s", HttpStatus.BAD_GATEWAY),
+    SOLANA_CPR_NOT_CONFIGURED(5102, "Chưa cấu hình solana-cpr: %s", HttpStatus.INTERNAL_SERVER_ERROR),
+
     INTERNAL_ERROR(9999, "Đã có lỗi xảy ra, vui lòng thử lại sau", HttpStatus.INTERNAL_SERVER_ERROR),
     ACCOUNT_NOT_FOUND(9997, "Không tìm thấy tài khoản", HttpStatus.NOT_FOUND);
 

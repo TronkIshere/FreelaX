@@ -42,6 +42,11 @@ misa-backend:
   platform-account-email: platform@marketplace.local
   platform-account-password: MisaPlatform@2026
 
+solana-cpr:
+  base-url: ${SOLANA_CPR_BASE_URL:http://localhost:9193}
+  internal-api-key: ${SOLANA_CPR_INTERNAL_API_KEY:}
+  custodial-client-public-key: ${SOLANA_CPR_CUSTODIAL_CLIENT_PUBLIC_KEY:}
+
 internal:
   api:
     key: ${INTERNAL_API_KEY:}
@@ -62,6 +67,7 @@ logging:
     com.marketplace.backend: INFO
 
 exchange-rate:
+  fallback-usd-vnd-rate: 25000
   fallback-usdc-vnd-rate: 25000
   cache-ttl-seconds: 60
 
