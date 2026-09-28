@@ -3,7 +3,6 @@ package com.marketplace.backend.client;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.marketplace.backend.dto.response.misa.MisaCertificateResult;
 import com.marketplace.backend.dto.response.misa.MisaCertificateStatusResult;
 import com.marketplace.backend.dto.response.misa.MisaPayoutTransactionResult;
 import com.marketplace.backend.exception.ApplicationException;
@@ -120,18 +119,19 @@ public class MisaBackendClient {
         return response.getBody();
     }
 
-    public MisaCertificateResult createWithholdingCertificate(UUID payoutTransactionId) {
+    public MisaCertificateStatusResult createWithholdingCertificate(UUID payoutTransactionId) {
         Map<String, Object> body = Map.of("payoutTransactionId", payoutTransactionId.toString());
 
-        ResponseEntity<MisaCertificateResult> response = restTemplate.exchange(
+        ResponseEntity<JsonNode> response = restTemplate.exchange(
                 baseUrl + "/api/v1/withholding-certificates",
                 HttpMethod.POST, new HttpEntity<>(body, authorizedJsonHeaders()),
-                MisaCertificateResult.class);
+                JsonNode.class);
 
-        if (response.getBody() == null) {
-            throw new ApplicationException(ErrorCode.MISA_BACKEND_CALL_FAILED, "create-certificate: empty body");
+        MisaCertificateStatusResult result = toCertificateStatus(response.getBody(), "create-certificate");
+        if (result.getId() == null) {
+            throw new ApplicationException(ErrorCode.MISA_BACKEND_CALL_FAILED, "create-certificate: missing id");
         }
-        return response.getBody();
+        return result;
     }
 
     public MisaCertificateStatusResult getCertificateStatus(UUID certificateId) {
@@ -177,11 +177,29 @@ public class MisaBackendClient {
             result.setStatus(node.asText());
             return result;
         }
+        MisaCertificateStatusResult result;
         try {
-            return objectMapper.treeToValue(node, MisaCertificateStatusResult.class);
+            result = objectMapper.treeToValue(node, MisaCertificateStatusResult.class);
         } catch (JsonProcessingException e) {
             throw new ApplicationException(ErrorCode.MISA_BACKEND_CALL_FAILED, operation + ": khong doc duoc response");
         }
+
+        JsonNode form = node.path("form");
+        if (result.getSymbol() == null && form.hasNonNull("symbol")) {
+            result.setSymbol(form.get("symbol").asText());
+        }
+        if (result.getCertificateNumber() == null && form.hasNonNull("number")) {
+            result.setCertificateNumber(form.get("number").asText());
+        }
+
+        JsonNode income = node.path("income");
+        if (result.getTaxWithheld() == null && income.hasNonNull("taxWithheld")) {
+            result.setTaxWithheld(income.get("taxWithheld").decimalValue());
+        }
+        if (result.getTaxableIncome() == null && income.hasNonNull("taxableIncome")) {
+            result.setTaxableIncome(income.get("taxableIncome").decimalValue());
+        }
+        return result;
     }
 
     public byte[] getCertificatePdf(UUID certificateId) {

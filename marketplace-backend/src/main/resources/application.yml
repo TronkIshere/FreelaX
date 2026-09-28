@@ -102,3 +102,11 @@ onramp:
 
 offramp:
   fee-rate: 0.003   # 0.3% phí giả lập off-ramp (USDC -> VND)
+
+certificate-pdf:
+  payer-name: CÔNG TY CỔ PHẦN FREELAX VIỆT NAM
+  payer-tax-code: "0109876543"
+  payer-address: Tầng 8, 22 Láng Hạ, Đống Đa, Hà Nội
+  payer-phone: 024 3456 7890
+  income-type: Thu nhập từ tiền lương, tiền công
+  lookup-url: http://localhost:9192/api/v1/withholding-certificates/lookup/{code}

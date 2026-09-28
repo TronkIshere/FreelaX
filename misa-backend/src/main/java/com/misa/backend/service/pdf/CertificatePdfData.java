@@ -1,0 +1,43 @@
+package com.misa.backend.service.pdf;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
+public record CertificatePdfData(
+        String formNumber,
+        String symbol,
+        String certificateNumber,
+        String status,
+        String lookupCode,
+        String payerName,
+        String payerTaxCode,
+        String payerAddress,
+        String payerPhone,
+        String taxpayerFullName,
+        String taxpayerTaxCode,
+        String taxpayerIdentityNumber,
+        String taxpayerNationality,
+        String taxpayerAddress,
+        String taxpayerPhone,
+        String incomeType,
+        LocalDate paymentDate,
+        BigDecimal taxableIncome,
+        BigDecimal mandatoryInsurance,
+        BigDecimal charityContribution,
+        BigDecimal taxWithheld,
+        String currency,
+        BigDecimal sourceAmount,
+        BigDecimal exchangeRate,
+        String platformPayoutId,
+        String transactionHash,
+        String blockchain,
+        String description,
+        LocalDateTime createdAt,
+        LocalDateTime issuedAt,
+        String digitalCertificateSerial,
+        LocalDateTime submittedAt,
+        String taxAuthorityReference,
+        LocalDateTime cancelledAt,
+        String cancelReason
+) {}
