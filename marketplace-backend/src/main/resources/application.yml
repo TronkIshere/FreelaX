@@ -41,6 +41,16 @@ misa-backend:
   base-url: ${MISA_BACKEND_BASE_URL:http://localhost:9192}
   platform-account-email: platform@marketplace.local
   platform-account-password: MisaPlatform@2026
+  certificate:
+    auto-issue: ${MISA_CERTIFICATE_AUTO_ISSUE:false}
+    auto-submit: ${MISA_CERTIFICATE_AUTO_SUBMIT:false}
+    digital-certificate-serial: ${MISA_DIGITAL_CERTIFICATE_SERIAL:CERT-ABC-2026}
+    signature-mode: DIGITAL_SIGNATURE
+    submission-mode: ELECTRONIC
+
+tax-certificate:
+  sync-initial-delay-ms: 60000
+  sync-interval-ms: 300000
 
 solana-cpr:
   base-url: ${SOLANA_CPR_BASE_URL:http://localhost:9193}

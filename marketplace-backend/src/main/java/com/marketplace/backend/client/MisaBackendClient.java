@@ -1,6 +1,10 @@
 package com.marketplace.backend.client;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.marketplace.backend.dto.response.misa.MisaCertificateResult;
+import com.marketplace.backend.dto.response.misa.MisaCertificateStatusResult;
 import com.marketplace.backend.dto.response.misa.MisaPayoutTransactionResult;
 import com.marketplace.backend.exception.ApplicationException;
 import com.marketplace.backend.exception.ErrorCode;
@@ -31,10 +35,13 @@ public class MisaBackendClient {
     private static final Locale VI_LOCALE = Locale.forLanguageTag("vi-VN");
 
     private final RestTemplate restTemplate;
+    private final ObjectMapper objectMapper;
 
     public MisaBackendClient(RestTemplateBuilder restTemplateBuilder,
+                             ObjectMapper objectMapper,
                              @Value("${http-client.connect-timeout-ms:3000}") int connectTimeoutMs,
                              @Value("${http-client.read-timeout-ms:10000}") int readTimeoutMs) {
+        this.objectMapper = objectMapper;
         this.restTemplate = restTemplateBuilder
                 .requestFactory(() -> {
                     SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
@@ -127,6 +134,56 @@ public class MisaBackendClient {
         return response.getBody();
     }
 
+    public MisaCertificateStatusResult getCertificateStatus(UUID certificateId) {
+        ResponseEntity<JsonNode> response = restTemplate.exchange(
+                baseUrl + "/api/v1/withholding-certificates/" + certificateId + "/status",
+                HttpMethod.GET, new HttpEntity<>(authorizedJsonHeaders()),
+                JsonNode.class);
+        return toCertificateStatus(response.getBody(), "get-certificate-status");
+    }
+
+    public MisaCertificateStatusResult issueCertificate(UUID certificateId, String digitalCertificateSerial,
+                                                        String signatureMode) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("digitalCertificateSerial", digitalCertificateSerial);
+        body.put("signatureMode", signatureMode);
+
+        ResponseEntity<JsonNode> response = restTemplate.exchange(
+                baseUrl + "/api/v1/withholding-certificates/" + certificateId + "/issue",
+                HttpMethod.POST, new HttpEntity<>(body, authorizedJsonHeaders()),
+                JsonNode.class);
+        return toCertificateStatus(response.getBody(), "issue-certificate");
+    }
+
+    public MisaCertificateStatusResult submitCertificate(UUID certificateId, String submissionMode, String idempotencyKey) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("submissionMode", submissionMode);
+        body.put("idempotencyKey", idempotencyKey);
+
+        ResponseEntity<JsonNode> response = restTemplate.exchange(
+                baseUrl + "/api/v1/withholding-certificates/" + certificateId + "/submit",
+                HttpMethod.POST, new HttpEntity<>(body, authorizedJsonHeaders()),
+                JsonNode.class);
+        return toCertificateStatus(response.getBody(), "submit-certificate");
+    }
+
+    private MisaCertificateStatusResult toCertificateStatus(JsonNode body, String operation) {
+        if (body == null || body.isNull() || body.isMissingNode()) {
+            return new MisaCertificateStatusResult();
+        }
+        JsonNode node = body.has("data") && body.get("data").isObject() ? body.get("data") : body;
+        if (node.isTextual()) {
+            MisaCertificateStatusResult result = new MisaCertificateStatusResult();
+            result.setStatus(node.asText());
+            return result;
+        }
+        try {
+            return objectMapper.treeToValue(node, MisaCertificateStatusResult.class);
+        } catch (JsonProcessingException e) {
+            throw new ApplicationException(ErrorCode.MISA_BACKEND_CALL_FAILED, operation + ": khong doc duoc response");
+        }
+    }
+
     public byte[] getCertificatePdf(UUID certificateId) {
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(getOrRefreshAccessToken());
@@ -145,6 +202,21 @@ public class MisaBackendClient {
     private String formatRate(BigDecimal rate) {
         DecimalFormat format = new DecimalFormat("#,##0.##", DecimalFormatSymbols.getInstance(VI_LOCALE));
         return format.format(rate);
+    }
+
+    public byte[] getCertificateXml(UUID certificateId) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(getOrRefreshAccessToken());
+
+        ResponseEntity<byte[]> response = restTemplate.exchange(
+                baseUrl + "/api/v1/withholding-certificates/" + certificateId + "/xml",
+                HttpMethod.GET, new HttpEntity<>(headers),
+                byte[].class);
+
+        if (response.getBody() == null) {
+            throw new ApplicationException(ErrorCode.MISA_BACKEND_CALL_FAILED, "get-certificate-xml: empty body");
+        }
+        return response.getBody();
     }
 
     private HttpHeaders authorizedJsonHeaders() {

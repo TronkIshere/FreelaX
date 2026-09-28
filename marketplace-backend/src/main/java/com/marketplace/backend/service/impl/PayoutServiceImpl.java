@@ -1,17 +1,12 @@
 package com.marketplace.backend.service.impl;
 
-import com.marketplace.backend.client.MisaBackendClient;
 import com.marketplace.backend.configuration.SolanaCprProperties;
-import com.marketplace.backend.dto.response.misa.MisaCertificateResult;
-import com.marketplace.backend.dto.response.misa.MisaPayoutTransactionResult;
 import com.marketplace.backend.entity.ExchangeRateSource;
 import com.marketplace.backend.entity.FreelancerPayoutRecord;
 import com.marketplace.backend.entity.Job;
 import com.marketplace.backend.entity.NotificationType;
 import com.marketplace.backend.entity.OffRampStatus;
 import com.marketplace.backend.entity.OnRampStatus;
-import com.marketplace.backend.entity.TaxExportStatus;
-import com.marketplace.backend.entity.User;
 import com.marketplace.backend.entity.Wallet;
 import com.marketplace.backend.exception.ApplicationException;
 import com.marketplace.backend.exception.ErrorCode;
@@ -24,10 +19,10 @@ import com.marketplace.backend.provider.currency.OnRampQuote;
 import com.marketplace.backend.provider.currency.OnRampResult;
 import com.marketplace.backend.repository.FreelancerPayoutRecordRepository;
 import com.marketplace.backend.repository.JobRepository;
-import com.marketplace.backend.repository.UserRepository;
 import com.marketplace.backend.repository.WalletRepository;
 import com.marketplace.backend.service.NotificationService;
 import com.marketplace.backend.service.PayoutService;
+import com.marketplace.backend.service.TaxCertificateService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -50,17 +45,15 @@ import java.util.UUID;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class PayoutServiceImpl implements PayoutService {
 
-    private static final String TAX_RECORD_BLOCKCHAIN = "solana";
     private static final Locale VI_LOCALE = Locale.forLanguageTag("vi-VN");
 
-    UserRepository userRepository;
     JobRepository jobRepository;
     WalletRepository walletRepository;
     FreelancerPayoutRecordRepository freelancerPayoutRecordRepository;
     OnRampProvider onRampProvider;
     OffRampProvider offRampProvider;
     ExchangeRateProvider exchangeRateProvider;
-    MisaBackendClient misaBackendClient;
+    TaxCertificateService taxCertificateService;
     NotificationService notificationService;
     SolanaCprProperties solanaCprProperties;
 
@@ -266,55 +259,7 @@ public class PayoutServiceImpl implements PayoutService {
 
     private void exportTaxIfMissing(Job job, FreelancerPayoutRecord payoutRecord) {
         if (job.getMisaCertificateId() == null) {
-            exportTaxRecordSafely(job, payoutRecord);
-        }
-    }
-
-    private void exportTaxRecordSafely(Job job, FreelancerPayoutRecord payoutRecord) {
-        try {
-            User freelancer = userRepository.findById(payoutRecord.getFreelancerId())
-                    .orElseThrow(() -> new ApplicationException(ErrorCode.FREELANCER_NOT_FOUND, payoutRecord.getFreelancerId()));
-
-            UUID taxpayerId = misaBackendClient.registerTaxpayerForExternal(
-                    freelancer.getId(),
-                    freelancer.getDisplayName(),
-                    freelancer.getTaxCode(),
-                    freelancer.getIdentityNumber(),
-                    freelancer.getNationality(),
-                    freelancer.getTaxAddress()
-            );
-
-            MisaPayoutTransactionResult payoutTx = misaBackendClient.recordPayoutTransaction(
-                    taxpayerId,
-                    job.getId(),
-                    payoutRecord.getAmountUsd(),
-                    payoutRecord.getTaxUsdToVndRate(),
-                    onChainReference(payoutRecord),
-                    TAX_RECORD_BLOCKCHAIN);
-
-            MisaCertificateResult certificate = misaBackendClient.createWithholdingCertificate(payoutTx.getId());
-
-            payoutRecord.setMisaPayoutTransactionId(payoutTx.getId());
-            payoutRecord.setMisaCertificateId(certificate.getId());
-            freelancerPayoutRecordRepository.save(payoutRecord);
-
-            job.setMisaPayoutTransactionId(payoutTx.getId());
-            job.setMisaCertificateId(certificate.getId());
-            job.setTaxExportStatus(TaxExportStatus.SUCCESS);
-            jobRepository.save(job);
-
-        } catch (Exception e) {
-            job.setTaxExportStatus(TaxExportStatus.FAILED);
-            jobRepository.save(job);
-            log.error("Xuat chung tu MISA that bai cho job {}: {}", job.getId(), e.getMessage(), e);
-
-            notificationService.notify(
-                    payoutRecord.getFreelancerId(),
-                    NotificationType.TAX_EXPORT_FAILED,
-                    "Xuất chứng từ thất bại",
-                    "Công việc \"" + job.getTitle() + "\" đã hoàn tất nhưng xuất chứng từ thuế thất bại, "
-                            + "hệ thống sẽ cần xử lý lại thủ công.",
-                    job.getId());
+            taxCertificateService.exportForPayout(job, payoutRecord, onChainReference(payoutRecord));
         }
     }
 
