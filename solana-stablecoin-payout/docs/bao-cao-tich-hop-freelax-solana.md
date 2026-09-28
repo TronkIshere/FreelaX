@@ -1,5 +1,11 @@
 # Báo cáo đánh giá tích hợp FreelaX với Solana Stablecoin Payout
 
+> **Cập nhật 28/09/2026:** phân tích riêng ba commit mới nhất của `master`
+> (`3352168`, `7e73cee`, `26c44d3`) được ghi tại
+> [bao-cao-3-commit-moi-nhat-master-2026-09-28.md](./bao-cao-3-commit-moi-nhat-master-2026-09-28.md).
+> Các phần bên dưới là baseline ngày 27/09/2026 tại `557dc90` và cần được đọc
+> cùng bản cập nhật mới, không còn đại diện đầy đủ cho HEAD hiện tại.
+
 Ngày cập nhật: 27/09/2026
 
 Nguồn FreelaX: `https://github.com/TronkIshere/FreelaX`

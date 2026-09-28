@@ -2,6 +2,7 @@ package com.marketplace.backend.service.impl;
 
 import com.marketplace.backend.configuration.SolanaCprProperties;
 import com.marketplace.backend.entity.ExchangeRateSource;
+import com.marketplace.backend.entity.ClientPaymentStatus;
 import com.marketplace.backend.entity.FreelancerPayoutRecord;
 import com.marketplace.backend.entity.Job;
 import com.marketplace.backend.entity.NotificationType;
@@ -21,6 +22,7 @@ import com.marketplace.backend.repository.FreelancerPayoutRecordRepository;
 import com.marketplace.backend.repository.JobRepository;
 import com.marketplace.backend.repository.WalletRepository;
 import com.marketplace.backend.service.NotificationService;
+import com.marketplace.backend.service.ClientPaymentService;
 import com.marketplace.backend.service.PayoutService;
 import com.marketplace.backend.service.TaxCertificateService;
 import lombok.AccessLevel;
@@ -35,6 +37,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -54,6 +57,7 @@ public class PayoutServiceImpl implements PayoutService {
     OffRampProvider offRampProvider;
     ExchangeRateProvider exchangeRateProvider;
     TaxCertificateService taxCertificateService;
+    ClientPaymentService clientPaymentService;
     NotificationService notificationService;
     SolanaCprProperties solanaCprProperties;
 
@@ -79,6 +83,14 @@ public class PayoutServiceImpl implements PayoutService {
                     "Client " + job.getClientUserId() + " chua co wallet va chua cau hinh solana-cpr.custodial-client-public-key"));
             return;
         }
+        if (!StringUtils.hasText(payoutRecord.getFreelancerPublicKey())) {
+            payoutRecord.setClientPaymentStatus(ClientPaymentStatus.FAILED);
+            payoutRecord.setClientPaymentError("Freelancer " + job.getFreelancerId() + " chua co wallet Solana");
+            freelancerPayoutRecordRepository.save(payoutRecord);
+            notifyPayoutFailed(job);
+            exportTaxIfMissing(job, payoutRecord);
+            return;
+        }
 
         runOnRamp(payoutRecord, job);
     }
@@ -93,6 +105,10 @@ public class PayoutServiceImpl implements PayoutService {
         Job job = jobRepository.findById(payoutRecord.getJobId()).orElse(null);
         if (job == null) {
             return;
+        }
+        if (payoutRecord.getClientPaymentStatus() == null) {
+            payoutRecord.setClientPaymentStatus(ClientPaymentStatus.NOT_STARTED);
+            freelancerPayoutRecordRepository.save(payoutRecord);
         }
 
         switch (payoutRecord.getOnRampStatus()) {
@@ -113,8 +129,11 @@ public class PayoutServiceImpl implements PayoutService {
                     payoutRecord.getOnRampReceiptPda(),
                     payoutRecord.getOnRampSubmittedAt()));
             case CONFIRMED -> {
-                if (payoutRecord.getOffRampStatus() == OffRampStatus.NOT_STARTED) {
+                if (payoutRecord.getClientPaymentStatus() == ClientPaymentStatus.CONFIRMED
+                        && payoutRecord.getOffRampStatus() == OffRampStatus.NOT_STARTED) {
                     completePayout(payoutRecord, job);
+                } else if (payoutRecord.getClientPaymentStatus() != ClientPaymentStatus.FAILED) {
+                    advanceClientPayment(payoutRecord, job);
                 }
             }
             default -> {
@@ -125,14 +144,17 @@ public class PayoutServiceImpl implements PayoutService {
     @Override
     @Transactional(readOnly = true)
     public List<UUID> findRecordIdsToReconcile() {
-        List<UUID> ids = new ArrayList<>();
+        LinkedHashSet<UUID> ids = new LinkedHashSet<>();
         freelancerPayoutRecordRepository
                 .findByOnRampStatusIn(List.of(OnRampStatus.NOT_STARTED, OnRampStatus.SUBMITTED))
                 .forEach(r -> ids.add(r.getId()));
-        freelancerPayoutRecordRepository
-                .findByOnRampStatusAndOffRampStatus(OnRampStatus.CONFIRMED, OffRampStatus.NOT_STARTED)
+        freelancerPayoutRecordRepository.findByOnRampStatus(OnRampStatus.CONFIRMED).stream()
+                .filter(r -> r.getClientPaymentStatus() == null
+                        || (r.getClientPaymentStatus() != ClientPaymentStatus.FAILED
+                        && (r.getClientPaymentStatus() != ClientPaymentStatus.CONFIRMED
+                        || r.getOffRampStatus() == OffRampStatus.NOT_STARTED)))
                 .forEach(r -> ids.add(r.getId()));
-        return ids;
+        return new ArrayList<>(ids);
     }
 
     private FreelancerPayoutRecord createRecord(Job job) {
@@ -164,6 +186,7 @@ public class PayoutServiceImpl implements PayoutService {
         payoutRecord.setOnRampUsdAmountE6(quote.usdAmountE6());
         payoutRecord.setOnRampPurchaseId(quote.purchaseId());
         payoutRecord.setOnRampClientPublicKey(recipientPublicKey);
+        payoutRecord.setFreelancerPublicKey(resolveWalletPublicKey(job.getFreelancerId()));
         payoutRecord.setOnRampNetwork(onRampProvider.network());
         payoutRecord.setOnRampStatus(OnRampStatus.NOT_STARTED);
         payoutRecord.setOffRampStatus(OffRampStatus.NOT_STARTED);
@@ -182,6 +205,13 @@ public class PayoutServiceImpl implements PayoutService {
                 .orElseGet(() -> StringUtils.hasText(solanaCprProperties.getCustodialClientPublicKey())
                         ? solanaCprProperties.getCustodialClientPublicKey()
                         : null);
+    }
+
+    private String resolveWalletPublicKey(UUID userId) {
+        return walletRepository.findFirstByUserIdOrderByIdAsc(userId)
+                .map(Wallet::getPublicKey)
+                .filter(StringUtils::hasText)
+                .orElse(null);
     }
 
     private void runOnRamp(FreelancerPayoutRecord payoutRecord, Job job) {
@@ -216,7 +246,7 @@ public class PayoutServiceImpl implements PayoutService {
         freelancerPayoutRecordRepository.save(payoutRecord);
 
         switch (result.status()) {
-            case CONFIRMED -> completePayout(payoutRecord, job);
+            case CONFIRMED -> advanceClientPayment(payoutRecord, job);
             case FAILED -> {
                 log.error("Mock on-ramp that bai cho job {}: {}", job.getId(), result.error());
                 notifyPayoutFailed(job);
@@ -257,6 +287,14 @@ public class PayoutServiceImpl implements PayoutService {
         exportTaxIfMissing(job, payoutRecord);
     }
 
+    private void advanceClientPayment(FreelancerPayoutRecord payoutRecord, Job job) {
+        clientPaymentService.advance(payoutRecord);
+        if (payoutRecord.getClientPaymentStatus() == ClientPaymentStatus.FAILED) {
+            notifyPayoutFailed(job);
+            exportTaxIfMissing(job, payoutRecord);
+        }
+    }
+
     private void exportTaxIfMissing(Job job, FreelancerPayoutRecord payoutRecord) {
         if (job.getMisaCertificateId() == null) {
             taxCertificateService.exportForPayout(job, payoutRecord, onChainReference(payoutRecord));
@@ -264,9 +302,9 @@ public class PayoutServiceImpl implements PayoutService {
     }
 
     private void notifyPayoutSimulated(Job job, FreelancerPayoutRecord payoutRecord) {
-        String message = "Công việc \"" + job.getTitle() + "\" đã hoàn tất. Đã hoàn tất mô phỏng payout: cấp "
+        String message = "Công việc \"" + job.getTitle() + "\" đã hoàn tất. Client đã chuyển "
                 + payoutRecord.getAmountUsdcReceived().stripTrailingZeros().toPlainString()
-                + " Mock USDC on-chain trên " + payoutRecord.getOnRampNetwork()
+                + " Mock USDC on-chain cho Freelancer trên " + payoutRecord.getOnRampNetwork()
                 + " (" + onChainReference(payoutRecord) + "). "
                 + "Số tiền VND dự kiến nhận sau phí là " + formatVnd(payoutRecord.getAmountVndEstimated())
                 + " VNĐ, tính theo tỷ giá USDC/VND "
@@ -297,6 +335,9 @@ public class PayoutServiceImpl implements PayoutService {
     }
 
     private String onChainReference(FreelancerPayoutRecord payoutRecord) {
+        if (StringUtils.hasText(payoutRecord.getPaymentTransactionSignature())) {
+            return payoutRecord.getPaymentTransactionSignature();
+        }
         if (StringUtils.hasText(payoutRecord.getOnRampTransactionSignature())) {
             return payoutRecord.getOnRampTransactionSignature();
         }

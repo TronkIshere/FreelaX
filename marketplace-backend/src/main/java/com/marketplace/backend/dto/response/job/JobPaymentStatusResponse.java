@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.experimental.FieldDefaults;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Getter
@@ -26,6 +27,20 @@ public class JobPaymentStatusResponse {
     String onRampReceiptPda;
     String explorerUrl;
     BigDecimal amountUsdcReceived;
+    String clientPaymentStatus;
+    String freelancerPublicKey;
+    String rateId;
+    String rateTransactionSignature;
+    String rateSnapshotPda;
+    String invoiceId;
+    String invoicePda;
+    String paymentMint;
+    String invoiceTransactionSignature;
+    String paymentTransactionSignature;
+    String paymentExplorerUrl;
+    LocalDateTime clientPaymentSubmittedAt;
+    LocalDateTime clientPaymentConfirmedAt;
+    String clientPaymentError;
     BigDecimal estimatedAmountVnd;
     String usdcToVndRateSource;
     BigDecimal taxableAmountVnd;

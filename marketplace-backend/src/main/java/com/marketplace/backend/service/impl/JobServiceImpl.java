@@ -289,6 +289,22 @@ public class JobServiceImpl implements JobService {
                 .onRampReceiptPda(payoutRecord != null ? payoutRecord.getOnRampReceiptPda() : null)
                 .explorerUrl(payoutRecord != null ? explorerUrl(payoutRecord) : null)
                 .amountUsdcReceived(payoutRecord != null ? payoutRecord.getAmountUsdcReceived() : null)
+                .clientPaymentStatus(payoutRecord != null && payoutRecord.getClientPaymentStatus() != null
+                        ? payoutRecord.getClientPaymentStatus().name() : null)
+                .freelancerPublicKey(payoutRecord != null ? payoutRecord.getFreelancerPublicKey() : null)
+                .rateId(payoutRecord != null ? payoutRecord.getRateId() : null)
+                .rateTransactionSignature(payoutRecord != null ? payoutRecord.getRateTransactionSignature() : null)
+                .rateSnapshotPda(payoutRecord != null ? payoutRecord.getRateSnapshotPda() : null)
+                .invoiceId(payoutRecord != null ? payoutRecord.getInvoiceId() : null)
+                .invoicePda(payoutRecord != null ? payoutRecord.getInvoicePda() : null)
+                .paymentMint(payoutRecord != null ? payoutRecord.getPaymentMint() : null)
+                .invoiceTransactionSignature(payoutRecord != null ? payoutRecord.getInvoiceTransactionSignature() : null)
+                .paymentTransactionSignature(payoutRecord != null ? payoutRecord.getPaymentTransactionSignature() : null)
+                .paymentExplorerUrl(payoutRecord != null
+                        ? explorerUrl(payoutRecord.getOnRampNetwork(), payoutRecord.getPaymentTransactionSignature()) : null)
+                .clientPaymentSubmittedAt(payoutRecord != null ? payoutRecord.getClientPaymentSubmittedAt() : null)
+                .clientPaymentConfirmedAt(payoutRecord != null ? payoutRecord.getClientPaymentConfirmedAt() : null)
+                .clientPaymentError(payoutRecord != null ? payoutRecord.getClientPaymentError() : null)
                 .estimatedAmountVnd(payoutRecord != null ? payoutRecord.getAmountVndEstimated() : null)
                 .usdcToVndRateSource(payoutRecord != null && payoutRecord.getUsdcToVndRateSource() != null
                         ? payoutRecord.getUsdcToVndRateSource().name() : null)
@@ -298,11 +314,14 @@ public class JobServiceImpl implements JobService {
     }
 
     private String explorerUrl(FreelancerPayoutRecord payoutRecord) {
-        if (!DEVNET.equalsIgnoreCase(payoutRecord.getOnRampNetwork())
-                || payoutRecord.getOnRampTransactionSignature() == null) {
+        return explorerUrl(payoutRecord.getOnRampNetwork(), payoutRecord.getOnRampTransactionSignature());
+    }
+
+    private String explorerUrl(String network, String signature) {
+        if (!DEVNET.equalsIgnoreCase(network) || signature == null) {
             return null;
         }
-        return "https://explorer.solana.com/tx/" + payoutRecord.getOnRampTransactionSignature() + "?cluster=devnet";
+        return "https://explorer.solana.com/tx/" + signature + "?cluster=devnet";
     }
 
     @Override

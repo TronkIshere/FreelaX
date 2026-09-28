@@ -14,6 +14,7 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class SolanaConfigResult {
     String acceptedMint;
+    String rateAuthority;
     String mockOnrampAuthority;
     Boolean mockOnrampEnabled;
     Boolean paused;

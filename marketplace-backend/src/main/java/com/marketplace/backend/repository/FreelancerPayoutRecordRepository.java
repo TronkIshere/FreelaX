@@ -18,5 +18,8 @@ public interface FreelancerPayoutRecordRepository extends JpaRepository<Freelanc
 
     List<FreelancerPayoutRecord> findByOnRampStatusIn(Collection<OnRampStatus> statuses);
 
+    List<FreelancerPayoutRecord> findByOnRampStatus(OnRampStatus status);
+
     List<FreelancerPayoutRecord> findByOnRampStatusAndOffRampStatus(OnRampStatus onRampStatus, OffRampStatus offRampStatus);
+
 }

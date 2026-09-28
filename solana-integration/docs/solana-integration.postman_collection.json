@@ -1,0 +1,514 @@
+{
+  "info": {
+    "_postman_id": "a9ac3c04-7fa9-4ef2-93ca-16fcfb9f3768",
+    "name": "FreelaX - Solana Integration API",
+    "description": "Postman collection cho module solana-integration (Spring Boot, port 9193). Bao phủ 21 endpoint chính, các mode build/send, query commitment, transaction logs và các ca kiểm thử validation/API key.\n\nCách dùng:\n1. Điền các collection variables, đặc biệt internalApiKey và các public key đúng với validator/localnet.\n2. Với thao tác admin/rate/oracle/on-ramp ở mode=send, backend phải có private key tương ứng trong SOLANA_LOCAL_PRIVATE_KEYS.\n3. Với thao tác client/freelancer ở mode=build, response sẽ tự lưu buildSessionId và unsignedTransactionBase64. Hãy ký transaction bằng ví bên ngoài, rồi dán vào signedTransactionBase64 trước khi gọi Submit.\n4. Chạy request theo thứ tự nghiệp vụ; các ID mặc định được tạo từ timestamp ở collection pre-request script.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "apikey",
+    "apikey": [
+      { "key": "key", "value": "X-Internal-Api-Key", "type": "string" },
+      { "key": "value", "value": "{{internalApiKey}}", "type": "string" },
+      { "key": "in", "value": "header", "type": "string" }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const now = Math.floor(Date.now() / 1000);",
+          "if (!pm.collectionVariables.get('runId')) pm.collectionVariables.set('runId', String(Date.now()));",
+          "pm.collectionVariables.set('nowEpoch', String(now));",
+          "pm.collectionVariables.set('rateExpiresAt', String(now + 3600));",
+          "pm.collectionVariables.set('invoiceExpiresAt', String(now + 1800));"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const match = pm.info.requestName.match(/^\\[(2xx|\\d{3})\\]/);",
+          "if (match) pm.test('HTTP status đúng như tên request', function () {",
+          "  if (match[1] === '2xx') pm.expect(pm.response.code).to.be.within(200, 299);",
+          "  else pm.expect(pm.response.code).to.eql(Number(match[1]));",
+          "});",
+          "pm.test('Response time dưới 10 giây', function () { pm.expect(pm.response.responseTime).to.be.below(10000); });",
+          "const contentType = pm.response.headers.get('Content-Type') || '';",
+          "if (contentType.includes('application/json')) {",
+          "  pm.test('Response là JSON hợp lệ', function () { pm.response.json(); });",
+          "  let json = {}; try { json = pm.response.json(); } catch (e) {}",
+          "  if (json.buildSessionId) pm.collectionVariables.set('buildSessionId', json.buildSessionId);",
+          "  if (json.transactionBase64) pm.collectionVariables.set('unsignedTransactionBase64', json.transactionBase64);",
+          "  if (json.signature) pm.collectionVariables.set('transactionSignature', json.signature);",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:9193", "type": "string" },
+    { "key": "internalApiKey", "value": "replace-with-a-long-random-value", "type": "string" },
+    { "key": "commitment", "value": "confirmed", "type": "string" },
+    { "key": "programId", "value": "CwuaAPrxYLK6avPUbMRBerBYt1apdNU829TDZmoAnhEf", "type": "string" },
+    { "key": "admin", "value": "11111111111111111111111111111111", "type": "string" },
+    { "key": "acceptedMint", "value": "So11111111111111111111111111111111111111112", "type": "string" },
+    { "key": "treasuryAuthority", "value": "11111111111111111111111111111111", "type": "string" },
+    { "key": "rateAuthority", "value": "11111111111111111111111111111111", "type": "string" },
+    { "key": "oracleAuthority", "value": "11111111111111111111111111111111", "type": "string" },
+    { "key": "onrampAuthority", "value": "11111111111111111111111111111111", "type": "string" },
+    { "key": "freelancer", "value": "11111111111111111111111111111111", "type": "string" },
+    { "key": "client", "value": "11111111111111111111111111111111", "type": "string" },
+    { "key": "wrongSigner", "value": "SysvarRent111111111111111111111111111111111", "type": "string" },
+    { "key": "runId", "value": "", "type": "string" },
+    { "key": "rateId", "value": "1001", "type": "string" },
+    { "key": "invoiceId", "value": "2001", "type": "string" },
+    { "key": "cancelInvoiceId", "value": "2002", "type": "string" },
+    { "key": "withdrawalId", "value": "3001", "type": "string" },
+    { "key": "purchaseId", "value": "4001", "type": "string" },
+    { "key": "sourceHash", "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "type": "string" },
+    { "key": "failureHash", "value": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "type": "string" },
+    { "key": "resolutionHash", "value": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", "type": "string" },
+    { "key": "buildSessionId", "value": "", "type": "string" },
+    { "key": "unsignedTransactionBase64", "value": "", "type": "string" },
+    { "key": "signedTransactionBase64", "value": "", "type": "string" },
+    { "key": "transactionSignature", "value": "", "type": "string" },
+    { "key": "unknownSignature", "value": "1111111111111111111111111111111111111111111111111111111111111111", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "00 - Service & Documentation",
+      "item": [
+        {
+          "name": "[200] OpenAPI JSON",
+          "auth": { "type": "noauth" },
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api-docs", "description": "Tải OpenAPI document do springdoc sinh ra." }
+        },
+        {
+          "name": "[200] Swagger UI",
+          "auth": { "type": "noauth" },
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/swagger-ui.html" }
+        }
+      ]
+    },
+    {
+      "name": "01 - Read APIs (public)",
+      "item": [
+        {
+          "name": "[200] Get Config - default commitment",
+          "auth": { "type": "noauth" },
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/v1/solana/config" }
+        },
+        {
+          "name": "[200] Get Config - selected commitment",
+          "auth": { "type": "noauth" },
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/api/v1/solana/config?commitment={{commitment}}", "host": ["{{baseUrl}}"], "path": ["api","v1","solana","config"], "query": [{"key":"commitment","value":"{{commitment}}"}] } }
+        },
+        {
+          "name": "[200] Get Rate Snapshot",
+          "auth": { "type": "noauth" },
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/v1/solana/rates/{{rateId}}" }
+        },
+        {
+          "name": "[200] Get Invoice",
+          "auth": { "type": "noauth" },
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/v1/solana/invoices/{{freelancer}}/{{invoiceId}}" }
+        },
+        {
+          "name": "[200] Get Withdrawal",
+          "auth": { "type": "noauth" },
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/v1/solana/withdrawals/{{freelancer}}/{{withdrawalId}}" }
+        },
+        {
+          "name": "[200] Get Mock On-ramp Receipt",
+          "auth": { "type": "noauth" },
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/v1/solana/onramp-receipts/{{client}}/{{purchaseId}}" }
+        },
+        {
+          "name": "[200] Get Client Token Balance",
+          "auth": { "type": "noauth" },
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/v1/solana/token-balances/{{client}}/{{acceptedMint}}" }
+        },
+        {
+          "name": "[200] Get Freelancer Token Balance",
+          "auth": { "type": "noauth" },
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/v1/solana/token-balances/{{freelancer}}/{{acceptedMint}}" }
+        },
+        {
+          "name": "[200] Get Transaction Status",
+          "auth": { "type": "noauth" },
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/v1/solana/transactions/{{transactionSignature}}" }
+        },
+        {
+          "name": "[200] Get Transaction Status + logs",
+          "auth": { "type": "noauth" },
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/api/v1/solana/transactions/{{transactionSignature}}?includeTransaction=true&commitment=finalized", "host": ["{{baseUrl}}"], "path": ["api","v1","solana","transactions","{{transactionSignature}}"], "query": [{"key":"includeTransaction","value":"true"},{"key":"commitment","value":"finalized"}] } }
+        },
+        {
+          "name": "[200] Get Unknown Transaction",
+          "auth": { "type": "noauth" },
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/v1/solana/transactions/{{unknownSignature}}", "description": "Một signature hợp lệ về format nhưng thường không tồn tại; expected body found=false." }
+        }
+      ]
+    },
+    {
+      "name": "02 - Config Administration",
+      "item": [
+        {
+          "name": "[2xx] Initialize Config - send (default)",
+          "request": {
+            "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}],
+            "body": { "mode": "raw", "raw": "{\n  \"admin\": \"{{admin}}\",\n  \"acceptedMint\": \"{{acceptedMint}}\",\n  \"treasuryAuthority\": \"{{treasuryAuthority}}\",\n  \"rateAuthority\": \"{{rateAuthority}}\",\n  \"oracleAuthority\": \"{{oracleAuthority}}\",\n  \"maxRateAgeSeconds\": \"3600\",\n  \"commitment\": \"{{commitment}}\",\n  \"skipPreflight\": false\n}" },
+            "url": "{{baseUrl}}/api/v1/solana/config/initialize",
+            "description": "Mặc định mode=send. Cần signer admin (và upgrade authority hợp lệ) ở backend. Chỉ chạy một lần cho program deployment."
+          }
+        },
+        {
+          "name": "[2xx] Initialize Config - build",
+          "request": {
+            "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}],
+            "body": { "mode": "raw", "raw": "{\n  \"admin\": \"{{admin}}\",\n  \"acceptedMint\": \"{{acceptedMint}}\",\n  \"treasuryAuthority\": \"{{treasuryAuthority}}\",\n  \"rateAuthority\": \"{{rateAuthority}}\",\n  \"oracleAuthority\": \"{{oracleAuthority}}\",\n  \"maxRateAgeSeconds\": \"3600\",\n  \"mode\": \"build\",\n  \"commitment\": \"{{commitment}}\"\n}" },
+            "url": "{{baseUrl}}/api/v1/solana/config/initialize"
+          }
+        },
+        {
+          "name": "[2xx] Update Config - send",
+          "request": {
+            "method": "PUT", "header": [{"key":"Content-Type","value":"application/json"}],
+            "body": { "mode": "raw", "raw": "{\n  \"admin\": \"{{admin}}\",\n  \"acceptedMint\": \"{{acceptedMint}}\",\n  \"treasuryAuthority\": \"{{treasuryAuthority}}\",\n  \"rateAuthority\": \"{{rateAuthority}}\",\n  \"oracleAuthority\": \"{{oracleAuthority}}\",\n  \"maxRateAgeSeconds\": \"3600\",\n  \"paused\": false,\n  \"mode\": \"send\",\n  \"commitment\": \"{{commitment}}\",\n  \"skipPreflight\": false\n}" },
+            "url": "{{baseUrl}}/api/v1/solana/config"
+          }
+        },
+        {
+          "name": "[2xx] Update Config - pause program (build)",
+          "request": {
+            "method": "PUT", "header": [{"key":"Content-Type","value":"application/json"}],
+            "body": { "mode": "raw", "raw": "{\n  \"admin\": \"{{admin}}\",\n  \"acceptedMint\": \"{{acceptedMint}}\",\n  \"treasuryAuthority\": \"{{treasuryAuthority}}\",\n  \"rateAuthority\": \"{{rateAuthority}}\",\n  \"oracleAuthority\": \"{{oracleAuthority}}\",\n  \"maxRateAgeSeconds\": \"3600\",\n  \"paused\": true,\n  \"mode\": \"build\"\n}" },
+            "url": "{{baseUrl}}/api/v1/solana/config"
+          }
+        },
+        {
+          "name": "[2xx] Configure Mock On-ramp - enable",
+          "request": {
+            "method": "PUT", "header": [{"key":"Content-Type","value":"application/json"}],
+            "body": { "mode": "raw", "raw": "{\n  \"admin\": \"{{admin}}\",\n  \"authority\": \"{{onrampAuthority}}\",\n  \"maxAmount\": \"1000000000000\",\n  \"enabled\": true,\n  \"mode\": \"send\",\n  \"commitment\": \"{{commitment}}\"\n}" },
+            "url": "{{baseUrl}}/api/v1/solana/config/mock-onramp"
+          }
+        },
+        {
+          "name": "[2xx] Configure Mock On-ramp - disable (build only)",
+          "request": {
+            "method": "PUT", "header": [{"key":"Content-Type","value":"application/json"}],
+            "body": { "mode": "raw", "raw": "{\n  \"admin\": \"{{admin}}\",\n  \"authority\": \"{{onrampAuthority}}\",\n  \"maxAmount\": \"1000000000000\",\n  \"enabled\": false,\n  \"mode\": \"build\"\n}" },
+            "url": "{{baseUrl}}/api/v1/solana/config/mock-onramp",
+            "description": "Chỉ build nên chưa thay đổi on-chain cho tới khi transaction được ký và submit."
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 - Rates",
+      "item": [
+        {
+          "name": "[2xx] Publish Rate - send",
+          "request": {
+            "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}],
+            "body": { "mode": "raw", "raw": "{\n  \"rateAuthority\": \"{{rateAuthority}}\",\n  \"rateId\": \"{{rateId}}\",\n  \"usdcUsdE6\": \"1000000\",\n  \"usdVndE6\": \"25000000000\",\n  \"observedAt\": \"{{nowEpoch}}\",\n  \"expiresAt\": \"{{rateExpiresAt}}\",\n  \"sourceHash\": \"{{sourceHash}}\",\n  \"mode\": \"send\",\n  \"commitment\": \"{{commitment}}\",\n  \"skipPreflight\": false\n}" },
+            "url": "{{baseUrl}}/api/v1/solana/rates"
+          }
+        },
+        {
+          "name": "[2xx] Publish Rate - build",
+          "request": {
+            "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}],
+            "body": { "mode": "raw", "raw": "{\n  \"rateAuthority\": \"{{rateAuthority}}\",\n  \"rateId\": \"{{rateId}}\",\n  \"usdcUsdE6\": \"1000000\",\n  \"usdVndE6\": \"25000000000\",\n  \"observedAt\": \"{{nowEpoch}}\",\n  \"expiresAt\": \"{{rateExpiresAt}}\",\n  \"sourceHash\": \"{{sourceHash}}\",\n  \"mode\": \"build\"\n}" },
+            "url": "{{baseUrl}}/api/v1/solana/rates"
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 - Mock On-ramp",
+      "item": [
+        {
+          "name": "[2xx] Purchase Mock USDC - send",
+          "request": {
+            "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}],
+            "body": { "mode": "raw", "raw": "{\n  \"onrampAuthority\": \"{{onrampAuthority}}\",\n  \"client\": \"{{client}}\",\n  \"purchaseId\": \"{{purchaseId}}\",\n  \"usdAmountE6\": \"100000000\",\n  \"mode\": \"send\",\n  \"commitment\": \"{{commitment}}\",\n  \"skipPreflight\": false\n}" },
+            "url": "{{baseUrl}}/api/v1/solana/mock-onramp/purchases"
+          }
+        },
+        {
+          "name": "[2xx] Purchase Mock USDC - build",
+          "request": {
+            "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}],
+            "body": { "mode": "raw", "raw": "{\n  \"onrampAuthority\": \"{{onrampAuthority}}\",\n  \"client\": \"{{client}}\",\n  \"purchaseId\": \"{{purchaseId}}\",\n  \"usdAmountE6\": \"100000000\",\n  \"mode\": \"build\"\n}" },
+            "url": "{{baseUrl}}/api/v1/solana/mock-onramp/purchases"
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 - Invoices",
+      "item": [
+        {
+          "name": "[2xx] Create Invoice - build (default)",
+          "request": {
+            "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}],
+            "body": { "mode": "raw", "raw": "{\n  \"freelancer\": \"{{freelancer}}\",\n  \"invoiceId\": \"{{invoiceId}}\",\n  \"client\": \"{{client}}\",\n  \"amount\": \"50000000\",\n  \"rateId\": \"{{rateId}}\",\n  \"expiresAt\": \"{{invoiceExpiresAt}}\",\n  \"commitment\": \"{{commitment}}\",\n  \"skipPreflight\": false\n}" },
+            "url": "{{baseUrl}}/api/v1/solana/invoices"
+          }
+        },
+        {
+          "name": "[2xx] Create Invoice - send",
+          "request": {
+            "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}],
+            "body": { "mode": "raw", "raw": "{\n  \"freelancer\": \"{{freelancer}}\",\n  \"invoiceId\": \"{{invoiceId}}\",\n  \"client\": \"{{client}}\",\n  \"amount\": \"50000000\",\n  \"rateId\": \"{{rateId}}\",\n  \"expiresAt\": \"{{invoiceExpiresAt}}\",\n  \"mode\": \"send\",\n  \"commitment\": \"{{commitment}}\"\n}" },
+            "url": "{{baseUrl}}/api/v1/solana/invoices",
+            "description": "Chỉ thành công khi backend có signer freelancer."
+          }
+        },
+        {
+          "name": "[2xx] Pay Invoice - build (default)",
+          "request": {
+            "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}],
+            "body": { "mode": "raw", "raw": "{\n  \"client\": \"{{client}}\",\n  \"commitment\": \"{{commitment}}\",\n  \"skipPreflight\": false\n}" },
+            "url": "{{baseUrl}}/api/v1/solana/invoices/{{freelancer}}/{{invoiceId}}/pay"
+          }
+        },
+        {
+          "name": "[2xx] Pay Invoice - send",
+          "request": {
+            "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}],
+            "body": { "mode": "raw", "raw": "{\n  \"client\": \"{{client}}\",\n  \"mode\": \"send\",\n  \"commitment\": \"{{commitment}}\"\n}" },
+            "url": "{{baseUrl}}/api/v1/solana/invoices/{{freelancer}}/{{invoiceId}}/pay",
+            "description": "Chỉ thành công khi backend có signer client."
+          }
+        },
+        {
+          "name": "[2xx] Cancel Invoice - build with body",
+          "request": {
+            "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}],
+            "body": { "mode": "raw", "raw": "{\n  \"mode\": \"build\",\n  \"commitment\": \"{{commitment}}\",\n  \"skipPreflight\": false\n}" },
+            "url": "{{baseUrl}}/api/v1/solana/invoices/{{freelancer}}/{{cancelInvoiceId}}/cancel"
+          }
+        },
+        {
+          "name": "[2xx] Cancel Invoice - no body",
+          "request": { "method": "POST", "header": [], "url": "{{baseUrl}}/api/v1/solana/invoices/{{freelancer}}/{{cancelInvoiceId}}/cancel", "description": "Controller cho phép body rỗng và dùng default mode=build." }
+        },
+        {
+          "name": "[2xx] Close Invoice - build with body",
+          "request": {
+            "method": "DELETE", "header": [{"key":"Content-Type","value":"application/json"}],
+            "body": { "mode": "raw", "raw": "{\n  \"mode\": \"build\",\n  \"commitment\": \"{{commitment}}\"\n}" },
+            "url": "{{baseUrl}}/api/v1/solana/invoices/{{freelancer}}/{{invoiceId}}"
+          }
+        },
+        {
+          "name": "[2xx] Close Invoice - no body",
+          "request": { "method": "DELETE", "header": [], "url": "{{baseUrl}}/api/v1/solana/invoices/{{freelancer}}/{{invoiceId}}", "description": "Chỉ close invoice Paid/Cancelled; body rỗng dùng default mode=build." }
+        }
+      ]
+    },
+    {
+      "name": "06 - Withdrawals / Off-ramp",
+      "item": [
+        {
+          "name": "[2xx] Request Off-ramp - build (default)",
+          "request": {
+            "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}],
+            "body": { "mode": "raw", "raw": "{\n  \"freelancer\": \"{{freelancer}}\",\n  \"withdrawalId\": \"{{withdrawalId}}\",\n  \"rateId\": \"{{rateId}}\",\n  \"tokenAmount\": \"25000000\",\n  \"commitment\": \"{{commitment}}\",\n  \"skipPreflight\": false\n}" },
+            "url": "{{baseUrl}}/api/v1/solana/withdrawals"
+          }
+        },
+        {
+          "name": "[2xx] Request Off-ramp - send",
+          "request": {
+            "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}],
+            "body": { "mode": "raw", "raw": "{\n  \"freelancer\": \"{{freelancer}}\",\n  \"withdrawalId\": \"{{withdrawalId}}\",\n  \"rateId\": \"{{rateId}}\",\n  \"tokenAmount\": \"25000000\",\n  \"mode\": \"send\"\n}" },
+            "url": "{{baseUrl}}/api/v1/solana/withdrawals"
+          }
+        },
+        {
+          "name": "[2xx] Complete Off-ramp - send",
+          "request": {
+            "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}],
+            "body": { "mode": "raw", "raw": "{\n  \"oracleAuthority\": \"{{oracleAuthority}}\",\n  \"mode\": \"send\",\n  \"commitment\": \"{{commitment}}\",\n  \"skipPreflight\": false\n}" },
+            "url": "{{baseUrl}}/api/v1/solana/withdrawals/{{freelancer}}/{{withdrawalId}}/complete"
+          }
+        },
+        {
+          "name": "[2xx] Mark Off-ramp Failed - send",
+          "request": {
+            "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}],
+            "body": { "mode": "raw", "raw": "{\n  \"oracleAuthority\": \"{{oracleAuthority}}\",\n  \"failureHash\": \"{{failureHash}}\",\n  \"mode\": \"send\",\n  \"commitment\": \"{{commitment}}\"\n}" },
+            "url": "{{baseUrl}}/api/v1/solana/withdrawals/{{freelancer}}/{{withdrawalId}}/fail"
+          }
+        },
+        {
+          "name": "[2xx] Mark Off-ramp Failed - build",
+          "request": {
+            "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}],
+            "body": { "mode": "raw", "raw": "{\n  \"oracleAuthority\": \"{{oracleAuthority}}\",\n  \"failureHash\": \"{{failureHash}}\",\n  \"mode\": \"build\"\n}" },
+            "url": "{{baseUrl}}/api/v1/solana/withdrawals/{{freelancer}}/{{withdrawalId}}/fail"
+          }
+        },
+        {
+          "name": "[2xx] Resolve Off-ramp - send",
+          "request": {
+            "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}],
+            "body": { "mode": "raw", "raw": "{\n  \"admin\": \"{{admin}}\",\n  \"resolutionHash\": \"{{resolutionHash}}\",\n  \"mode\": \"send\",\n  \"commitment\": \"{{commitment}}\"\n}" },
+            "url": "{{baseUrl}}/api/v1/solana/withdrawals/{{freelancer}}/{{withdrawalId}}/resolve"
+          }
+        },
+        {
+          "name": "[2xx] Resolve Off-ramp - build",
+          "request": {
+            "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}],
+            "body": { "mode": "raw", "raw": "{\n  \"admin\": \"{{admin}}\",\n  \"resolutionHash\": \"{{resolutionHash}}\",\n  \"mode\": \"build\"\n}" },
+            "url": "{{baseUrl}}/api/v1/solana/withdrawals/{{freelancer}}/{{withdrawalId}}/resolve"
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 - Signed Transaction Submission",
+      "item": [
+        {
+          "name": "[2xx] Submit Signed Transaction",
+          "request": {
+            "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}],
+            "body": { "mode": "raw", "raw": "{\n  \"buildSessionId\": \"{{buildSessionId}}\",\n  \"transactionBase64\": \"{{signedTransactionBase64}}\",\n  \"skipPreflight\": false,\n  \"preflightCommitment\": \"{{commitment}}\"\n}" },
+            "url": "{{baseUrl}}/api/v1/solana/transactions/submit",
+            "description": "signedTransactionBase64 phải là transaction từ unsignedTransactionBase64 đã được tất cả requiredSigners ký; không thay đổi message."
+          }
+        },
+        {
+          "name": "[2xx] Submit Signed Transaction - skip preflight",
+          "request": {
+            "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}],
+            "body": { "mode": "raw", "raw": "{\n  \"buildSessionId\": \"{{buildSessionId}}\",\n  \"transactionBase64\": \"{{signedTransactionBase64}}\",\n  \"skipPreflight\": true,\n  \"preflightCommitment\": \"processed\"\n}" },
+            "url": "{{baseUrl}}/api/v1/solana/transactions/submit"
+          }
+        },
+        {
+          "name": "[2xx] Resubmit Same Session (idempotent)",
+          "request": {
+            "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}],
+            "body": { "mode": "raw", "raw": "{\n  \"buildSessionId\": \"{{buildSessionId}}\",\n  \"transactionBase64\": \"{{signedTransactionBase64}}\",\n  \"skipPreflight\": false,\n  \"preflightCommitment\": \"{{commitment}}\"\n}" },
+            "url": "{{baseUrl}}/api/v1/solana/transactions/submit",
+            "description": "Nếu session đã submit, gateway trả lại signature đã lưu thay vì gửi lần nữa."
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 - Negative & Validation Tests",
+      "item": [
+        {
+          "name": "[401] Mutating API - missing internal API key",
+          "auth": { "type": "noauth" },
+          "request": {
+            "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}],
+            "body": { "mode": "raw", "raw": "{}" },
+            "url": "{{baseUrl}}/api/v1/solana/rates"
+          }
+        },
+        {
+          "name": "[401] Mutating API - wrong internal API key",
+          "auth": { "type": "noauth" },
+          "request": {
+            "method": "POST", "header": [{"key":"Content-Type","value":"application/json"},{"key":"X-Internal-Api-Key","value":"definitely-wrong"}],
+            "body": { "mode": "raw", "raw": "{}" },
+            "url": "{{baseUrl}}/api/v1/solana/rates"
+          }
+        },
+        {
+          "name": "[400] Publish Rate - missing required fields",
+          "request": {
+            "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}],
+            "body": { "mode": "raw", "raw": "{}" },
+            "url": "{{baseUrl}}/api/v1/solana/rates"
+          }
+        },
+        {
+          "name": "[400] Publish Rate - invalid sourceHash",
+          "request": {
+            "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}],
+            "body": { "mode": "raw", "raw": "{\n  \"rateAuthority\": \"{{rateAuthority}}\",\n  \"rateId\": \"{{rateId}}\",\n  \"usdcUsdE6\": \"1000000\",\n  \"usdVndE6\": \"25000000000\",\n  \"observedAt\": \"{{nowEpoch}}\",\n  \"expiresAt\": \"{{rateExpiresAt}}\",\n  \"sourceHash\": \"not-a-64-char-hex\"\n}" },
+            "url": "{{baseUrl}}/api/v1/solana/rates"
+          }
+        },
+        {
+          "name": "[400] Get Invoice - invalid public key",
+          "auth": { "type": "noauth" },
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/v1/solana/invoices/not-a-public-key/{{invoiceId}}" }
+        },
+        {
+          "name": "[400] Get Transaction - invalid signature",
+          "auth": { "type": "noauth" },
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/v1/solana/transactions/not-a-signature" }
+        },
+        {
+          "name": "[500] Invalid commitment enum (current handler behavior)",
+          "auth": { "type": "noauth" },
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/v1/solana/config?commitment=invalid" }
+        },
+        {
+          "name": "[500] Invalid execution mode enum (current handler behavior)",
+          "request": {
+            "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}],
+            "body": { "mode": "raw", "raw": "{\n  \"freelancer\": \"{{freelancer}}\",\n  \"invoiceId\": \"{{invoiceId}}\",\n  \"client\": \"{{client}}\",\n  \"amount\": \"50000000\",\n  \"rateId\": \"{{rateId}}\",\n  \"expiresAt\": \"{{invoiceExpiresAt}}\",\n  \"mode\": \"invalid\"\n}" },
+            "url": "{{baseUrl}}/api/v1/solana/invoices"
+          }
+        },
+        {
+          "name": "[400] Submit - invalid Base64",
+          "request": {
+            "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}],
+            "body": { "mode": "raw", "raw": "{\n  \"buildSessionId\": \"{{buildSessionId}}\",\n  \"transactionBase64\": \"%%%not-base64%%%\",\n  \"skipPreflight\": false,\n  \"preflightCommitment\": \"confirmed\"\n}" },
+            "url": "{{baseUrl}}/api/v1/solana/transactions/submit"
+          }
+        },
+        {
+          "name": "[400] Submit - missing transactionBase64",
+          "request": {
+            "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}],
+            "body": { "mode": "raw", "raw": "{\n  \"buildSessionId\": \"{{buildSessionId}}\"\n}" },
+            "url": "{{baseUrl}}/api/v1/solana/transactions/submit"
+          }
+        },
+        {
+          "name": "[403] Update Config - signer mismatch",
+          "request": {
+            "method": "PUT", "header": [{"key":"Content-Type","value":"application/json"}],
+            "body": { "mode": "raw", "raw": "{\n  \"admin\": \"{{wrongSigner}}\",\n  \"acceptedMint\": \"{{acceptedMint}}\",\n  \"treasuryAuthority\": \"{{treasuryAuthority}}\",\n  \"rateAuthority\": \"{{rateAuthority}}\",\n  \"oracleAuthority\": \"{{oracleAuthority}}\",\n  \"maxRateAgeSeconds\": \"3600\",\n  \"paused\": false,\n  \"mode\": \"build\"\n}" },
+            "url": "{{baseUrl}}/api/v1/solana/config",
+            "description": "Cần Config tồn tại; gateway phải trả SIGNER_MISMATCH."
+          }
+        },
+        {
+          "name": "[404] Pay non-existent Invoice",
+          "request": {
+            "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}],
+            "body": { "mode": "raw", "raw": "{\n  \"client\": \"{{client}}\",\n  \"mode\": \"build\"\n}" },
+            "url": "{{baseUrl}}/api/v1/solana/invoices/{{freelancer}}/18446744073709551615/pay"
+          }
+        },
+        {
+          "name": "[404] Complete non-existent Withdrawal",
+          "request": {
+            "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}],
+            "body": { "mode": "raw", "raw": "{\n  \"oracleAuthority\": \"{{oracleAuthority}}\",\n  \"mode\": \"build\"\n}" },
+            "url": "{{baseUrl}}/api/v1/solana/withdrawals/{{freelancer}}/18446744073709551615/complete"
+          }
+        }
+      ]
+    }
+  ]
+}

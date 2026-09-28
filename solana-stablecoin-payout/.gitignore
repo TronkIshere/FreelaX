@@ -10,6 +10,7 @@ docs/*
 !docs/dac-ta-api-gateway-solana-spring-boot.md
 !docs/huong-dan-tich-hop-solana-api-gateway-backend.md
 !docs/checklist-sua-loi-tich-hop-marketplace-solana-mvp.md
+!docs/bao-cao-3-commit-moi-nhat-master-2026-09-28.md
 coverage/
 .env
 .env.*

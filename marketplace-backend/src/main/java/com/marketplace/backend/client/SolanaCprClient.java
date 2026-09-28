@@ -1,10 +1,17 @@
 package com.marketplace.backend.client;
 
 import com.marketplace.backend.configuration.SolanaCprProperties;
+import com.marketplace.backend.dto.request.solana.CreateInvoiceRequest;
 import com.marketplace.backend.dto.request.solana.MockOnrampPurchaseRequest;
+import com.marketplace.backend.dto.request.solana.PayInvoiceRequest;
+import com.marketplace.backend.dto.request.solana.PublishRateRequest;
 import com.marketplace.backend.dto.response.solana.MockOnrampPurchaseResult;
 import com.marketplace.backend.dto.response.solana.MockOnrampReceiptResult;
+import com.marketplace.backend.dto.response.solana.SolanaAccountResult;
 import com.marketplace.backend.dto.response.solana.SolanaConfigResult;
+import com.marketplace.backend.dto.response.solana.SolanaInvoiceResult;
+import com.marketplace.backend.dto.response.solana.SolanaOperationResult;
+import com.marketplace.backend.dto.response.solana.SolanaRateResult;
 import com.marketplace.backend.dto.response.solana.SolanaTransactionStatusResult;
 import com.marketplace.backend.exception.SolanaCprException;
 import org.springframework.boot.web.client.RestTemplateBuilder;
@@ -13,6 +20,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
@@ -79,9 +87,10 @@ public class SolanaCprClient {
                 .toUriString();
 
         try {
-            MockOnrampReceiptResult body = execute("get-onramp-receipt", () -> restTemplate.exchange(
-                    url, HttpMethod.GET, new HttpEntity<>(jsonHeaders()), MockOnrampReceiptResult.class));
-            return Optional.ofNullable(body).filter(receipt -> StringUtils.hasText(receipt.getPurchaseId()));
+            SolanaAccountResult<MockOnrampReceiptResult> body = execute("get-onramp-receipt", () -> restTemplate.exchange(
+                    url, HttpMethod.GET, new HttpEntity<>(jsonHeaders()),
+                    new ParameterizedTypeReference<SolanaAccountResult<MockOnrampReceiptResult>>() { }));
+            return accountData(body).filter(receipt -> StringUtils.hasText(receipt.getPurchaseId()));
         } catch (SolanaCprException e) {
             if (e.getHttpStatus() != null && e.getHttpStatus() == HttpStatus.NOT_FOUND.value()) {
                 return Optional.empty();
@@ -96,13 +105,67 @@ public class SolanaCprClient {
                 .queryParam("commitment", properties.getCommitment())
                 .toUriString();
 
-        SolanaConfigResult body = execute("get-config", () -> restTemplate.exchange(
-                url, HttpMethod.GET, new HttpEntity<>(jsonHeaders()), SolanaConfigResult.class));
+        SolanaAccountResult<SolanaConfigResult> body = execute("get-config", () -> restTemplate.exchange(
+                url, HttpMethod.GET, new HttpEntity<>(jsonHeaders()),
+                new ParameterizedTypeReference<SolanaAccountResult<SolanaConfigResult>>() { }));
 
-        if (body == null) {
+        if (body == null || !body.isExists() || body.getData() == null) {
             throw new SolanaCprException("get-config: empty body", false, null);
         }
+        return body.getData();
+    }
+
+    public SolanaOperationResult publishRate(PublishRateRequest request) {
+        return submitOperation("publish-rate", properties.getBaseUrl() + "/api/v1/solana/rates", request);
+    }
+
+    public Optional<SolanaRateResult> findRate(String rateId) {
+        String url = UriComponentsBuilder.fromUriString(properties.getBaseUrl())
+                .path("/api/v1/solana/rates/{rateId}")
+                .queryParam("commitment", properties.getCommitment())
+                .buildAndExpand(rateId).toUriString();
+        SolanaAccountResult<SolanaRateResult> body = execute("get-rate", () -> restTemplate.exchange(
+                url, HttpMethod.GET, new HttpEntity<>(jsonHeaders()),
+                new ParameterizedTypeReference<SolanaAccountResult<SolanaRateResult>>() { }));
+        return accountData(body);
+    }
+
+    public SolanaOperationResult createInvoice(CreateInvoiceRequest request) {
+        return submitOperation("create-invoice", properties.getBaseUrl() + "/api/v1/solana/invoices", request);
+    }
+
+    public SolanaOperationResult payInvoice(String freelancer, String invoiceId, PayInvoiceRequest request) {
+        String url = UriComponentsBuilder.fromUriString(properties.getBaseUrl())
+                .path("/api/v1/solana/invoices/{freelancer}/{invoiceId}/pay")
+                .buildAndExpand(freelancer, invoiceId).toUriString();
+        return submitOperation("pay-invoice", url, request);
+    }
+
+    public Optional<SolanaInvoiceResult> findInvoice(String freelancer, String invoiceId) {
+        String url = UriComponentsBuilder.fromUriString(properties.getBaseUrl())
+                .path("/api/v1/solana/invoices/{freelancer}/{invoiceId}")
+                .queryParam("commitment", properties.getCommitment())
+                .buildAndExpand(freelancer, invoiceId).toUriString();
+        SolanaAccountResult<SolanaInvoiceResult> body = execute("get-invoice", () -> restTemplate.exchange(
+                url, HttpMethod.GET, new HttpEntity<>(jsonHeaders()),
+                new ParameterizedTypeReference<SolanaAccountResult<SolanaInvoiceResult>>() { }));
+        return accountData(body);
+    }
+
+    private SolanaOperationResult submitOperation(String operation, String url, Object request) {
+        SolanaOperationResult body = execute(operation, () -> restTemplate.exchange(
+                url, HttpMethod.POST, new HttpEntity<>(request, jsonHeaders()), SolanaOperationResult.class));
+        if (body == null || !StringUtils.hasText(body.getSignature())) {
+            throw new SolanaCprException(operation + ": response thieu signature", false, null);
+        }
         return body;
+    }
+
+    private <T> Optional<T> accountData(SolanaAccountResult<T> account) {
+        if (account == null || !account.isExists() || account.getData() == null) {
+            return Optional.empty();
+        }
+        return Optional.of(account.getData());
     }
 
     private <T> T execute(String operation, ExchangeCall<T> call) {

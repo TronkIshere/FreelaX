@@ -21,4 +21,5 @@ public class SolanaCprProperties {
     private int confirmPollAttempts = 10;
     private long confirmPollIntervalMs = 1000;
     private long pendingExpirySeconds = 300;
+    private long invoiceValiditySeconds = 900;
 }

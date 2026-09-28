@@ -77,6 +77,46 @@ public class FreelancerPayoutRecord extends AbstractEntity<UUID> {
     @Column(precision = 20, scale = 6)
     private BigDecimal amountUsdcReceived;
 
+    @Column(length = 64)
+    private String freelancerPublicKey;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 24)
+    private ClientPaymentStatus clientPaymentStatus = ClientPaymentStatus.NOT_STARTED;
+
+    @Column(length = 20)
+    private String rateId;
+
+    @Column(length = 128)
+    private String rateTransactionSignature;
+
+    @Column(length = 64)
+    private String rateSnapshotPda;
+
+    @Column(length = 20)
+    private String invoiceId;
+
+    private Long invoiceExpiresAtEpoch;
+
+    @Column(length = 64)
+    private String invoicePda;
+
+    @Column(length = 64)
+    private String paymentMint;
+
+    @Column(length = 128)
+    private String invoiceTransactionSignature;
+
+    @Column(length = 128)
+    private String paymentTransactionSignature;
+
+    private LocalDateTime clientPaymentSubmittedAt;
+
+    private LocalDateTime clientPaymentConfirmedAt;
+
+    @Column(columnDefinition = "TEXT")
+    private String clientPaymentError;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private OffRampStatus offRampStatus = OffRampStatus.NOT_STARTED;
