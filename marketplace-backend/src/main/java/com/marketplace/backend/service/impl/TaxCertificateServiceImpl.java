@@ -3,7 +3,6 @@ package com.marketplace.backend.service.impl;
 import com.marketplace.backend.client.MisaBackendClient;
 import com.marketplace.backend.configuration.MisaCertificateProperties;
 import com.marketplace.backend.dto.response.common.PageResponse;
-import com.marketplace.backend.dto.response.misa.MisaCertificateResult;
 import com.marketplace.backend.dto.response.misa.MisaCertificateStatusResult;
 import com.marketplace.backend.dto.response.misa.MisaPayoutTransactionResult;
 import com.marketplace.backend.dto.response.tax.TaxCertificateFile;
@@ -226,13 +225,12 @@ public class TaxCertificateServiceImpl implements TaxCertificateService {
                 taxCertificateRecordRepository.save(taxRecord);
             }
 
-            MisaCertificateResult certificate =
+            MisaCertificateStatusResult certificate =
                     misaBackendClient.createWithholdingCertificate(taxRecord.getMisaPayoutTransactionId());
 
-            taxRecord.setMisaCertificateId(certificate.getId());
+            taxRecord.setMisaCertificateId(UUID.fromString(certificate.getId()));
             taxRecord.setStatus(TaxCertificateStatus.DRAFT);
-            taxRecord.setLastError(null);
-            taxCertificateRecordRepository.save(taxRecord);
+            applyMisaResult(taxRecord, certificate);
 
             job.setMisaPayoutTransactionId(taxRecord.getMisaPayoutTransactionId());
             job.setMisaCertificateId(taxRecord.getMisaCertificateId());
@@ -335,6 +333,9 @@ public class TaxCertificateServiceImpl implements TaxCertificateService {
         if (StringUtils.hasText(result.getSubmissionId())) {
             taxRecord.setSubmissionId(result.getSubmissionId());
         }
+        if (StringUtils.hasText(result.getTaxAuthorityReference())) {
+            taxRecord.setTaxAuthorityReference(result.getTaxAuthorityReference());
+        }
         if (result.getTaxWithheld() != null) {
             taxRecord.setTaxWithheldVnd(result.getTaxWithheld().setScale(0, RoundingMode.HALF_UP));
         }
@@ -405,6 +406,7 @@ public class TaxCertificateServiceImpl implements TaxCertificateService {
                 .misaPayoutTransactionId(r.getMisaPayoutTransactionId())
                 .transactionReference(r.getTransactionReference())
                 .submissionId(r.getSubmissionId())
+                .taxAuthorityReference(r.getTaxAuthorityReference())
                 .issuedAt(r.getIssuedAt())
                 .submittedAt(r.getSubmittedAt())
                 .lastSyncedAt(r.getLastSyncedAt())

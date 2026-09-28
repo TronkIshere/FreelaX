@@ -1,5 +1,6 @@
 package com.misa.backend.service.impl;
 
+import com.misa.backend.configuration.CertificatePdfProperties;
 import com.misa.backend.configuration.MisaProperties;
 import com.misa.backend.dto.request.misa.CancelCertificateRequest;
 import com.misa.backend.dto.request.misa.CreateWithholdingCertificateRequest;
@@ -21,6 +22,7 @@ import com.misa.backend.dto.response.misa.WithholdingCertificateResponse;
 import com.misa.backend.entity.CertificateStatus;
 import com.misa.backend.entity.IncorrectRecordNotification;
 import com.misa.backend.entity.PayoutTransaction;
+import com.misa.backend.entity.Taxpayer;
 import com.misa.backend.entity.WithholdingCertificate;
 import com.misa.backend.exception.ApplicationException;
 import com.misa.backend.exception.ErrorCode;
@@ -30,6 +32,8 @@ import com.misa.backend.repository.WithholdingCertificateRepository;
 import com.misa.backend.service.MisaProviderClient;
 import com.misa.backend.service.TaxEngineService;
 import com.misa.backend.service.WithholdingCertificateService;
+import com.misa.backend.service.pdf.CertificatePdfData;
+import com.misa.backend.service.pdf.CertificatePdfRenderer;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -37,7 +41,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 @Service
@@ -51,6 +54,8 @@ public class WithholdingCertificateServiceImpl implements WithholdingCertificate
     TaxEngineService taxEngineService;
     MisaProviderClient misaProviderClient;
     MisaProperties misaProperties;
+    CertificatePdfRenderer certificatePdfRenderer;
+    CertificatePdfProperties certificatePdfProperties;
 
     @Override
     @Transactional
@@ -206,23 +211,24 @@ public class WithholdingCertificateServiceImpl implements WithholdingCertificate
     }
 
     @Override
+    @Transactional(readOnly = true)
     public byte[] getPdf(UUID certificateId) {
         WithholdingCertificate certificate = getCertificateOrThrow(certificateId);
-        String content = "MOCK PDF - Chung tu khau tru TNCN " + certificate.getSymbol() + certificate.getCertificateNumber();
-        return content.getBytes(StandardCharsets.UTF_8);
+        return certificatePdfRenderer.render(toPdfData(certificate));
     }
 
     @Override
+    @Transactional(readOnly = true)
     public String getXml(UUID certificateId) {
         WithholdingCertificate certificate = getCertificateOrThrow(certificateId);
 
         return "<WithholdingCertificate>"
-                + "<FormNumber>" + certificate.getFormNumber() + "</FormNumber>"
-                + "<Symbol>" + certificate.getSymbol() + "</Symbol>"
-                + "<Number>" + certificate.getCertificateNumber() + "</Number>"
+                + "<FormNumber>" + xml(certificate.getFormNumber()) + "</FormNumber>"
+                + "<Symbol>" + xml(certificate.getSymbol()) + "</Symbol>"
+                + "<Number>" + xml(certificate.getCertificateNumber()) + "</Number>"
                 + "<Taxpayer>"
-                + "<FullName>" + certificate.getTaxpayer().getFullName() + "</FullName>"
-                + "<TaxCode>" + certificate.getTaxpayer().getTaxCode() + "</TaxCode>"
+                + "<FullName>" + xml(certificate.getTaxpayer().getFullName()) + "</FullName>"
+                + "<TaxCode>" + xml(certificate.getTaxpayer().getTaxCode()) + "</TaxCode>"
                 + "</Taxpayer>"
                 + "<Income>"
                 + "<TaxableIncome>" + certificate.getTaxableIncome() + "</TaxableIncome>"
@@ -256,6 +262,60 @@ public class WithholdingCertificateServiceImpl implements WithholdingCertificate
                 .status("RECEIVED")
                 .nextAction(notification.getNextAction())
                 .build();
+    }
+
+    private CertificatePdfData toPdfData(WithholdingCertificate certificate) {
+        Taxpayer taxpayer = certificate.getTaxpayer();
+        PayoutTransaction payout = certificate.getPayoutTransaction();
+
+        return new CertificatePdfData(
+                certificate.getFormNumber(),
+                certificate.getSymbol(),
+                certificate.getCertificateNumber(),
+                certificate.getStatus().name(),
+                certificate.getLookupCode(),
+                certificatePdfProperties.getPayerName(),
+                certificatePdfProperties.getPayerTaxCode(),
+                certificatePdfProperties.getPayerAddress(),
+                certificatePdfProperties.getPayerPhone(),
+                taxpayer.getFullName(),
+                taxpayer.getTaxCode(),
+                taxpayer.getIdentityNumber(),
+                taxpayer.getNationality(),
+                taxpayer.getAddress(),
+                taxpayer.getPhone(),
+                certificatePdfProperties.getIncomeType(),
+                payout.getPaymentDate(),
+                certificate.getTaxableIncome(),
+                certificate.getMandatoryInsurance(),
+                certificate.getCharityContribution(),
+                certificate.getTaxWithheld(),
+                certificate.getCurrency(),
+                payout.getAmountUsdc(),
+                payout.getExchangeRate(),
+                payout.getPlatformPayoutId(),
+                payout.getTransactionHash(),
+                payout.getBlockchain(),
+                payout.getDescription(),
+                certificate.getCreatedAt(),
+                certificate.getIssuedAt(),
+                certificate.getDigitalCertificateSerial(),
+                certificate.getSubmittedAt(),
+                certificate.getTaxAuthorityReference(),
+                certificate.getCancelledAt(),
+                certificate.getCancelReason()
+        );
+    }
+
+    private String xml(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&apos;");
     }
 
     private WithholdingCertificate getCertificateOrThrow(UUID certificateId) {

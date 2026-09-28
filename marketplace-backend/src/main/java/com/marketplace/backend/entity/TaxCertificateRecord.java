@@ -70,6 +70,9 @@ public class TaxCertificateRecord extends AbstractEntity<UUID> {
     @Column(length = 128)
     private String submissionId;
 
+    @Column(length = 128)
+    private String taxAuthorityReference;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 32)
     private TaxCertificateStatus status = TaxCertificateStatus.PENDING_EXPORT;

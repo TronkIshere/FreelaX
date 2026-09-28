@@ -26,6 +26,7 @@ public class MisaCertificateStatusResult {
     String symbol;
     String lookupCode;
     String submissionId;
+    String taxAuthorityReference;
     BigDecimal taxableIncome;
     @JsonAlias({"taxWithheldAmount"})
     BigDecimal taxWithheld;

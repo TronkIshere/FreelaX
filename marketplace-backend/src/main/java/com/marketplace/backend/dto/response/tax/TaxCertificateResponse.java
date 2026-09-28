@@ -32,6 +32,7 @@ public class TaxCertificateResponse {
     UUID misaPayoutTransactionId;
     String transactionReference;
     String submissionId;
+    String taxAuthorityReference;
     LocalDateTime issuedAt;
     LocalDateTime submittedAt;
     LocalDateTime lastSyncedAt;
