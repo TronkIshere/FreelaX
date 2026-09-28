@@ -20,6 +20,8 @@ public class JobPaymentStatusResponse {
     String network;
     String onRampStatus;
     String offRampStatus;
+    String onRampClientPublicKey;
+    String onRampPurchaseId;
     String onRampTransactionSignature;
     String onRampReceiptPda;
     String explorerUrl;

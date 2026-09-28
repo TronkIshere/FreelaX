@@ -283,6 +283,8 @@ public class JobServiceImpl implements JobService {
                 .network(payoutRecord != null ? payoutRecord.getOnRampNetwork() : null)
                 .onRampStatus(payoutRecord != null ? payoutRecord.getOnRampStatus().name() : null)
                 .offRampStatus(payoutRecord != null ? payoutRecord.getOffRampStatus().name() : null)
+                .onRampClientPublicKey(payoutRecord != null ? payoutRecord.getOnRampClientPublicKey() : null)
+                .onRampPurchaseId(payoutRecord != null ? payoutRecord.getOnRampPurchaseId() : null)
                 .onRampTransactionSignature(payoutRecord != null ? payoutRecord.getOnRampTransactionSignature() : null)
                 .onRampReceiptPda(payoutRecord != null ? payoutRecord.getOnRampReceiptPda() : null)
                 .explorerUrl(payoutRecord != null ? explorerUrl(payoutRecord) : null)
