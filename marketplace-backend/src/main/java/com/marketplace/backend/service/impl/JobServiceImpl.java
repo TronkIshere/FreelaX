@@ -9,10 +9,14 @@ import com.marketplace.backend.dto.request.job.SubmitWorkRequest;
 import com.marketplace.backend.dto.request.job.UpdateJobRequest;
 import com.marketplace.backend.dto.response.common.PageResponse;
 import com.marketplace.backend.dto.response.job.CertificateSummaryResponse;
+import com.marketplace.backend.dto.response.job.DiscoverJobResponse;
 import com.marketplace.backend.dto.response.job.JobApplicationResponse;
+import com.marketplace.backend.dto.response.job.JobClientSummaryResponse;
 import com.marketplace.backend.dto.response.job.JobPaymentStatusResponse;
 import com.marketplace.backend.dto.response.job.JobResponse;
 import com.marketplace.backend.dto.response.job.JobSubmissionResponse;
+import com.marketplace.backend.dto.response.job.MyApplicationJobResponse;
+import com.marketplace.backend.dto.response.job.MyApplicationResponse;
 import com.marketplace.backend.dto.response.bofa.CheckoutOrderResult;
 import com.marketplace.backend.entity.*;
 import com.marketplace.backend.exception.ApplicationException;
@@ -38,8 +42,13 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
+import java.util.Collection;
+import java.util.Locale;
+import java.util.Map;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -64,6 +73,7 @@ public class JobServiceImpl implements JobService {
     @Override
     @Transactional
     public JobResponse create(UUID clientUserId, CreateJobRequest request) {
+        requireUserType(clientUserId, UserType.CLIENT);
         Job job = new Job();
         job.setClientUserId(clientUserId);
         job.setTitle(request.getTitle());
@@ -99,13 +109,12 @@ public class JobServiceImpl implements JobService {
     @Override
     @Transactional
     public JobApplicationResponse apply(UUID freelancerId, UUID jobId) {
+        requireUserType(freelancerId, UserType.FREELANCER);
         Job job = getOrThrow(jobId);
 
         if (job.getStatus() != JobStatus.OPEN) {
             throw new ApplicationException(ErrorCode.INVALID_JOB_STATUS);
         }
-
-        validateAndGetFreelancer(freelancerId);
 
         if (jobApplicationRepository.findByJobIdAndFreelancerId(jobId, freelancerId).isPresent()) {
             throw new ApplicationException(ErrorCode.ALREADY_APPLIED, jobId);
@@ -196,6 +205,57 @@ public class JobServiceImpl implements JobService {
     }
 
     @Override
+    public PageResponse<DiscoverJobResponse> discover(UUID freelancerId, int page, int size, String keyword,
+                                                       BigDecimal minBudgetUsd, BigDecimal maxBudgetUsd,
+                                                       String sort, String application) {
+        requireUserType(freelancerId, UserType.FREELANCER);
+        validateBudgetRange(minBudgetUsd, maxBudgetUsd);
+        String applicationFilter = normalizeApplicationFilter(application);
+        Pageable pageable = PageRequest.of(safePage(page), safeSize(size), discoverySort(sort));
+        String normalizedKeyword = StringUtils.hasText(keyword) ? keyword.trim() : null;
+        Page<Job> jobs = jobRepository.discover(freelancerId, normalizedKeyword, minBudgetUsd,
+                maxBudgetUsd, applicationFilter, pageable);
+
+        List<UUID> jobIds = jobs.getContent().stream().map(Job::getId).toList();
+        Map<UUID, JobApplication> applications = jobIds.isEmpty() ? Map.of()
+                : jobApplicationRepository.findByFreelancerIdAndJobIdIn(freelancerId, jobIds).stream()
+                .collect(Collectors.toMap(JobApplication::getJobId, Function.identity()));
+        Map<UUID, User> clients = usersById(jobs.getContent().stream().map(Job::getClientUserId).toList());
+
+        return PageResponse.<DiscoverJobResponse>builder()
+                .currentPage(jobs.getNumber())
+                .pageSize(jobs.getSize())
+                .totalPages(jobs.getTotalPages())
+                .totalElements(jobs.getTotalElements())
+                .data(jobs.getContent().stream()
+                        .map(job -> toDiscoverResponse(job, clients.get(job.getClientUserId()), applications.get(job.getId())))
+                        .toList())
+                .build();
+    }
+
+    @Override
+    public PageResponse<MyApplicationResponse> listMyApplications(UUID freelancerId, int page, int size,
+                                                                   JobApplicationStatus status) {
+        requireUserType(freelancerId, UserType.FREELANCER);
+        Pageable pageable = PageRequest.of(safePage(page), safeSize(size), Sort.by("createdAt").descending());
+        Page<JobApplication> applications = jobApplicationRepository.findMine(freelancerId, status, pageable);
+        Map<UUID, Job> jobs = jobRepository.findAllById(applications.getContent().stream()
+                        .map(JobApplication::getJobId).toList()).stream()
+                .collect(Collectors.toMap(Job::getId, Function.identity()));
+        Map<UUID, User> clients = usersById(jobs.values().stream().map(Job::getClientUserId).toList());
+
+        return PageResponse.<MyApplicationResponse>builder()
+                .currentPage(applications.getNumber())
+                .pageSize(applications.getSize())
+                .totalPages(applications.getTotalPages())
+                .totalElements(applications.getTotalElements())
+                .data(applications.getContent().stream()
+                        .map(item -> toMyApplicationResponse(item, jobs.get(item.getJobId()), clients))
+                        .toList())
+                .build();
+    }
+
+    @Override
     public JobResponse getByIdForParticipant(UUID userId, UUID jobId) {
         return toResponse(getParticipantOrThrow(userId, jobId));
     }
@@ -272,6 +332,7 @@ public class JobServiceImpl implements JobService {
     @Override
     @Transactional
     public JobSubmissionResponse submitWork(UUID freelancerId, UUID jobId, SubmitWorkRequest request) {
+        requireUserType(freelancerId, UserType.FREELANCER);
         Job job = getOrThrow(jobId);
         if (job.getFreelancerId() == null || !job.getFreelancerId().equals(freelancerId)) {
             throw new ApplicationException(ErrorCode.JOB_NOT_FOUND, jobId);
@@ -351,6 +412,17 @@ public class JobServiceImpl implements JobService {
 
         job.setStatus(JobStatus.CANCELLED);
         jobRepository.save(job);
+
+        List<JobApplication> pendingApplications = jobApplicationRepository
+                .findByJobIdAndStatus(jobId, JobApplicationStatus.PENDING);
+        pendingApplications.forEach(application -> application.setStatus(JobApplicationStatus.CANCELLED));
+        jobApplicationRepository.saveAll(pendingApplications);
+        pendingApplications.forEach(application -> notificationService.notify(
+                application.getFreelancerId(),
+                NotificationType.JOB_CANCELLED,
+                "Công việc đã bị hủy",
+                "Công việc \"" + job.getTitle() + "\" đã bị Client hủy. Đơn ứng tuyển của bạn đã được đóng.",
+                job.getId()));
 
         return toResponse(job);
     }
@@ -460,6 +532,7 @@ public class JobServiceImpl implements JobService {
 
     @Override
     public List<CertificateSummaryResponse> listCertificatesForFreelancer(UUID freelancerId) {
+        requireUserType(freelancerId, UserType.FREELANCER);
         return jobRepository.findByFreelancerIdAndMisaCertificateIdIsNotNull(freelancerId).stream()
                 .map(job -> CertificateSummaryResponse.builder()
                         .certificateId(job.getMisaCertificateId())
@@ -472,6 +545,7 @@ public class JobServiceImpl implements JobService {
 
     @Override
     public byte[] downloadCertificatePdf(UUID freelancerId, UUID certificateId) {
+        requireUserType(freelancerId, UserType.FREELANCER);
         jobRepository.findByFreelancerIdAndMisaCertificateId(freelancerId, certificateId)
                 .orElseThrow(() -> new ApplicationException(ErrorCode.JOB_NOT_FOUND, certificateId));
 
@@ -484,6 +558,7 @@ public class JobServiceImpl implements JobService {
     }
 
     private Job getOwnedByClientOrThrow(UUID clientUserId, UUID jobId) {
+        requireUserType(clientUserId, UserType.CLIENT);
         Job job = getOrThrow(jobId);
         if (!job.getClientUserId().equals(clientUserId)) {
             throw new ApplicationException(ErrorCode.JOB_NOT_FOUND, jobId);
@@ -509,6 +584,100 @@ public class JobServiceImpl implements JobService {
                 .status(application.getStatus().name())
                 .createdAt(application.getCreatedAt())
                 .build();
+    }
+
+    private DiscoverJobResponse toDiscoverResponse(Job job, User client, JobApplication application) {
+        return DiscoverJobResponse.builder()
+                .id(job.getId())
+                .title(job.getTitle())
+                .description(job.getDescription())
+                .budgetUsd(job.getBudgetUsd())
+                .status(job.getStatus().name())
+                .client(JobClientSummaryResponse.builder()
+                        .id(job.getClientUserId())
+                        .displayName(client != null ? client.getDisplayName() : null)
+                        .build())
+                .hasApplied(application != null)
+                .applicationId(application != null ? application.getId() : null)
+                .applicationStatus(application != null ? application.getStatus().name() : null)
+                .createdAt(job.getCreatedAt())
+                .build();
+    }
+
+    private MyApplicationResponse toMyApplicationResponse(JobApplication application, Job job,
+                                                           Map<UUID, User> clients) {
+        if (job == null) {
+            throw new ApplicationException(ErrorCode.JOB_NOT_FOUND, application.getJobId());
+        }
+        User client = clients.get(job.getClientUserId());
+        return MyApplicationResponse.builder()
+                .id(application.getId())
+                .status(application.getStatus().name())
+                .createdAt(application.getCreatedAt())
+                .updatedAt(application.getUpdatedAt())
+                .job(MyApplicationJobResponse.builder()
+                        .id(job.getId())
+                        .title(job.getTitle())
+                        .description(job.getDescription())
+                        .budgetUsd(job.getBudgetUsd())
+                        .status(job.getStatus().name())
+                        .clientDisplayName(client != null ? client.getDisplayName() : null)
+                        .createdAt(job.getCreatedAt())
+                        .build())
+                .build();
+    }
+
+    private Map<UUID, User> usersById(Collection<UUID> userIds) {
+        if (userIds.isEmpty()) {
+            return Map.of();
+        }
+        return userRepository.findAllById(userIds).stream()
+                .collect(Collectors.toMap(User::getId, Function.identity()));
+    }
+
+    private User requireUserType(UUID userId, UserType expectedType) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ApplicationException(ErrorCode.USER_NOT_EXISTED));
+        if (user.getUserType() != expectedType) {
+            throw new ApplicationException(expectedType == UserType.CLIENT
+                    ? ErrorCode.NOT_A_CLIENT : ErrorCode.NOT_A_FREELANCER);
+        }
+        return user;
+    }
+
+    private void validateBudgetRange(BigDecimal minBudgetUsd, BigDecimal maxBudgetUsd) {
+        if ((minBudgetUsd != null && minBudgetUsd.signum() < 0)
+                || (maxBudgetUsd != null && maxBudgetUsd.signum() < 0)
+                || (minBudgetUsd != null && maxBudgetUsd != null
+                && minBudgetUsd.compareTo(maxBudgetUsd) > 0)) {
+            throw new ApplicationException(ErrorCode.INVALID_DATA);
+        }
+    }
+
+    private String normalizeApplicationFilter(String value) {
+        String normalized = StringUtils.hasText(value) ? value.trim().toUpperCase(Locale.ROOT) : "ALL";
+        if (!List.of("ALL", "APPLIED", "NOT_APPLIED").contains(normalized)) {
+            throw new ApplicationException(ErrorCode.INVALID_DATA);
+        }
+        return normalized;
+    }
+
+    private Sort discoverySort(String value) {
+        String normalized = StringUtils.hasText(value) ? value.trim().toUpperCase(Locale.ROOT) : "NEWEST";
+        return switch (normalized) {
+            case "NEWEST" -> Sort.by("createdAt").descending();
+            case "BUDGET_ASC" -> Sort.by("budgetUsd").ascending();
+            case "BUDGET_DESC" -> Sort.by("budgetUsd").descending();
+            default -> throw new ApplicationException(ErrorCode.INVALID_DATA);
+        };
+    }
+
+    private int safePage(int page) {
+        return Math.max(page, 0);
+    }
+
+    private int safeSize(int size) {
+        return size <= 0 ? 10 : Math.min(size, 100);
     }
 
     private JobSubmission latestSubmission(UUID jobId) {

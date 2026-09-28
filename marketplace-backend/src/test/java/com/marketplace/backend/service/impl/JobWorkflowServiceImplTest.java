@@ -10,6 +10,8 @@ import com.marketplace.backend.entity.Job;
 import com.marketplace.backend.entity.JobStatus;
 import com.marketplace.backend.entity.JobSubmission;
 import com.marketplace.backend.entity.JobSubmissionStatus;
+import com.marketplace.backend.entity.User;
+import com.marketplace.backend.entity.UserType;
 import com.marketplace.backend.exception.ApplicationException;
 import com.marketplace.backend.exception.ErrorCode;
 import com.marketplace.backend.repository.FreelancerPayoutRecordRepository;
@@ -37,6 +39,7 @@ import static org.mockito.Mockito.when;
 class JobWorkflowServiceImplTest {
 
     private JobRepository jobRepository;
+    private UserRepository userRepository;
     private JobSubmissionRepository submissionRepository;
     private PaymentBackendClient paymentBackendClient;
     private PayoutService payoutService;
@@ -44,7 +47,7 @@ class JobWorkflowServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        UserRepository userRepository = mock(UserRepository.class);
+        userRepository = mock(UserRepository.class);
         jobRepository = mock(JobRepository.class);
         JobApplicationRepository applicationRepository = mock(JobApplicationRepository.class);
         submissionRepository = mock(JobSubmissionRepository.class);
@@ -68,6 +71,7 @@ class JobWorkflowServiceImplTest {
     @Test
     void assignedFreelancerSubmitsWorkForClientReview() {
         Job job = job(JobStatus.IN_PROGRESS);
+        stubUsers(job);
         when(jobRepository.findById(job.getId())).thenReturn(Optional.of(job));
         when(submissionRepository.countByJobId(job.getId())).thenReturn(0L);
         SubmitWorkRequest request = new SubmitWorkRequest();
@@ -87,6 +91,7 @@ class JobWorkflowServiceImplTest {
     @Test
     void clientRequestsRevisionAndFreelancerCanSubmitAgain() {
         Job job = job(JobStatus.SUBMITTED_FOR_REVIEW);
+        stubUsers(job);
         JobSubmission first = submission(job, 1, JobSubmissionStatus.SUBMITTED);
         when(jobRepository.findById(job.getId())).thenReturn(Optional.of(job));
         when(submissionRepository.findFirstByJobIdOrderByVersionDesc(job.getId()))
@@ -112,6 +117,7 @@ class JobWorkflowServiceImplTest {
     @Test
     void clientCannotApproveBeforeWorkIsSubmitted() {
         Job job = job(JobStatus.IN_PROGRESS);
+        stubUsers(job);
         when(jobRepository.findById(job.getId())).thenReturn(Optional.of(job));
 
         assertThatThrownBy(() -> service.approve(job.getClientUserId(), job.getId()))
@@ -125,6 +131,7 @@ class JobWorkflowServiceImplTest {
     @Test
     void approvalAfterSubmissionCapturesPaymentAndStartsPayout() {
         Job job = job(JobStatus.SUBMITTED_FOR_REVIEW);
+        stubUsers(job);
         JobSubmission submission = submission(job, 1, JobSubmissionStatus.SUBMITTED);
         when(jobRepository.findById(job.getId())).thenReturn(Optional.of(job));
         when(submissionRepository.findFirstByJobIdOrderByVersionDesc(job.getId()))
@@ -161,5 +168,16 @@ class JobWorkflowServiceImplTest {
         submission.setSummary("Delivery");
         submission.setStatus(status);
         return submission;
+    }
+
+    private void stubUsers(Job job) {
+        User client = new User();
+        client.setId(job.getClientUserId());
+        client.setUserType(UserType.CLIENT);
+        User freelancer = new User();
+        freelancer.setId(job.getFreelancerId());
+        freelancer.setUserType(UserType.FREELANCER);
+        when(userRepository.findById(client.getId())).thenReturn(Optional.of(client));
+        when(userRepository.findById(freelancer.getId())).thenReturn(Optional.of(freelancer));
     }
 }

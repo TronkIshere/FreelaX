@@ -28,6 +28,7 @@ public enum ErrorCode {
     TAX_INFO_REQUIRED(2017, "Freelancer phải cung cấp đầy đủ thông tin thuế (taxCode, identityNumber, nationality, taxAddress) khi đăng ký", HttpStatus.BAD_REQUEST),
     BANK_INFO_REQUIRED(2018, "Freelancer phải chọn ngân hàng và cung cấp số tài khoản nhận tiền khi đăng ký", HttpStatus.BAD_REQUEST),
     NOTIFICATION_NOT_FOUND(2019, "Không tìm thấy thông báo: %s", HttpStatus.NOT_FOUND),
+    NOT_A_CLIENT(2020, "Tài khoản này không phải Client", HttpStatus.FORBIDDEN),
 
     JOB_NOT_FOUND(4000, "Không tìm thấy công việc: %s", HttpStatus.NOT_FOUND),
     INVALID_JOB_STATUS(4001, "Trạng thái công việc không cho phép thao tác này", HttpStatus.CONFLICT),

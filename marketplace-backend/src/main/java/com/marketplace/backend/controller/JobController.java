@@ -9,10 +9,13 @@ import com.marketplace.backend.dto.request.job.UpdateJobRequest;
 import com.marketplace.backend.dto.response.common.PageResponse;
 import com.marketplace.backend.dto.response.common.ResponseAPI;
 import com.marketplace.backend.dto.response.job.CertificateSummaryResponse;
+import com.marketplace.backend.dto.response.job.DiscoverJobResponse;
 import com.marketplace.backend.dto.response.job.JobApplicationResponse;
 import com.marketplace.backend.dto.response.job.JobPaymentStatusResponse;
 import com.marketplace.backend.dto.response.job.JobResponse;
 import com.marketplace.backend.dto.response.job.JobSubmissionResponse;
+import com.marketplace.backend.dto.response.job.MyApplicationResponse;
+import com.marketplace.backend.entity.JobApplicationStatus;
 import com.marketplace.backend.service.JobService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +32,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.math.BigDecimal;
 import java.util.UUID;
 
 @RestController
@@ -54,6 +58,35 @@ public class JobController {
         return ResponseAPI.<PageResponse<JobResponse>>builder()
                 .code(200)
                 .data(jobService.listForUser(principal.getId(), page, size))
+                .build();
+    }
+
+    @GetMapping("/discover")
+    public ResponseAPI<PageResponse<DiscoverJobResponse>> discover(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) BigDecimal minBudgetUsd,
+            @RequestParam(required = false) BigDecimal maxBudgetUsd,
+            @RequestParam(defaultValue = "NEWEST") String sort,
+            @RequestParam(defaultValue = "ALL") String application) {
+        return ResponseAPI.<PageResponse<DiscoverJobResponse>>builder()
+                .code(200)
+                .data(jobService.discover(principal.getId(), page, size, keyword,
+                        minBudgetUsd, maxBudgetUsd, sort, application))
+                .build();
+    }
+
+    @GetMapping("/applications/me")
+    public ResponseAPI<PageResponse<MyApplicationResponse>> listMyApplications(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) JobApplicationStatus status) {
+        return ResponseAPI.<PageResponse<MyApplicationResponse>>builder()
+                .code(200)
+                .data(jobService.listMyApplications(principal.getId(), page, size, status))
                 .build();
     }
 
@@ -121,6 +154,7 @@ public class JobController {
                                            @PathVariable UUID jobId) {
         return ResponseAPI.<JobResponse>builder()
                 .code(200)
+                .message("Đã hủy công việc và đóng các đơn ứng tuyển đang chờ")
                 .data(jobService.cancel(principal.getId(), jobId))
                 .build();
     }
