@@ -40,6 +40,7 @@ public enum ErrorCode {
     FREELANCER_NOT_APPLIED(4009, "Freelancer chưa ứng tuyển công việc này: %s", HttpStatus.CONFLICT),
     TAX_RECORD_NOT_FOUND(4010, "Không tìm thấy bản ghi thuế: %s", HttpStatus.NOT_FOUND),
     TAX_RECORD_INVALID_STATUS(4011, "Trạng thái bản ghi thuế không cho phép thao tác này: %s", HttpStatus.CONFLICT),
+    JOB_SUBMISSION_NOT_FOUND(4012, "Không tìm thấy bản bàn giao công việc: %s", HttpStatus.NOT_FOUND),
 
     MISA_BACKEND_CALL_FAILED(5000, "Gọi misa-backend thất bại: %s", HttpStatus.BAD_GATEWAY),
 

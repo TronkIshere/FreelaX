@@ -18,4 +18,9 @@ public class DerivedAccountsResult {
     String mockOnrampTreasuryAuthority;
     String mockOnrampTreasuryAta;
     String clientAta;
+    String invoice;
+    String rateSnapshot;
+    String freelancerAta;
+    String withdrawalRecord;
+    String treasuryAta;
 }

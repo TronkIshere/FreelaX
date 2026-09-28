@@ -36,6 +36,14 @@ mvn -pl solana-integration -am spring-boot:run
 
 Swagger UI is available at `/swagger-ui.html`.
 
+## Postman
+
+Import [`docs/solana-integration.postman_collection.json`](docs/solana-integration.postman_collection.json)
+into Postman. The collection contains all 21 gateway endpoints, build/send
+variants, read queries, signed-transaction submission helpers, and negative
+validation/API-key checks. Update the collection variables for the keys and
+accounts in the target Solana environment before running an end-to-end flow.
+
 The canonical Program ID is currently
 `CwuaAPrxYLK6avPUbMRBerBYt1apdNU829TDZmoAnhEf`. Do not deploy until the Anchor
 deploy keypair is deliberately synchronized with this ID.

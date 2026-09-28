@@ -3,6 +3,8 @@ package com.marketplace.backend.controller;
 import com.marketplace.backend.configuration.UserPrincipal;
 import com.marketplace.backend.dto.request.job.AssignFreelancerRequest;
 import com.marketplace.backend.dto.request.job.CreateJobRequest;
+import com.marketplace.backend.dto.request.job.RequestRevisionRequest;
+import com.marketplace.backend.dto.request.job.SubmitWorkRequest;
 import com.marketplace.backend.dto.request.job.UpdateJobRequest;
 import com.marketplace.backend.dto.response.common.PageResponse;
 import com.marketplace.backend.dto.response.common.ResponseAPI;
@@ -10,6 +12,7 @@ import com.marketplace.backend.dto.response.job.CertificateSummaryResponse;
 import com.marketplace.backend.dto.response.job.JobApplicationResponse;
 import com.marketplace.backend.dto.response.job.JobPaymentStatusResponse;
 import com.marketplace.backend.dto.response.job.JobResponse;
+import com.marketplace.backend.dto.response.job.JobSubmissionResponse;
 import com.marketplace.backend.service.JobService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -79,6 +82,37 @@ public class JobController {
         return ResponseAPI.<JobResponse>builder()
                 .code(200)
                 .data(jobService.approve(principal.getId(), jobId))
+                .build();
+    }
+
+    @PostMapping("/{jobId}/submit-work")
+    public ResponseAPI<JobSubmissionResponse> submitWork(@AuthenticationPrincipal UserPrincipal principal,
+                                                          @PathVariable UUID jobId,
+                                                          @Valid @RequestBody SubmitWorkRequest request) {
+        return ResponseAPI.<JobSubmissionResponse>builder()
+                .code(200)
+                .message("Đã gửi bàn giao công việc để Client duyệt")
+                .data(jobService.submitWork(principal.getId(), jobId, request))
+                .build();
+    }
+
+    @PostMapping("/{jobId}/request-revision")
+    public ResponseAPI<JobSubmissionResponse> requestRevision(@AuthenticationPrincipal UserPrincipal principal,
+                                                               @PathVariable UUID jobId,
+                                                               @Valid @RequestBody RequestRevisionRequest request) {
+        return ResponseAPI.<JobSubmissionResponse>builder()
+                .code(200)
+                .message("Đã yêu cầu Freelancer chỉnh sửa bàn giao")
+                .data(jobService.requestRevision(principal.getId(), jobId, request))
+                .build();
+    }
+
+    @GetMapping("/{jobId}/submissions")
+    public ResponseAPI<List<JobSubmissionResponse>> listSubmissions(
+            @AuthenticationPrincipal UserPrincipal principal, @PathVariable UUID jobId) {
+        return ResponseAPI.<List<JobSubmissionResponse>>builder()
+                .code(200)
+                .data(jobService.listSubmissions(principal.getId(), jobId))
                 .build();
     }
 

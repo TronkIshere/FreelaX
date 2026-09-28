@@ -64,6 +64,7 @@ solana-cpr:
   confirm-poll-attempts: 10
   confirm-poll-interval-ms: 1000
   pending-expiry-seconds: 300
+  invoice-validity-seconds: 900
 
 http-client:
   connect-timeout-ms: 3000
