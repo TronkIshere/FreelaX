@@ -37,6 +37,9 @@ spring.log
 .env
 .env.*
 !.env.example
+marketplace-backend/env
+misa-backend/env
+payment-backend/env
 application-local.yml
 application-local.yaml
 

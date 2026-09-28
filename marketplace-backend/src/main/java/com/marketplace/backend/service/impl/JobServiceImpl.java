@@ -4,12 +4,15 @@ import com.marketplace.backend.client.MisaBackendClient;
 import com.marketplace.backend.client.PaymentBackendClient;
 import com.marketplace.backend.dto.request.job.AssignFreelancerRequest;
 import com.marketplace.backend.dto.request.job.CreateJobRequest;
+import com.marketplace.backend.dto.request.job.RequestRevisionRequest;
+import com.marketplace.backend.dto.request.job.SubmitWorkRequest;
 import com.marketplace.backend.dto.request.job.UpdateJobRequest;
 import com.marketplace.backend.dto.response.common.PageResponse;
 import com.marketplace.backend.dto.response.job.CertificateSummaryResponse;
 import com.marketplace.backend.dto.response.job.JobApplicationResponse;
 import com.marketplace.backend.dto.response.job.JobPaymentStatusResponse;
 import com.marketplace.backend.dto.response.job.JobResponse;
+import com.marketplace.backend.dto.response.job.JobSubmissionResponse;
 import com.marketplace.backend.dto.response.bofa.CheckoutOrderResult;
 import com.marketplace.backend.entity.*;
 import com.marketplace.backend.exception.ApplicationException;
@@ -17,6 +20,7 @@ import com.marketplace.backend.exception.ErrorCode;
 import com.marketplace.backend.repository.FreelancerPayoutRecordRepository;
 import com.marketplace.backend.repository.JobApplicationRepository;
 import com.marketplace.backend.repository.JobRepository;
+import com.marketplace.backend.repository.JobSubmissionRepository;
 import com.marketplace.backend.repository.UserRepository;
 import com.marketplace.backend.service.JobService;
 import com.marketplace.backend.service.NotificationService;
@@ -31,7 +35,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -47,6 +53,7 @@ public class JobServiceImpl implements JobService {
     UserRepository userRepository;
     JobRepository jobRepository;
     JobApplicationRepository jobApplicationRepository;
+    JobSubmissionRepository jobSubmissionRepository;
     PaymentBackendClient paymentBackendClient;
     MisaBackendClient misaBackendClient;
     NotificationService notificationService;
@@ -222,7 +229,11 @@ public class JobServiceImpl implements JobService {
     public JobResponse approve(UUID clientUserId, UUID jobId) {
         Job job = getOwnedByClientOrThrow(clientUserId, jobId);
 
-        if (job.getStatus() != JobStatus.IN_PROGRESS || job.getCheckoutOrderId() == null) {
+        if (job.getStatus() != JobStatus.SUBMITTED_FOR_REVIEW || job.getCheckoutOrderId() == null) {
+            throw new ApplicationException(ErrorCode.INVALID_JOB_STATUS);
+        }
+        JobSubmission submission = latestSubmission(jobId);
+        if (submission.getStatus() != JobSubmissionStatus.SUBMITTED) {
             throw new ApplicationException(ErrorCode.INVALID_JOB_STATUS);
         }
 
@@ -235,6 +246,10 @@ public class JobServiceImpl implements JobService {
         job.setStatus(JobStatus.COMPLETED);
         jobRepository.save(job);
 
+        submission.setStatus(JobSubmissionStatus.APPROVED);
+        submission.setReviewedAt(LocalDateTime.now());
+        jobSubmissionRepository.save(submission);
+
         notificationService.notify(
                 clientUserId,
                 NotificationType.PAYMENT_SENT,
@@ -242,9 +257,87 @@ public class JobServiceImpl implements JobService {
                 "Bạn đã thanh toán thành công cho công việc \"" + job.getTitle() + "\".",
                 job.getId());
 
+        notificationService.notify(
+                job.getFreelancerId(),
+                NotificationType.WORK_APPROVED,
+                "Bàn giao đã được duyệt",
+                "Client đã duyệt bàn giao cho công việc \"" + job.getTitle() + "\".",
+                job.getId());
+
         payoutService.settle(job);
 
         return toResponse(job);
+    }
+
+    @Override
+    @Transactional
+    public JobSubmissionResponse submitWork(UUID freelancerId, UUID jobId, SubmitWorkRequest request) {
+        Job job = getOrThrow(jobId);
+        if (job.getFreelancerId() == null || !job.getFreelancerId().equals(freelancerId)) {
+            throw new ApplicationException(ErrorCode.JOB_NOT_FOUND, jobId);
+        }
+        if (job.getStatus() != JobStatus.IN_PROGRESS && job.getStatus() != JobStatus.REVISION_REQUESTED) {
+            throw new ApplicationException(ErrorCode.INVALID_JOB_STATUS);
+        }
+
+        JobSubmission submission = new JobSubmission();
+        submission.setJobId(jobId);
+        submission.setFreelancerId(freelancerId);
+        submission.setVersion(Math.toIntExact(jobSubmissionRepository.countByJobId(jobId) + 1));
+        submission.setSummary(request.getSummary().trim());
+        submission.setDeliverableUrl(StringUtils.hasText(request.getDeliverableUrl())
+                ? request.getDeliverableUrl().trim() : null);
+        submission.setStatus(JobSubmissionStatus.SUBMITTED);
+        jobSubmissionRepository.save(submission);
+
+        job.setStatus(JobStatus.SUBMITTED_FOR_REVIEW);
+        jobRepository.save(job);
+
+        notificationService.notify(
+                job.getClientUserId(),
+                NotificationType.WORK_SUBMITTED,
+                "Freelancer đã bàn giao công việc",
+                "Freelancer đã gửi bản bàn giao #" + submission.getVersion()
+                        + " cho công việc \"" + job.getTitle() + "\".",
+                job.getId());
+        return toSubmissionResponse(submission);
+    }
+
+    @Override
+    @Transactional
+    public JobSubmissionResponse requestRevision(UUID clientUserId, UUID jobId, RequestRevisionRequest request) {
+        Job job = getOwnedByClientOrThrow(clientUserId, jobId);
+        if (job.getStatus() != JobStatus.SUBMITTED_FOR_REVIEW) {
+            throw new ApplicationException(ErrorCode.INVALID_JOB_STATUS);
+        }
+        JobSubmission submission = latestSubmission(jobId);
+        if (submission.getStatus() != JobSubmissionStatus.SUBMITTED) {
+            throw new ApplicationException(ErrorCode.INVALID_JOB_STATUS);
+        }
+
+        submission.setStatus(JobSubmissionStatus.REVISION_REQUESTED);
+        submission.setReviewerFeedback(request.getFeedback().trim());
+        submission.setReviewedAt(LocalDateTime.now());
+        jobSubmissionRepository.save(submission);
+
+        job.setStatus(JobStatus.REVISION_REQUESTED);
+        jobRepository.save(job);
+
+        notificationService.notify(
+                job.getFreelancerId(),
+                NotificationType.REVISION_REQUESTED,
+                "Client yêu cầu chỉnh sửa",
+                "Client yêu cầu chỉnh sửa bản bàn giao cho công việc \"" + job.getTitle() + "\".",
+                job.getId());
+        return toSubmissionResponse(submission);
+    }
+
+    @Override
+    public List<JobSubmissionResponse> listSubmissions(UUID userId, UUID jobId) {
+        getParticipantOrThrow(userId, jobId);
+        return jobSubmissionRepository.findByJobIdOrderByVersionAsc(jobId).stream()
+                .map(this::toSubmissionResponse)
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -415,6 +508,27 @@ public class JobServiceImpl implements JobService {
                 .freelancerId(application.getFreelancerId())
                 .status(application.getStatus().name())
                 .createdAt(application.getCreatedAt())
+                .build();
+    }
+
+    private JobSubmission latestSubmission(UUID jobId) {
+        return jobSubmissionRepository.findFirstByJobIdOrderByVersionDesc(jobId)
+                .orElseThrow(() -> new ApplicationException(ErrorCode.JOB_SUBMISSION_NOT_FOUND, jobId));
+    }
+
+    private JobSubmissionResponse toSubmissionResponse(JobSubmission submission) {
+        return JobSubmissionResponse.builder()
+                .id(submission.getId())
+                .jobId(submission.getJobId())
+                .freelancerId(submission.getFreelancerId())
+                .version(submission.getVersion())
+                .summary(submission.getSummary())
+                .deliverableUrl(submission.getDeliverableUrl())
+                .status(submission.getStatus().name())
+                .reviewerFeedback(submission.getReviewerFeedback())
+                .reviewedAt(submission.getReviewedAt())
+                .createdAt(submission.getCreatedAt())
+                .updatedAt(submission.getUpdatedAt())
                 .build();
     }
 

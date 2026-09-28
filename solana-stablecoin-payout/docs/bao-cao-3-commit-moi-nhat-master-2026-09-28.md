@@ -18,6 +18,29 @@ Phần này là trạng thái code mới trên nhánh tính năng sau khi đồn
 tới `50b828e` và merge tại `c7fa04a`; không phải nội dung của ba commit gốc mà
 báo cáo phân tích bên dưới.
 
+### Marketplace work submission: **ĐÃ TRIỂN KHAI Ở MỨC CODE**
+
+Workflow marketplace không còn cho Client approve trực tiếp từ `IN_PROGRESS`:
+
+```text
+IN_PROGRESS
+  -> Freelancer submit work
+SUBMITTED_FOR_REVIEW
+  -> Client approve -> COMPLETED -> bắt đầu payout
+  -> Client request revision -> REVISION_REQUESTED
+       -> Freelancer resubmit -> SUBMITTED_FOR_REVIEW
+```
+
+- `JobSubmission` lưu lịch sử bàn giao theo version, nội dung, deliverable URL,
+  feedback, trạng thái và thời điểm review.
+- Chỉ Freelancer được gán vào Job mới được submit/resubmit; chỉ Client sở hữu
+  Job mới được yêu cầu chỉnh sửa hoặc approve.
+- `approve` chỉ capture payment và kích hoạt payout khi latest submission đang
+  `SUBMITTED`; approve sớm từ `IN_PROGRESS` bị từ chối.
+- Có API submit, request revision và list toàn bộ submission cho hai participant.
+- Ba file `marketplace-backend/env`, `misa-backend/env`, `payment-backend/env`
+  được ignore tường minh để không thể bị thêm nhầm bằng `git add .`.
+
 ### Client → Freelancer on-chain: **ĐÃ TRIỂN KHAI Ở MỨC CODE**
 
 Critical path mới:
@@ -73,7 +96,7 @@ Các phần đã bổ sung:
 Mức xác minh hiện tại:
 
 - `git diff --check`: PASS.
-- `mvn -pl marketplace-backend -am test`: **BUILD SUCCESS — 7 test, 0 failure,
+- `mvn -pl marketplace-backend -am test`: **BUILD SUCCESS — 11 test, 0 failure,
   0 error** (chạy bằng JDK 17 và Maven tạm trong `/tmp`).
 - Chưa chạy local-validator end-to-end, do đó trạng thái chính xác là **đã hoàn
   thành implementation, compile và unit test; còn chờ runtime E2E verification**.
@@ -135,6 +158,7 @@ Các mục tiếp theo:
 
 | Hạng mục | Trạng thái trên nhánh tính năng |
 |---|---|
+| Marketplace submit/review/revision/approve | Đã compile + unit test |
 | Client → Freelancer on-chain | Đã compile + unit test; chờ E2E verification |
 | Freelancer → Treasury off-ramp on-chain | Đã compile + unit test; chờ E2E verification |
 | VND payout MVP | Đã mô phỏng bank settlement + chốt `Completed` on-chain; chờ E2E |
