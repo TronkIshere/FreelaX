@@ -1,21 +1,28 @@
 package com.marketplace.backend.client;
 
+import com.marketplace.backend.configuration.SolanaCprProperties;
 import com.marketplace.backend.dto.request.solana.MockOnrampPurchaseRequest;
 import com.marketplace.backend.dto.response.solana.MockOnrampPurchaseResult;
+import com.marketplace.backend.dto.response.solana.MockOnrampReceiptResult;
+import com.marketplace.backend.dto.response.solana.SolanaConfigResult;
 import com.marketplace.backend.dto.response.solana.SolanaTransactionStatusResult;
-import com.marketplace.backend.exception.ApplicationException;
-import com.marketplace.backend.exception.ErrorCode;
-import org.springframework.beans.factory.annotation.Value;
+import com.marketplace.backend.exception.SolanaCprException;
+import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
+
+import java.util.Optional;
 
 @Component
 public class SolanaCprClient {
@@ -23,65 +30,106 @@ public class SolanaCprClient {
     private static final String INTERNAL_API_KEY_HEADER = "X-Internal-Api-Key";
 
     private final RestTemplate restTemplate;
+    private final SolanaCprProperties properties;
 
-    public SolanaCprClient(RestTemplate restTemplate) {
-        this.restTemplate = restTemplate;
+    public SolanaCprClient(RestTemplateBuilder restTemplateBuilder, SolanaCprProperties properties) {
+        this.properties = properties;
+        this.restTemplate = restTemplateBuilder
+                .requestFactory(() -> {
+                    SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+                    factory.setConnectTimeout(properties.getConnectTimeoutMs());
+                    factory.setReadTimeout(properties.getReadTimeoutMs());
+                    return factory;
+                })
+                .build();
     }
 
-    @Value("${solana-cpr.base-url}")
-    private String baseUrl;
-
-    @Value("${solana-cpr.internal-api-key:}")
-    private String internalApiKey;
-
     public MockOnrampPurchaseResult createMockOnrampPurchase(MockOnrampPurchaseRequest request) {
-        try {
-            ResponseEntity<MockOnrampPurchaseResult> response = restTemplate.exchange(
-                    baseUrl + "/api/v1/demo/onramp/purchases",
-                    HttpMethod.POST, new HttpEntity<>(request, jsonHeaders()),
-                    MockOnrampPurchaseResult.class);
+        String url = properties.getBaseUrl() + "/api/v1/solana/mock-onramp/purchases";
+        MockOnrampPurchaseResult body = execute("mock-onramp", () -> restTemplate.exchange(
+                url, HttpMethod.POST, new HttpEntity<>(request, jsonHeaders()), MockOnrampPurchaseResult.class));
 
-            MockOnrampPurchaseResult body = response.getBody();
-            if (body == null || !StringUtils.hasText(body.getSignature())) {
-                throw new ApplicationException(ErrorCode.SOLANA_CPR_CALL_FAILED, "mock-onramp: empty body or missing signature");
-            }
-            return body;
-        } catch (RestClientResponseException e) {
-            throw new ApplicationException(ErrorCode.SOLANA_CPR_CALL_FAILED,
-                    "mock-onramp: HTTP " + e.getStatusCode().value() + " " + e.getResponseBodyAsString());
-        } catch (ResourceAccessException e) {
-            throw new ApplicationException(ErrorCode.SOLANA_CPR_CALL_FAILED,
-                    "mock-onramp: khong ket noi duoc " + baseUrl);
+        if (body == null || !StringUtils.hasText(body.getSignature())) {
+            throw new SolanaCprException("mock-onramp: response thieu signature", false, null);
         }
+        return body;
     }
 
     public SolanaTransactionStatusResult getTransactionStatus(String signature) {
-        try {
-            ResponseEntity<SolanaTransactionStatusResult> response = restTemplate.exchange(
-                    baseUrl + "/api/v1/transactions/" + signature,
-                    HttpMethod.GET, new HttpEntity<>(jsonHeaders()),
-                    SolanaTransactionStatusResult.class);
+        String url = UriComponentsBuilder.fromUriString(properties.getBaseUrl())
+                .path("/api/v1/solana/transactions/{signature}")
+                .queryParam("commitment", properties.getCommitment())
+                .buildAndExpand(signature)
+                .toUriString();
 
-            SolanaTransactionStatusResult body = response.getBody();
-            if (body == null) {
-                throw new ApplicationException(ErrorCode.SOLANA_CPR_CALL_FAILED, "get-transaction: empty body");
+        SolanaTransactionStatusResult body = execute("get-transaction", () -> restTemplate.exchange(
+                url, HttpMethod.GET, new HttpEntity<>(jsonHeaders()), SolanaTransactionStatusResult.class));
+
+        if (body == null) {
+            throw new SolanaCprException("get-transaction: empty body", false, null);
+        }
+        return body;
+    }
+
+    public Optional<MockOnrampReceiptResult> findMockOnrampReceipt(String client, String purchaseId) {
+        String url = UriComponentsBuilder.fromUriString(properties.getBaseUrl())
+                .path("/api/v1/solana/onramp-receipts/{client}/{purchaseId}")
+                .queryParam("commitment", properties.getCommitment())
+                .buildAndExpand(client, purchaseId)
+                .toUriString();
+
+        try {
+            MockOnrampReceiptResult body = execute("get-onramp-receipt", () -> restTemplate.exchange(
+                    url, HttpMethod.GET, new HttpEntity<>(jsonHeaders()), MockOnrampReceiptResult.class));
+            return Optional.ofNullable(body).filter(receipt -> StringUtils.hasText(receipt.getPurchaseId()));
+        } catch (SolanaCprException e) {
+            if (e.getHttpStatus() != null && e.getHttpStatus() == HttpStatus.NOT_FOUND.value()) {
+                return Optional.empty();
             }
-            return body;
+            throw e;
+        }
+    }
+
+    public SolanaConfigResult getConfig() {
+        String url = UriComponentsBuilder.fromUriString(properties.getBaseUrl())
+                .path("/api/v1/solana/config")
+                .queryParam("commitment", properties.getCommitment())
+                .toUriString();
+
+        SolanaConfigResult body = execute("get-config", () -> restTemplate.exchange(
+                url, HttpMethod.GET, new HttpEntity<>(jsonHeaders()), SolanaConfigResult.class));
+
+        if (body == null) {
+            throw new SolanaCprException("get-config: empty body", false, null);
+        }
+        return body;
+    }
+
+    private <T> T execute(String operation, ExchangeCall<T> call) {
+        try {
+            return call.exchange().getBody();
         } catch (RestClientResponseException e) {
-            throw new ApplicationException(ErrorCode.SOLANA_CPR_CALL_FAILED,
-                    "get-transaction: HTTP " + e.getStatusCode().value() + " " + e.getResponseBodyAsString());
+            int status = e.getStatusCode().value();
+            boolean definitive = status >= 400 && status < 500 && status != 408 && status != 429;
+            throw new SolanaCprException(
+                    operation + ": HTTP " + status + " " + e.getResponseBodyAsString(), definitive, status);
         } catch (ResourceAccessException e) {
-            throw new ApplicationException(ErrorCode.SOLANA_CPR_CALL_FAILED,
-                    "get-transaction: khong ket noi duoc " + baseUrl);
+            throw new SolanaCprException(
+                    operation + ": khong ket noi duoc " + properties.getBaseUrl() + " (" + e.getMessage() + ")", false, null);
         }
     }
 
     private HttpHeaders jsonHeaders() {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        if (StringUtils.hasText(internalApiKey)) {
-            headers.set(INTERNAL_API_KEY_HEADER, internalApiKey);
+        if (StringUtils.hasText(properties.getInternalApiKey())) {
+            headers.set(INTERNAL_API_KEY_HEADER, properties.getInternalApiKey());
         }
         return headers;
+    }
+
+    @FunctionalInterface
+    private interface ExchangeCall<T> {
+        ResponseEntity<T> exchange();
     }
 }

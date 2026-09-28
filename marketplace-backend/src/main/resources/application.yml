@@ -46,6 +46,22 @@ solana-cpr:
   base-url: ${SOLANA_CPR_BASE_URL:http://localhost:9193}
   internal-api-key: ${SOLANA_CPR_INTERNAL_API_KEY:}
   custodial-client-public-key: ${SOLANA_CPR_CUSTODIAL_CLIENT_PUBLIC_KEY:}
+  onramp-authority-public-key: ${SOLANA_CPR_ONRAMP_AUTHORITY_PUBLIC_KEY:}
+  network: ${SOLANA_CPR_NETWORK:localnet}
+  commitment: ${SOLANA_CPR_COMMITMENT:confirmed}
+  connect-timeout-ms: 3000
+  read-timeout-ms: 15000
+  confirm-poll-attempts: 10
+  confirm-poll-interval-ms: 1000
+  pending-expiry-seconds: 300
+
+http-client:
+  connect-timeout-ms: 3000
+  read-timeout-ms: 10000
+
+payout:
+  reconcile-initial-delay-ms: 30000
+  reconcile-interval-ms: 30000
 
 internal:
   api:

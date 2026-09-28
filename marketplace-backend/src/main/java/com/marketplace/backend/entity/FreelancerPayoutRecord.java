@@ -11,6 +11,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Getter
@@ -29,6 +30,9 @@ public class FreelancerPayoutRecord extends AbstractEntity<UUID> {
     @Column(nullable = false)
     private UUID clientUserId;
 
+    @Column(nullable = false)
+    private boolean simulated = true;
+
     @Column(nullable = false, precision = 20, scale = 6)
     private BigDecimal amountUsd;
 
@@ -38,13 +42,23 @@ public class FreelancerPayoutRecord extends AbstractEntity<UUID> {
     @Column(nullable = false, precision = 20, scale = 6)
     private BigDecimal amountUsdNet;
 
-    @Column(nullable = false, precision = 20, scale = 6)
-    private BigDecimal amountUsdcReceived;
+    @Column(nullable = false, length = 20)
+    private String onRampUsdAmountE6;
 
     @Column(nullable = false, length = 20)
     private String onRampPurchaseId;
 
-    @Column(nullable = false, length = 128)
+    @Column(length = 64)
+    private String onRampClientPublicKey;
+
+    @Column(nullable = false, length = 20)
+    private String onRampNetwork;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private OnRampStatus onRampStatus = OnRampStatus.NOT_STARTED;
+
+    @Column(length = 128)
     private String onRampTransactionSignature;
 
     @Column(length = 64)
@@ -53,21 +67,35 @@ public class FreelancerPayoutRecord extends AbstractEntity<UUID> {
     @Column(length = 64)
     private String onRampReceiptPda;
 
-    @Column(nullable = false, precision = 20, scale = 2)
+    private LocalDateTime onRampSubmittedAt;
+
+    private LocalDateTime onRampConfirmedAt;
+
+    @Column(columnDefinition = "TEXT")
+    private String onRampError;
+
+    @Column(precision = 20, scale = 6)
+    private BigDecimal amountUsdcReceived;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private OffRampStatus offRampStatus = OffRampStatus.NOT_STARTED;
+
+    @Column(precision = 20, scale = 2)
     private BigDecimal usdcToVndRate;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 32)
+    @Column(length = 32)
     private ExchangeRateSource usdcToVndRateSource;
 
-    @Column(nullable = false, precision = 20, scale = 0)
+    @Column(precision = 20, scale = 0)
     private BigDecimal amountVndBeforeOffRampFee;
 
-    @Column(nullable = false, precision = 20, scale = 0)
+    @Column(precision = 20, scale = 0)
     private BigDecimal offRampFeeVnd;
 
-    @Column(nullable = false, precision = 20, scale = 0)
-    private BigDecimal amountVndActual;
+    @Column(precision = 20, scale = 0)
+    private BigDecimal amountVndEstimated;
 
     @Column(length = 64)
     private String offRampReference;

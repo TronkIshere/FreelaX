@@ -10,24 +10,17 @@ import com.marketplace.backend.dto.response.job.CertificateSummaryResponse;
 import com.marketplace.backend.dto.response.job.JobApplicationResponse;
 import com.marketplace.backend.dto.response.job.JobPaymentStatusResponse;
 import com.marketplace.backend.dto.response.job.JobResponse;
-import com.marketplace.backend.dto.response.misa.MisaCertificateResult;
-import com.marketplace.backend.dto.response.misa.MisaPayoutTransactionResult;
 import com.marketplace.backend.dto.response.bofa.CheckoutOrderResult;
 import com.marketplace.backend.entity.*;
 import com.marketplace.backend.exception.ApplicationException;
 import com.marketplace.backend.exception.ErrorCode;
-import com.marketplace.backend.provider.currency.ExchangeRateProvider;
-import com.marketplace.backend.provider.currency.ExchangeRateResult;
-import com.marketplace.backend.provider.currency.OffRampProvider;
-import com.marketplace.backend.provider.currency.OffRampResult;
-import com.marketplace.backend.provider.currency.OnRampProvider;
-import com.marketplace.backend.provider.currency.OnRampResult;
 import com.marketplace.backend.repository.FreelancerPayoutRecordRepository;
 import com.marketplace.backend.repository.JobApplicationRepository;
 import com.marketplace.backend.repository.JobRepository;
 import com.marketplace.backend.repository.UserRepository;
 import com.marketplace.backend.service.JobService;
 import com.marketplace.backend.service.NotificationService;
+import com.marketplace.backend.service.PayoutService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -39,10 +32,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.List;
-import java.util.Locale;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -52,8 +42,7 @@ import java.util.stream.Collectors;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class JobServiceImpl implements JobService {
 
-    private static final String TAX_RECORD_BLOCKCHAIN = "solana";
-    private static final Locale VI_LOCALE = Locale.forLanguageTag("vi-VN");
+    private static final String DEVNET = "devnet";
 
     UserRepository userRepository;
     JobRepository jobRepository;
@@ -62,9 +51,7 @@ public class JobServiceImpl implements JobService {
     MisaBackendClient misaBackendClient;
     NotificationService notificationService;
 
-    OnRampProvider onRampProvider;
-    OffRampProvider offRampProvider;
-    ExchangeRateProvider exchangeRateProvider;
+    PayoutService payoutService;
     FreelancerPayoutRecordRepository freelancerPayoutRecordRepository;
 
     @Override
@@ -255,7 +242,7 @@ public class JobServiceImpl implements JobService {
                 "Bạn đã thanh toán thành công cho công việc \"" + job.getTitle() + "\".",
                 job.getId());
 
-        settlePayoutAndExportTax(job);
+        payoutService.settle(job);
 
         return toResponse(job);
     }
@@ -292,10 +279,28 @@ public class JobServiceImpl implements JobService {
                 .checkoutOrderId(job.getCheckoutOrderId())
                 .checkoutOrderStatus(checkoutOrder.getStatus())
                 .taxExportStatus(job.getTaxExportStatus() != null ? job.getTaxExportStatus().name() : null)
-                .taxableAmountVnd(payoutRecord != null ? payoutRecord.getTaxableAmountVnd() : null)
-                .amountVndActual(payoutRecord != null ? payoutRecord.getAmountVndActual() : null)
+                .simulation(payoutRecord != null ? payoutRecord.isSimulated() : null)
+                .network(payoutRecord != null ? payoutRecord.getOnRampNetwork() : null)
+                .onRampStatus(payoutRecord != null ? payoutRecord.getOnRampStatus().name() : null)
+                .offRampStatus(payoutRecord != null ? payoutRecord.getOffRampStatus().name() : null)
                 .onRampTransactionSignature(payoutRecord != null ? payoutRecord.getOnRampTransactionSignature() : null)
+                .onRampReceiptPda(payoutRecord != null ? payoutRecord.getOnRampReceiptPda() : null)
+                .explorerUrl(payoutRecord != null ? explorerUrl(payoutRecord) : null)
+                .amountUsdcReceived(payoutRecord != null ? payoutRecord.getAmountUsdcReceived() : null)
+                .estimatedAmountVnd(payoutRecord != null ? payoutRecord.getAmountVndEstimated() : null)
+                .usdcToVndRateSource(payoutRecord != null && payoutRecord.getUsdcToVndRateSource() != null
+                        ? payoutRecord.getUsdcToVndRateSource().name() : null)
+                .taxableAmountVnd(payoutRecord != null ? payoutRecord.getTaxableAmountVnd() : null)
+                .taxRateSource(payoutRecord != null ? payoutRecord.getTaxRateSource().name() : null)
                 .build();
+    }
+
+    private String explorerUrl(FreelancerPayoutRecord payoutRecord) {
+        if (!DEVNET.equalsIgnoreCase(payoutRecord.getOnRampNetwork())
+                || payoutRecord.getOnRampTransactionSignature() == null) {
+            return null;
+        }
+        return "https://explorer.solana.com/tx/" + payoutRecord.getOnRampTransactionSignature() + "?cluster=devnet";
     }
 
     @Override
@@ -316,140 +321,6 @@ public class JobServiceImpl implements JobService {
                 .orElseThrow(() -> new ApplicationException(ErrorCode.JOB_NOT_FOUND, certificateId));
 
         return misaBackendClient.getCertificatePdf(certificateId);
-    }
-
-    private void settlePayoutAndExportTax(Job job) {
-        User freelancer;
-        FreelancerPayoutRecord payoutRecord;
-        try {
-            freelancer = userRepository.findById(job.getFreelancerId())
-                    .orElseThrow(() -> new ApplicationException(ErrorCode.FREELANCER_NOT_FOUND, job.getFreelancerId()));
-            payoutRecord = executePayout(job, freelancer);
-        } catch (Exception e) {
-            job.setTaxExportStatus(TaxExportStatus.FAILED);
-            jobRepository.save(job);
-            log.error("Chuyển đổi USD -> USDC -> VND thất bại cho job {}: {}", job.getId(), e.getMessage(), e);
-
-            notificationService.notify(
-                    job.getFreelancerId(),
-                    NotificationType.PAYOUT_FAILED,
-                    "Chuyển đổi thanh toán thất bại",
-                    "Công việc \"" + job.getTitle() + "\" đã hoàn tất nhưng quá trình chuyển đổi USD → USDC → VNĐ "
-                            + "thất bại, hệ thống sẽ cần xử lý lại thủ công.",
-                    job.getId());
-            return;
-        }
-
-        notificationService.notify(
-                freelancer.getId(),
-                NotificationType.PAYMENT_RECEIVED,
-                "Đã nhận được tiền",
-                "Công việc \"" + job.getTitle() + "\" đã hoàn tất. Thu nhập chịu thuế ghi nhận "
-                        + formatVnd(payoutRecord.getTaxableAmountVnd()) + " VNĐ (quy đổi từ "
-                        + payoutRecord.getAmountUsd().stripTrailingZeros().toPlainString() + " USD theo tỷ giá "
-                        + formatVnd(payoutRecord.getTaxUsdToVndRate()) + " VNĐ/USD). Số tiền thực nhận sau quy đổi "
-                        + "USD → USDC (Solana) → VNĐ là " + formatVnd(payoutRecord.getAmountVndActual())
-                        + " VNĐ, sẽ được chuyển khoản thủ công tới "
-                        + freelancer.getBankCode() + " - " + freelancer.getBankAccountNumber() + ".",
-                job.getId(),
-                payoutRecord.getAmountVndActual());
-
-        exportTaxRecordSafely(job, freelancer, payoutRecord);
-    }
-
-    private FreelancerPayoutRecord executePayout(Job job, User freelancer) {
-        ExchangeRateResult taxRate = exchangeRateProvider.getUsdToVndRate();
-        if (taxRate.source() == ExchangeRateSource.FALLBACK_PLACEHOLDER) {
-            log.warn("Job {}: không lấy được tỷ giá USD->VND sống, số khai thuế đang dùng FALLBACK PLACEHOLDER ({})",
-                    job.getId(), taxRate.rate());
-        }
-        BigDecimal taxableAmountVnd = job.getBudgetUsd()
-                .multiply(taxRate.rate())
-                .setScale(0, RoundingMode.HALF_UP);
-
-        OnRampResult onRamp = onRampProvider.convertUsdToUsdc(job.getId(), job.getBudgetUsd());
-
-        OffRampResult offRamp = offRampProvider.convertUsdcToVnd(job.getId(), onRamp.amountUsdcReceived());
-        if (offRamp.rateSource() == ExchangeRateSource.FALLBACK_PLACEHOLDER) {
-            log.warn("Job {}: không lấy được tỷ giá USDC->VND sống, off-ramp đang dùng FALLBACK PLACEHOLDER ({})",
-                    job.getId(), offRamp.usdcToVndRate());
-        }
-
-        FreelancerPayoutRecord payoutRecord = new FreelancerPayoutRecord();
-        payoutRecord.setJobId(job.getId());
-        payoutRecord.setFreelancerId(freelancer.getId());
-        payoutRecord.setClientUserId(job.getClientUserId());
-
-        payoutRecord.setAmountUsd(onRamp.amountUsdSource());
-        payoutRecord.setOnRampFeeUsd(onRamp.feeUsd());
-        payoutRecord.setAmountUsdNet(onRamp.amountUsdNet());
-        payoutRecord.setAmountUsdcReceived(onRamp.amountUsdcReceived());
-        payoutRecord.setOnRampPurchaseId(onRamp.purchaseId());
-        payoutRecord.setOnRampTransactionSignature(onRamp.transactionSignature());
-        payoutRecord.setOnRampClientUsdcAta(onRamp.clientUsdcAta());
-        payoutRecord.setOnRampReceiptPda(onRamp.receiptPda());
-
-        payoutRecord.setUsdcToVndRate(offRamp.usdcToVndRate());
-        payoutRecord.setUsdcToVndRateSource(offRamp.rateSource());
-        payoutRecord.setAmountVndBeforeOffRampFee(offRamp.amountVndGross());
-        payoutRecord.setOffRampFeeVnd(offRamp.feeVnd());
-        payoutRecord.setAmountVndActual(offRamp.amountVndNet());
-        payoutRecord.setOffRampReference(offRamp.payoutReference());
-
-        payoutRecord.setTaxUsdToVndRate(taxRate.rate());
-        payoutRecord.setTaxRateSource(taxRate.source());
-        payoutRecord.setTaxableAmountVnd(taxableAmountVnd);
-
-        return freelancerPayoutRecordRepository.save(payoutRecord);
-    }
-
-    private void exportTaxRecordSafely(Job job, User freelancer, FreelancerPayoutRecord payoutRecord) {
-        try {
-            UUID taxpayerId = misaBackendClient.registerTaxpayerForExternal(
-                    freelancer.getId(),
-                    freelancer.getDisplayName(),
-                    freelancer.getTaxCode(),
-                    freelancer.getIdentityNumber(),
-                    freelancer.getNationality(),
-                    freelancer.getTaxAddress()
-            );
-
-            MisaPayoutTransactionResult payoutTx = misaBackendClient.recordPayoutTransaction(
-                    taxpayerId,
-                    job.getId(),
-                    payoutRecord.getAmountUsd(),
-                    payoutRecord.getTaxUsdToVndRate(),
-                    payoutRecord.getOnRampTransactionSignature(),
-                    TAX_RECORD_BLOCKCHAIN);
-
-            MisaCertificateResult certificate = misaBackendClient.createWithholdingCertificate(payoutTx.getId());
-
-            payoutRecord.setMisaPayoutTransactionId(payoutTx.getId());
-            payoutRecord.setMisaCertificateId(certificate.getId());
-            freelancerPayoutRecordRepository.save(payoutRecord);
-
-            job.setMisaPayoutTransactionId(payoutTx.getId());
-            job.setMisaCertificateId(certificate.getId());
-            job.setTaxExportStatus(TaxExportStatus.SUCCESS);
-            jobRepository.save(job);
-
-        } catch (Exception e) {
-            job.setTaxExportStatus(TaxExportStatus.FAILED);
-            jobRepository.save(job);
-            log.error("Xuất chứng từ MISA thất bại cho job {}: {}", job.getId(), e.getMessage(), e);
-
-            notificationService.notify(
-                    job.getFreelancerId(),
-                    NotificationType.TAX_EXPORT_FAILED,
-                    "Xuất chứng từ thất bại",
-                    "Công việc \"" + job.getTitle() + "\" đã hoàn tất nhưng xuất chứng từ thuế thất bại, "
-                            + "hệ thống sẽ cần xử lý lại thủ công.",
-                    job.getId());
-        }
-    }
-
-    private String formatVnd(BigDecimal amount) {
-        return String.format(VI_LOCALE, "%,d", amount.setScale(0, RoundingMode.HALF_UP).longValueExact());
     }
 
     private Job getOrThrow(UUID jobId) {

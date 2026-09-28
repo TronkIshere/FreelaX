@@ -12,9 +12,10 @@ import lombok.experimental.FieldDefaults;
 @NoArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class MockOnrampPurchaseResult {
-    String status;
-    String instruction;
-    String signature;
-    DerivedAccountsResult derivedAccounts;
+public class DerivedAccountsResult {
+    String config;
+    String mockOnrampReceipt;
+    String mockOnrampTreasuryAuthority;
+    String mockOnrampTreasuryAta;
+    String clientAta;
 }

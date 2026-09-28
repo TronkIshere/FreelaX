@@ -5,6 +5,8 @@ import com.marketplace.backend.provider.currency.ExchangeRateProvider;
 import com.marketplace.backend.provider.currency.ExchangeRateResult;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
@@ -35,8 +37,17 @@ public class LiveExchangeRateProvider implements ExchangeRateProvider {
     @Value("${exchange-rate.cache-ttl-seconds:60}")
     private long cacheTtlSeconds;
 
-    public LiveExchangeRateProvider(RestTemplate restTemplate) {
-        this.restTemplate = restTemplate;
+    public LiveExchangeRateProvider(RestTemplateBuilder restTemplateBuilder,
+                                    @Value("${http-client.connect-timeout-ms:3000}") int connectTimeoutMs,
+                                    @Value("${http-client.read-timeout-ms:10000}") int readTimeoutMs) {
+        this.restTemplate = restTemplateBuilder
+                .requestFactory(() -> {
+                    SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+                    factory.setConnectTimeout(connectTimeoutMs);
+                    factory.setReadTimeout(readTimeoutMs);
+                    return factory;
+                })
+                .build();
     }
 
     @Override

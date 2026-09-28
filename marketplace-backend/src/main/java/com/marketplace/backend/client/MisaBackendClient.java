@@ -6,27 +6,43 @@ import com.marketplace.backend.exception.ApplicationException;
 import com.marketplace.backend.exception.ErrorCode;
 import com.nimbusds.jwt.SignedJWT;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.*;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
 import java.text.ParseException;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
 @Component
 public class MisaBackendClient {
 
+    private static final Locale VI_LOCALE = Locale.forLanguageTag("vi-VN");
+
     private final RestTemplate restTemplate;
 
-    public MisaBackendClient(RestTemplate restTemplate) {
-        this.restTemplate = restTemplate;
+    public MisaBackendClient(RestTemplateBuilder restTemplateBuilder,
+                             @Value("${http-client.connect-timeout-ms:3000}") int connectTimeoutMs,
+                             @Value("${http-client.read-timeout-ms:10000}") int readTimeoutMs) {
+        this.restTemplate = restTemplateBuilder
+                .requestFactory(() -> {
+                    SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+                    factory.setConnectTimeout(connectTimeoutMs);
+                    factory.setReadTimeout(readTimeoutMs);
+                    return factory;
+                })
+                .build();
     }
 
     @Value("${misa-backend.base-url}")
@@ -73,16 +89,18 @@ public class MisaBackendClient {
     public MisaPayoutTransactionResult recordPayoutTransaction(UUID taxpayerId, UUID payoutReference,
                                                                BigDecimal amountUsd, BigDecimal usdToVndRate,
                                                                String transactionHash, String blockchain) {
-        Map<String, Object> body = Map.of(
-                "platformPayoutId", payoutReference.toString(),
-                "transactionHash", transactionHash,
-                "blockchain", blockchain,
-                "amountUsdc", amountUsd,
-                "exchangeRate", usdToVndRate,
-                "paymentDate", LocalDate.now(),
-                "description", "Ghi nhan thu nhap cho job marketplace (quy doi tu USD goc theo ty gia USD/VND), jobId="
-                        + payoutReference
-        );
+        Map<String, Object> body = new HashMap<>();
+        body.put("platformPayoutId", payoutReference.toString());
+        body.put("transactionHash", transactionHash);
+        body.put("blockchain", blockchain);
+        body.put("sourceCurrency", "USD");
+        body.put("sourceAmount", amountUsd);
+        body.put("exchangeRatePair", "USD/VND");
+        body.put("exchangeRate", usdToVndRate);
+        body.put("amountUsdc", amountUsd);
+        body.put("paymentDate", LocalDate.now());
+        body.put("description", "Thanh toán thù lao công việc " + payoutReference
+                + ". Tỷ giá quy đổi: " + formatRate(usdToVndRate) + " VND/USD");
 
         ResponseEntity<MisaPayoutTransactionResult> response = restTemplate.exchange(
                 baseUrl + "/api/v1/taxpayers/" + taxpayerId + "/payouts",
@@ -122,6 +140,11 @@ public class MisaBackendClient {
             throw new ApplicationException(ErrorCode.MISA_BACKEND_CALL_FAILED, "get-certificate-pdf: empty body");
         }
         return response.getBody();
+    }
+
+    private String formatRate(BigDecimal rate) {
+        DecimalFormat format = new DecimalFormat("#,##0.##", DecimalFormatSymbols.getInstance(VI_LOCALE));
+        return format.format(rate);
     }
 
     private HttpHeaders authorizedJsonHeaders() {

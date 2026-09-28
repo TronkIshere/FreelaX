@@ -16,7 +16,16 @@ public class JobPaymentStatusResponse {
     UUID checkoutOrderId;
     String checkoutOrderStatus;
     String taxExportStatus;
-    BigDecimal taxableAmountVnd;
-    BigDecimal amountVndActual;
+    Boolean simulation;
+    String network;
+    String onRampStatus;
+    String offRampStatus;
     String onRampTransactionSignature;
+    String onRampReceiptPda;
+    String explorerUrl;
+    BigDecimal amountUsdcReceived;
+    BigDecimal estimatedAmountVnd;
+    String usdcToVndRateSource;
+    BigDecimal taxableAmountVnd;
+    String taxRateSource;
 }

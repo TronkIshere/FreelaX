@@ -9,8 +9,11 @@ import lombok.experimental.FieldDefaults;
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class MockOnrampPurchaseRequest {
-    String clientPublicKey;
+    String onrampAuthority;
+    String client;
     String purchaseId;
     String usdAmountE6;
-    String idempotencyKey;
+    String mode;
+    String commitment;
+    boolean skipPreflight;
 }
