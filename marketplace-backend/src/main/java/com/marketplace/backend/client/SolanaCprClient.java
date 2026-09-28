@@ -5,6 +5,7 @@ import com.marketplace.backend.dto.request.solana.CreateInvoiceRequest;
 import com.marketplace.backend.dto.request.solana.MockOnrampPurchaseRequest;
 import com.marketplace.backend.dto.request.solana.PayInvoiceRequest;
 import com.marketplace.backend.dto.request.solana.PublishRateRequest;
+import com.marketplace.backend.dto.request.solana.RequestOfframpRequest;
 import com.marketplace.backend.dto.response.solana.MockOnrampPurchaseResult;
 import com.marketplace.backend.dto.response.solana.MockOnrampReceiptResult;
 import com.marketplace.backend.dto.response.solana.SolanaAccountResult;
@@ -13,6 +14,7 @@ import com.marketplace.backend.dto.response.solana.SolanaInvoiceResult;
 import com.marketplace.backend.dto.response.solana.SolanaOperationResult;
 import com.marketplace.backend.dto.response.solana.SolanaRateResult;
 import com.marketplace.backend.dto.response.solana.SolanaTransactionStatusResult;
+import com.marketplace.backend.dto.response.solana.SolanaWithdrawalResult;
 import com.marketplace.backend.exception.SolanaCprException;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.HttpEntity;
@@ -149,6 +151,21 @@ public class SolanaCprClient {
         SolanaAccountResult<SolanaInvoiceResult> body = execute("get-invoice", () -> restTemplate.exchange(
                 url, HttpMethod.GET, new HttpEntity<>(jsonHeaders()),
                 new ParameterizedTypeReference<SolanaAccountResult<SolanaInvoiceResult>>() { }));
+        return accountData(body);
+    }
+
+    public SolanaOperationResult requestOfframp(RequestOfframpRequest request) {
+        return submitOperation("request-offramp", properties.getBaseUrl() + "/api/v1/solana/withdrawals", request);
+    }
+
+    public Optional<SolanaWithdrawalResult> findWithdrawal(String freelancer, String withdrawalId) {
+        String url = UriComponentsBuilder.fromUriString(properties.getBaseUrl())
+                .path("/api/v1/solana/withdrawals/{freelancer}/{withdrawalId}")
+                .queryParam("commitment", properties.getCommitment())
+                .buildAndExpand(freelancer, withdrawalId).toUriString();
+        SolanaAccountResult<SolanaWithdrawalResult> body = execute("get-withdrawal", () -> restTemplate.exchange(
+                url, HttpMethod.GET, new HttpEntity<>(jsonHeaders()),
+                new ParameterizedTypeReference<SolanaAccountResult<SolanaWithdrawalResult>>() { }));
         return accountData(body);
     }
 

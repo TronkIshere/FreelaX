@@ -305,6 +305,21 @@ public class JobServiceImpl implements JobService {
                 .clientPaymentSubmittedAt(payoutRecord != null ? payoutRecord.getClientPaymentSubmittedAt() : null)
                 .clientPaymentConfirmedAt(payoutRecord != null ? payoutRecord.getClientPaymentConfirmedAt() : null)
                 .clientPaymentError(payoutRecord != null ? payoutRecord.getClientPaymentError() : null)
+                .onChainOffRampStatus(payoutRecord != null && payoutRecord.getOnChainOffRampStatus() != null
+                        ? payoutRecord.getOnChainOffRampStatus().name() : null)
+                .withdrawalId(payoutRecord != null ? payoutRecord.getWithdrawalId() : null)
+                .withdrawalPda(payoutRecord != null ? payoutRecord.getWithdrawalPda() : null)
+                .treasuryPublicKey(payoutRecord != null ? payoutRecord.getTreasuryPublicKey() : null)
+                .treasuryUsdcAta(payoutRecord != null ? payoutRecord.getTreasuryUsdcAta() : null)
+                .withdrawalTokenAmount(payoutRecord != null ? payoutRecord.getWithdrawalTokenAmount() : null)
+                .withdrawalFiatAmountVnd(payoutRecord != null ? payoutRecord.getWithdrawalFiatAmountVnd() : null)
+                .withdrawalTransactionSignature(payoutRecord != null
+                        ? payoutRecord.getWithdrawalTransactionSignature() : null)
+                .withdrawalExplorerUrl(payoutRecord != null
+                        ? explorerUrl(payoutRecord.getOnRampNetwork(), payoutRecord.getWithdrawalTransactionSignature()) : null)
+                .withdrawalSubmittedAt(payoutRecord != null ? payoutRecord.getWithdrawalSubmittedAt() : null)
+                .withdrawalConfirmedAt(payoutRecord != null ? payoutRecord.getWithdrawalConfirmedAt() : null)
+                .onChainOffRampError(payoutRecord != null ? payoutRecord.getOnChainOffRampError() : null)
                 .estimatedAmountVnd(payoutRecord != null ? payoutRecord.getAmountVndEstimated() : null)
                 .usdcToVndRateSource(payoutRecord != null && payoutRecord.getUsdcToVndRateSource() != null
                         ? payoutRecord.getUsdcToVndRateSource().name() : null)

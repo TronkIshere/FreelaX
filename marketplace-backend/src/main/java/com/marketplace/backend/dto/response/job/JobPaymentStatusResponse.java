@@ -41,6 +41,18 @@ public class JobPaymentStatusResponse {
     LocalDateTime clientPaymentSubmittedAt;
     LocalDateTime clientPaymentConfirmedAt;
     String clientPaymentError;
+    String onChainOffRampStatus;
+    String withdrawalId;
+    String withdrawalPda;
+    String treasuryPublicKey;
+    String treasuryUsdcAta;
+    String withdrawalTokenAmount;
+    String withdrawalFiatAmountVnd;
+    String withdrawalTransactionSignature;
+    String withdrawalExplorerUrl;
+    LocalDateTime withdrawalSubmittedAt;
+    LocalDateTime withdrawalConfirmedAt;
+    String onChainOffRampError;
     BigDecimal estimatedAmountVnd;
     String usdcToVndRateSource;
     BigDecimal taxableAmountVnd;

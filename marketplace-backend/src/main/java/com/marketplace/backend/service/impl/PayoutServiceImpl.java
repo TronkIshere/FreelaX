@@ -7,6 +7,7 @@ import com.marketplace.backend.entity.FreelancerPayoutRecord;
 import com.marketplace.backend.entity.Job;
 import com.marketplace.backend.entity.NotificationType;
 import com.marketplace.backend.entity.OffRampStatus;
+import com.marketplace.backend.entity.OnChainOffRampStatus;
 import com.marketplace.backend.entity.OnRampStatus;
 import com.marketplace.backend.entity.Wallet;
 import com.marketplace.backend.exception.ApplicationException;
@@ -23,6 +24,7 @@ import com.marketplace.backend.repository.JobRepository;
 import com.marketplace.backend.repository.WalletRepository;
 import com.marketplace.backend.service.NotificationService;
 import com.marketplace.backend.service.ClientPaymentService;
+import com.marketplace.backend.service.OnChainOffRampService;
 import com.marketplace.backend.service.PayoutService;
 import com.marketplace.backend.service.TaxCertificateService;
 import lombok.AccessLevel;
@@ -58,6 +60,7 @@ public class PayoutServiceImpl implements PayoutService {
     ExchangeRateProvider exchangeRateProvider;
     TaxCertificateService taxCertificateService;
     ClientPaymentService clientPaymentService;
+    OnChainOffRampService onChainOffRampService;
     NotificationService notificationService;
     SolanaCprProperties solanaCprProperties;
 
@@ -110,6 +113,10 @@ public class PayoutServiceImpl implements PayoutService {
             payoutRecord.setClientPaymentStatus(ClientPaymentStatus.NOT_STARTED);
             freelancerPayoutRecordRepository.save(payoutRecord);
         }
+        if (payoutRecord.getOnChainOffRampStatus() == null) {
+            payoutRecord.setOnChainOffRampStatus(OnChainOffRampStatus.NOT_STARTED);
+            freelancerPayoutRecordRepository.save(payoutRecord);
+        }
 
         switch (payoutRecord.getOnRampStatus()) {
             case NOT_STARTED -> {
@@ -129,11 +136,16 @@ public class PayoutServiceImpl implements PayoutService {
                     payoutRecord.getOnRampReceiptPda(),
                     payoutRecord.getOnRampSubmittedAt()));
             case CONFIRMED -> {
-                if (payoutRecord.getClientPaymentStatus() == ClientPaymentStatus.CONFIRMED
-                        && payoutRecord.getOffRampStatus() == OffRampStatus.NOT_STARTED) {
-                    completePayout(payoutRecord, job);
-                } else if (payoutRecord.getClientPaymentStatus() != ClientPaymentStatus.FAILED) {
+                if (payoutRecord.getClientPaymentStatus() != ClientPaymentStatus.CONFIRMED
+                        && payoutRecord.getClientPaymentStatus() != ClientPaymentStatus.FAILED) {
                     advanceClientPayment(payoutRecord, job);
+                } else if (payoutRecord.getClientPaymentStatus() == ClientPaymentStatus.CONFIRMED) {
+                    if (payoutRecord.getOnChainOffRampStatus() == OnChainOffRampStatus.CONFIRMED
+                            && payoutRecord.getOffRampStatus() == OffRampStatus.NOT_STARTED) {
+                        completePayout(payoutRecord, job);
+                    } else if (payoutRecord.getOnChainOffRampStatus() != OnChainOffRampStatus.FAILED) {
+                        advanceOnChainOffRamp(payoutRecord, job);
+                    }
                 }
             }
             default -> {
@@ -152,7 +164,11 @@ public class PayoutServiceImpl implements PayoutService {
                 .filter(r -> r.getClientPaymentStatus() == null
                         || (r.getClientPaymentStatus() != ClientPaymentStatus.FAILED
                         && (r.getClientPaymentStatus() != ClientPaymentStatus.CONFIRMED
-                        || r.getOffRampStatus() == OffRampStatus.NOT_STARTED)))
+                        || r.getOnChainOffRampStatus() == null
+                        || r.getOnChainOffRampStatus() == OnChainOffRampStatus.NOT_STARTED
+                        || r.getOnChainOffRampStatus() == OnChainOffRampStatus.REQUEST_SUBMITTED
+                        || (r.getOnChainOffRampStatus() == OnChainOffRampStatus.CONFIRMED
+                        && r.getOffRampStatus() == OffRampStatus.NOT_STARTED))))
                 .forEach(r -> ids.add(r.getId()));
         return new ArrayList<>(ids);
     }
@@ -189,6 +205,7 @@ public class PayoutServiceImpl implements PayoutService {
         payoutRecord.setFreelancerPublicKey(resolveWalletPublicKey(job.getFreelancerId()));
         payoutRecord.setOnRampNetwork(onRampProvider.network());
         payoutRecord.setOnRampStatus(OnRampStatus.NOT_STARTED);
+        payoutRecord.setOnChainOffRampStatus(OnChainOffRampStatus.NOT_STARTED);
         payoutRecord.setOffRampStatus(OffRampStatus.NOT_STARTED);
 
         payoutRecord.setTaxUsdToVndRate(taxRate.rate());
@@ -295,6 +312,14 @@ public class PayoutServiceImpl implements PayoutService {
         }
     }
 
+    private void advanceOnChainOffRamp(FreelancerPayoutRecord payoutRecord, Job job) {
+        onChainOffRampService.advance(payoutRecord);
+        if (payoutRecord.getOnChainOffRampStatus() == OnChainOffRampStatus.FAILED) {
+            notifyPayoutFailed(job);
+            exportTaxIfMissing(job, payoutRecord);
+        }
+    }
+
     private void exportTaxIfMissing(Job job, FreelancerPayoutRecord payoutRecord) {
         if (job.getMisaCertificateId() == null) {
             taxCertificateService.exportForPayout(job, payoutRecord, onChainReference(payoutRecord));
@@ -302,9 +327,10 @@ public class PayoutServiceImpl implements PayoutService {
     }
 
     private void notifyPayoutSimulated(Job job, FreelancerPayoutRecord payoutRecord) {
-        String message = "Công việc \"" + job.getTitle() + "\" đã hoàn tất. Client đã chuyển "
+        String message = "Công việc \"" + job.getTitle() + "\" đã hoàn tất. "
+                + "USDC đã được chuyển on-chain theo luồng Client → Freelancer → Treasury với số lượng "
                 + payoutRecord.getAmountUsdcReceived().stripTrailingZeros().toPlainString()
-                + " Mock USDC on-chain cho Freelancer trên " + payoutRecord.getOnRampNetwork()
+                + " Mock USDC trên " + payoutRecord.getOnRampNetwork()
                 + " (" + onChainReference(payoutRecord) + "). "
                 + "Số tiền VND dự kiến nhận sau phí là " + formatVnd(payoutRecord.getAmountVndEstimated())
                 + " VNĐ, tính theo tỷ giá USDC/VND "
@@ -335,6 +361,9 @@ public class PayoutServiceImpl implements PayoutService {
     }
 
     private String onChainReference(FreelancerPayoutRecord payoutRecord) {
+        if (StringUtils.hasText(payoutRecord.getWithdrawalTransactionSignature())) {
+            return payoutRecord.getWithdrawalTransactionSignature();
+        }
         if (StringUtils.hasText(payoutRecord.getPaymentTransactionSignature())) {
             return payoutRecord.getPaymentTransactionSignature();
         }

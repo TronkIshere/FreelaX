@@ -21,4 +21,6 @@ public class DerivedAccountsResult {
     String invoice;
     String rateSnapshot;
     String freelancerAta;
+    String withdrawalRecord;
+    String treasuryAta;
 }

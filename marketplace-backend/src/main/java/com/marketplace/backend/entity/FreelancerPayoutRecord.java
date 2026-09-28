@@ -118,6 +118,38 @@ public class FreelancerPayoutRecord extends AbstractEntity<UUID> {
     private String clientPaymentError;
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 24)
+    private OnChainOffRampStatus onChainOffRampStatus = OnChainOffRampStatus.NOT_STARTED;
+
+    @Column(length = 20)
+    private String withdrawalId;
+
+    @Column(length = 64)
+    private String withdrawalPda;
+
+    @Column(length = 64)
+    private String treasuryPublicKey;
+
+    @Column(length = 64)
+    private String treasuryUsdcAta;
+
+    @Column(length = 20)
+    private String withdrawalTokenAmount;
+
+    @Column(length = 32)
+    private String withdrawalFiatAmountVnd;
+
+    @Column(length = 128)
+    private String withdrawalTransactionSignature;
+
+    private LocalDateTime withdrawalSubmittedAt;
+
+    private LocalDateTime withdrawalConfirmedAt;
+
+    @Column(columnDefinition = "TEXT")
+    private String onChainOffRampError;
+
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private OffRampStatus offRampStatus = OffRampStatus.NOT_STARTED;
 

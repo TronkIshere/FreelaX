@@ -29,7 +29,10 @@ Mock on-ramp confirmed vào Client ATA
   -> Client gọi pay_invoice
   -> Mock USDC chuyển Client ATA -> Freelancer ATA
   -> marketplace đọc lại Invoice và chỉ xác nhận khi status = Paid
-  -> mới cho phép chạy off-ramp mô phỏng hiện tại
+  -> Freelancer gọi request_offramp
+  -> Mock USDC chuyển Freelancer ATA -> Treasury ATA
+  -> marketplace đọc và đối chiếu WithdrawalRecord
+  -> mới cho phép chạy off-ramp VND mô phỏng hiện tại
 ```
 
 Các phần đã bổ sung:
@@ -43,7 +46,8 @@ Các phần đã bổ sung:
   hoặc transaction signature.
 - Trước khi xác nhận, Invoice được đối chiếu `invoiceId`, Client pubkey,
   Freelancer pubkey, amount và trạng thái `Paid`.
-- Chỉ sau `ClientPaymentStatus.CONFIRMED` mới chạy bước USDC→VND mô phỏng.
+- Chỉ sau khi cả Client payment và withdrawal vào Treasury được xác nhận mới
+  chạy bước USDC→VND mô phỏng.
 - `FreelancerPayoutRecord` lưu rate ID, invoice ID/PDA, mint, ba transaction
   signatures, hai public key, timestamps và lỗi.
 - Payment-status API trả toàn bộ audit fields mới và explorer URL của giao dịch
@@ -69,19 +73,49 @@ Các phần đã bổ sung:
 Mức xác minh hiện tại:
 
 - `git diff --check`: PASS.
-- `mvn -pl marketplace-backend -am test`: **BUILD SUCCESS — 2 test, 0 failure,
+- `mvn -pl marketplace-backend -am test`: **BUILD SUCCESS — 4 test, 0 failure,
   0 error** (chạy bằng JDK 17 và Maven tạm trong `/tmp`).
 - Chưa chạy local-validator end-to-end, do đó trạng thái chính xác là **đã hoàn
   thành implementation, compile và unit test; còn chờ runtime E2E verification**.
 
-Các mục tiếp theo vẫn chưa triển khai:
+### Freelancer → Treasury off-ramp on-chain: **ĐÃ TRIỂN KHAI Ở MỨC CODE**
+
+Luồng mới bắt đầu sau khi Invoice đã được xác nhận `Paid`:
+
+- Marketplace gọi gateway `POST /api/v1/solana/withdrawals` ở mode `send` để
+  thực thi instruction `request_offramp`.
+- Program chuyển đúng lượng Mock USDC đã nhận từ Freelancer ATA sang Treasury
+  ATA và tạo `WithdrawalRecord`.
+- `OnChainOffRampStatus` quản lý riêng các trạng thái `NOT_STARTED`,
+  `REQUEST_SUBMITTED`, `CONFIRMED`, `FAILED`; không trộn lẫn với trạng thái VND
+  mô phỏng hiện có.
+- Reconciliation đọc lại `WithdrawalRecord`, rồi đối chiếu withdrawal ID,
+  Freelancer pubkey, token amount, accepted mint, Treasury ATA và RateSnapshot
+  trước khi xác nhận.
+- Các trường audit mới gồm withdrawal ID/PDA, Treasury pubkey/ATA, token amount,
+  fiat snapshot, transaction signature, timestamps, lỗi và explorer URL.
+- Request có kiểm tra account tồn tại trước khi submit để retry idempotent; lỗi
+  không chắc chắn được giữ để reconcile, còn lỗi transaction xác định hoặc quá
+  timeout sẽ chuyển `FAILED`.
+- `WithdrawalRecord` ở trạng thái `Pending` đã chứng minh token vào Treasury và
+  được xem là hoàn tất chặng on-chain này. Marketplace chưa gọi
+  `record_offramp`; việc chuyển record sang `Completed` được dành cho bước payout
+  VND thật sau này.
+- Có unit test cho request payload/derived accounts và điều kiện chỉ xác nhận từ
+  WithdrawalRecord khớp toàn bộ dữ liệu payout.
+
+Điều kiện runtime bổ sung: gateway phải có private key của Freelancer trong
+`SOLANA_LOCAL_PRIVATE_KEYS`, RateSnapshot phải còn hạn khi submit withdrawal và
+Config phải khai báo đúng accepted mint/Treasury Authority.
+
+Các mục tiếp theo:
 
 | Hạng mục | Trạng thái trên nhánh tính năng |
 |---|---|
 | Client → Freelancer on-chain | Đã compile + unit test; chờ E2E verification |
-| Freelancer → Treasury off-ramp on-chain | Chưa triển khai |
+| Freelancer → Treasury off-ramp on-chain | Đã compile + unit test; chờ E2E verification |
 | VND payout thật | Chưa triển khai |
-| Payment status/audit | Đã mở rộng cho Client payment; withdrawal/VND audit còn thiếu |
+| Payment status/audit | Đã mở rộng qua withdrawal; audit chuyển VND thật còn thiếu |
 
 ## 1. Kết luận điều hành
 
