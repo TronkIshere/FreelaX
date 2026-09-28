@@ -9,6 +9,7 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 @Entity
@@ -34,4 +35,7 @@ public class Notification extends AbstractEntity<UUID> {
 
     @Column(nullable = false)
     private boolean isRead = false;
+
+    @Column(precision = 20, scale = 0)
+    private BigDecimal amount;
 }

@@ -1,33 +1,55 @@
 package com.marketplace.backend.client;
 
-import com.marketplace.backend.dto.request.auth.RegisterRequest;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.marketplace.backend.dto.response.misa.MisaCertificateResult;
+import com.marketplace.backend.dto.response.misa.MisaCertificateStatusResult;
 import com.marketplace.backend.dto.response.misa.MisaPayoutTransactionResult;
 import com.marketplace.backend.exception.ApplicationException;
 import com.marketplace.backend.exception.ErrorCode;
 import com.nimbusds.jwt.SignedJWT;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.*;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
 import java.text.ParseException;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
 @Component
 public class MisaBackendClient {
 
-    private final RestTemplate restTemplate;
+    private static final Locale VI_LOCALE = Locale.forLanguageTag("vi-VN");
 
-    public MisaBackendClient(RestTemplate restTemplate) {
-        this.restTemplate = restTemplate;
+    private final RestTemplate restTemplate;
+    private final ObjectMapper objectMapper;
+
+    public MisaBackendClient(RestTemplateBuilder restTemplateBuilder,
+                             ObjectMapper objectMapper,
+                             @Value("${http-client.connect-timeout-ms:3000}") int connectTimeoutMs,
+                             @Value("${http-client.read-timeout-ms:10000}") int readTimeoutMs) {
+        this.objectMapper = objectMapper;
+        this.restTemplate = restTemplateBuilder
+                .requestFactory(() -> {
+                    SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+                    factory.setConnectTimeout(connectTimeoutMs);
+                    factory.setReadTimeout(readTimeoutMs);
+                    return factory;
+                })
+                .build();
     }
 
     @Value("${misa-backend.base-url}")
@@ -42,14 +64,15 @@ public class MisaBackendClient {
     private volatile String cachedAccessToken;
     private volatile Instant cachedTokenExpiresAt;
 
-    public UUID registerTaxpayerForExternal(UUID freelancerId, RegisterRequest request) {
+    public UUID registerTaxpayerForExternal(UUID freelancerId, String fullName, String taxCode,
+                                            String identityNumber, String nationality, String address) {
         Map<String, Object> body = new HashMap<>();
         body.put("externalId", freelancerId.toString());
-        body.put("fullName", request.getDisplayName());
-        body.put("taxCode", request.getTaxCode());
-        body.put("identityNumber", request.getIdentityNumber());
-        body.put("nationality", request.getNationality());
-        body.put("address", request.getTaxAddress());
+        body.put("fullName", fullName);
+        body.put("taxCode", taxCode);
+        body.put("identityNumber", identityNumber);
+        body.put("nationality", nationality);
+        body.put("address", address);
 
         ResponseEntity<Map> response = restTemplate.exchange(
                 baseUrl + "/api/v1/taxpayers/external",
@@ -71,16 +94,20 @@ public class MisaBackendClient {
     }
 
     public MisaPayoutTransactionResult recordPayoutTransaction(UUID taxpayerId, UUID payoutReference,
-                                                               BigDecimal amountUsdc, BigDecimal exchangeRate) {
-        Map<String, Object> body = Map.of(
-                "platformPayoutId", payoutReference.toString(),
-                "transactionHash", "internal:" + payoutReference,
-                "blockchain", "internal",
-                "amountUsdc", amountUsdc,
-                "exchangeRate", exchangeRate,
-                "paymentDate", LocalDate.now(),
-                "description", "Ghi nhan thu nhap cho job marketplace, jobId=" + payoutReference
-        );
+                                                               BigDecimal amountUsd, BigDecimal usdToVndRate,
+                                                               String transactionHash, String blockchain) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("platformPayoutId", payoutReference.toString());
+        body.put("transactionHash", transactionHash);
+        body.put("blockchain", blockchain);
+        body.put("sourceCurrency", "USD");
+        body.put("sourceAmount", amountUsd);
+        body.put("exchangeRatePair", "USD/VND");
+        body.put("exchangeRate", usdToVndRate);
+        body.put("amountUsdc", amountUsd);
+        body.put("paymentDate", LocalDate.now());
+        body.put("description", "Thanh toán thù lao công việc " + payoutReference
+                + ". Tỷ giá quy đổi: " + formatRate(usdToVndRate) + " VND/USD");
 
         ResponseEntity<MisaPayoutTransactionResult> response = restTemplate.exchange(
                 baseUrl + "/api/v1/taxpayers/" + taxpayerId + "/payouts",
@@ -103,6 +130,91 @@ public class MisaBackendClient {
 
         if (response.getBody() == null) {
             throw new ApplicationException(ErrorCode.MISA_BACKEND_CALL_FAILED, "create-certificate: empty body");
+        }
+        return response.getBody();
+    }
+
+    public MisaCertificateStatusResult getCertificateStatus(UUID certificateId) {
+        ResponseEntity<JsonNode> response = restTemplate.exchange(
+                baseUrl + "/api/v1/withholding-certificates/" + certificateId + "/status",
+                HttpMethod.GET, new HttpEntity<>(authorizedJsonHeaders()),
+                JsonNode.class);
+        return toCertificateStatus(response.getBody(), "get-certificate-status");
+    }
+
+    public MisaCertificateStatusResult issueCertificate(UUID certificateId, String digitalCertificateSerial,
+                                                        String signatureMode) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("digitalCertificateSerial", digitalCertificateSerial);
+        body.put("signatureMode", signatureMode);
+
+        ResponseEntity<JsonNode> response = restTemplate.exchange(
+                baseUrl + "/api/v1/withholding-certificates/" + certificateId + "/issue",
+                HttpMethod.POST, new HttpEntity<>(body, authorizedJsonHeaders()),
+                JsonNode.class);
+        return toCertificateStatus(response.getBody(), "issue-certificate");
+    }
+
+    public MisaCertificateStatusResult submitCertificate(UUID certificateId, String submissionMode, String idempotencyKey) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("submissionMode", submissionMode);
+        body.put("idempotencyKey", idempotencyKey);
+
+        ResponseEntity<JsonNode> response = restTemplate.exchange(
+                baseUrl + "/api/v1/withholding-certificates/" + certificateId + "/submit",
+                HttpMethod.POST, new HttpEntity<>(body, authorizedJsonHeaders()),
+                JsonNode.class);
+        return toCertificateStatus(response.getBody(), "submit-certificate");
+    }
+
+    private MisaCertificateStatusResult toCertificateStatus(JsonNode body, String operation) {
+        if (body == null || body.isNull() || body.isMissingNode()) {
+            return new MisaCertificateStatusResult();
+        }
+        JsonNode node = body.has("data") && body.get("data").isObject() ? body.get("data") : body;
+        if (node.isTextual()) {
+            MisaCertificateStatusResult result = new MisaCertificateStatusResult();
+            result.setStatus(node.asText());
+            return result;
+        }
+        try {
+            return objectMapper.treeToValue(node, MisaCertificateStatusResult.class);
+        } catch (JsonProcessingException e) {
+            throw new ApplicationException(ErrorCode.MISA_BACKEND_CALL_FAILED, operation + ": khong doc duoc response");
+        }
+    }
+
+    public byte[] getCertificatePdf(UUID certificateId) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(getOrRefreshAccessToken());
+
+        ResponseEntity<byte[]> response = restTemplate.exchange(
+                baseUrl + "/api/v1/withholding-certificates/" + certificateId + "/pdf",
+                HttpMethod.GET, new HttpEntity<>(headers),
+                byte[].class);
+
+        if (response.getBody() == null) {
+            throw new ApplicationException(ErrorCode.MISA_BACKEND_CALL_FAILED, "get-certificate-pdf: empty body");
+        }
+        return response.getBody();
+    }
+
+    private String formatRate(BigDecimal rate) {
+        DecimalFormat format = new DecimalFormat("#,##0.##", DecimalFormatSymbols.getInstance(VI_LOCALE));
+        return format.format(rate);
+    }
+
+    public byte[] getCertificateXml(UUID certificateId) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(getOrRefreshAccessToken());
+
+        ResponseEntity<byte[]> response = restTemplate.exchange(
+                baseUrl + "/api/v1/withholding-certificates/" + certificateId + "/xml",
+                HttpMethod.GET, new HttpEntity<>(headers),
+                byte[].class);
+
+        if (response.getBody() == null) {
+            throw new ApplicationException(ErrorCode.MISA_BACKEND_CALL_FAILED, "get-certificate-xml: empty body");
         }
         return response.getBody();
     }

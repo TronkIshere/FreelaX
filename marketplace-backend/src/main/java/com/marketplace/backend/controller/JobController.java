@@ -6,12 +6,14 @@ import com.marketplace.backend.dto.request.job.CreateJobRequest;
 import com.marketplace.backend.dto.request.job.UpdateJobRequest;
 import com.marketplace.backend.dto.response.common.PageResponse;
 import com.marketplace.backend.dto.response.common.ResponseAPI;
+import com.marketplace.backend.dto.response.job.CertificateSummaryResponse;
 import com.marketplace.backend.dto.response.job.JobApplicationResponse;
 import com.marketplace.backend.dto.response.job.JobPaymentStatusResponse;
 import com.marketplace.backend.dto.response.job.JobResponse;
 import com.marketplace.backend.service.JobService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -20,6 +22,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -97,6 +100,17 @@ public class JobController {
                 .build();
     }
 
+    @PatchMapping("/{jobId}/assign-freelancer")
+    public ResponseAPI<JobResponse> assignFreelancer(@AuthenticationPrincipal UserPrincipal principal,
+                                                     @PathVariable UUID jobId,
+                                                     @Valid @RequestBody AssignFreelancerRequest request) {
+        return ResponseAPI.<JobResponse>builder()
+                .code(200)
+                .message("Đã gán freelancer cho công việc")
+                .data(jobService.assignFreelancer(principal.getId(), jobId, request))
+                .build();
+    }
+
     @PostMapping("/{jobId}/apply")
     public ResponseAPI<JobApplicationResponse> apply(@AuthenticationPrincipal UserPrincipal principal,
                                                      @PathVariable UUID jobId) {
@@ -116,14 +130,18 @@ public class JobController {
                 .build();
     }
 
-    @PatchMapping("/{jobId}/assign-freelancer")
-    public ResponseAPI<JobResponse> assignFreelancer(@AuthenticationPrincipal UserPrincipal principal,
-                                                     @PathVariable UUID jobId,
-                                                     @Valid @RequestBody AssignFreelancerRequest request) {
-        return ResponseAPI.<JobResponse>builder()
+    @GetMapping("/certificates")
+    public ResponseAPI<List<CertificateSummaryResponse>> listCertificates(@AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseAPI.<List<CertificateSummaryResponse>>builder()
                 .code(200)
-                .message("Đã gán freelancer cho công việc")
-                .data(jobService.assignFreelancer(principal.getId(), jobId, request))
+                .data(jobService.listCertificatesForFreelancer(principal.getId()))
                 .build();
+    }
+
+    @GetMapping(value = "/certificates/{certificateId}/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+    @ResponseBody
+    public byte[] downloadCertificatePdf(@AuthenticationPrincipal UserPrincipal principal,
+                                         @PathVariable UUID certificateId) {
+        return jobService.downloadCertificatePdf(principal.getId(), certificateId);
     }
 }

@@ -38,8 +38,12 @@ public enum ErrorCode {
     JOB_FREELANCER_NOT_ASSIGNED(4007, "Công việc chưa được gán cho freelancer nào, không thể thanh toán: %s", HttpStatus.CONFLICT),
     ALREADY_APPLIED(4008, "Bạn đã ứng tuyển công việc này rồi: %s", HttpStatus.CONFLICT),
     FREELANCER_NOT_APPLIED(4009, "Freelancer chưa ứng tuyển công việc này: %s", HttpStatus.CONFLICT),
+    TAX_RECORD_NOT_FOUND(4010, "Không tìm thấy bản ghi thuế: %s", HttpStatus.NOT_FOUND),
+    TAX_RECORD_INVALID_STATUS(4011, "Trạng thái bản ghi thuế không cho phép thao tác này: %s", HttpStatus.CONFLICT),
 
     MISA_BACKEND_CALL_FAILED(5000, "Gọi misa-backend thất bại: %s", HttpStatus.BAD_GATEWAY),
+
+    SOLANA_CPR_NOT_CONFIGURED(5102, "Chưa cấu hình solana-cpr: %s", HttpStatus.INTERNAL_SERVER_ERROR),
 
     INTERNAL_ERROR(9999, "Đã có lỗi xảy ra, vui lòng thử lại sau", HttpStatus.INTERNAL_SERVER_ERROR),
     ACCOUNT_NOT_FOUND(9997, "Không tìm thấy tài khoản", HttpStatus.NOT_FOUND);

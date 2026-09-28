@@ -41,6 +41,37 @@ misa-backend:
   base-url: ${MISA_BACKEND_BASE_URL:http://localhost:9192}
   platform-account-email: platform@marketplace.local
   platform-account-password: MisaPlatform@2026
+  certificate:
+    auto-issue: ${MISA_CERTIFICATE_AUTO_ISSUE:false}
+    auto-submit: ${MISA_CERTIFICATE_AUTO_SUBMIT:false}
+    digital-certificate-serial: ${MISA_DIGITAL_CERTIFICATE_SERIAL:CERT-ABC-2026}
+    signature-mode: DIGITAL_SIGNATURE
+    submission-mode: ELECTRONIC
+
+tax-certificate:
+  sync-initial-delay-ms: 60000
+  sync-interval-ms: 300000
+
+solana-cpr:
+  base-url: ${SOLANA_CPR_BASE_URL:http://localhost:9193}
+  internal-api-key: ${SOLANA_CPR_INTERNAL_API_KEY:}
+  custodial-client-public-key: ${SOLANA_CPR_CUSTODIAL_CLIENT_PUBLIC_KEY:}
+  onramp-authority-public-key: ${SOLANA_CPR_ONRAMP_AUTHORITY_PUBLIC_KEY:}
+  network: ${SOLANA_CPR_NETWORK:localnet}
+  commitment: ${SOLANA_CPR_COMMITMENT:confirmed}
+  connect-timeout-ms: 3000
+  read-timeout-ms: 15000
+  confirm-poll-attempts: 10
+  confirm-poll-interval-ms: 1000
+  pending-expiry-seconds: 300
+
+http-client:
+  connect-timeout-ms: 3000
+  read-timeout-ms: 10000
+
+payout:
+  reconcile-initial-delay-ms: 30000
+  reconcile-interval-ms: 30000
 
 internal:
   api:
@@ -60,3 +91,14 @@ cors:
 logging:
   level:
     com.marketplace.backend: INFO
+
+exchange-rate:
+  fallback-usd-vnd-rate: 25000
+  fallback-usdc-vnd-rate: 25000
+  cache-ttl-seconds: 60
+
+onramp:
+  fee-rate: 0.005   # 0.5% phí giả lập on-ramp (USD -> USDC)
+
+offramp:
+  fee-rate: 0.003   # 0.3% phí giả lập off-ramp (USDC -> VND)

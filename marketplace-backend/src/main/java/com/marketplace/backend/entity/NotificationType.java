@@ -4,5 +4,6 @@ public enum NotificationType {
     JOB_ASSIGNED,
     PAYMENT_SENT,
     PAYMENT_RECEIVED,
-    TAX_EXPORT_FAILED
+    TAX_EXPORT_FAILED,
+    PAYOUT_FAILED
 }
