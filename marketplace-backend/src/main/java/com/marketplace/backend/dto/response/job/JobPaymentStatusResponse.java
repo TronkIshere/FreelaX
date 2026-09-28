@@ -53,6 +53,18 @@ public class JobPaymentStatusResponse {
     LocalDateTime withdrawalSubmittedAt;
     LocalDateTime withdrawalConfirmedAt;
     String onChainOffRampError;
+    String payoutBankCode;
+    String payoutBankAccountNumber;
+    String payoutBankAccountHolderName;
+    String offRampReference;
+    BigDecimal amountVndBeforeOffRampFee;
+    BigDecimal offRampFeeVnd;
+    LocalDateTime simulatedPayoutAt;
+    String offRampCompletionSignature;
+    String offRampCompletionExplorerUrl;
+    LocalDateTime offRampCompletionSubmittedAt;
+    LocalDateTime offRampCompletedAt;
+    String offRampError;
     BigDecimal estimatedAmountVnd;
     String usdcToVndRateSource;
     BigDecimal taxableAmountVnd;

@@ -320,6 +320,25 @@ public class JobServiceImpl implements JobService {
                 .withdrawalSubmittedAt(payoutRecord != null ? payoutRecord.getWithdrawalSubmittedAt() : null)
                 .withdrawalConfirmedAt(payoutRecord != null ? payoutRecord.getWithdrawalConfirmedAt() : null)
                 .onChainOffRampError(payoutRecord != null ? payoutRecord.getOnChainOffRampError() : null)
+                .payoutBankCode(payoutRecord != null && payoutRecord.getPayoutBankCode() != null
+                        ? payoutRecord.getPayoutBankCode().name() : null)
+                .payoutBankAccountNumber(payoutRecord != null
+                        ? maskBankAccount(payoutRecord.getPayoutBankAccountNumber()) : null)
+                .payoutBankAccountHolderName(payoutRecord != null
+                        ? payoutRecord.getPayoutBankAccountHolderName() : null)
+                .offRampReference(payoutRecord != null ? payoutRecord.getOffRampReference() : null)
+                .amountVndBeforeOffRampFee(payoutRecord != null
+                        ? payoutRecord.getAmountVndBeforeOffRampFee() : null)
+                .offRampFeeVnd(payoutRecord != null ? payoutRecord.getOffRampFeeVnd() : null)
+                .simulatedPayoutAt(payoutRecord != null ? payoutRecord.getSimulatedPayoutAt() : null)
+                .offRampCompletionSignature(payoutRecord != null
+                        ? payoutRecord.getOffRampCompletionSignature() : null)
+                .offRampCompletionExplorerUrl(payoutRecord != null
+                        ? explorerUrl(payoutRecord.getOnRampNetwork(), payoutRecord.getOffRampCompletionSignature()) : null)
+                .offRampCompletionSubmittedAt(payoutRecord != null
+                        ? payoutRecord.getOffRampCompletionSubmittedAt() : null)
+                .offRampCompletedAt(payoutRecord != null ? payoutRecord.getOffRampCompletedAt() : null)
+                .offRampError(payoutRecord != null ? payoutRecord.getOffRampError() : null)
                 .estimatedAmountVnd(payoutRecord != null ? payoutRecord.getAmountVndEstimated() : null)
                 .usdcToVndRateSource(payoutRecord != null && payoutRecord.getUsdcToVndRateSource() != null
                         ? payoutRecord.getUsdcToVndRateSource().name() : null)
@@ -337,6 +356,13 @@ public class JobServiceImpl implements JobService {
             return null;
         }
         return "https://explorer.solana.com/tx/" + signature + "?cluster=devnet";
+    }
+
+    private String maskBankAccount(String accountNumber) {
+        if (accountNumber == null || accountNumber.length() <= 4) {
+            return accountNumber;
+        }
+        return "*".repeat(accountNumber.length() - 4) + accountNumber.substring(accountNumber.length() - 4);
     }
 
     @Override

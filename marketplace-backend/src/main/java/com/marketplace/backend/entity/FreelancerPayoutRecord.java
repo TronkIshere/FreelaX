@@ -172,6 +172,28 @@ public class FreelancerPayoutRecord extends AbstractEntity<UUID> {
     @Column(length = 64)
     private String offRampReference;
 
+    @Enumerated(EnumType.STRING)
+    @Column(length = 30)
+    private BankCode payoutBankCode;
+
+    @Column(length = 64)
+    private String payoutBankAccountNumber;
+
+    @Column(length = 255)
+    private String payoutBankAccountHolderName;
+
+    private LocalDateTime simulatedPayoutAt;
+
+    @Column(length = 128)
+    private String offRampCompletionSignature;
+
+    private LocalDateTime offRampCompletionSubmittedAt;
+
+    private LocalDateTime offRampCompletedAt;
+
+    @Column(columnDefinition = "TEXT")
+    private String offRampError;
+
     @Column(nullable = false, precision = 20, scale = 2)
     private BigDecimal taxUsdToVndRate;
 

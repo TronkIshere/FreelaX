@@ -16,6 +16,7 @@ public class SolanaConfigResult {
     String acceptedMint;
     String treasuryAuthority;
     String rateAuthority;
+    String oracleAuthority;
     String mockOnrampAuthority;
     Boolean mockOnrampEnabled;
     Boolean paused;

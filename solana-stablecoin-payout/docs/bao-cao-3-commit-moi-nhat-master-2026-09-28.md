@@ -73,7 +73,7 @@ Các phần đã bổ sung:
 Mức xác minh hiện tại:
 
 - `git diff --check`: PASS.
-- `mvn -pl marketplace-backend -am test`: **BUILD SUCCESS — 4 test, 0 failure,
+- `mvn -pl marketplace-backend -am test`: **BUILD SUCCESS — 7 test, 0 failure,
   0 error** (chạy bằng JDK 17 và Maven tạm trong `/tmp`).
 - Chưa chạy local-validator end-to-end, do đó trạng thái chính xác là **đã hoàn
   thành implementation, compile và unit test; còn chờ runtime E2E verification**.
@@ -108,14 +108,38 @@ Luồng mới bắt đầu sau khi Invoice đã được xác nhận `Paid`:
 `SOLANA_LOCAL_PRIVATE_KEYS`, RateSnapshot phải còn hạn khi submit withdrawal và
 Config phải khai báo đúng accepted mint/Treasury Authority.
 
+### VND payout MVP: **ĐÃ TRIỂN KHAI MÔ PHỎNG CÓ VÒNG ĐỜI HOÀN CHỈNH**
+
+Do phạm vi sản phẩm sinh viên không tích hợp ngân hàng thật, bước settlement
+VND được mô phỏng nhưng vẫn giữ các ranh giới nghiệp vụ có thể thay provider về
+sau:
+
+- Chỉ bắt đầu sau khi `WithdrawalRecord` đã chứng minh USDC nằm trong Treasury.
+- Snapshot bank code, số tài khoản và tên chủ tài khoản của Freelancer tại thời
+  điểm payout; payment-status chỉ trả số tài khoản đã che phần lớn ký tự.
+- Tạo gross VND, phí, net VND, payout reference và thời điểm payout mô phỏng.
+- `OffRampStatus` chạy qua `NOT_STARTED` → `SIMULATED` →
+  `COMPLETION_SUBMITTED` → `COMPLETED`, hoặc `FAILED`.
+- Sau khi payout mô phỏng thành công, Oracle gọi `record_offramp`; marketplace
+  đọc lại account và chỉ chốt khi `WithdrawalRecord.status = Completed` khớp
+  withdrawal ID, Freelancer, token amount và PDA.
+- Lưu completion signature, submitted/completed timestamps, lỗi và explorer URL
+  để audit/reconcile.
+- Không sửa entity, DTO, công thức hoặc contract của module thuế/MISA. Unit test
+  xác nhận `taxableAmountVnd` không đổi qua bước payout.
+
+Điều kiện runtime bổ sung: Config on-chain phải có Oracle Authority và gateway
+phải có private key Oracle tương ứng trong `SOLANA_LOCAL_PRIVATE_KEYS`.
+
 Các mục tiếp theo:
 
 | Hạng mục | Trạng thái trên nhánh tính năng |
 |---|---|
 | Client → Freelancer on-chain | Đã compile + unit test; chờ E2E verification |
 | Freelancer → Treasury off-ramp on-chain | Đã compile + unit test; chờ E2E verification |
-| VND payout thật | Chưa triển khai |
-| Payment status/audit | Đã mở rộng qua withdrawal; audit chuyển VND thật còn thiếu |
+| VND payout MVP | Đã mô phỏng bank settlement + chốt `Completed` on-chain; chờ E2E |
+| Kết nối ngân hàng thật | Ngoài phạm vi MVP sinh viên |
+| Payment status/audit | Đã mở rộng qua payout và completion on-chain |
 
 ## 1. Kết luận điều hành
 

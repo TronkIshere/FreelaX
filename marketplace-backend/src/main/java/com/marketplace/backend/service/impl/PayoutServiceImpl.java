@@ -14,8 +14,6 @@ import com.marketplace.backend.exception.ApplicationException;
 import com.marketplace.backend.exception.ErrorCode;
 import com.marketplace.backend.provider.currency.ExchangeRateProvider;
 import com.marketplace.backend.provider.currency.ExchangeRateResult;
-import com.marketplace.backend.provider.currency.OffRampProvider;
-import com.marketplace.backend.provider.currency.OffRampResult;
 import com.marketplace.backend.provider.currency.OnRampProvider;
 import com.marketplace.backend.provider.currency.OnRampQuote;
 import com.marketplace.backend.provider.currency.OnRampResult;
@@ -27,6 +25,7 @@ import com.marketplace.backend.service.ClientPaymentService;
 import com.marketplace.backend.service.OnChainOffRampService;
 import com.marketplace.backend.service.PayoutService;
 import com.marketplace.backend.service.TaxCertificateService;
+import com.marketplace.backend.service.VndPayoutService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -56,11 +55,11 @@ public class PayoutServiceImpl implements PayoutService {
     WalletRepository walletRepository;
     FreelancerPayoutRecordRepository freelancerPayoutRecordRepository;
     OnRampProvider onRampProvider;
-    OffRampProvider offRampProvider;
     ExchangeRateProvider exchangeRateProvider;
     TaxCertificateService taxCertificateService;
     ClientPaymentService clientPaymentService;
     OnChainOffRampService onChainOffRampService;
+    VndPayoutService vndPayoutService;
     NotificationService notificationService;
     SolanaCprProperties solanaCprProperties;
 
@@ -140,9 +139,11 @@ public class PayoutServiceImpl implements PayoutService {
                         && payoutRecord.getClientPaymentStatus() != ClientPaymentStatus.FAILED) {
                     advanceClientPayment(payoutRecord, job);
                 } else if (payoutRecord.getClientPaymentStatus() == ClientPaymentStatus.CONFIRMED) {
-                    if (payoutRecord.getOnChainOffRampStatus() == OnChainOffRampStatus.CONFIRMED
-                            && payoutRecord.getOffRampStatus() == OffRampStatus.NOT_STARTED) {
-                        completePayout(payoutRecord, job);
+                    if (payoutRecord.getOnChainOffRampStatus() == OnChainOffRampStatus.CONFIRMED) {
+                        if (payoutRecord.getOffRampStatus() != OffRampStatus.COMPLETED
+                                && payoutRecord.getOffRampStatus() != OffRampStatus.FAILED) {
+                            advanceVndPayout(payoutRecord, job);
+                        }
                     } else if (payoutRecord.getOnChainOffRampStatus() != OnChainOffRampStatus.FAILED) {
                         advanceOnChainOffRamp(payoutRecord, job);
                     }
@@ -168,7 +169,8 @@ public class PayoutServiceImpl implements PayoutService {
                         || r.getOnChainOffRampStatus() == OnChainOffRampStatus.NOT_STARTED
                         || r.getOnChainOffRampStatus() == OnChainOffRampStatus.REQUEST_SUBMITTED
                         || (r.getOnChainOffRampStatus() == OnChainOffRampStatus.CONFIRMED
-                        && r.getOffRampStatus() == OffRampStatus.NOT_STARTED))))
+                        && r.getOffRampStatus() != OffRampStatus.COMPLETED
+                        && r.getOffRampStatus() != OffRampStatus.FAILED))))
                 .forEach(r -> ids.add(r.getId()));
         return new ArrayList<>(ids);
     }
@@ -274,36 +276,6 @@ public class PayoutServiceImpl implements PayoutService {
         }
     }
 
-    private void completePayout(FreelancerPayoutRecord payoutRecord, Job job) {
-        OffRampResult offRamp;
-        try {
-            offRamp = offRampProvider.convertUsdcToVnd(job.getId(), payoutRecord.getAmountUsdcReceived());
-        } catch (Exception e) {
-            payoutRecord.setOffRampStatus(OffRampStatus.FAILED);
-            freelancerPayoutRecordRepository.save(payoutRecord);
-            log.error("Mo phong off-ramp that bai cho job {}: {}", job.getId(), e.getMessage(), e);
-            notifyPayoutFailed(job);
-            exportTaxIfMissing(job, payoutRecord);
-            return;
-        }
-
-        if (offRamp.rateSource() == ExchangeRateSource.FALLBACK_PLACEHOLDER) {
-            log.warn("Job {}: off-ramp dang dung ty gia USDC/VND FALLBACK PLACEHOLDER ({})", job.getId(), offRamp.usdcToVndRate());
-        }
-
-        payoutRecord.setUsdcToVndRate(offRamp.usdcToVndRate());
-        payoutRecord.setUsdcToVndRateSource(offRamp.rateSource());
-        payoutRecord.setAmountVndBeforeOffRampFee(offRamp.amountVndGross());
-        payoutRecord.setOffRampFeeVnd(offRamp.feeVnd());
-        payoutRecord.setAmountVndEstimated(offRamp.amountVndNet());
-        payoutRecord.setOffRampReference(offRamp.payoutReference());
-        payoutRecord.setOffRampStatus(OffRampStatus.SIMULATED);
-        freelancerPayoutRecordRepository.save(payoutRecord);
-
-        notifyPayoutSimulated(job, payoutRecord);
-        exportTaxIfMissing(job, payoutRecord);
-    }
-
     private void advanceClientPayment(FreelancerPayoutRecord payoutRecord, Job job) {
         clientPaymentService.advance(payoutRecord);
         if (payoutRecord.getClientPaymentStatus() == ClientPaymentStatus.FAILED) {
@@ -315,6 +287,19 @@ public class PayoutServiceImpl implements PayoutService {
     private void advanceOnChainOffRamp(FreelancerPayoutRecord payoutRecord, Job job) {
         onChainOffRampService.advance(payoutRecord);
         if (payoutRecord.getOnChainOffRampStatus() == OnChainOffRampStatus.FAILED) {
+            notifyPayoutFailed(job);
+            exportTaxIfMissing(job, payoutRecord);
+        }
+    }
+
+    private void advanceVndPayout(FreelancerPayoutRecord payoutRecord, Job job) {
+        OffRampStatus previousStatus = payoutRecord.getOffRampStatus();
+        vndPayoutService.advance(payoutRecord);
+        if (previousStatus == OffRampStatus.NOT_STARTED
+                && payoutRecord.getOffRampStatus() == OffRampStatus.SIMULATED) {
+            notifyPayoutSimulated(job, payoutRecord);
+            exportTaxIfMissing(job, payoutRecord);
+        } else if (payoutRecord.getOffRampStatus() == OffRampStatus.FAILED) {
             notifyPayoutFailed(job);
             exportTaxIfMissing(job, payoutRecord);
         }
@@ -361,6 +346,9 @@ public class PayoutServiceImpl implements PayoutService {
     }
 
     private String onChainReference(FreelancerPayoutRecord payoutRecord) {
+        if (StringUtils.hasText(payoutRecord.getOffRampCompletionSignature())) {
+            return payoutRecord.getOffRampCompletionSignature();
+        }
         if (StringUtils.hasText(payoutRecord.getWithdrawalTransactionSignature())) {
             return payoutRecord.getWithdrawalTransactionSignature();
         }

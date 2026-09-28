@@ -2,6 +2,7 @@ package com.marketplace.backend.client;
 
 import com.marketplace.backend.configuration.SolanaCprProperties;
 import com.marketplace.backend.dto.request.solana.CreateInvoiceRequest;
+import com.marketplace.backend.dto.request.solana.CompleteOfframpRequest;
 import com.marketplace.backend.dto.request.solana.MockOnrampPurchaseRequest;
 import com.marketplace.backend.dto.request.solana.PayInvoiceRequest;
 import com.marketplace.backend.dto.request.solana.PublishRateRequest;
@@ -167,6 +168,14 @@ public class SolanaCprClient {
                 url, HttpMethod.GET, new HttpEntity<>(jsonHeaders()),
                 new ParameterizedTypeReference<SolanaAccountResult<SolanaWithdrawalResult>>() { }));
         return accountData(body);
+    }
+
+    public SolanaOperationResult completeOfframp(String freelancer, String withdrawalId,
+                                                 CompleteOfframpRequest request) {
+        String url = UriComponentsBuilder.fromUriString(properties.getBaseUrl())
+                .path("/api/v1/solana/withdrawals/{freelancer}/{withdrawalId}/complete")
+                .buildAndExpand(freelancer, withdrawalId).toUriString();
+        return submitOperation("complete-offramp", url, request);
     }
 
     private SolanaOperationResult submitOperation(String operation, String url, Object request) {
