@@ -17,6 +17,11 @@ logging:
   level:
     com.marketplace.backend: DEBUG
 
+misa-backend:
+  certificate:
+    auto-issue: ${MISA_CERTIFICATE_AUTO_ISSUE:true}
+    auto-submit: ${MISA_CERTIFICATE_AUTO_SUBMIT:true}
+
 security:
   jwt:
     secret: ${JWT_SECRET:dev-only-marketplace-jwt-secret-do-not-use-in-prod-1234567890}

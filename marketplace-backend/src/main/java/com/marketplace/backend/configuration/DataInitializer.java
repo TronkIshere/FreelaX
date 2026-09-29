@@ -22,7 +22,6 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ThreadLocalRandom;
 
 @Configuration
 @Slf4j(topic = "INIT-APPLICATION")
@@ -37,12 +36,19 @@ public class DataInitializer {
     private static final String SEED_FREELANCER_EMAIL = "freelancer.seed@example.com";
     private static final String SEED_FREELANCER_PASSWORD = "123456789";
     private static final BankCode SEED_FREELANCER_BANK_CODE = BankCode.BIDV;
+    private static final String SEED_FREELANCER_TAX_CODE = "DEMO-TAX-000001";
+    private static final String SEED_FREELANCER_IDENTITY_NUMBER = "DEMO-ID-000001";
+    private static final String SEED_FREELANCER_NATIONALITY = "VN";
+    private static final String SEED_FREELANCER_TAX_ADDRESS = "Demo address - not a real residence";
+    private static final String SEED_FREELANCER_BANK_ACCOUNT = "0000000000";
+    private static final String SEED_FREELANCER_BANK_HOLDER = "DEMO FREELANCER";
 
     @Bean
     public ApplicationRunner initData(RoleRepository roleRepository,
                                       UserRepository userRepository,
                                       JobRepository jobRepository,
                                       PaymentBackendClient paymentBackendClient,
+                                      DemoWalletSeeder demoWalletSeeder,
                                       PasswordEncoder passwordEncoder) {
         return args -> {
             if (roleRepository.count() == 0) {
@@ -79,14 +85,20 @@ public class DataInitializer {
                 u.setEnabled(true);
                 u.setRoles(Set.of(userRole));
                 u.setUserType(UserType.FREELANCER);
+                u.setTaxCode(SEED_FREELANCER_TAX_CODE);
+                u.setIdentityNumber(SEED_FREELANCER_IDENTITY_NUMBER);
+                u.setNationality(SEED_FREELANCER_NATIONALITY);
+                u.setTaxAddress(SEED_FREELANCER_TAX_ADDRESS);
                 u.setBankCode(SEED_FREELANCER_BANK_CODE);
-                u.setBankAccountNumber(generateRandomBankAccountNumber());
-                u.setBankAccountHolderName("Freelancer Seed");
+                u.setBankAccountNumber(SEED_FREELANCER_BANK_ACCOUNT);
+                u.setBankAccountHolderName(SEED_FREELANCER_BANK_HOLDER);
                 User saved = userRepository.save(u);
-                log.info("Seed freelancer created (chua nhan job nao): {} -- bankCode={}, bankAccountNumber={}",
-                        SEED_FREELANCER_EMAIL, SEED_FREELANCER_BANK_CODE, saved.getBankAccountNumber());
+                log.info("Seed freelancer created (chua nhan job nao): {}", SEED_FREELANCER_EMAIL);
                 return saved;
             });
+
+            fillMissingFreelancerDemoIdentity(freelancer, userRepository);
+            demoWalletSeeder.seed(client, freelancer);
 
             if (jobRepository.findByClientUserId(client.getId()).isEmpty()) {
                 List<Job> seedJobs = jobRepository.saveAll(List.of(
@@ -119,17 +131,44 @@ public class DataInitializer {
                 log.info("Freelancer seed {} (id={}) dang co 0 job -- goi PATCH /jobs/{{jobId}}/assign-freelancer " +
                                 "voi freelancerId nay de gan thu 1 trong 3 job tren.",
                         SEED_FREELANCER_EMAIL, freelancer.getId());
-                log.warn("Freelancer seed {} chua co misaTaxpayerId (seed tao truc tiep, khong qua registerUser() " +
-                                "nen khong tu goi misa-backend) -- job cua freelancer nay van thanh toan binh thuong, " +
-                                "chi buoc xuat chung tu thue tu dong se bi SKIPPED_NO_TAXPAYER.",
-                        freelancer.getId());
+                log.info("Freelancer seed {} has demo tax identity for external MISA registration on payout", freelancer.getId());
             }
         };
     }
 
-    private String generateRandomBankAccountNumber() {
-        long number = ThreadLocalRandom.current().nextLong(1_000_000_000L, 9_999_999_999L);
-        return String.valueOf(number);
+    private void fillMissingFreelancerDemoIdentity(User user, UserRepository userRepository) {
+        boolean changed = false;
+        if (user.getTaxCode() == null || user.getTaxCode().isBlank()) {
+            user.setTaxCode(SEED_FREELANCER_TAX_CODE);
+            changed = true;
+        }
+        if (user.getIdentityNumber() == null || user.getIdentityNumber().isBlank()) {
+            user.setIdentityNumber(SEED_FREELANCER_IDENTITY_NUMBER);
+            changed = true;
+        }
+        if (user.getNationality() == null || user.getNationality().isBlank()) {
+            user.setNationality(SEED_FREELANCER_NATIONALITY);
+            changed = true;
+        }
+        if (user.getTaxAddress() == null || user.getTaxAddress().isBlank()) {
+            user.setTaxAddress(SEED_FREELANCER_TAX_ADDRESS);
+            changed = true;
+        }
+        if (user.getBankCode() == null) {
+            user.setBankCode(SEED_FREELANCER_BANK_CODE);
+            changed = true;
+        }
+        if (user.getBankAccountNumber() == null || user.getBankAccountNumber().isBlank()) {
+            user.setBankAccountNumber(SEED_FREELANCER_BANK_ACCOUNT);
+            changed = true;
+        }
+        if (user.getBankAccountHolderName() == null || user.getBankAccountHolderName().isBlank()) {
+            user.setBankAccountHolderName(SEED_FREELANCER_BANK_HOLDER);
+            changed = true;
+        }
+        if (changed) {
+            userRepository.save(user);
+        }
     }
 
     private Role createRole(String name) {

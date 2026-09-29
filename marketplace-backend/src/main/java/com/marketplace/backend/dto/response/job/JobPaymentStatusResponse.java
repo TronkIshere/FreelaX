@@ -7,6 +7,7 @@ import lombok.experimental.FieldDefaults;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 @Getter
@@ -67,6 +68,10 @@ public class JobPaymentStatusResponse {
     String offRampError;
     BigDecimal estimatedAmountVnd;
     String usdcToVndRateSource;
+    BigDecimal usdcToVndRate;
+    Instant usdcToVndRateObservedAt;
     BigDecimal taxableAmountVnd;
     String taxRateSource;
+    BigDecimal taxUsdToVndRate;
+    Instant taxRateObservedAt;
 }

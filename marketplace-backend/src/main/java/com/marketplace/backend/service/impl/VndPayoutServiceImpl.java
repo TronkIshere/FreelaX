@@ -74,6 +74,7 @@ public class VndPayoutServiceImpl implements VndPayoutService {
         OffRampResult result = offRampProvider.convertUsdcToVnd(record.getJobId(), record.getAmountUsdcReceived());
         record.setUsdcToVndRate(result.usdcToVndRate());
         record.setUsdcToVndRateSource(result.rateSource());
+        record.setUsdcToVndRateObservedAt(result.rateObservedAt());
         record.setAmountVndBeforeOffRampFee(result.amountVndGross());
         record.setOffRampFeeVnd(result.feeVnd());
         record.setAmountVndEstimated(result.amountVndNet());

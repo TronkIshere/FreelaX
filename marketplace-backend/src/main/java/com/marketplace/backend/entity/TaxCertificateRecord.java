@@ -12,6 +12,7 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 @Getter
@@ -41,6 +42,8 @@ public class TaxCertificateRecord extends AbstractEntity<UUID> {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 32)
     private ExchangeRateSource rateSource;
+
+    private Instant rateObservedAt;
 
     @Column(nullable = false, precision = 20, scale = 0)
     private BigDecimal taxableIncomeVnd;

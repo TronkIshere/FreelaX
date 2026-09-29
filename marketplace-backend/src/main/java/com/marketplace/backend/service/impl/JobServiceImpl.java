@@ -269,6 +269,11 @@ public class JobServiceImpl implements JobService {
             throw new ApplicationException(ErrorCode.INVALID_JOB_STATUS);
         }
 
+        if (request.getBudgetUsd() != null && job.getCheckoutOrderId() != null
+                && request.getBudgetUsd().compareTo(job.getBudgetUsd()) != 0) {
+            throw new ApplicationException(ErrorCode.JOB_BUDGET_IMMUTABLE);
+        }
+
         if (request.getTitle() != null) {
             job.setTitle(request.getTitle());
         }
@@ -276,7 +281,9 @@ public class JobServiceImpl implements JobService {
             job.setDescription(request.getDescription());
         }
         if (request.getBudgetUsd() != null) {
-            job.setBudgetUsd(request.getBudgetUsd());
+            if (job.getCheckoutOrderId() == null) {
+                job.setBudgetUsd(request.getBudgetUsd());
+            }
         }
 
         jobRepository.save(job);
@@ -507,8 +514,12 @@ public class JobServiceImpl implements JobService {
                 .estimatedAmountVnd(payoutRecord != null ? payoutRecord.getAmountVndEstimated() : null)
                 .usdcToVndRateSource(payoutRecord != null && payoutRecord.getUsdcToVndRateSource() != null
                         ? payoutRecord.getUsdcToVndRateSource().name() : null)
+                .usdcToVndRate(payoutRecord != null ? payoutRecord.getUsdcToVndRate() : null)
+                .usdcToVndRateObservedAt(payoutRecord != null ? payoutRecord.getUsdcToVndRateObservedAt() : null)
                 .taxableAmountVnd(payoutRecord != null ? payoutRecord.getTaxableAmountVnd() : null)
                 .taxRateSource(payoutRecord != null ? payoutRecord.getTaxRateSource().name() : null)
+                .taxUsdToVndRate(payoutRecord != null ? payoutRecord.getTaxUsdToVndRate() : null)
+                .taxRateObservedAt(payoutRecord != null ? payoutRecord.getTaxRateObservedAt() : null)
                 .build();
     }
 

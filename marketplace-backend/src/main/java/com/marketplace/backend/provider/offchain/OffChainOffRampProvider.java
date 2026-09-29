@@ -41,6 +41,7 @@ public class OffChainOffRampProvider implements OffRampProvider {
                 amountUsdc,
                 rate.rate(),
                 rate.source(),
+                rate.fetchedAt(),
                 amountVndGross,
                 feeVnd,
                 amountVndNet,

@@ -3,7 +3,9 @@ package com.marketplace.backend.service.impl;
 import com.marketplace.backend.client.MisaBackendClient;
 import com.marketplace.backend.client.PaymentBackendClient;
 import com.marketplace.backend.dto.request.job.RequestRevisionRequest;
+import com.marketplace.backend.dto.request.job.CreateJobRequest;
 import com.marketplace.backend.dto.request.job.SubmitWorkRequest;
+import com.marketplace.backend.dto.request.job.UpdateJobRequest;
 import com.marketplace.backend.dto.response.bofa.CheckoutOrderResult;
 import com.marketplace.backend.dto.response.job.JobSubmissionResponse;
 import com.marketplace.backend.entity.Job;
@@ -25,6 +27,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -35,6 +38,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.times;
+import static org.mockito.ArgumentMatchers.eq;
 
 class JobWorkflowServiceImplTest {
 
@@ -148,6 +153,85 @@ class JobWorkflowServiceImplTest {
         verify(payoutService).settle(job);
     }
 
+    @Test
+    void titleAndDescriptionCanChangeWithoutChangingCheckoutBudget() {
+        Job job = job(JobStatus.OPEN);
+        stubUsers(job);
+        when(jobRepository.findById(job.getId())).thenReturn(Optional.of(job));
+        UpdateJobRequest request = new UpdateJobRequest();
+        request.setTitle("Updated title");
+        request.setDescription("Updated description");
+        request.setBudgetUsd(new BigDecimal("500.00"));
+
+        service.update(job.getClientUserId(), job.getId(), request);
+
+        assertThat(job.getTitle()).isEqualTo("Updated title");
+        assertThat(job.getDescription()).isEqualTo("Updated description");
+        assertThat(job.getBudgetUsd()).isEqualByComparingTo("500");
+        verify(jobRepository).save(job);
+    }
+
+    @Test
+    void jobCreationAndCheckoutUseTheSameBudget() {
+        UUID clientId = UUID.randomUUID();
+        User client = new User();
+        client.setId(clientId);
+        client.setUserType(UserType.CLIENT);
+        when(userRepository.findById(clientId)).thenReturn(Optional.of(client));
+        when(jobRepository.save(any(Job.class))).thenAnswer(invocation -> {
+            Job job = invocation.getArgument(0);
+            if (job.getId() == null) job.setId(UUID.randomUUID());
+            return job;
+        });
+        CheckoutOrderResult checkout = new CheckoutOrderResult();
+        checkout.setId(UUID.randomUUID());
+        when(paymentBackendClient.createCheckoutOrder(eq(clientId), any(),
+                eq(new BigDecimal("500")), any(), any(), any())).thenReturn(checkout);
+        CreateJobRequest request = new CreateJobRequest();
+        request.setTitle("Demo job");
+        request.setDescription("Work");
+        request.setBudgetUsd(new BigDecimal("500"));
+        request.setPayerBankCode("BANK_OF_AMERICA");
+        request.setPayerBankAccountNumber("0000000000");
+        request.setPayerBankAccountHolderName("DEMO CLIENT");
+
+        service.create(clientId, request);
+
+        verify(paymentBackendClient).createCheckoutOrder(eq(clientId), any(),
+                eq(new BigDecimal("500")), eq("BANK_OF_AMERICA"), eq("0000000000"), eq("DEMO CLIENT"));
+        verify(jobRepository, times(2)).save(any(Job.class));
+    }
+
+    @Test
+    void omittedBudgetIsAllowedForOpenJob() {
+        Job job = job(JobStatus.OPEN);
+        stubUsers(job);
+        when(jobRepository.findById(job.getId())).thenReturn(Optional.of(job));
+        UpdateJobRequest request = new UpdateJobRequest();
+        request.setTitle("New title");
+
+        service.update(job.getClientUserId(), job.getId(), request);
+
+        assertThat(job.getBudgetUsd()).isEqualByComparingTo("500");
+        assertThat(job.getTitle()).isEqualTo("New title");
+    }
+
+    @Test
+    void changedBudgetIsRejectedAfterCheckoutCreation() {
+        Job job = job(JobStatus.OPEN);
+        stubUsers(job);
+        when(jobRepository.findById(job.getId())).thenReturn(Optional.of(job));
+        UpdateJobRequest request = new UpdateJobRequest();
+        request.setBudgetUsd(new BigDecimal("600"));
+
+        assertThatThrownBy(() -> service.update(job.getClientUserId(), job.getId(), request))
+                .isInstanceOf(ApplicationException.class)
+                .extracting(exception -> ((ApplicationException) exception).getErrorCode())
+                .isEqualTo(ErrorCode.JOB_BUDGET_IMMUTABLE);
+        assertThat(job.getBudgetUsd()).isEqualByComparingTo("500");
+        verify(jobRepository, never()).save(job);
+    }
+
     private Job job(JobStatus status) {
         Job job = new Job();
         job.setId(UUID.randomUUID());
@@ -155,6 +239,7 @@ class JobWorkflowServiceImplTest {
         job.setFreelancerId(UUID.randomUUID());
         job.setCheckoutOrderId(UUID.randomUUID());
         job.setTitle("Build API");
+        job.setBudgetUsd(new BigDecimal("500"));
         job.setStatus(status);
         return job;
     }

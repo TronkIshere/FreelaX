@@ -62,7 +62,8 @@ class VndPayoutServiceImplTest {
         when(userRepository.findById(record.getFreelancerId())).thenReturn(Optional.of(freelancer));
         when(offRampProvider.convertUsdcToVnd(record.getJobId(), record.getAmountUsdcReceived()))
                 .thenReturn(new OffRampResult(new BigDecimal("99.5"), new BigDecimal("25000"),
-                        ExchangeRateSource.FALLBACK_PLACEHOLDER, new BigDecimal("2487500"),
+                        ExchangeRateSource.FALLBACK_PLACEHOLDER, java.time.Instant.parse("2026-01-01T00:00:00Z"),
+                        new BigDecimal("2487500"),
                         new BigDecimal("7463"), new BigDecimal("2480037"), "offramp-job-test"));
 
         service.advance(record);
@@ -72,6 +73,8 @@ class VndPayoutServiceImplTest {
         assertThat(record.getPayoutBankCode()).isEqualTo(BankCode.MBBANK);
         assertThat(record.getPayoutBankAccountNumber()).isEqualTo("0123456789");
         assertThat(record.getSimulatedPayoutAt()).isNotNull();
+        assertThat(record.getUsdcToVndRateObservedAt())
+                .isEqualTo(java.time.Instant.parse("2026-01-01T00:00:00Z"));
         assertThat(record.getTaxableAmountVnd()).isEqualByComparingTo(originalTaxableAmount);
     }
 

@@ -10,6 +10,7 @@ import com.marketplace.backend.dto.response.tax.TaxCertificateResponse;
 import com.marketplace.backend.entity.FreelancerPayoutRecord;
 import com.marketplace.backend.entity.Job;
 import com.marketplace.backend.entity.NotificationType;
+import com.marketplace.backend.entity.OffRampStatus;
 import com.marketplace.backend.entity.TaxCertificateRecord;
 import com.marketplace.backend.entity.TaxCertificateStatus;
 import com.marketplace.backend.entity.TaxExportStatus;
@@ -69,6 +70,7 @@ public class TaxCertificateServiceImpl implements TaxCertificateService {
     @Override
     @Transactional
     public void exportForPayout(Job job, FreelancerPayoutRecord payoutRecord, String transactionReference) {
+        requireCompletedPayout(payoutRecord);
         TaxCertificateRecord taxRecord = taxCertificateRecordRepository.findByJobId(job.getId())
                 .orElseGet(() -> newRecord(job, payoutRecord, transactionReference));
 
@@ -125,6 +127,7 @@ public class TaxCertificateServiceImpl implements TaxCertificateService {
     @Transactional
     public TaxCertificateResponse syncForParticipant(UUID userId, UUID taxRecordId) {
         TaxCertificateRecord taxRecord = getParticipantOrThrow(userId, taxRecordId);
+        requireCompletedPayoutForRecord(taxRecord);
         if (taxRecord.getMisaCertificateId() == null) {
             throw new ApplicationException(ErrorCode.TAX_RECORD_INVALID_STATUS, taxRecord.getStatus().name());
         }
@@ -142,6 +145,8 @@ public class TaxCertificateServiceImpl implements TaxCertificateService {
 
         Job job = jobRepository.findById(taxRecord.getJobId())
                 .orElseThrow(() -> new ApplicationException(ErrorCode.JOB_NOT_FOUND, taxRecord.getJobId()));
+
+        requireCompletedPayoutForRecord(taxRecord);
 
         export(taxRecord, job, false);
         return toResponse(taxRecord, job.getTitle());
@@ -169,7 +174,8 @@ public class TaxCertificateServiceImpl implements TaxCertificateService {
     @Transactional
     public void syncById(UUID taxRecordId) {
         taxCertificateRecordRepository.findById(taxRecordId)
-                .filter(r -> r.getMisaCertificateId() != null && r.getStatus().isSyncable())
+                .filter(r -> r.getMisaCertificateId() != null && r.getStatus().isSyncable()
+                        && isPayoutCompleted(r))
                 .ifPresent(this::refreshAndAdvance);
     }
 
@@ -177,7 +183,7 @@ public class TaxCertificateServiceImpl implements TaxCertificateService {
     @Transactional(readOnly = true)
     public List<UUID> findRecordIdsToSync() {
         return taxCertificateRecordRepository.findByStatusIn(TaxCertificateStatus.syncableStatuses()).stream()
-                .filter(r -> r.getMisaCertificateId() != null)
+                .filter(r -> r.getMisaCertificateId() != null && isPayoutCompleted(r))
                 .map(TaxCertificateRecord::getId)
                 .toList();
     }
@@ -191,10 +197,30 @@ public class TaxCertificateServiceImpl implements TaxCertificateService {
         taxRecord.setAmountUsd(payoutRecord.getAmountUsd());
         taxRecord.setUsdToVndRate(payoutRecord.getTaxUsdToVndRate());
         taxRecord.setRateSource(payoutRecord.getTaxRateSource());
+        taxRecord.setRateObservedAt(payoutRecord.getTaxRateObservedAt());
         taxRecord.setTaxableIncomeVnd(payoutRecord.getTaxableAmountVnd());
         taxRecord.setTransactionReference(transactionReference);
         taxRecord.setStatus(TaxCertificateStatus.PENDING_EXPORT);
         return taxCertificateRecordRepository.save(taxRecord);
+    }
+
+    private void requireCompletedPayout(FreelancerPayoutRecord payoutRecord) {
+        if (payoutRecord == null || payoutRecord.getOffRampStatus() != OffRampStatus.COMPLETED) {
+            throw new ApplicationException(ErrorCode.TAX_RECORD_INVALID_STATUS, "payout not completed");
+        }
+    }
+
+    private void requireCompletedPayoutForRecord(TaxCertificateRecord taxRecord) {
+        if (!isPayoutCompleted(taxRecord)) {
+            throw new ApplicationException(ErrorCode.TAX_RECORD_INVALID_STATUS, "payout not completed");
+        }
+    }
+
+    private boolean isPayoutCompleted(TaxCertificateRecord taxRecord) {
+        return taxRecord.getPayoutRecordId() != null
+                && freelancerPayoutRecordRepository.findById(taxRecord.getPayoutRecordId())
+                .map(r -> r.getOffRampStatus() == OffRampStatus.COMPLETED)
+                .orElse(false);
     }
 
     private void export(TaxCertificateRecord taxRecord, Job job, boolean notifyOnFailure) {
@@ -397,6 +423,7 @@ public class TaxCertificateServiceImpl implements TaxCertificateService {
                 .amountUsd(r.getAmountUsd())
                 .usdToVndRate(r.getUsdToVndRate())
                 .rateSource(r.getRateSource().name())
+                .rateObservedAt(r.getRateObservedAt())
                 .taxableIncomeVnd(r.getTaxableIncomeVnd())
                 .taxWithheldVnd(r.getTaxWithheldVnd())
                 .certificateNumber(r.getCertificateNumber())

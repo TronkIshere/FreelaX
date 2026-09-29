@@ -66,6 +66,11 @@ solana-cpr:
   pending-expiry-seconds: 300
   invoice-validity-seconds: 900
 
+demo:
+  wallet:
+    client-public-key: ${DEMO_CLIENT_SOLANA_PUBLIC_KEY:}
+    freelancer-public-key: ${DEMO_FREELANCER_SOLANA_PUBLIC_KEY:}
+
 http-client:
   connect-timeout-ms: 3000
   read-timeout-ms: 10000

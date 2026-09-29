@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.marketplace.backend.dto.response.misa.MisaCertificateStatusResult;
 import com.marketplace.backend.dto.response.misa.MisaPayoutTransactionResult;
+import com.marketplace.backend.dto.response.common.ResponseAPI;
 import com.marketplace.backend.exception.ApplicationException;
 import com.marketplace.backend.exception.ErrorCode;
 import com.nimbusds.jwt.SignedJWT;
@@ -12,6 +13,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.*;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
@@ -103,20 +105,22 @@ public class MisaBackendClient {
         body.put("sourceAmount", amountUsd);
         body.put("exchangeRatePair", "USD/VND");
         body.put("exchangeRate", usdToVndRate);
+        // MISA's field name is amountUsdc, but the agreed tax base is gross Job USD.
         body.put("amountUsdc", amountUsd);
         body.put("paymentDate", LocalDate.now());
         body.put("description", "Thanh toán thù lao công việc " + payoutReference
                 + ". Tỷ giá quy đổi: " + formatRate(usdToVndRate) + " VND/USD");
 
-        ResponseEntity<MisaPayoutTransactionResult> response = restTemplate.exchange(
+        ResponseEntity<ResponseAPI<MisaPayoutTransactionResult>> response = restTemplate.exchange(
                 baseUrl + "/api/v1/taxpayers/" + taxpayerId + "/payouts",
                 HttpMethod.POST, new HttpEntity<>(body, authorizedJsonHeaders()),
-                MisaPayoutTransactionResult.class);
+                new ParameterizedTypeReference<ResponseAPI<MisaPayoutTransactionResult>>() {});
 
-        if (response.getBody() == null) {
-            throw new ApplicationException(ErrorCode.MISA_BACKEND_CALL_FAILED, "record-payout: empty body");
+        MisaPayoutTransactionResult payout = response.getBody() == null ? null : response.getBody().getData();
+        if (payout == null || payout.getId() == null) {
+            throw new ApplicationException(ErrorCode.MISA_BACKEND_CALL_FAILED, "record-payout: missing data.id");
         }
-        return response.getBody();
+        return payout;
     }
 
     public MisaCertificateStatusResult createWithholdingCertificate(UUID payoutTransactionId) {

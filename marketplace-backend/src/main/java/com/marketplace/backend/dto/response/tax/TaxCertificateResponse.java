@@ -7,6 +7,7 @@ import lombok.experimental.FieldDefaults;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 @Getter
@@ -23,6 +24,7 @@ public class TaxCertificateResponse {
     BigDecimal amountUsd;
     BigDecimal usdToVndRate;
     String rateSource;
+    Instant rateObservedAt;
     BigDecimal taxableIncomeVnd;
     BigDecimal taxWithheldVnd;
     String certificateNumber;

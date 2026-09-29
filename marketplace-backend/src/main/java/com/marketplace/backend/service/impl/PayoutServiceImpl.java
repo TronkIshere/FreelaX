@@ -9,6 +9,7 @@ import com.marketplace.backend.entity.NotificationType;
 import com.marketplace.backend.entity.OffRampStatus;
 import com.marketplace.backend.entity.OnChainOffRampStatus;
 import com.marketplace.backend.entity.OnRampStatus;
+import com.marketplace.backend.entity.TaxExportStatus;
 import com.marketplace.backend.entity.Wallet;
 import com.marketplace.backend.exception.ApplicationException;
 import com.marketplace.backend.exception.ErrorCode;
@@ -90,7 +91,6 @@ public class PayoutServiceImpl implements PayoutService {
             payoutRecord.setClientPaymentError("Freelancer " + job.getFreelancerId() + " chua co wallet Solana");
             freelancerPayoutRecordRepository.save(payoutRecord);
             notifyPayoutFailed(job);
-            exportTaxIfMissing(job, payoutRecord);
             return;
         }
 
@@ -106,6 +106,12 @@ public class PayoutServiceImpl implements PayoutService {
         }
         Job job = jobRepository.findById(payoutRecord.getJobId()).orElse(null);
         if (job == null) {
+            return;
+        }
+        if (payoutRecord.getOffRampStatus() == OffRampStatus.COMPLETED) {
+            if (job.getTaxExportStatus() == TaxExportStatus.NOT_ATTEMPTED) {
+                exportTaxIfMissing(job, payoutRecord);
+            }
             return;
         }
         if (payoutRecord.getClientPaymentStatus() == null) {
@@ -162,7 +168,11 @@ public class PayoutServiceImpl implements PayoutService {
                 .findByOnRampStatusIn(List.of(OnRampStatus.NOT_STARTED, OnRampStatus.SUBMITTED))
                 .forEach(r -> ids.add(r.getId()));
         freelancerPayoutRecordRepository.findByOnRampStatus(OnRampStatus.CONFIRMED).stream()
-                .filter(r -> r.getClientPaymentStatus() == null
+                .filter(r -> (r.getOffRampStatus() == OffRampStatus.COMPLETED
+                        && r.getMisaCertificateId() == null
+                        && jobRepository.findById(r.getJobId())
+                        .map(j -> j.getTaxExportStatus() == TaxExportStatus.NOT_ATTEMPTED).orElse(false))
+                        || r.getClientPaymentStatus() == null
                         || (r.getClientPaymentStatus() != ClientPaymentStatus.FAILED
                         && (r.getClientPaymentStatus() != ClientPaymentStatus.CONFIRMED
                         || r.getOnChainOffRampStatus() == null
@@ -212,6 +222,7 @@ public class PayoutServiceImpl implements PayoutService {
 
         payoutRecord.setTaxUsdToVndRate(taxRate.rate());
         payoutRecord.setTaxRateSource(taxRate.source());
+        payoutRecord.setTaxRateObservedAt(taxRate.fetchedAt());
         payoutRecord.setTaxableAmountVnd(taxableAmountVnd);
 
         return freelancerPayoutRecordRepository.save(payoutRecord);
@@ -269,7 +280,6 @@ public class PayoutServiceImpl implements PayoutService {
             case FAILED -> {
                 log.error("Mock on-ramp that bai cho job {}: {}", job.getId(), result.error());
                 notifyPayoutFailed(job);
-                exportTaxIfMissing(job, payoutRecord);
             }
             case SUBMITTED -> log.info("Job {}: mock on-ramp dang cho xac nhan ({})", job.getId(), result.error());
             case NOT_STARTED -> log.warn("Job {}: mock on-ramp chua gui duoc, se thu lai ({})", job.getId(), result.error());
@@ -280,7 +290,6 @@ public class PayoutServiceImpl implements PayoutService {
         clientPaymentService.advance(payoutRecord);
         if (payoutRecord.getClientPaymentStatus() == ClientPaymentStatus.FAILED) {
             notifyPayoutFailed(job);
-            exportTaxIfMissing(job, payoutRecord);
         }
     }
 
@@ -288,7 +297,6 @@ public class PayoutServiceImpl implements PayoutService {
         onChainOffRampService.advance(payoutRecord);
         if (payoutRecord.getOnChainOffRampStatus() == OnChainOffRampStatus.FAILED) {
             notifyPayoutFailed(job);
-            exportTaxIfMissing(job, payoutRecord);
         }
     }
 
@@ -298,15 +306,16 @@ public class PayoutServiceImpl implements PayoutService {
         if (previousStatus == OffRampStatus.NOT_STARTED
                 && payoutRecord.getOffRampStatus() == OffRampStatus.SIMULATED) {
             notifyPayoutSimulated(job, payoutRecord);
+        } else if (payoutRecord.getOffRampStatus() == OffRampStatus.COMPLETED) {
             exportTaxIfMissing(job, payoutRecord);
         } else if (payoutRecord.getOffRampStatus() == OffRampStatus.FAILED) {
             notifyPayoutFailed(job);
-            exportTaxIfMissing(job, payoutRecord);
         }
     }
 
     private void exportTaxIfMissing(Job job, FreelancerPayoutRecord payoutRecord) {
-        if (job.getMisaCertificateId() == null) {
+        if (payoutRecord.getOffRampStatus() == OffRampStatus.COMPLETED
+                && job.getMisaCertificateId() == null) {
             taxCertificateService.exportForPayout(job, payoutRecord, onChainReference(payoutRecord));
         }
     }

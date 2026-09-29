@@ -9,4 +9,5 @@ import java.util.UUID;
 public interface WalletRepository extends JpaRepository<Wallet, Long> {
 
     Optional<Wallet> findFirstByUserIdOrderByIdAsc(UUID userId);
+    boolean existsByPublicKey(String publicKey);
 }

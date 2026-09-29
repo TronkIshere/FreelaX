@@ -12,6 +12,7 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 @Getter
@@ -160,6 +161,8 @@ public class FreelancerPayoutRecord extends AbstractEntity<UUID> {
     @Column(length = 32)
     private ExchangeRateSource usdcToVndRateSource;
 
+    private Instant usdcToVndRateObservedAt;
+
     @Column(precision = 20, scale = 0)
     private BigDecimal amountVndBeforeOffRampFee;
 
@@ -200,6 +203,8 @@ public class FreelancerPayoutRecord extends AbstractEntity<UUID> {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 32)
     private ExchangeRateSource taxRateSource;
+
+    private Instant taxRateObservedAt;
 
     @Column(nullable = false, precision = 20, scale = 0)
     private BigDecimal taxableAmountVnd;
