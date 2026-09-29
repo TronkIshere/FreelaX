@@ -12,7 +12,7 @@ spring:
 
 solana:
   rpc-url: http://127.0.0.1:9123
-  program-id: CwuaAPrxYLK6avPUbMRBerBYt1apdNU829TDZmoAnhEf
+  program-id: 4Wd6umju26vej2ftzwR6J55pjkUqDQsxfVkt46UqDb1b
   commitment: confirmed
   system-fee-payer: ""
   internal-api-key: test-internal-key

@@ -7,7 +7,7 @@ provider thanh toán cho Program `invoice_payments` hiện tại.
 
 | Thành phần | Giá trị/vai trò |
 |---|---|
-| Invoice Program | `CwuaAPrxYLK6avPUbMRBerBYt1apdNU829TDZmoAnhEf` |
+| Invoice Program | `4Wd6umju26vej2ftzwR6J55pjkUqDQsxfVkt46UqDb1b` |
 | Token Program | Legacy SPL Token: `TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA` |
 | Associated Token Program | `ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL` |
 | Token thanh toán | `Config.acceptedMint`, bắt buộc 6 decimals |
