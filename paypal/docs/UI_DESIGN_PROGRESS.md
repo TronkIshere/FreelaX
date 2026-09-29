@@ -11,7 +11,7 @@ This file owns current progress and scope status only. The older UI_DESIGN_MASTE
 | D0 | Governance + art direction | 🟢 PASS | docs-only diff verified |
 | D1 | Marketplace Editorial | 🟢 PASS | D1.1–D1.5 + human visual QA PASS; desktop scope |
 | D2 | Kinetic Workflow | 🟢 PASS | D2.1–D2.4 final QA + human-directed closure PASS; desktop grammar locked |
-| D3 | Financial Evidence | ⚪ NOT STARTED | D2 PASS; ready to begin by separate workpack |
+| D3 | Financial Evidence | 🟡 IN PROGRESS | D3.1 storyboard complete; human visual review pending |
 | D4 | Brand Token Lock | 🔒 BLOCKED | D1–D3 approved |
 | D5 | Shared Design System | 🔒 BLOCKED | D4 PASS |
 | D6 | Shell / Navigation / Activity | 🔒 BLOCKED | D1–D5 |
@@ -33,7 +33,7 @@ This file owns current progress and scope status only. The older UI_DESIGN_MASTE
 - [x] docs-only diff verified
 - [x] D0 PASS
 
-Current checkpoint: **D3 / FINANCIAL EVIDENCE READY**
+Current checkpoint: **D3 / FINANCIAL EVIDENCE STORYBOARD HUMAN REVIEW**
 
 ## D1
 - [x] D1.1 fixed fixture — PASS / COMPLETE
@@ -74,12 +74,20 @@ Selected grammar: **FreelaX Editorial Dense Marketplace** (C structure + A typog
 Flutter implementation: **PERMANENTLY OUT OF SCOPE for this design lane**. Mobile: **DEFERRED**. Global palette: **NOT LOCKED**. Financial continuation belongs to D3.
 
 ## D3
-- [ ] lifecycle separation
+- [x] D3.1 Financial Contract Audit — COMPLETE
+- [x] D3.1 Financial Fixture — COMPLETE
+- [x] D3.1 Evidence Hierarchy — COMPLETE
+- [x] D3.1 Financial Storyboard — COMPLETE
+- [x] D3.1 Simulation / Devnet Honesty Rules — COMPLETE
+- [ ] D3 Human Visual Review — PENDING
+- [x] lifecycle separation — D3.1 documented
 - [ ] ledger study
-- [ ] simulation/devnet treatment
-- [ ] evidence lifecycle
+- [x] simulation/devnet treatment — D3.1 rules documented; visual review pending
+- [x] evidence lifecycle — D3.1 storyboard documented; visual review pending
 - [ ] tax/certificate treatment
-- [ ] D3 PASS
+- [ ] D3 PASS — NO
+
+Flutter implementation: **OUT OF SCOPE**. Mobile: **DEFERRED**. Global palette: **NOT LOCKED**.
 
 ## Contract references (read-only; not implementation phases in this design lane)
 - [x] G0.1 `/auth/me` returns stored `userType` on shared backend source at `0922d23baa52f4761edf095c4cbba983e7750cac`
