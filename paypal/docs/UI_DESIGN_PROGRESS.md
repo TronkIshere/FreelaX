@@ -10,7 +10,7 @@ This file owns progress status only.
 |---|---|---|---|
 | D0 | Governance + art direction | 🟢 PASS | docs-only diff verified |
 | D1 | Marketplace Editorial | 🟢 PASS | D1.1–D1.5 + human visual QA PASS; desktop scope |
-| D2 | Kinetic Workflow | 🟡 IN PROGRESS | D2.1 complete; human storyboard review pending |
+| D2 | Kinetic Workflow | 🟡 IN PROGRESS | D2.1 human review PASS; D2.2 studies await human review |
 | D3 | Financial Evidence | ⚪ NOT STARTED | D0 PASS |
 | D4 | Brand Token Lock | 🔒 BLOCKED | D1–D3 approved |
 | D5 | Shared Design System | 🔒 BLOCKED | D4 PASS |
@@ -34,7 +34,7 @@ This file owns progress status only.
 - [x] docs-only diff verified
 - [x] D0 PASS
 
-Current checkpoint: **D2 / WORKFLOW STORYBOARD HUMAN REVIEW**
+Current checkpoint: **D2 / WORKSPACE + REVIEW STUDIES HUMAN REVIEW**
 
 ## D1
 - [x] D1.1 fixed fixture — PASS / COMPLETE
@@ -49,12 +49,14 @@ Current checkpoint: **D2 / WORKFLOW STORYBOARD HUMAN REVIEW**
 Selected grammar: **FreelaX Editorial Dense Marketplace** (C structure + A typography + B selective graphic emphasis). Mobile design: **DEFERRED BY TEAM PRIORITY**. Final global palette: **NOT LOCKED**; D4 owns that decision. Implementation authorized: **NO**. D1 PASS does not authorize Flutter implementation.
 
 ## D2
-- [x] D2.1 Workflow Contract Audit — COMPLETE
-- [x] D2.1 Fixed Workflow Fixture — COMPLETE
-- [x] D2.1 State Storyboard — COMPLETE
-- [x] D2.1 Action Ownership Matrix — COMPLETE
-- [x] D2.1 Motion Semantics — COMPLETE (specification only)
-- [ ] human storyboard review
+- [x] D2.1 Workflow Contract Audit — PASS
+- [x] D2.1 Fixed Workflow Fixture — PASS
+- [x] D2.1 State Storyboard — PASS
+- [x] D2.1 Action Ownership Matrix — PASS
+- [x] D2.1 Motion Semantics — PASS (specification only)
+- [x] D2.1 Human Visual Review — PASS
+- [x] D2.2 Workspace + Review Visual Studies — COMPLETE: A Rail-First Editorial Workspace; B Document-First Submission Review; C Handoff + Version Ledger
+- [ ] D2 selected grammar — PENDING HUMAN REVIEW
 - [ ] workflow rail
 - [ ] CTA ownership transition
 - [ ] revision-loop history
@@ -71,14 +73,9 @@ Selected grammar: **FreelaX Editorial Dense Marketplace** (C structure + A typog
 - [ ] D3 PASS
 
 ## Technical gates
-- [ ] G0.1 /auth/me userType integrated/accepted on shared backend
-  - implementation prepared on `Hunny-17/FreelaX:fix/auth-mobile-contract-20260929`
-  - commit: `0355f2e016017846e3e2186420b298967ae6f90c`
-  - shared-upstream integration still pending
+- [x] G0.1 `/auth/me` returns stored `userType` on shared backend source at `0922d23baa52f4761edf095c4cbba983e7750cac`
 - [x] G0.2 refresh contract accepted for mobile: JSON body `{ "refreshToken": "..." }`
-- [ ] G0.2 refresh implementation integrated on shared backend
-  - JSON-body support + cookie compatibility fallback implemented in the same fix branch
-  - automated Maven execution still pending in a network-enabled/local environment
+- [x] G0.2 refresh implementation present on shared backend source: JSON-body `refreshToken` with cookie fallback
 - [ ] G0.3 budget edit contract resolved
   - until resolved: budget edit remains disabled
 
@@ -88,5 +85,4 @@ Selected grammar: **FreelaX Editorial Dense Marketplace** (C structure + A typog
 - Rejected as primary identity: SaaS, bento-first, glass, blue-gradient startup, dark-cyan Web3, wallet-first fintech.
 - Final palette remains unlocked until Sets A–C.
 - First production set: Set A — Marketplace Editorial Language.
-- Auth contract micro-fix prepared on fork branch `fix/auth-mobile-contract-20260929`; upstream integration pending.
-- Do not authorize frontend role-aware implementation until G0.1 and G0.2 are on the shared backend baseline and validated.
+- Auth contract source is integrated on shared master; this D2.2 tracker correction is read-only verification, not new backend work or Flutter implementation authorization.
