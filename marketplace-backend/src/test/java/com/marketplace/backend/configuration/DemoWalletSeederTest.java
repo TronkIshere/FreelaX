@@ -14,6 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -63,6 +64,32 @@ class DemoWalletSeederTest {
         assertThatThrownBy(() -> new DemoWalletSeeder(wallets, properties).seed(user(), user()))
                 .isInstanceOf(IllegalStateException.class);
         verifyNoInteractions(wallets);
+    }
+
+    @Test
+    void rejectsFreelancerKeyAlreadyOwnedByClient() {
+        WalletRepository wallets = mock(WalletRepository.class);
+        User client = user();
+        User freelancer = user();
+        Wallet clientWallet = new Wallet();
+        clientWallet.setUserId(client.getId());
+        clientWallet.setPublicKey(CLIENT_KEY);
+        Map<UUID, Wallet> stored = new HashMap<>();
+        stored.put(client.getId(), clientWallet);
+        when(wallets.findFirstByUserIdOrderByIdAsc(any(UUID.class)))
+                .thenAnswer(invocation -> Optional.ofNullable(stored.get(invocation.getArgument(0))));
+        when(wallets.existsByPublicKey(CLIENT_KEY)).thenAnswer(invocation ->
+                stored.values().stream().anyMatch(wallet -> CLIENT_KEY.equals(wallet.getPublicKey())));
+        DemoWalletProperties properties = new DemoWalletProperties();
+        properties.setFreelancerPublicKey(CLIENT_KEY);
+
+        assertThatThrownBy(() -> new DemoWalletSeeder(wallets, properties).seed(client, freelancer))
+                .isInstanceOf(IllegalStateException.class);
+
+        verify(wallets, never()).save(any(Wallet.class));
+        assertThat(stored).containsOnlyKeys(client.getId());
+        assertThat(stored.get(client.getId())).isSameAs(clientWallet);
+        assertThat(clientWallet.getPublicKey()).isEqualTo(CLIENT_KEY);
     }
 
     private DemoWalletProperties configured() {
