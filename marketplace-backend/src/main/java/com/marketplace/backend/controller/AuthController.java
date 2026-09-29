@@ -49,7 +49,18 @@ public class AuthController {
 
     @PostMapping("/refresh-token")
     public ResponseAPI<RefreshTokenResponse> refreshToken(
-            @CookieValue(name = "refreshToken") String refreshToken) throws ParseException, JOSEException {
+            @Valid @RequestBody(required = false) RefreshTokenRequest request,
+            @CookieValue(name = "refreshToken", required = false) String cookieRefreshToken)
+            throws ParseException, JOSEException {
+
+        String refreshToken = request != null ? request.getRefreshToken() : null;
+        if (refreshToken == null || refreshToken.isBlank()) {
+            refreshToken = cookieRefreshToken;
+        }
+        if (refreshToken == null || refreshToken.isBlank()) {
+            throw new ApplicationException(ErrorCode.REFRESH_TOKEN_INVALID);
+        }
+
         return ResponseAPI.<RefreshTokenResponse>builder()
                 .code(200)
                 .data(authenticationService.refreshToken(refreshToken))
@@ -104,6 +115,7 @@ public class AuthController {
                         .id(user.getId())
                         .email(user.getEmail())
                         .displayName(user.getDisplayName())
+                        .userType(user.getUserType())
                         .build())
                 .build();
     }
