@@ -34,18 +34,19 @@ This file owns progress status only.
 - [x] docs-only diff verified
 - [x] D0 PASS
 
-Current checkpoint: **D1 / DESKTOP HYBRID GRAMMAR HUMAN REVIEW**
+Current checkpoint: **D1 / COLOR-CALIBRATED DESKTOP HUMAN REVIEW**
 
 ## D1
 - [x] fixed fixture (D1.1 COMPLETE)
 - [x] three composition studies (D1.2 COMPLETE)
 - [x] state coverage + semantic wayfinding (D1.3 COMPLETE)
+- [x] color energy calibration (D1.3a COMPLETE)
 - [ ] responsive study
 - [ ] visual QA
 - [ ] selected grammar
 - [ ] D1 PASS
 
-Mobile design: **DEFERRED BY TEAM PRIORITY**. Desktop D1.3 awaits human screenshot review; D1.5 visual QA and D1.6 final grammar remain incomplete.
+Mobile design: **DEFERRED BY TEAM PRIORITY**. Desktop D1.3a awaits human screenshot review; D1.5 visual QA and D1.6 final grammar remain incomplete.
 
 ## D2
 - [ ] storyboard
