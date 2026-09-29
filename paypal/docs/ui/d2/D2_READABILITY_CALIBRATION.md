@@ -26,6 +26,12 @@ The current rail step has a filled cell, written step name, and Ink border. Work
 
 Compact category labels now distinguish the current work or V1 draft (Ink), latest submission (Vermilion tint), Client feedback (Acid), approved record (Fresh Mint), and submission history (Fresh Mint). The revision feedback surface is lighter so its Acid label carries the strongest category cue. The ledger rows, page canvas, and main document keep their prior hierarchy. The Ink action button and explicit owner band remain the action and responsibility cues. These changes add background, text, and structure together; color is never the only signal. D2.3a is ready for human visual review, while D2 overall remains in progress.
 
+## D2.3b contrast and type scale
+
+The six screens now use a 38px job title, 36px current-work or feedback headline (down from 42px), 28px revision composer heading, 21px ownership heading, 17px body, and 12–14px workflow/metadata labels. The current-work headline remains bold and in its own document zone; the title adjustment brings an undersized job heading into the requested desktop range. The compact history label is 14px so it remains a signpost rather than competing with work content.
+
+Working and Approved retain full Fresh Mint active cells; Revision retains a full Acid cell. Review and Resubmitted use a stronger Vermilion tint. Every active cell keeps its written label and Ink border. The Client feedback label uses full Acid, while the feedback body keeps a 26% Acid tint with a scoped Ink top edge. Revision ownership returns to Cream with a narrow Acid top strip, separating the actor from the larger feedback surface. The same palette, document layout, compact rail, history, and Ink action remain. D2 overall and the human-review checkpoint are unchanged.
+
 ## Accessibility and reduced motion
 
 Text labels, state names, owner sentences, and chronology remain readable without color. Use semantic headings, a labelled workflow navigation region, explicit form labels, logical reading order, visible keyboard focus, and Ink/Cream text contrast. Buttons are static design controls, not live API actions. At 1440px and 1280px, content stays within the desktop canvas without forcing metadata into the main reading line. If animation is later implemented, only a server-confirmed handoff may use opacity plus at most 8px translation for 140–180ms; reduced motion keeps the same order and focus with an instant update or opacity only.
