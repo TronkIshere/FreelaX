@@ -9,7 +9,7 @@ This file owns progress status only.
 | Phase | Scope | Status | Gate |
 |---|---|---|---|
 | D0 | Governance + art direction | 🟢 PASS | docs-only diff verified |
-| D1 | Marketplace Editorial | 🟡 IN PROGRESS | D0 PASS |
+| D1 | Marketplace Editorial | 🟢 PASS | D1.1–D1.5 + human visual QA PASS; desktop scope |
 | D2 | Kinetic Workflow | ⚪ NOT STARTED | D0 PASS |
 | D3 | Financial Evidence | ⚪ NOT STARTED | D0 PASS |
 | D4 | Brand Token Lock | 🔒 BLOCKED | D1–D3 approved |
@@ -34,19 +34,19 @@ This file owns progress status only.
 - [x] docs-only diff verified
 - [x] D0 PASS
 
-Current checkpoint: **D1 / COLOR-CALIBRATED DESKTOP HUMAN REVIEW**
+Current checkpoint: **D2 / KINETIC WORKFLOW READY**
 
 ## D1
-- [x] fixed fixture (D1.1 COMPLETE)
-- [x] three composition studies (D1.2 COMPLETE)
-- [x] state coverage + semantic wayfinding (D1.3 COMPLETE)
-- [x] color energy calibration (D1.3a COMPLETE)
-- [ ] responsive study
-- [ ] visual QA
-- [ ] selected grammar
-- [ ] D1 PASS
+- [x] D1.1 fixed fixture — PASS / COMPLETE
+- [x] D1.2 three composition studies — PASS / COMPLETE
+- [x] D1.3 state coverage + semantic wayfinding — PASS / COMPLETE
+- [x] D1.3a color energy calibration — PASS / COMPLETE
+- [x] Human Visual QA — PASS; D1.3a desktop direction accepted
+- [x] D1.4 Final Visual QA — PASS at 1440px; 1280px sanity checked
+- [x] D1.5 Design Decision — PASS
+- [x] D1 Marketplace Editorial — PASS
 
-Mobile design: **DEFERRED BY TEAM PRIORITY**. Desktop D1.3a awaits human screenshot review; D1.5 visual QA and D1.6 final grammar remain incomplete.
+Selected grammar: **FreelaX Editorial Dense Marketplace** (C structure + A typography + B selective graphic emphasis). Mobile design: **DEFERRED BY TEAM PRIORITY**. Final global palette: **NOT LOCKED**; D4 owns that decision. Implementation authorized: **NO**. D1 PASS does not authorize Flutter implementation.
 
 ## D2
 - [ ] storyboard
