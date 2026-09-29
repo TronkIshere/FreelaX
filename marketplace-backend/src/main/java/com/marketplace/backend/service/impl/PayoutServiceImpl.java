@@ -196,8 +196,9 @@ public class PayoutServiceImpl implements PayoutService {
         if (taxRate.source() == ExchangeRateSource.FALLBACK_PLACEHOLDER) {
             log.warn("Job {}: so khai thue dang dung ty gia USD/VND FALLBACK PLACEHOLDER ({})", job.getId(), taxRate.rate());
         }
+        BigDecimal storedTaxRate = taxRate.rate().setScale(2, RoundingMode.HALF_UP);
         BigDecimal taxableAmountVnd = job.getBudgetUsd()
-                .multiply(taxRate.rate())
+                .multiply(storedTaxRate)
                 .setScale(0, RoundingMode.HALF_UP);
 
         OnRampQuote quote = onRampProvider.quote(job.getId(), job.getBudgetUsd());
@@ -220,7 +221,7 @@ public class PayoutServiceImpl implements PayoutService {
         payoutRecord.setOnChainOffRampStatus(OnChainOffRampStatus.NOT_STARTED);
         payoutRecord.setOffRampStatus(OffRampStatus.NOT_STARTED);
 
-        payoutRecord.setTaxUsdToVndRate(taxRate.rate());
+        payoutRecord.setTaxUsdToVndRate(storedTaxRate);
         payoutRecord.setTaxRateSource(taxRate.source());
         payoutRecord.setTaxRateObservedAt(taxRate.fetchedAt());
         payoutRecord.setTaxableAmountVnd(taxableAmountVnd);
