@@ -64,9 +64,15 @@ Current checkpoint: **D1 / SET A READY**
 
 ## Technical gates
 - [ ] G0.1 /auth/me userType integrated/accepted on shared backend
-- [ ] G0.2 refresh contract accepted
-- [ ] G0.2 refresh implementation complete
+  - implementation prepared on `Hunny-17/FreelaX:fix/auth-mobile-contract-20260929`
+  - commit: `0355f2e016017846e3e2186420b298967ae6f90c`
+  - shared-upstream integration still pending
+- [x] G0.2 refresh contract accepted for mobile: JSON body `{ "refreshToken": "..." }`
+- [ ] G0.2 refresh implementation integrated on shared backend
+  - JSON-body support + cookie compatibility fallback implemented in the same fix branch
+  - automated Maven execution still pending in a network-enabled/local environment
 - [ ] G0.3 budget edit contract resolved
+  - until resolved: budget edit remains disabled
 
 ## Latest decision log — 2026-09-29
 - Art direction: Kinetic Editorial Brutalism
@@ -74,3 +80,5 @@ Current checkpoint: **D1 / SET A READY**
 - Rejected as primary identity: SaaS, bento-first, glass, blue-gradient startup, dark-cyan Web3, wallet-first fintech.
 - Final palette remains unlocked until Sets A–C.
 - First production set: Set A — Marketplace Editorial Language.
+- Auth contract micro-fix prepared on fork branch `fix/auth-mobile-contract-20260929`; upstream integration pending.
+- Do not authorize frontend role-aware implementation until G0.1 and G0.2 are on the shared backend baseline and validated.
