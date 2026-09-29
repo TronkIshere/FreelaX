@@ -1,23 +1,22 @@
 # FreelaX UI Design Progress
 Status: ACTIVE TRACKER
 Last updated: 2026-09-29
-Tracking branch: docs/ui-design-tracking-20260929
-Implementation authorized: NO
+Design lane: D0–D7 + Final Design Handoff
+Flutter implementation: PERMANENTLY OUT OF SCOPE for this design lane
 
-This file owns progress status only.
+This file owns current progress and scope status only. The older UI_DESIGN_MASTER_PLAN.md remains unchanged in this workpack.
 
 | Phase | Scope | Status | Gate |
 |---|---|---|---|
 | D0 | Governance + art direction | 🟢 PASS | docs-only diff verified |
 | D1 | Marketplace Editorial | 🟢 PASS | D1.1–D1.5 + human visual QA PASS; desktop scope |
-| D2 | Kinetic Workflow | 🟡 IN PROGRESS | D2.3b contrast/type calibration complete; full-state readability human review pending |
-| D3 | Financial Evidence | ⚪ NOT STARTED | D0 PASS |
+| D2 | Kinetic Workflow | 🟢 PASS | D2.1–D2.4 final QA + human-directed closure PASS; desktop grammar locked |
+| D3 | Financial Evidence | ⚪ NOT STARTED | D2 PASS; ready to begin by separate workpack |
 | D4 | Brand Token Lock | 🔒 BLOCKED | D1–D3 approved |
 | D5 | Shared Design System | 🔒 BLOCKED | D4 PASS |
 | D6 | Shell / Navigation / Activity | 🔒 BLOCKED | D1–D5 |
 | D7 | Auth / Identity / Account | 🔒 BLOCKED | D4–D5 |
-| D8 | Implementation Planning | 🔒 BLOCKED | design + backend gates |
-| D9 | Flutter Implementation | 🔒 NOT AUTHORIZED | explicit workpack approval |
+| Final Design Handoff | Approved design outputs | 🔒 BLOCKED | D1–D7 design decisions complete |
 
 ## D0 checklist
 - [x] Kinetic Editorial Brutalism selected
@@ -34,7 +33,7 @@ This file owns progress status only.
 - [x] docs-only diff verified
 - [x] D0 PASS
 
-Current checkpoint: **D2 / FULL-STATE READABILITY HUMAN REVIEW**
+Current checkpoint: **D3 / FINANCIAL EVIDENCE READY**
 
 ## D1
 - [x] D1.1 fixed fixture — PASS / COMPLETE
@@ -46,7 +45,7 @@ Current checkpoint: **D2 / FULL-STATE READABILITY HUMAN REVIEW**
 - [x] D1.5 Design Decision — PASS
 - [x] D1 Marketplace Editorial — PASS
 
-Selected grammar: **FreelaX Editorial Dense Marketplace** (C structure + A typography + B selective graphic emphasis). Mobile design: **DEFERRED BY TEAM PRIORITY**. Final global palette: **NOT LOCKED**; D4 owns that decision. Implementation authorized: **NO**. D1 PASS does not authorize Flutter implementation.
+Selected grammar: **FreelaX Editorial Dense Marketplace** (C structure + A typography + B selective graphic emphasis). Mobile design: **DEFERRED BY TEAM PRIORITY**. Final global palette: **NOT LOCKED**; D4 owns that decision. Flutter implementation is permanently outside this design lane.
 
 ## D2
 - [x] D2.1 Workflow Contract Audit — PASS
@@ -55,20 +54,24 @@ Selected grammar: **FreelaX Editorial Dense Marketplace** (C structure + A typog
 - [x] D2.1 Action Ownership Matrix — PASS
 - [x] D2.1 Motion Semantics — PASS (specification only)
 - [x] D2.1 Human Visual Review — PASS
-- [x] D2.2 Workspace + Review Visual Studies — COMPLETE: A Rail-First Editorial Workspace; B Document-First Submission Review; C Handoff + Version Ledger
+- [x] D2.2 Workspace + Review Visual Studies — PASS: A Rail-First Editorial Workspace; B Document-First Submission Review; C Handoff + Version Ledger
 - [x] D2.2 Human Visual Review — PASS
 - [x] D2 selected grammar — **FreelaX Kinetic Document Workflow**: B Document-First backbone + A Rail / Ownership + C Compact Version Ledger; handoff only at transitions
-- [x] D2.3 Selected Workflow Grammar — COMPLETE
-- [x] D2.3 Full-State Application — COMPLETE
-- [x] D2.3 Readability Calibration — COMPLETE
-- [x] D2.3a Orientation + Section Signposting — COMPLETE; human visual review pending
-- [x] D2.3b Contrast + Type Scale Calibration — COMPLETE; human visual review pending
-- [ ] workflow rail
-- [ ] CTA ownership transition
-- [ ] revision-loop history
-- [ ] motion grammar
-- [ ] reduced-motion path
-- [ ] D2 PASS — NO; full-state readability human review pending and Flutter implementation remains unauthorized
+- [x] D2.3 Selected Workflow Grammar — PASS
+- [x] D2.3 Full-State Application — PASS
+- [x] D2.3 Readability Calibration — PASS
+- [x] D2.3a Orientation + Section Signposting — PASS
+- [x] D2.3b Contrast + Type Scale Calibration — PASS; human-directed progression accepted after final checks
+- [x] D2.4 Final Visual QA + Design Decision + Merge Preparation — PASS; rendering limit documented
+- [x] D2 Human Visual Review — PASS for human-directed progression; rendered screenshot QA unavailable
+- [x] workflow rail — PASS
+- [x] CTA ownership transition — PASS
+- [x] revision-loop history — PASS
+- [x] motion grammar — PASS (specification only)
+- [x] reduced-motion path — PASS
+- [x] D2 PASS — YES; FreelaX Kinetic Document Workflow locked for desktop design
+
+Flutter implementation: **PERMANENTLY OUT OF SCOPE for this design lane**. Mobile: **DEFERRED**. Global palette: **NOT LOCKED**. Financial continuation belongs to D3.
 
 ## D3
 - [ ] lifecycle separation
@@ -78,7 +81,7 @@ Selected grammar: **FreelaX Editorial Dense Marketplace** (C structure + A typog
 - [ ] tax/certificate treatment
 - [ ] D3 PASS
 
-## Technical gates
+## Contract references (read-only; not implementation phases in this design lane)
 - [x] G0.1 `/auth/me` returns stored `userType` on shared backend source at `0922d23baa52f4761edf095c4cbba983e7750cac`
 - [x] G0.2 refresh contract accepted for mobile: JSON body `{ "refreshToken": "..." }`
 - [x] G0.2 refresh implementation present on shared backend source: JSON-body `refreshToken` with cookie fallback
@@ -90,5 +93,6 @@ Selected grammar: **FreelaX Editorial Dense Marketplace** (C structure + A typog
 - System name: FreelaX Graphic Work System
 - Rejected as primary identity: SaaS, bento-first, glass, blue-gradient startup, dark-cyan Web3, wallet-first fintech.
 - Final palette remains unlocked until Sets A–C.
-- First production set: Set A — Marketplace Editorial Language.
-- Auth contract source is integrated on shared master; this D2.2 tracker correction is read-only verification, not new backend work or Flutter implementation authorization.
+- First approved design set: Set A — Marketplace Editorial Language.
+- Auth contract source is integrated on shared master; this D2.2 tracker correction was read-only verification, not new backend work.
+- D2 desktop workflow design is approved through D2.4. The design roadmap ends after D7 with Final Design Handoff; Flutter implementation is outside this design lane.
