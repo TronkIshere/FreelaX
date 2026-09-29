@@ -10,7 +10,7 @@ This file owns progress status only.
 |---|---|---|---|
 | D0 | Governance + art direction | 🟢 PASS | docs-only diff verified |
 | D1 | Marketplace Editorial | 🟢 PASS | D1.1–D1.5 + human visual QA PASS; desktop scope |
-| D2 | Kinetic Workflow | 🟡 IN PROGRESS | D2.2 human review PASS; D2.3 full-state readability review pending |
+| D2 | Kinetic Workflow | 🟡 IN PROGRESS | D2.3a orientation complete; full-state readability human review pending |
 | D3 | Financial Evidence | ⚪ NOT STARTED | D0 PASS |
 | D4 | Brand Token Lock | 🔒 BLOCKED | D1–D3 approved |
 | D5 | Shared Design System | 🔒 BLOCKED | D4 PASS |
@@ -61,6 +61,7 @@ Selected grammar: **FreelaX Editorial Dense Marketplace** (C structure + A typog
 - [x] D2.3 Selected Workflow Grammar — COMPLETE
 - [x] D2.3 Full-State Application — COMPLETE
 - [x] D2.3 Readability Calibration — COMPLETE
+- [x] D2.3a Orientation + Section Signposting — COMPLETE; human visual review pending
 - [ ] workflow rail
 - [ ] CTA ownership transition
 - [ ] revision-loop history

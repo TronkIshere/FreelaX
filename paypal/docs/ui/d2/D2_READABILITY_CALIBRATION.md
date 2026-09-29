@@ -20,6 +20,12 @@ Status: **applied to six separate desktop studies; human full-state visual revie
 - `REVISION_REQUESTED`: an Acid feedback surface leads; the V2 composer remains neutral; Ink carries “Gửi bản sửa”.
 - `COMPLETED`: Fresh Mint provides quiet closure; no work CTA, celebration, or financial claim.
 
+## D2.3a orientation and section signposting
+
+The current rail step has a filled cell, written step name, and Ink border. Working and Approved use Fresh Mint; Review and Resubmitted use a Vermilion tint; Revision uses Acid. Past steps have a very light Mint treatment and future steps remain Cream and quiet. The rail still supports the document rather than competing with it.
+
+Compact category labels now distinguish the current work or V1 draft (Ink), latest submission (Vermilion tint), Client feedback (Acid), approved record (Fresh Mint), and submission history (Fresh Mint). The revision feedback surface is lighter so its Acid label carries the strongest category cue. The ledger rows, page canvas, and main document keep their prior hierarchy. The Ink action button and explicit owner band remain the action and responsibility cues. These changes add background, text, and structure together; color is never the only signal. D2.3a is ready for human visual review, while D2 overall remains in progress.
+
 ## Accessibility and reduced motion
 
 Text labels, state names, owner sentences, and chronology remain readable without color. Use semantic headings, a labelled workflow navigation region, explicit form labels, logical reading order, visible keyboard focus, and Ink/Cream text contrast. Buttons are static design controls, not live API actions. At 1440px and 1280px, content stays within the desktop canvas without forcing metadata into the main reading line. If animation is later implemented, only a server-confirmed handoff may use opacity plus at most 8px translation for 140–180ms; reduced motion keeps the same order and focus with an instant update or opacity only.
