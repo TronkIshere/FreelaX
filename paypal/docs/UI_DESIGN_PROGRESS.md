@@ -8,7 +8,7 @@ This file owns progress status only.
 
 | Phase | Scope | Status | Gate |
 |---|---|---|---|
-| D0 | Governance + art direction | 🟡 PUBLISHED / REVIEW PENDING | verify docs-only diff |
+| D0 | Governance + art direction | 🟢 PASS | docs-only diff verified |
 | D1 | Marketplace Editorial | ⚪ NOT STARTED | D0 PASS |
 | D2 | Kinetic Workflow | ⚪ NOT STARTED | D0 PASS |
 | D3 | Financial Evidence | ⚪ NOT STARTED | D0 PASS |
@@ -31,10 +31,10 @@ This file owns progress status only.
 - [x] UI_NON_OVERLAP_MATRIX.md published
 - [x] UI_DESIGN_MASTER_PLAN.md published
 - [x] UI_DESIGN_PROGRESS.md published
-- [ ] docs-only diff verified
-- [ ] D0 PASS
+- [x] docs-only diff verified
+- [x] D0 PASS
 
-Current checkpoint: **D0 / VERIFY PUBLICATION**
+Current checkpoint: **D1 / SET A READY**
 
 ## D1
 - [ ] fixed fixture

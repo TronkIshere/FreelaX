@@ -10,7 +10,7 @@ PRODUCT CONTRACT → SCREEN ARCHITECTURE → ART DIRECTION → REAL SCREEN SETS 
 Do not reverse this order.
 
 ## D0 — Governance & Visual Direction Lock
-Status: PUBLISHED / REVIEW PENDING
+Status: PASS
 
 Locked:
 - Kinetic Editorial Brutalism
@@ -19,7 +19,7 @@ Locked:
 - Set A–E ownership
 - non-overlap rules
 
-D0 PASS requires published docs + diff review.
+D0 PASS: published docs verified; diff contains documentation only. Next: D1 / Set A — Marketplace Editorial Language.
 
 ## D1 — Set A: Marketplace Editorial Language
 Priority: P0 DESIGN
