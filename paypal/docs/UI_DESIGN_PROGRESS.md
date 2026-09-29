@@ -10,7 +10,7 @@ This file owns progress status only.
 |---|---|---|---|
 | D0 | Governance + art direction | 🟢 PASS | docs-only diff verified |
 | D1 | Marketplace Editorial | 🟢 PASS | D1.1–D1.5 + human visual QA PASS; desktop scope |
-| D2 | Kinetic Workflow | ⚪ NOT STARTED | D0 PASS |
+| D2 | Kinetic Workflow | 🟡 IN PROGRESS | D2.1 complete; human storyboard review pending |
 | D3 | Financial Evidence | ⚪ NOT STARTED | D0 PASS |
 | D4 | Brand Token Lock | 🔒 BLOCKED | D1–D3 approved |
 | D5 | Shared Design System | 🔒 BLOCKED | D4 PASS |
@@ -34,7 +34,7 @@ This file owns progress status only.
 - [x] docs-only diff verified
 - [x] D0 PASS
 
-Current checkpoint: **D2 / KINETIC WORKFLOW READY**
+Current checkpoint: **D2 / WORKFLOW STORYBOARD HUMAN REVIEW**
 
 ## D1
 - [x] D1.1 fixed fixture — PASS / COMPLETE
@@ -49,13 +49,18 @@ Current checkpoint: **D2 / KINETIC WORKFLOW READY**
 Selected grammar: **FreelaX Editorial Dense Marketplace** (C structure + A typography + B selective graphic emphasis). Mobile design: **DEFERRED BY TEAM PRIORITY**. Final global palette: **NOT LOCKED**; D4 owns that decision. Implementation authorized: **NO**. D1 PASS does not authorize Flutter implementation.
 
 ## D2
-- [ ] storyboard
+- [x] D2.1 Workflow Contract Audit — COMPLETE
+- [x] D2.1 Fixed Workflow Fixture — COMPLETE
+- [x] D2.1 State Storyboard — COMPLETE
+- [x] D2.1 Action Ownership Matrix — COMPLETE
+- [x] D2.1 Motion Semantics — COMPLETE (specification only)
+- [ ] human storyboard review
 - [ ] workflow rail
 - [ ] CTA ownership transition
 - [ ] revision-loop history
 - [ ] motion grammar
 - [ ] reduced-motion path
-- [ ] D2 PASS
+- [ ] D2 PASS — NO; visual grammar is not final and Flutter implementation remains unauthorized
 
 ## D3
 - [ ] lifecycle separation
