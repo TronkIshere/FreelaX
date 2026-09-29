@@ -34,16 +34,18 @@ This file owns progress status only.
 - [x] docs-only diff verified
 - [x] D0 PASS
 
-Current checkpoint: **D1 / HUMAN REVIEW OF A-B-C STUDIES**
+Current checkpoint: **D1 / DESKTOP HYBRID GRAMMAR HUMAN REVIEW**
 
 ## D1
-- [x] fixed fixture (D1.1)
-- [x] three composition studies (D1.2)
-- [ ] state coverage
+- [x] fixed fixture (D1.1 COMPLETE)
+- [x] three composition studies (D1.2 COMPLETE)
+- [x] state coverage + semantic wayfinding (D1.3 COMPLETE)
 - [ ] responsive study
 - [ ] visual QA
 - [ ] selected grammar
 - [ ] D1 PASS
+
+Mobile design: **DEFERRED BY TEAM PRIORITY**. Desktop D1.3 awaits human screenshot review; D1.5 visual QA and D1.6 final grammar remain incomplete.
 
 ## D2
 - [ ] storyboard
