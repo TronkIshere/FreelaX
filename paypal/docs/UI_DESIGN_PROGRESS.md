@@ -10,7 +10,7 @@ This file owns progress status only.
 |---|---|---|---|
 | D0 | Governance + art direction | 🟢 PASS | docs-only diff verified |
 | D1 | Marketplace Editorial | 🟢 PASS | D1.1–D1.5 + human visual QA PASS; desktop scope |
-| D2 | Kinetic Workflow | 🟡 IN PROGRESS | D2.1 human review PASS; D2.2 studies await human review |
+| D2 | Kinetic Workflow | 🟡 IN PROGRESS | D2.2 human review PASS; D2.3 full-state readability review pending |
 | D3 | Financial Evidence | ⚪ NOT STARTED | D0 PASS |
 | D4 | Brand Token Lock | 🔒 BLOCKED | D1–D3 approved |
 | D5 | Shared Design System | 🔒 BLOCKED | D4 PASS |
@@ -34,7 +34,7 @@ This file owns progress status only.
 - [x] docs-only diff verified
 - [x] D0 PASS
 
-Current checkpoint: **D2 / WORKSPACE + REVIEW STUDIES HUMAN REVIEW**
+Current checkpoint: **D2 / FULL-STATE READABILITY HUMAN REVIEW**
 
 ## D1
 - [x] D1.1 fixed fixture — PASS / COMPLETE
@@ -56,13 +56,17 @@ Selected grammar: **FreelaX Editorial Dense Marketplace** (C structure + A typog
 - [x] D2.1 Motion Semantics — PASS (specification only)
 - [x] D2.1 Human Visual Review — PASS
 - [x] D2.2 Workspace + Review Visual Studies — COMPLETE: A Rail-First Editorial Workspace; B Document-First Submission Review; C Handoff + Version Ledger
-- [ ] D2 selected grammar — PENDING HUMAN REVIEW
+- [x] D2.2 Human Visual Review — PASS
+- [x] D2 selected grammar — **FreelaX Kinetic Document Workflow**: B Document-First backbone + A Rail / Ownership + C Compact Version Ledger; handoff only at transitions
+- [x] D2.3 Selected Workflow Grammar — COMPLETE
+- [x] D2.3 Full-State Application — COMPLETE
+- [x] D2.3 Readability Calibration — COMPLETE
 - [ ] workflow rail
 - [ ] CTA ownership transition
 - [ ] revision-loop history
 - [ ] motion grammar
 - [ ] reduced-motion path
-- [ ] D2 PASS — NO; visual grammar is not final and Flutter implementation remains unauthorized
+- [ ] D2 PASS — NO; full-state readability human review pending and Flutter implementation remains unauthorized
 
 ## D3
 - [ ] lifecycle separation
