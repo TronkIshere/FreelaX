@@ -171,3 +171,31 @@ export interface TaxRecord {
   createdAt: string | null;
   updatedAt: string | null;
 }
+
+export type BankCode = 'VIETCOMBANK' | 'VIETINBANK' | 'BIDV' | 'AGRIBANK' | 'TECHCOMBANK' |
+  'MBBANK' | 'ACB' | 'VPBANK' | 'SACOMBANK' | 'TPBANK';
+
+export type RegisterInput = {
+  displayName: string;
+  email: string;
+  password: string;
+} & ({ userType: 'CLIENT' } | {
+  userType: 'FREELANCER';
+  taxCode: string;
+  identityNumber: string;
+  nationality: string;
+  taxAddress: string;
+  bankCode: BankCode;
+  bankAccountNumber: string;
+});
+
+export interface Notification {
+  id: string;
+  title: string;
+  message: string;
+  type: string;
+  jobId: string | null;
+  read: boolean;
+  amount: number | string | null;
+  createdAt: string | null;
+}

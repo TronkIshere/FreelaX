@@ -288,3 +288,47 @@ describe('P05.4 financial and tax API', () => {
     expect(((fetchMock.mock.calls[5][1] as RequestInit).headers as Headers).get('Authorization')).toBe('Bearer new-token');
   });
 });
+
+describe('P05.5 auth and notification contracts', () => {
+  it('registers Client with only supported core fields', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(response(user));
+    vi.stubGlobal('fetch', fetchMock);
+    const api = new MarketplaceApi();
+    const input = { displayName: 'Client One', email: 'client@example.test',
+      password: 'secret123', userType: 'CLIENT' as const };
+    expect((await api.register(input)).userType).toBe('CLIENT');
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/v1/auth/register');
+    expect(JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string)).toEqual(input);
+  });
+
+  it('registers Freelancer with required tax and bank fields and the real role enum', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(response({ ...user, userType: 'FREELANCER' }));
+    vi.stubGlobal('fetch', fetchMock);
+    const api = new MarketplaceApi();
+    const input = { displayName: 'Freelancer One', email: 'freelancer@example.test',
+      password: 'secret123', userType: 'FREELANCER' as const, taxCode: 'TAX-1',
+      identityNumber: 'ID-1', nationality: 'Việt Nam', taxAddress: 'Hà Nội',
+      bankCode: 'BIDV' as const, bankAccountNumber: '1234567890' };
+    expect((await api.register(input)).userType).toBe('FREELANCER');
+    expect(JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string)).toEqual(input);
+  });
+
+  it('loads paged notifications and PATCHes a real unread notification', async () => {
+    const notification = { id: 'notification-1', type: 'WORK_SUBMITTED', title: 'Bàn giao',
+      message: 'Freelancer đã gửi bản bàn giao', jobId: 'job-one', read: false,
+      amount: null, createdAt: '2026-09-30T09:00:00' };
+    const fetchMock = vi.fn().mockResolvedValueOnce(response({ status: 'SUCCESS', accessToken: 'token' }))
+      .mockResolvedValueOnce(response(user))
+      .mockResolvedValueOnce(response({ currentPage: 0, pageSize: 10,
+        totalPages: 1, totalElements: 1, data: [notification] }))
+      .mockResolvedValueOnce(response({ ...notification, read: true }));
+    vi.stubGlobal('fetch', fetchMock);
+    const api = new MarketplaceApi();
+    await api.signIn('client@example.test', 'secret123');
+    expect((await api.notifications(0)).data[0].read).toBe(false);
+    expect((await api.markNotificationRead(notification.id)).read).toBe(true);
+    expect(fetchMock.mock.calls[2][0]).toBe('/api/v1/notifications?page=0&size=10');
+    expect(fetchMock.mock.calls[3][0]).toBe('/api/v1/notifications/notification-1/read');
+    expect((fetchMock.mock.calls[3][1] as RequestInit).method).toBe('PATCH');
+  });
+});

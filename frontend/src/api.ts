@@ -1,4 +1,4 @@
-import type { DiscoverJob, DiscoveryFilters, Job, JobApplication, JobPaymentStatus, JobSubmission, MyApplication, Page, TaxRecord, User, UserType } from './types';
+import type { DiscoverJob, DiscoveryFilters, Job, JobApplication, JobPaymentStatus, JobSubmission, MyApplication, Notification as MarketplaceNotification, Page, RegisterInput, TaxRecord, User, UserType } from './types';
 
 const API_ROOT = '/api/v1';
 
@@ -98,6 +98,12 @@ export class MarketplaceApi {
     }
     this.accessToken = refreshed.accessToken;
     return trustedUser(await this.raw<unknown>('/auth/me', {}, true));
+  }
+
+  async register(input: RegisterInput): Promise<User> {
+    return trustedUser(await this.raw<unknown>('/auth/register', {
+      method: 'POST', body: JSON.stringify(input),
+    }));
   }
 
   async signIn(email: string, password: string): Promise<User> {
@@ -231,6 +237,16 @@ export class MarketplaceApi {
   async retryTaxExport(taxRecordId: string): Promise<TaxRecord> {
     return this.authorized<TaxRecord>('/marketplace/tax-records/' + encodeURIComponent(taxRecordId) + '/retry-export',
       { method: 'POST' });
+  }
+
+  async notifications(page: number, size = 10): Promise<Page<MarketplaceNotification>> {
+    return serverPage<MarketplaceNotification>(
+      await this.authorized<unknown>('/notifications?page=' + page + '&size=' + size));
+  }
+
+  async markNotificationRead(id: string): Promise<MarketplaceNotification> {
+    return this.authorized<MarketplaceNotification>('/notifications/' + encodeURIComponent(id) + '/read',
+      { method: 'PATCH' });
   }
 
   private async authorizedBlob(path: string): Promise<Blob> {
