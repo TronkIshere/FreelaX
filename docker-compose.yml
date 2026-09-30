@@ -4,14 +4,14 @@ services:
     container_name: shared-mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in ignored .env}
     ports:
       - "127.0.0.1:3307:3306"
     volumes:
       - mysql-data:/var/lib/mysql
       - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${MYSQL_ROOT_PASSWORD:-root}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in ignored .env}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -42,13 +42,16 @@ services:
         condition: service_healthy
     environment:
       SERVER_PORT: 9190
+      SPRING_PROFILES_ACTIVE: ${PAYMENT_SPRING_PROFILE:-dev}
+      JWT_SECRET: ${PAYMENT_JWT_SECRET:?Set PAYMENT_JWT_SECRET in ignored .env}
+      PAYMENT_DEMO_USER_PASSWORD: ${PAYMENT_DEMO_USER_PASSWORD:?Set PAYMENT_DEMO_USER_PASSWORD in ignored .env}
       DB_URL: jdbc:mysql://mysql:3306/payment?useUnicode=true&characterEncoding=UTF-8
       DB_USERNAME: root
-      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in ignored .env}
       REDIS_HOST: redis
       REDIS_PORT: 6379
       SPRING_DATA_REDIS_DATABASE: 0
-      INTERNAL_API_KEY: ${PAYMENT_INTERNAL_API_KEY:-dev-only-payment-internal-key}
+      INTERNAL_API_KEY: ${PAYMENT_INTERNAL_API_KEY:?Set PAYMENT_INTERNAL_API_KEY in ignored .env}
     ports:
       - "127.0.0.1:9190:9190"
 
@@ -75,21 +78,23 @@ services:
       SPRING_PROFILES_ACTIVE: ${MARKETPLACE_SPRING_PROFILE:-dev}
       JWT_SECRET: ${MARKETPLACE_JWT_SECRET:?Set MARKETPLACE_JWT_SECRET to the existing Marketplace signing secret}
       CORS_ALLOWED_ORIGINS: ${MARKETPLACE_CORS_ALLOWED_ORIGINS:-http://localhost:3000}
+      DEMO_CLIENT_PASSWORD: ${DEMO_CLIENT_PASSWORD:?Set DEMO_CLIENT_PASSWORD in ignored .env}
+      DEMO_FREELANCER_PASSWORD: ${DEMO_FREELANCER_PASSWORD:?Set DEMO_FREELANCER_PASSWORD in ignored .env}
       DB_URL: jdbc:mysql://mysql:3306/marketplace?useUnicode=true&characterEncoding=UTF-8
       DB_USERNAME: root
-      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in ignored .env}
       REDIS_HOST: redis
       REDIS_PORT: 6379
       SPRING_DATA_REDIS_DATABASE: 1
       PAYMENT_BACKEND_BASE_URL: http://payment-backend:9190
-      PAYMENT_BACKEND_INTERNAL_API_KEY: ${PAYMENT_INTERNAL_API_KEY:-dev-only-payment-internal-key}
+      PAYMENT_BACKEND_INTERNAL_API_KEY: ${PAYMENT_INTERNAL_API_KEY:?Set PAYMENT_INTERNAL_API_KEY in ignored .env}
       MISA_BACKEND_BASE_URL: http://misa-backend:9192
-      MISA_PLATFORM_ACCOUNT_EMAIL: ${MISA_PLATFORM_ACCOUNT_EMAIL:-platform@marketplace.local}
-      MISA_PLATFORM_ACCOUNT_PASSWORD: ${MISA_PLATFORM_ACCOUNT_PASSWORD:-MisaPlatform@2026}
+      MISA_PLATFORM_ACCOUNT_EMAIL: ${MISA_PLATFORM_ACCOUNT_EMAIL:?Set MISA_PLATFORM_ACCOUNT_EMAIL in ignored .env}
+      MISA_PLATFORM_ACCOUNT_PASSWORD: ${MISA_PLATFORM_ACCOUNT_PASSWORD:?Set MISA_PLATFORM_ACCOUNT_PASSWORD in ignored .env}
       MISA_CERTIFICATE_AUTO_ISSUE: ${MISA_CERTIFICATE_AUTO_ISSUE:-true}
       MISA_CERTIFICATE_AUTO_SUBMIT: ${MISA_CERTIFICATE_AUTO_SUBMIT:-true}
       SOLANA_CPR_BASE_URL: http://solana-integration:9193
-      SOLANA_CPR_INTERNAL_API_KEY: ${SOLANA_INTERNAL_API_KEY:-dev-only-solana-internal-key}
+      SOLANA_CPR_INTERNAL_API_KEY: ${SOLANA_INTERNAL_API_KEY:?Set SOLANA_INTERNAL_API_KEY in ignored .env}
       SOLANA_CPR_CUSTODIAL_CLIENT_PUBLIC_KEY: ${SOLANA_CUSTODIAL_CLIENT_PUBLIC_KEY:-}
       SOLANA_CPR_ONRAMP_AUTHORITY_PUBLIC_KEY: ${SOLANA_ONRAMP_AUTHORITY_PUBLIC_KEY:-}
       SOLANA_CPR_NETWORK: ${SOLANA_NETWORK:-localnet}
@@ -113,9 +118,13 @@ services:
         condition: service_healthy
     environment:
       SERVER_PORT: 9192
+      SPRING_PROFILES_ACTIVE: ${MISA_SPRING_PROFILE:-dev}
+      JWT_SECRET: ${MISA_JWT_SECRET:?Set MISA_JWT_SECRET in ignored .env}
+      MISA_PLATFORM_ACCOUNT_EMAIL: ${MISA_PLATFORM_ACCOUNT_EMAIL:?Set MISA_PLATFORM_ACCOUNT_EMAIL in ignored .env}
+      MISA_PLATFORM_ACCOUNT_PASSWORD: ${MISA_PLATFORM_ACCOUNT_PASSWORD:?Set MISA_PLATFORM_ACCOUNT_PASSWORD in ignored .env}
       DB_URL: jdbc:mysql://mysql:3306/misa?useUnicode=true&characterEncoding=UTF-8
       DB_USERNAME: root
-      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in ignored .env}
       REDIS_HOST: redis
       REDIS_PORT: 6379
       SPRING_DATA_REDIS_DATABASE: 2
@@ -136,12 +145,12 @@ services:
       SERVER_PORT: 9193
       DB_URL: jdbc:mysql://mysql:3306/solana_gateway?useUnicode=true&characterEncoding=UTF-8
       DB_USERNAME: root
-      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in ignored .env}
       SOLANA_RPC_HTTP_URL: ${SOLANA_RPC_HTTP_URL:-http://host.docker.internal:9123}
       SOLANA_PROGRAM_ID: ${SOLANA_PROGRAM_ID:-4Wd6umju26vej2ftzwR6J55pjkUqDQsxfVkt46UqDb1b}
       SOLANA_COMMITMENT: ${SOLANA_COMMITMENT:-confirmed}
       SOLANA_SYSTEM_FEE_PAYER: ${SOLANA_SYSTEM_FEE_PAYER:-}
-      SOLANA_INTERNAL_API_KEY: ${SOLANA_INTERNAL_API_KEY:-dev-only-solana-internal-key}
+      SOLANA_INTERNAL_API_KEY: ${SOLANA_INTERNAL_API_KEY:?Set SOLANA_INTERNAL_API_KEY in ignored .env}
       SOLANA_LOCAL_PRIVATE_KEYS: ${SOLANA_LOCAL_PRIVATE_KEYS:-}
     extra_hosts:
       - "host.docker.internal:host-gateway"

@@ -13,6 +13,7 @@ import com.marketplace.backend.repository.JobRepository;
 import com.marketplace.backend.repository.RoleRepository;
 import com.marketplace.backend.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -28,13 +29,11 @@ import java.util.UUID;
 public class DataInitializer {
 
     private static final String SEED_CLIENT_EMAIL = "nguyenhuutrong11133@gmail.com";
-    private static final String SEED_CLIENT_PASSWORD = "123456789";
     private static final String SEED_CLIENT_BANK_CODE = "BANK_OF_AMERICA";
     private static final String SEED_CLIENT_BANK_ACCOUNT_NUMBER = "483920175610";
     private static final String SEED_CLIENT_BANK_ACCOUNT_HOLDER_NAME = "NGUYEN HUU TRONG";
 
     private static final String SEED_FREELANCER_EMAIL = "freelancer.seed@example.com";
-    private static final String SEED_FREELANCER_PASSWORD = "123456789";
     private static final BankCode SEED_FREELANCER_BANK_CODE = BankCode.BIDV;
     private static final String SEED_FREELANCER_TAX_CODE = "DEMO-TAX-000001";
     private static final String SEED_FREELANCER_IDENTITY_NUMBER = "DEMO-ID-000001";
@@ -49,8 +48,15 @@ public class DataInitializer {
                                       JobRepository jobRepository,
                                       PaymentBackendClient paymentBackendClient,
                                       DemoWalletSeeder demoWalletSeeder,
-                                      PasswordEncoder passwordEncoder) {
+                                      PasswordEncoder passwordEncoder,
+                                      @Value("${DEMO_CLIENT_PASSWORD:}") String clientPassword,
+                                      @Value("${DEMO_FREELANCER_PASSWORD:}") String freelancerPassword) {
         return args -> {
+            requireStrongSeedPassword("DEMO_CLIENT_PASSWORD", clientPassword);
+            requireStrongSeedPassword("DEMO_FREELANCER_PASSWORD", freelancerPassword);
+            if (clientPassword.equals(freelancerPassword)) {
+                throw new IllegalStateException("Demo account passwords must be distinct");
+            }
             if (roleRepository.count() == 0) {
                 roleRepository.saveAll(List.of(
                         createRole("ROLE_USER"),
@@ -65,7 +71,7 @@ public class DataInitializer {
             User client = userRepository.findByEmail(SEED_CLIENT_EMAIL).orElseGet(() -> {
                 User u = new User();
                 u.setEmail(SEED_CLIENT_EMAIL);
-                u.setPassword(passwordEncoder.encode(SEED_CLIENT_PASSWORD));
+                u.setPassword(passwordEncoder.encode(clientPassword));
                 u.setDisplayName("Nguyen Huu Trong");
                 u.setAuthProvider(AuthProvider.LOCAL);
                 u.setEnabled(true);
@@ -76,10 +82,12 @@ public class DataInitializer {
                 return saved;
             });
 
+            rotateSeedPassword(client, clientPassword, userRepository, passwordEncoder);
+
             User freelancer = userRepository.findByEmail(SEED_FREELANCER_EMAIL).orElseGet(() -> {
                 User u = new User();
                 u.setEmail(SEED_FREELANCER_EMAIL);
-                u.setPassword(passwordEncoder.encode(SEED_FREELANCER_PASSWORD));
+                u.setPassword(passwordEncoder.encode(freelancerPassword));
                 u.setDisplayName("Freelancer Seed");
                 u.setAuthProvider(AuthProvider.LOCAL);
                 u.setEnabled(true);
@@ -97,6 +105,7 @@ public class DataInitializer {
                 return saved;
             });
 
+            rotateSeedPassword(freelancer, freelancerPassword, userRepository, passwordEncoder);
             fillMissingFreelancerDemoIdentity(freelancer, userRepository);
             demoWalletSeeder.seed(client, freelancer);
 
@@ -134,6 +143,21 @@ public class DataInitializer {
                 log.info("Freelancer seed {} has demo tax identity for external MISA registration on payout", freelancer.getId());
             }
         };
+    }
+
+    private void requireStrongSeedPassword(String name, String password) {
+        if (password == null || password.length() < 24) {
+            throw new IllegalStateException(name + " must be supplied at runtime with at least 24 characters");
+        }
+    }
+
+    private void rotateSeedPassword(User user, String password, UserRepository userRepository,
+                                    PasswordEncoder passwordEncoder) {
+        if (!passwordEncoder.matches(password, user.getPassword())) {
+            user.setPassword(passwordEncoder.encode(password));
+            user.setRefreshToken(null);
+            userRepository.save(user);
+        }
     }
 
     private void fillMissingFreelancerDemoIdentity(User user, UserRepository userRepository) {
