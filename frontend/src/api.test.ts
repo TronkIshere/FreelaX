@@ -171,3 +171,53 @@ describe('P05.2 mutation contracts', () => {
     await expect(api.apply('job-one')).rejects.toMatchObject({ status: 409, code: 4008 });
   });
 });
+
+describe('P05.3 work lifecycle API', () => {
+  it('uses the participant jobs and ordered submissions contracts', async () => {
+    const submission = { id: 'submission-1', jobId: 'job-one', freelancerId: 'freelancer-1',
+      version: 1, summary: 'Delivered V1', deliverableUrl: null, status: 'SUBMITTED',
+      reviewerFeedback: null, reviewedAt: null, createdAt: '2026-09-30T01:00:00', updatedAt: null };
+    const fetchMock = vi.fn().mockResolvedValueOnce(response({ status: 'SUCCESS', accessToken: 'token' }))
+      .mockResolvedValueOnce(response(user)).mockResolvedValueOnce(response(page))
+      .mockResolvedValueOnce(response([submission]));
+    vi.stubGlobal('fetch', fetchMock);
+    const api = new MarketplaceApi();
+    await api.signIn('client@example.test', 'pass');
+    expect((await api.myJobs(0)).data[0].id).toBe('job-one');
+    expect((await api.submissions('job-one'))[0].version).toBe(1);
+    expect(fetchMock.mock.calls[2][0]).toBe('/api/v1/marketplace/jobs?page=0&size=10');
+    expect(fetchMock.mock.calls[3][0]).toBe('/api/v1/marketplace/jobs/job-one/submissions');
+  });
+
+  it('sends exactly summary and deliverableUrl for submit work', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(response({ status: 'SUCCESS', accessToken: 'token' }))
+      .mockResolvedValueOnce(response({ ...user, userType: 'FREELANCER' }))
+      .mockResolvedValueOnce(response({ id: 'submission-1', version: 1, status: 'SUBMITTED' }));
+    vi.stubGlobal('fetch', fetchMock);
+    const api = new MarketplaceApi();
+    await api.signIn('freelancer@example.test', 'pass');
+    expect((await api.submitWork('job-one', 'Finished V1', 'https://example.test/v1')).version).toBe(1);
+    expect(fetchMock.mock.calls[2][0]).toBe('/api/v1/marketplace/jobs/job-one/submit-work');
+    expect((fetchMock.mock.calls[2][1] as RequestInit).method).toBe('POST');
+    expect(JSON.parse((fetchMock.mock.calls[2][1] as RequestInit).body as string))
+      .toEqual({ summary: 'Finished V1', deliverableUrl: 'https://example.test/v1' });
+  });
+
+  it('sends only feedback for revision and empty JSON for approval', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(response({ status: 'SUCCESS', accessToken: 'token' }))
+      .mockResolvedValueOnce(response(user))
+      .mockResolvedValueOnce(response({ id: 'submission-1', status: 'REVISION_REQUESTED' }))
+      .mockResolvedValueOnce(response({ ...page.data[0], status: 'COMPLETED' }));
+    vi.stubGlobal('fetch', fetchMock);
+    const api = new MarketplaceApi();
+    await api.signIn('client@example.test', 'pass');
+    expect((await api.requestRevision('job-one', 'Please revise')).status).toBe('REVISION_REQUESTED');
+    expect(fetchMock.mock.calls[2][0]).toBe('/api/v1/marketplace/jobs/job-one/request-revision');
+    expect(JSON.parse((fetchMock.mock.calls[2][1] as RequestInit).body as string))
+      .toEqual({ feedback: 'Please revise' });
+    expect((await api.approveWork('job-one')).status).toBe('COMPLETED');
+    expect(fetchMock.mock.calls[3][0]).toBe('/api/v1/marketplace/jobs/job-one/approve');
+    expect((fetchMock.mock.calls[3][1] as RequestInit).method).toBe('POST');
+    expect((fetchMock.mock.calls[3][1] as RequestInit).body).toBe('{}');
+  });
+});

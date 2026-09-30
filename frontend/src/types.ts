@@ -56,6 +56,20 @@ export interface DiscoveryFilters {
 
 export type JobStatus = 'OPEN' | 'IN_PROGRESS' | 'SUBMITTED_FOR_REVIEW' | 'REVISION_REQUESTED' | 'COMPLETED' | 'CANCELLED';
 export type JobApplicationStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'CANCELLED';
+export type JobSubmissionStatus = 'SUBMITTED' | 'REVISION_REQUESTED' | 'APPROVED';
+export interface JobSubmission {
+  id: string;
+  jobId: string;
+  freelancerId: string;
+  version: number;
+  summary: string;
+  deliverableUrl: string | null;
+  status: JobSubmissionStatus;
+  reviewerFeedback: string | null;
+  reviewedAt: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
 export interface JobApplication {
   id: string; jobId: string; freelancerId: string; status: JobApplicationStatus; createdAt: string | null;
 }

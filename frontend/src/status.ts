@@ -9,7 +9,14 @@ export const applicationLabels: Record<string, string> = {
   REJECTED: 'Không được chọn', CANCELLED: 'Đã hủy',
 };
 
+export const submissionLabels: Record<string, string> = {
+  SUBMITTED: 'Đã gửi bàn giao',
+  REVISION_REQUESTED: 'Cần chỉnh sửa',
+  APPROVED: 'Đã duyệt',
+};
+
 export const jobLabel = (status: string) => jobLabels[status] ?? 'Trạng thái khác';
+export const submissionLabel = (status: string) => submissionLabels[status] ?? 'Trạng thái bàn giao khác';
 export const applicationLabel = (status: string) => applicationLabels[status] ?? 'Trạng thái khác';
 export const money = (value: number) => Number.isFinite(value)
   ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(value) : '—';

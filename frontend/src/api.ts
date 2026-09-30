@@ -1,4 +1,4 @@
-import type { DiscoverJob, DiscoveryFilters, Job, JobApplication, MyApplication, Page, User, UserType } from './types';
+import type { DiscoverJob, DiscoveryFilters, Job, JobApplication, JobSubmission, MyApplication, Page, User, UserType } from './types';
 
 const API_ROOT = '/api/v1';
 
@@ -148,6 +148,10 @@ export class MarketplaceApi {
     return serverPage<DiscoverJob>(await this.authorized<unknown>('/marketplace/jobs/discover?' + query));
   }
 
+  async myJobs(page: number, size = 10): Promise<Page<Job>> {
+    return this.clientJobs(page, size);
+  }
+
   async job(jobId: string): Promise<Job> {
     return this.authorized<Job>('/marketplace/jobs/' + encodeURIComponent(jobId));
   }
@@ -184,6 +188,24 @@ export class MarketplaceApi {
   async assign(jobId: string, freelancerId: string): Promise<Job> {
     return this.authorized<Job>('/marketplace/jobs/' + encodeURIComponent(jobId) + '/assign-freelancer',
       { method: 'PATCH', body: JSON.stringify({ freelancerId }) });
+  }
+  async submissions(jobId: string): Promise<JobSubmission[]> {
+    return this.authorized<JobSubmission[]>('/marketplace/jobs/' + encodeURIComponent(jobId) + '/submissions');
+  }
+
+  async submitWork(jobId: string, summary: string, deliverableUrl: string | null): Promise<JobSubmission> {
+    return this.authorized<JobSubmission>('/marketplace/jobs/' + encodeURIComponent(jobId) + '/submit-work',
+      { method: 'POST', body: JSON.stringify({ summary, deliverableUrl }) });
+  }
+
+  async requestRevision(jobId: string, feedback: string): Promise<JobSubmission> {
+    return this.authorized<JobSubmission>('/marketplace/jobs/' + encodeURIComponent(jobId) + '/request-revision',
+      { method: 'POST', body: JSON.stringify({ feedback }) });
+  }
+
+  async approveWork(jobId: string): Promise<Job> {
+    return this.authorized<Job>('/marketplace/jobs/' + encodeURIComponent(jobId) + '/approve',
+      { method: 'POST', body: '{}' });
   }
 }
 

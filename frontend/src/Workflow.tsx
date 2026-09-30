@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { ApiError, api } from './api';
+import { WorkLifecycle } from './WorkLifecycle';
 import { PageHeading, StatePanel } from './components';
 import { Pagination } from './Jobs';
 import { applicationLabel, date, jobLabel, money, shortId } from './status';
@@ -107,6 +108,9 @@ export function JobDetail({ user }: { user: User }) {
   const discovered = isDiscover(job) ? job : null;
   const participant = !discovered ? job as Job : null;
   const owner = user.userType === 'CLIENT' && participant?.clientUserId === user.id;
+  const assignedFreelancer = user.userType === 'FREELANCER' && participant?.freelancerId === user.id;
+  const workState = (owner || assignedFreelancer) &&
+    ['IN_PROGRESS', 'SUBMITTED_FOR_REVIEW', 'REVISION_REQUESTED', 'COMPLETED'].includes(job.status);
   const applied = !!discovered?.hasApplied;
   return <>
     <PageHeading eyebrow={(user.userType === 'CLIENT' ? 'Client' : 'Freelancer') + ' / Hồ sơ công việc'}
@@ -132,6 +136,7 @@ export function JobDetail({ user }: { user: User }) {
         {!discovered && !participant?.freelancerId && <span>Chưa giao người thực hiện</span>}
       </section>
     </div>
+    {workState && participant ? <WorkLifecycle key={participant.id} job={participant} user={user} onJobUpdated={setJob} /> :
     <section className="action-band" aria-label="Bước tiếp">
       <span className="category-label label-acid">05 / Bước tiếp</span>
       {discovered && user.userType === 'FREELANCER' && <>
@@ -147,7 +152,7 @@ export function JobDetail({ user }: { user: User }) {
         {job.status === 'OPEN' && <Link className="button" to={'/work/' + jobId + '/applications'}>Xem ứng viên</Link>}</>}
       {participant && !owner && user.userType === 'FREELANCER' && <><h2>Công việc của bạn</h2><p>Trạng thái và phân công được lấy từ hồ sơ tham gia.</p></>}
       {mutationError && <p className="form-error" role="alert">{mutationError} <button className="text-button" onClick={() => reload().then(data => { setJob(data); setApplyBlocked(false); setMutationError(''); }, cause => setMutationError(message(cause)))}>Tải lại</button></p>}
-    </section>
+    </section>}
   </>;
 }
 

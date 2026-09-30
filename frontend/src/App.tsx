@@ -4,6 +4,7 @@ import { Link, Navigate, NavLink, Route, Routes, useLocation, useNavigate } from
 import { ApiError } from './api';
 import { ClientJobs, FreelancerDiscovery } from './Jobs';
 import { ClientApplicants, JobDetail, MyApplications } from './Workflow';
+import { MyWork } from './WorkLifecycle';
 import { useSession } from './session';
 import type { User, UserType } from './types';
 
@@ -103,7 +104,7 @@ function NextStage({ title, description }: { title: string; description: string 
   return <>
     <PageHeading eyebrow="Bước tiếp theo" title={title} description={description} />
     <StatePanel kind="empty" title="Màn hình này chưa được kết nối"
-      body="P05.1 chỉ triển khai nền tảng đăng nhập và danh sách công việc. Không hiển thị dữ liệu giả cho khu vực này." />
+      body="Khu vực này sẽ được kết nối ở giai đoạn tiếp theo. Chưa hiển thị dữ liệu giả." />
   </>;
 }
 
@@ -157,7 +158,7 @@ function RoleShell({ user }: { user: User }) {
         <Route path="/work" element={role === 'CLIENT' ? <ClientJobs /> : <FreelancerDiscovery />} />
         {role === 'FREELANCER' && <>
           <Route path="/work/applications" element={<MyApplications />} />
-          <Route path="/work/mine" element={<NextStage title="Công việc của tôi" description="Không gian công việc đang thực hiện sẽ được kết nối ở bước tiếp theo." />} />
+          <Route path="/work/mine" element={<MyWork />} />
         </>}
         <Route path="/work/:jobId" element={<JobDetail user={user} />} />
         {role === 'CLIENT' && <Route path="/work/:jobId/applications" element={<ClientApplicants user={user} />} />}

@@ -136,7 +136,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .sign-in-panel form { display: grid; gap: 17px; }
 .field { display: grid; gap: 6px; font-size: 13px; font-weight: 900; }
 .sign-in-panel .button { width: 100%; margin-top: 5px; }
-.form-error { border-left: 5px solid var(--vermilion); margin: 0 !important; padding: 8px 11px; background: var(--pale-vermilion); color: #8E2313; font-size: 13px; font-weight: 800; }
+.form-error { border-left: 5px solid var(--vermilion); margin: 0 !important; padding: 8px 11px; background: var(--pale-vermilion); color: var(--ink); font-size: 13px; font-weight: 800; }
 .logout-error { margin-top: 12px !important; }
 @media (max-width: 1120px) {
   .app-shell, .public-shell { padding-left: 24px; padding-right: 24px; }
@@ -243,3 +243,93 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
   .application-row, .applicant-row { grid-template-columns: 1fr; }
   .applicant-row .row-index, .application-main { grid-column: 1; }
 }
+
+/* P05.3: D2 kinetic document workflow. */
+.lifecycle { margin-top: 25px; }
+.workflow-rail { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; border-top: 2px solid var(--ink); padding-top: 10px; }
+.workflow-rail span { min-width: 0; padding: 8px 4px; text-align: center; font-size: 12px; line-height: 1.2; }
+.workflow-rail .past { background: color-mix(in srgb, var(--mint) 18%, var(--cream)); font-weight: 650; }
+.workflow-rail .future { background: var(--cream); color: var(--soft-ink); font-weight: 500; }
+.workflow-rail .current { border: 2px solid var(--ink); padding: 6px 2px; background: var(--mint); color: var(--ink); font-weight: 900; }
+.lifecycle-review .workflow-rail .current { background: color-mix(in srgb, var(--vermilion) 72%, var(--cream)); }
+.lifecycle-revision .workflow-rail .current { background: var(--acid); }
+.lifecycle-complete .workflow-rail .current { background: var(--mint); }
+.ownership-band { display: flex; justify-content: space-between; align-items: center; gap: 26px; margin-top: 15px; padding: 15px 22px; background: color-mix(in srgb, var(--mint) 28%, var(--cream)); }
+.lifecycle-review .ownership-band { background: color-mix(in srgb, var(--vermilion) 22%, var(--cream)); }
+.lifecycle-revision .ownership-band { border-top: 4px solid var(--acid); padding-top: 11px; background: var(--cream); }
+.lifecycle-complete .ownership-band { background: color-mix(in srgb, var(--mint) 55%, var(--cream)); }
+.ownership-band h2 { margin: 3px 0 4px; font-size: 21px; line-height: 1.2; letter-spacing: -.025em; }
+.ownership-band p { margin: 0; font-size: 14px; }
+.ownership-band > strong { flex: 0 0 auto; max-width: 170px; font-size: 12px; text-align: right; }
+.lifecycle-section-top { display: flex; justify-content: space-between; align-items: baseline; gap: 15px; }
+.lifecycle-section-top > span:last-child { font-size: 13px; }
+.lifecycle-label { display: inline-block; padding: 5px 10px; font-size: 13px; font-weight: 900; line-height: 1.25; }
+.work-label { background: var(--ink); color: var(--cream); }
+.latest-label, .review-label { background: color-mix(in srgb, var(--vermilion) 72%, var(--cream)); color: var(--ink); }
+.feedback-label { background: var(--acid); }
+.history-label, .approved-label { background: var(--mint); }
+.latest-submission, .current-work, .work-composer, .review-action, .completion-next { max-width: 1060px; padding: 26px 0 30px; border-bottom: 2px solid var(--ink); }
+.latest-submission { margin-top: 22px; }
+.latest-submission h2, .current-work h2, .work-composer h2, .review-action h2, .completion-next h2 { margin: 14px 0 12px; font-size: clamp(28px, 3vw, 38px); line-height: 1.13; letter-spacing: -.04em; }
+.latest-submission .submission-summary { max-width: 76ch; margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 17px; line-height: 1.55; }
+.submission-meta { display: flex; flex-wrap: wrap; gap: 6px 28px; margin-top: 22px; font-size: 13px; font-weight: 750; }
+.deliverable-link { display: grid; gap: 6px; margin-top: 23px; font-size: 14px; }
+.deliverable-address { overflow-wrap: anywhere; }
+.deliverable-link a { width: fit-content; font-weight: 900; text-underline-offset: 4px; }
+.deliverable-warning { margin: 20px 0 0; color: var(--ink); font-size: 14px; font-weight: 800; }
+.feedback-document { max-width: 1060px; margin: 25px 0; border-top: 2px solid var(--ink); background: color-mix(in srgb, var(--acid) 26%, var(--cream)); padding: 22px 27px; }
+.feedback-document h2 { margin: 17px 0 10px; font-size: 28px; letter-spacing: -.035em; }
+.feedback-document p { max-width: 75ch; margin: 0 0 18px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 17px; }
+.feedback-document > span:last-child { font-size: 13px; font-weight: 750; }
+.current-work p, .work-composer > p, .review-action > p, .completion-next > p { max-width: 70ch; margin: 0 0 19px; font-size: 16px; }
+.work-composer form, .decision-form { display: grid; gap: 19px; margin-top: 22px; }
+.work-composer label, .decision-form label { display: grid; gap: 8px; max-width: 860px; font-size: 14px; font-weight: 900; }
+.work-composer label span, .decision-form label span { font-weight: 500; }
+.work-composer textarea, .decision-form textarea, .work-composer input { width: 100%; border: 2px solid var(--ink); border-radius: 0; padding: 12px 13px; background: var(--cream); color: var(--ink); font: 16px/1.45 Arial, "Segoe UI", sans-serif; resize: vertical; }
+.work-composer textarea, .decision-form textarea { min-height: 125px; }
+.work-composer textarea:focus-visible, .decision-form textarea:focus-visible { outline: 3px solid var(--cobalt); outline-offset: 3px; }
+.lifecycle-action { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 15px; max-width: 860px; border-top: 2px solid var(--ink); padding-top: 17px; }
+.lifecycle-action strong { font-size: 16px; }
+.review-buttons { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.decision-form > p, .approval-confirm p { max-width: 75ch; margin: 0; font-size: 15px; }
+.approval-confirm { max-width: 860px; border-left: 7px solid var(--acid); margin-top: 20px; padding: 16px 18px; background: var(--pale-acid); }
+.approval-confirm > strong { display: block; margin-bottom: 8px; font-size: 18px; }
+.completion-next .button { margin-top: 7px; }
+.lifecycle-success, .inline-state-error { max-width: 860px; margin: 20px 0; padding: 12px 16px; border-left: 6px solid var(--mint); background: var(--pale-mint); font-size: 14px; font-weight: 800; }
+.inline-state-error { border-color: var(--vermilion); background: var(--pale-vermilion); }
+.inline-state-error p { margin: 0 0 7px; }
+.submission-ledger { border-top: 2px solid var(--ink); margin-top: 25px; padding-top: 18px; }
+.submission-ledger .history-label { margin: 0; }
+.ledger-empty { margin: 16px 0 0; font-size: 15px; }
+.ledger-rows { margin-top: 15px; }
+.ledger-row { display: grid; grid-template-columns: 55px 150px minmax(0, 1fr); gap: 13px; align-items: start; border-top: 1px solid var(--line); padding: 12px 0; font-size: 13px; }
+.ledger-row > strong { font-size: 15px; }
+.ledger-row > div span:last-child { display: block; }
+.ledger-row p { margin: 0; max-width: 85ch; overflow-wrap: anywhere; }
+.ledger-row .ledger-feedback { grid-column: 3; border-left: 4px solid var(--acid); padding-left: 10px; }
+.my-work-list { border-top: 2px solid var(--ink); margin-top: 24px; }
+.my-work-row { display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(130px, .8fr) minmax(100px, .6fr) minmax(120px, .8fr); gap: 18px; padding: 20px 10px; border-bottom: 2px solid var(--ink); }
+.my-work-row h2 { margin: 7px 0; font-size: 22px; letter-spacing: -.035em; }
+.my-work-row p { max-width: 60ch; margin: 0; font-size: 14px; }
+.my-work-row > div { min-width: 0; overflow-wrap: anywhere; }
+.my-work-row code { font-size: 13px; }
+@media (max-width: 780px) {
+  .workflow-rail { display: flex; overflow-x: auto; }
+  .workflow-rail span { flex: 0 0 105px; }
+  .ownership-band { align-items: flex-start; flex-direction: column; gap: 9px; }
+  .ownership-band > strong { text-align: left; }
+  .my-work-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .my-work-row > div:first-child { grid-column: 1 / -1; }
+}
+@media (max-width: 520px) {
+  .lifecycle-section-top { align-items: flex-start; flex-direction: column; }
+  .ledger-row { grid-template-columns: 42px 1fr; }
+  .ledger-row p, .ledger-row .ledger-feedback { grid-column: 2; }
+  .my-work-row { grid-template-columns: 1fr; }
+  .my-work-row > div:first-child { grid-column: 1; }
+}
+
+.ledger-row .ledger-link, .ledger-row .ledger-dates { grid-column: 3; }
+.ledger-row .ledger-link .deliverable-link { margin-top: 0; font-size: 13px; }
+.ledger-dates { display: flex; flex-wrap: wrap; gap: 4px 18px; color: var(--soft-ink); }
+@media (max-width: 520px) { .ledger-row .ledger-link, .ledger-row .ledger-dates { grid-column: 2; } }
