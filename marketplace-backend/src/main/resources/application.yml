@@ -40,7 +40,7 @@ payment-backend:
 misa-backend:
   base-url: ${MISA_BACKEND_BASE_URL:http://localhost:9192}
   platform-account-email: ${MISA_PLATFORM_ACCOUNT_EMAIL:platform@marketplace.local}
-  platform-account-password: ${MISA_PLATFORM_ACCOUNT_PASSWORD:MisaPlatform@2026}
+  platform-account-password: ${MISA_PLATFORM_ACCOUNT_PASSWORD}
   certificate:
     auto-issue: ${MISA_CERTIFICATE_AUTO_ISSUE:false}
     auto-submit: ${MISA_CERTIFICATE_AUTO_SUBMIT:false}

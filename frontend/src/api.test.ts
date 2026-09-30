@@ -1,0 +1,334 @@
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { ApiError, MarketplaceApi, serverPage, trustedUser } from './api';
+import type { DiscoveryFilters } from './types';
+
+const user = { id: 'user-client', email: 'client@example.test', displayName: 'Client One', userType: 'CLIENT' };
+const page = { currentPage: 1, pageSize: 10, totalPages: 3, totalElements: 21, data: [
+  { id: 'job-one', title: 'Real server row', description: 'A job', budgetUsd: 250, status: 'OPEN',
+    clientUserId: 'user-client', freelancerId: null, createdAt: '2026-09-29T10:00:00' },
+] };
+
+function response(data: unknown, status = 200) {
+  return new Response(JSON.stringify({ code: 200, data }), { status, headers: { 'Content-Type': 'application/json' } });
+}
+
+afterEach(() => vi.unstubAllGlobals());
+
+describe('Marketplace API contract', () => {
+  it('accepts only a trusted backend role', () => {
+    expect(trustedUser(user).userType).toBe('CLIENT');
+    expect(() => trustedUser({ ...user, userType: undefined })).toThrow(ApiError);
+  });
+
+  it('requires the server pagination wrapper', () => {
+    expect(serverPage(page).totalElements).toBe(21);
+    expect(() => serverPage(page.data)).toThrow(ApiError);
+  });
+
+  it('signs in, then resolves role from /auth/me', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(response({ status: 'SUCCESS', accessToken: 'token-A', userId: user.id }))
+      .mockResolvedValueOnce(response(user));
+    vi.stubGlobal('fetch', fetchMock);
+    const api = new MarketplaceApi();
+    expect((await api.signIn('client@example.test', 'pass')).userType).toBe('CLIENT');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/v1/auth/sign-in');
+    expect(fetchMock.mock.calls[1][0]).toBe('/api/v1/auth/me');
+    expect(((fetchMock.mock.calls[1][1] as RequestInit).headers as Headers).get('Authorization')).toBe('Bearer token-A');
+  });
+
+  it('restores the session through the refresh cookie before /auth/me', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(response({ accessToken: 'token-B' }))
+      .mockResolvedValueOnce(response({ ...user, userType: 'FREELANCER' }));
+    vi.stubGlobal('fetch', fetchMock);
+    const api = new MarketplaceApi();
+    expect((await api.restore()).userType).toBe('FREELANCER');
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/v1/auth/refresh-token');
+    expect((fetchMock.mock.calls[0][1] as RequestInit).credentials).toBe('include');
+    expect(fetchMock.mock.calls[1][0]).toBe('/api/v1/auth/me');
+  });
+
+  it('parses the participant page and discovery filters from server responses', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(response({ status: 'SUCCESS', accessToken: 'token-C' }))
+      .mockResolvedValueOnce(response(user))
+      .mockResolvedValueOnce(response(page))
+      .mockResolvedValueOnce(response({ ...page, data: [] }));
+    vi.stubGlobal('fetch', fetchMock);
+    const api = new MarketplaceApi();
+    await api.signIn('client@example.test', 'pass');
+    expect((await api.clientJobs(1)).data[0].id).toBe('job-one');
+    const filters: DiscoveryFilters = {
+      keyword: 'editorial', minBudgetUsd: '100', maxBudgetUsd: '500',
+      sort: 'BUDGET_DESC', application: 'NOT_APPLIED',
+    };
+    expect((await api.discoverJobs(2, filters)).currentPage).toBe(1);
+    expect(fetchMock.mock.calls[2][0]).toBe('/api/v1/marketplace/jobs?page=1&size=10');
+    const url = new URL(fetchMock.mock.calls[3][0] as string, 'http://localhost');
+    expect(url.pathname).toBe('/api/v1/marketplace/jobs/discover');
+    expect(url.searchParams.get('page')).toBe('2');
+    expect(url.searchParams.get('keyword')).toBe('editorial');
+    expect(url.searchParams.get('minBudgetUsd')).toBe('100');
+    expect(url.searchParams.get('maxBudgetUsd')).toBe('500');
+    expect(url.searchParams.get('sort')).toBe('BUDGET_DESC');
+    expect(url.searchParams.get('application')).toBe('NOT_APPLIED');
+  });
+
+  it('reports backend auth errors and sends the access token on logout', async () => {
+    const failed = new Response(JSON.stringify({ status: 2003, error: 'Sai email hoặc mật khẩu' }), { status: 401 });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(failed));
+    await expect(new MarketplaceApi().signIn('wrong@example.test', 'pass')).rejects.toThrow('Sai email hoặc mật khẩu');
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(response({ status: 'SUCCESS', accessToken: 'token-D' }))
+      .mockResolvedValueOnce(response(user))
+      .mockResolvedValueOnce(response(null));
+    vi.stubGlobal('fetch', fetchMock);
+    const api = new MarketplaceApi();
+    await api.signIn('client@example.test', 'pass');
+    await api.signOut();
+    expect(fetchMock.mock.calls[2][0]).toBe('/api/v1/auth/sign-out');
+    expect(JSON.parse((fetchMock.mock.calls[2][1] as RequestInit).body as string)).toEqual({ accessToken: 'token-D' });
+  });
+});
+
+it('expires the session only after a protected request and refresh both fail', async () => {
+  const unauthorized = new Response(JSON.stringify({ status: 2005, error: 'Phiên đăng nhập đã hết hạn' }), { status: 401 });
+  const fetchMock = vi.fn()
+    .mockResolvedValueOnce(response({ status: 'SUCCESS', accessToken: 'stale-token' }))
+    .mockResolvedValueOnce(response(user))
+    .mockResolvedValueOnce(unauthorized)
+    .mockResolvedValueOnce(unauthorized);
+  vi.stubGlobal('fetch', fetchMock);
+  const api = new MarketplaceApi();
+  const expired = vi.fn();
+  api.onSessionExpired = expired;
+  await api.signIn('client@example.test', 'pass');
+  await expect(api.clientJobs(0)).rejects.toThrow('Phiên đăng nhập đã hết hạn');
+  expect(fetchMock.mock.calls[3][0]).toBe('/api/v1/auth/refresh-token');
+  expect(expired).toHaveBeenCalledOnce();
+});
+
+
+describe('P05.2 mutation contracts', () => {
+  it('POSTs empty JSON to Apply and reads the application response', async () => {
+    const application = { id: 'application-1', jobId: 'job-one', freelancerId: 'freelancer-1',
+      status: 'PENDING', createdAt: '2026-09-30T00:00:00' };
+    const fetchMock = vi.fn().mockResolvedValueOnce(response({ status: 'SUCCESS', accessToken: 'token' }))
+      .mockResolvedValueOnce(response({ ...user, userType: 'FREELANCER' }))
+      .mockResolvedValueOnce(response(application));
+    vi.stubGlobal('fetch', fetchMock);
+    const api = new MarketplaceApi();
+    await api.signIn('freelancer@example.test', 'pass');
+    expect((await api.apply('job-one')).status).toBe('PENDING');
+    expect(fetchMock.mock.calls[2][0]).toBe('/api/v1/marketplace/jobs/job-one/apply');
+    expect((fetchMock.mock.calls[2][1] as RequestInit).method).toBe('POST');
+    expect((fetchMock.mock.calls[2][1] as RequestInit).body).toBe('{}');
+  });
+
+  it('parses my applications page with exact status filter and pagination', async () => {
+    const applications = { ...page, data: [{ id: 'app-1', status: 'ACCEPTED',
+      createdAt: '2026-09-29T11:00:00', updatedAt: '2026-09-29T12:00:00',
+      job: { id: 'job-one', title: 'Real server row', budgetUsd: 250, status: 'IN_PROGRESS',
+        clientDisplayName: 'Client One' } }] };
+    const fetchMock = vi.fn().mockResolvedValueOnce(response({ status: 'SUCCESS', accessToken: 'token' }))
+      .mockResolvedValueOnce(response({ ...user, userType: 'FREELANCER' }))
+      .mockResolvedValueOnce(response(applications));
+    vi.stubGlobal('fetch', fetchMock);
+    const api = new MarketplaceApi();
+    await api.signIn('freelancer@example.test', 'pass');
+    const result = await api.myApplications(1, 'ACCEPTED', 5);
+    expect(result.data[0].job.clientDisplayName).toBe('Client One');
+    expect(fetchMock.mock.calls[2][0]).toBe('/api/v1/marketplace/jobs/applications/me?page=1&size=5&status=ACCEPTED');
+  });
+
+  it('reads applicants and PATCHes only the selected real freelancerId', async () => {
+    const application = { id: 'app-1', jobId: 'job-one', freelancerId: 'freelancer-1',
+      status: 'PENDING', createdAt: '2026-09-29T11:00:00' };
+    const fetchMock = vi.fn().mockResolvedValueOnce(response({ status: 'SUCCESS', accessToken: 'token' }))
+      .mockResolvedValueOnce(response(user)).mockResolvedValueOnce(response([application]))
+      .mockResolvedValueOnce(response({ ...page.data[0], status: 'IN_PROGRESS', freelancerId: 'freelancer-1' }));
+    vi.stubGlobal('fetch', fetchMock);
+    const api = new MarketplaceApi();
+    await api.signIn('client@example.test', 'pass');
+    const applicants = await api.applicants('job-one');
+    expect(applicants[0].freelancerId).toBe('freelancer-1');
+    expect((await api.assign('job-one', applicants[0].freelancerId)).status).toBe('IN_PROGRESS');
+    expect(fetchMock.mock.calls[2][0]).toBe('/api/v1/marketplace/jobs/job-one/applications');
+    expect(fetchMock.mock.calls[3][0]).toBe('/api/v1/marketplace/jobs/job-one/assign-freelancer');
+    expect((fetchMock.mock.calls[3][1] as RequestInit).method).toBe('PATCH');
+    expect(JSON.parse((fetchMock.mock.calls[3][1] as RequestInit).body as string)).toEqual({ freelancerId: 'freelancer-1' });
+  });
+
+  it('preserves backend numeric error codes for already applied reconciliation', async () => {
+    const failed = new Response(JSON.stringify({ status: 4008, error: 'Bạn đã ứng tuyển' }), { status: 409 });
+    const fetchMock = vi.fn().mockResolvedValueOnce(response({ status: 'SUCCESS', accessToken: 'token' }))
+      .mockResolvedValueOnce(response({ ...user, userType: 'FREELANCER' })).mockResolvedValueOnce(failed);
+    vi.stubGlobal('fetch', fetchMock);
+    const api = new MarketplaceApi();
+    await api.signIn('freelancer@example.test', 'pass');
+    await expect(api.apply('job-one')).rejects.toMatchObject({ status: 409, code: 4008 });
+  });
+});
+
+describe('P05.3 work lifecycle API', () => {
+  it('uses the participant jobs and ordered submissions contracts', async () => {
+    const submission = { id: 'submission-1', jobId: 'job-one', freelancerId: 'freelancer-1',
+      version: 1, summary: 'Delivered V1', deliverableUrl: null, status: 'SUBMITTED',
+      reviewerFeedback: null, reviewedAt: null, createdAt: '2026-09-30T01:00:00', updatedAt: null };
+    const fetchMock = vi.fn().mockResolvedValueOnce(response({ status: 'SUCCESS', accessToken: 'token' }))
+      .mockResolvedValueOnce(response(user)).mockResolvedValueOnce(response(page))
+      .mockResolvedValueOnce(response([submission]));
+    vi.stubGlobal('fetch', fetchMock);
+    const api = new MarketplaceApi();
+    await api.signIn('client@example.test', 'pass');
+    expect((await api.myJobs(0)).data[0].id).toBe('job-one');
+    expect((await api.submissions('job-one'))[0].version).toBe(1);
+    expect(fetchMock.mock.calls[2][0]).toBe('/api/v1/marketplace/jobs?page=0&size=10');
+    expect(fetchMock.mock.calls[3][0]).toBe('/api/v1/marketplace/jobs/job-one/submissions');
+  });
+
+  it('sends exactly summary and deliverableUrl for submit work', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(response({ status: 'SUCCESS', accessToken: 'token' }))
+      .mockResolvedValueOnce(response({ ...user, userType: 'FREELANCER' }))
+      .mockResolvedValueOnce(response({ id: 'submission-1', version: 1, status: 'SUBMITTED' }));
+    vi.stubGlobal('fetch', fetchMock);
+    const api = new MarketplaceApi();
+    await api.signIn('freelancer@example.test', 'pass');
+    expect((await api.submitWork('job-one', 'Finished V1', 'https://example.test/v1')).version).toBe(1);
+    expect(fetchMock.mock.calls[2][0]).toBe('/api/v1/marketplace/jobs/job-one/submit-work');
+    expect((fetchMock.mock.calls[2][1] as RequestInit).method).toBe('POST');
+    expect(JSON.parse((fetchMock.mock.calls[2][1] as RequestInit).body as string))
+      .toEqual({ summary: 'Finished V1', deliverableUrl: 'https://example.test/v1' });
+  });
+
+  it('sends only feedback for revision and empty JSON for approval', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(response({ status: 'SUCCESS', accessToken: 'token' }))
+      .mockResolvedValueOnce(response(user))
+      .mockResolvedValueOnce(response({ id: 'submission-1', status: 'REVISION_REQUESTED' }))
+      .mockResolvedValueOnce(response({ ...page.data[0], status: 'COMPLETED' }));
+    vi.stubGlobal('fetch', fetchMock);
+    const api = new MarketplaceApi();
+    await api.signIn('client@example.test', 'pass');
+    expect((await api.requestRevision('job-one', 'Please revise')).status).toBe('REVISION_REQUESTED');
+    expect(fetchMock.mock.calls[2][0]).toBe('/api/v1/marketplace/jobs/job-one/request-revision');
+    expect(JSON.parse((fetchMock.mock.calls[2][1] as RequestInit).body as string))
+      .toEqual({ feedback: 'Please revise' });
+    expect((await api.approveWork('job-one')).status).toBe('COMPLETED');
+    expect(fetchMock.mock.calls[3][0]).toBe('/api/v1/marketplace/jobs/job-one/approve');
+    expect((fetchMock.mock.calls[3][1] as RequestInit).method).toBe('POST');
+    expect((fetchMock.mock.calls[3][1] as RequestInit).body).toBe('{}');
+  });
+});
+
+describe('P05.4 financial and tax API', () => {
+  it('uses participant payment and tax-record endpoints with the server envelope', async () => {
+    const taxPage = { currentPage: 0, pageSize: 10, totalPages: 1, totalElements: 1,
+      data: [{ id: 'tax-one', jobId: 'job-one', status: 'ACCEPTED', statusLabel: 'Đã chấp nhận' }] };
+    const tax = taxPage.data[0];
+    const fetchMock = vi.fn().mockResolvedValueOnce(response({ status: 'SUCCESS', accessToken: 'token' }))
+      .mockResolvedValueOnce(response(user))
+      .mockResolvedValueOnce(response({ jobId: 'job-one', checkoutOrderStatus: 'CAPTURED' }))
+      .mockResolvedValueOnce(response(taxPage))
+      .mockResolvedValueOnce(response(tax))
+      .mockResolvedValueOnce(response(tax))
+      .mockResolvedValueOnce(response(tax))
+      .mockResolvedValueOnce(response(tax));
+    vi.stubGlobal('fetch', fetchMock);
+    const api = new MarketplaceApi();
+    await api.signIn('client@example.test', 'pass');
+    expect((await api.paymentStatus('job-one')).checkoutOrderStatus).toBe('CAPTURED');
+    expect((await api.taxRecords(0)).data[0].status).toBe('ACCEPTED');
+    expect((await api.taxRecord('tax-one')).id).toBe('tax-one');
+    expect((await api.taxRecordForJob('job-one')).id).toBe('tax-one');
+    expect((await api.syncTaxRecord('tax-one')).status).toBe('ACCEPTED');
+    expect((await api.retryTaxExport('tax-one')).status).toBe('ACCEPTED');
+    expect(fetchMock.mock.calls.slice(2).map(call => call[0])).toEqual([
+      '/api/v1/marketplace/jobs/job-one/payment-status',
+      '/api/v1/marketplace/tax-records?page=0&size=10',
+      '/api/v1/marketplace/tax-records/tax-one',
+      '/api/v1/marketplace/tax-records/jobs/job-one',
+      '/api/v1/marketplace/tax-records/tax-one/sync',
+      '/api/v1/marketplace/tax-records/tax-one/retry-export',
+    ]);
+    expect((fetchMock.mock.calls[6][1] as RequestInit).method).toBe('POST');
+    expect((fetchMock.mock.calls[7][1] as RequestInit).method).toBe('POST');
+  });
+
+  it('downloads authenticated PDF bytes without parsing the successful response as JSON', async () => {
+    const file = new Response(new Blob(['%PDF-test'], { type: 'application/pdf' }),
+      { headers: { 'Content-Type': 'application/pdf' } });
+    const json = vi.spyOn(file, 'json');
+    const fetchMock = vi.fn().mockResolvedValueOnce(response({ status: 'SUCCESS', accessToken: 'token' }))
+      .mockResolvedValueOnce(response(user)).mockResolvedValueOnce(file);
+    vi.stubGlobal('fetch', fetchMock);
+    const api = new MarketplaceApi();
+    await api.signIn('client@example.test', 'pass');
+    const blob = await api.downloadTaxFile('tax-one', 'pdf');
+    expect(await blob.text()).toBe('%PDF-test');
+    expect(json).not.toHaveBeenCalled();
+    expect(fetchMock.mock.calls[2][0]).toBe('/api/v1/marketplace/tax-records/tax-one/pdf');
+    expect(((fetchMock.mock.calls[2][1] as RequestInit).headers as Headers).get('Authorization')).toBe('Bearer token');
+    expect((fetchMock.mock.calls[2][1] as RequestInit).credentials).toBe('include');
+  });
+
+  it('refreshes the cookie session once for an expired authenticated file request', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(response({ status: 'SUCCESS', accessToken: 'old-token' }))
+      .mockResolvedValueOnce(response(user))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ status: 2005, error: 'expired' }), { status: 401 }))
+      .mockResolvedValueOnce(response({ accessToken: 'new-token' }))
+      .mockResolvedValueOnce(response(user))
+      .mockResolvedValueOnce(new Response('<xml/>', { headers: { 'Content-Type': 'application/xml' } }));
+    vi.stubGlobal('fetch', fetchMock);
+    const api = new MarketplaceApi();
+    await api.signIn('client@example.test', 'pass');
+    expect(await (await api.downloadTaxFile('tax-one', 'xml')).text()).toBe('<xml/>');
+    expect(fetchMock.mock.calls[3][0]).toBe('/api/v1/auth/refresh-token');
+    expect(((fetchMock.mock.calls[5][1] as RequestInit).headers as Headers).get('Authorization')).toBe('Bearer new-token');
+  });
+});
+
+describe('P05.5 auth and notification contracts', () => {
+  it('registers Client with only supported core fields', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(response(user));
+    vi.stubGlobal('fetch', fetchMock);
+    const api = new MarketplaceApi();
+    const input = { displayName: 'Client One', email: 'client@example.test',
+      password: 'secret123', userType: 'CLIENT' as const };
+    expect((await api.register(input)).userType).toBe('CLIENT');
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/v1/auth/register');
+    expect(JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string)).toEqual(input);
+  });
+
+  it('registers Freelancer with required tax and bank fields and the real role enum', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(response({ ...user, userType: 'FREELANCER' }));
+    vi.stubGlobal('fetch', fetchMock);
+    const api = new MarketplaceApi();
+    const input = { displayName: 'Freelancer One', email: 'freelancer@example.test',
+      password: 'secret123', userType: 'FREELANCER' as const, taxCode: 'TAX-1',
+      identityNumber: 'ID-1', nationality: 'Việt Nam', taxAddress: 'Hà Nội',
+      bankCode: 'BIDV' as const, bankAccountNumber: '1234567890' };
+    expect((await api.register(input)).userType).toBe('FREELANCER');
+    expect(JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string)).toEqual(input);
+  });
+
+  it('loads paged notifications and PATCHes a real unread notification', async () => {
+    const notification = { id: 'notification-1', type: 'WORK_SUBMITTED', title: 'Bàn giao',
+      message: 'Freelancer đã gửi bản bàn giao', jobId: 'job-one', read: false,
+      amount: null, createdAt: '2026-09-30T09:00:00' };
+    const fetchMock = vi.fn().mockResolvedValueOnce(response({ status: 'SUCCESS', accessToken: 'token' }))
+      .mockResolvedValueOnce(response(user))
+      .mockResolvedValueOnce(response({ currentPage: 0, pageSize: 10,
+        totalPages: 1, totalElements: 1, data: [notification] }))
+      .mockResolvedValueOnce(response({ ...notification, read: true }));
+    vi.stubGlobal('fetch', fetchMock);
+    const api = new MarketplaceApi();
+    await api.signIn('client@example.test', 'secret123');
+    expect((await api.notifications(0)).data[0].read).toBe(false);
+    expect((await api.markNotificationRead(notification.id)).read).toBe(true);
+    expect(fetchMock.mock.calls[2][0]).toBe('/api/v1/notifications?page=0&size=10');
+    expect(fetchMock.mock.calls[3][0]).toBe('/api/v1/notifications/notification-1/read');
+    expect((fetchMock.mock.calls[3][1] as RequestInit).method).toBe('PATCH');
+  });
+});

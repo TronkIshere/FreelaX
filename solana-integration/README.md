@@ -45,5 +45,4 @@ validation/API-key checks. Update the collection variables for the keys and
 accounts in the target Solana environment before running an end-to-end flow.
 
 The canonical Program ID is currently
-`CwuaAPrxYLK6avPUbMRBerBYt1apdNU829TDZmoAnhEf`. Do not deploy until the Anchor
-deploy keypair is deliberately synchronized with this ID.
+`4Wd6umju26vej2ftzwR6J55pjkUqDQsxfVkt46UqDb1b`. The Anchor deploy keypair is synchronized with this ID.

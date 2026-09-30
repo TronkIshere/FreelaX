@@ -17,7 +17,7 @@ public class CertificatePdfProperties {
     private String title = "CHỨNG TỪ KHẤU TRỪ THUẾ THU NHẬP CÁ NHÂN";
     private String incomeType = "Thu nhập từ tiền lương, tiền công";
     private String lookupUrl = "";
-    private String fontRegular = "fonts/NotoSans-Regular.ttf";
-    private String fontBold = "fonts/NotoSans-Bold.ttf";
-    private String fontItalic = "fonts/NotoSans-Italic.ttf";
+    private String fontRegular = "fonts/DejaVuSans.ttf";
+    private String fontBold = "fonts/DejaVuSans-Bold.ttf";
+    private String fontItalic = "fonts/DejaVuSans-Oblique.ttf";
 }

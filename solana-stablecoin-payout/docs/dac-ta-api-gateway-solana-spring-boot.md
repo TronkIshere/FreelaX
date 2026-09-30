@@ -3,7 +3,7 @@
 Tài liệu này ánh xạ trực tiếp Program `invoice_payments` sang REST API cho
 backend Spring Boot.
 
-- Program ID: `CwuaAPrxYLK6avPUbMRBerBYt1apdNU829TDZmoAnhEf`
+- Program ID: `4Wd6umju26vej2ftzwR6J55pjkUqDQsxfVkt46UqDb1b`
 - Legacy Token Program: `TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA`
 - Associated Token Program: `ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL`
 - Số lượng instruction trong IDL hiện tại: 13

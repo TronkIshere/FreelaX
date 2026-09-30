@@ -1,0 +1,25 @@
+{$FREELAX_SITE_ADDRESS} {
+    encode gzip
+
+    @health path /healthz
+    handle @health {
+        respond "ok" 200
+    }
+
+    @marketplace path /api/v1/*
+    handle @marketplace {
+        reverse_proxy marketplace-backend:9191
+    }
+
+    handle {
+        root * /srv
+        try_files {path} /index.html
+        file_server
+    }
+
+    header {
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+}

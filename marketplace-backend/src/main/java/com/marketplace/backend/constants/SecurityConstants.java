@@ -21,11 +21,18 @@ public final class SecurityConstants {
             HttpMethod.GET.name(),
             HttpMethod.POST.name(),
             HttpMethod.PUT.name(),
+            HttpMethod.PATCH.name(),
             HttpMethod.DELETE.name()
     );
 
     public static final String[] WHITE_LIST = {
-            "/api/v1/auth/**",
+            "/api/v1/auth/register",
+            "/api/v1/auth/sign-in",
+            "/api/v1/auth/refresh-token",
+            "/api/v1/auth/sign-out",
+            "/api/v1/auth/forgot-password/send-otp",
+            "/api/v1/auth/forgot-password/verify-otp",
+            "/api/v1/auth/forgot-password/reset",
             "/internal/**",
             "/swagger-ui/**",
             "/swagger-ui.html",

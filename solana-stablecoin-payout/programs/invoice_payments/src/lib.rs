@@ -11,7 +11,7 @@ pub use events::*;
 pub use instructions::*;
 pub use state::*;
 
-declare_id!("CwuaAPrxYLK6avPUbMRBerBYt1apdNU829TDZmoAnhEf");
+declare_id!("4Wd6umju26vej2ftzwR6J55pjkUqDQsxfVkt46UqDb1b");
 
 #[program]
 pub mod invoice_payments {
