@@ -1,0 +1,17 @@
+export const jobLabels: Record<string, string> = {
+  OPEN: 'Đang tuyển', IN_PROGRESS: 'Đang thực hiện',
+  SUBMITTED_FOR_REVIEW: 'Chờ duyệt bàn giao', REVISION_REQUESTED: 'Cần chỉnh sửa',
+  COMPLETED: 'Hoàn thành', CANCELLED: 'Đã hủy',
+};
+
+export const applicationLabels: Record<string, string> = {
+  PENDING: 'Đang chờ', ACCEPTED: 'Đã được chọn',
+  REJECTED: 'Không được chọn', CANCELLED: 'Đã hủy',
+};
+
+export const jobLabel = (status: string) => jobLabels[status] ?? 'Trạng thái khác';
+export const applicationLabel = (status: string) => applicationLabels[status] ?? 'Trạng thái khác';
+export const money = (value: number) => Number.isFinite(value)
+  ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(value) : '—';
+export const date = (value: string | null | undefined) => value?.slice(0, 10) || '—';
+export const shortId = (value: string) => value.length > 15 ? value.slice(0, 8) + '…' + value.slice(-6) : value;

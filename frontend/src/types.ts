@@ -23,7 +23,10 @@ export interface Job {
   clientUserId: string;
   freelancerId: string | null;
   status: string;
-  createdAt: string;
+  createdAt: string | null;
+  updatedAt?: string | null;
+  checkoutOrderId?: string | null;
+  taxExportStatus?: string | null;
 }
 
 export interface DiscoverJob {
@@ -36,7 +39,7 @@ export interface DiscoverJob {
   hasApplied: boolean;
   applicationId: string | null;
   applicationStatus: string | null;
-  createdAt: string;
+  createdAt: string | null;
 }
 
 export type DiscoverySort = 'NEWEST' | 'BUDGET_ASC' | 'BUDGET_DESC';
@@ -48,4 +51,16 @@ export interface DiscoveryFilters {
   maxBudgetUsd: string;
   sort: DiscoverySort;
   application: ApplicationFilter;
+}
+
+
+export type JobStatus = 'OPEN' | 'IN_PROGRESS' | 'SUBMITTED_FOR_REVIEW' | 'REVISION_REQUESTED' | 'COMPLETED' | 'CANCELLED';
+export type JobApplicationStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'CANCELLED';
+export interface JobApplication {
+  id: string; jobId: string; freelancerId: string; status: JobApplicationStatus; createdAt: string | null;
+}
+export interface MyApplication {
+  id: string; status: JobApplicationStatus; createdAt: string | null; updatedAt: string | null;
+  job: { id: string; title: string; description: string; budgetUsd: number; status: JobStatus;
+    clientDisplayName: string | null; createdAt: string | null };
 }

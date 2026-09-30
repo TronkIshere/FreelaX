@@ -187,3 +187,59 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .subnav a { border-bottom: 4px solid transparent; padding: 12px 17px 9px; text-decoration: none; font-size: 14px; font-weight: 850; }
 .subnav a:hover { background: var(--mint); }
 .subnav a.active { border-bottom-color: var(--ink); background: var(--cream); }
+
+
+/* P05.2: document, state, ownership, action. */
+.job-row .row-main a { text-decoration-thickness: 2px; text-underline-offset: 4px; }
+.job-row .row-main a:hover, .application-main a:hover { color: var(--vermilion); }
+.detail-topline { display: flex; align-items: center; justify-content: space-between; gap: 20px; border-bottom: 2px solid var(--ink); padding: 13px 0; font-size: 13px; font-weight: 850; }
+.copy-id { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 9px; }
+.copy-id code { font-size: 13px; font-weight: 800; }
+.work-document { max-width: 1020px; padding: 36px 0 42px; border-bottom: 3px solid var(--ink); }
+.work-document h2 { margin: 16px 0 13px; font-size: clamp(28px, 3vw, 38px); letter-spacing: -.05em; line-height: 1.07; }
+.work-description { max-width: 78ch; margin: 0; white-space: pre-wrap; font-size: 18px; line-height: 1.6; }
+.detail-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-bottom: 2px solid var(--ink); }
+.fact-band { display: flex; flex-direction: column; align-items: flex-start; gap: 9px; min-width: 0; padding: 24px 20px 28px 0; border-right: 1px solid var(--line); }
+.fact-band + .fact-band { padding-left: 20px; }
+.fact-band:last-child { border-right: 0; }
+.fact-band > strong { font-size: 23px; line-height: 1.1; letter-spacing: -.04em; }
+.fact-band .fact-state { border-left: 6px solid var(--mint); padding-left: 10px; }
+.fact-band > span:not(.eyebrow), .fact-band div > span { font-size: 13px; color: var(--soft-ink); }
+.fact-band .copy-id { color: var(--ink) !important; }
+.action-band { display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px 20px; margin: 28px 0 36px; padding: 23px 0 29px; border-top: 3px solid var(--ink); border-bottom: 2px solid var(--ink); }
+.action-band .category-label { flex-basis: 100%; width: fit-content; }
+.label-acid { background: var(--acid); }
+.action-band h2 { flex-basis: 100%; margin: 7px 0 0; font-size: 28px; letter-spacing: -.04em; }
+.action-band p { flex-basis: 100%; margin: 0; max-width: 65ch; }
+.action-band .form-error { flex-basis: 100%; }
+.text-link { font-size: 13px; font-weight: 900; text-underline-offset: 4px; }
+.filter-tabs { display: flex; flex-wrap: wrap; border-bottom: 3px solid var(--ink); margin-top: 26px; }
+.filter-tabs button { border: 0; border-bottom: 5px solid transparent; background: transparent; padding: 13px 18px 9px; font-size: 13px; font-weight: 850; }
+.filter-tabs button:hover { background: var(--pale-mint); }
+.filter-tabs button.active { border-bottom-color: var(--vermilion); background: var(--pale-mint); }
+.application-list, .applicant-list { border-top: 2px solid var(--ink); }
+.application-row { display: grid; grid-template-columns: minmax(0, 2.3fr) minmax(110px, .75fr) minmax(110px, .85fr) minmax(150px, 1fr); gap: 16px; padding: 21px 12px; border-bottom: 2px solid var(--ink); }
+.application-row > div { min-width: 0; }
+.application-row strong { font-size: 14px; }
+.application-main h2 { margin: 8px 0; font-size: 22px; letter-spacing: -.04em; }
+.application-main p { margin: 0; font-size: 14px; }
+.application-row > div:last-child { font-size: 13px; }
+.applicant-row { display: grid; grid-template-columns: 32px minmax(160px, 1.5fr) minmax(100px, .8fr) minmax(120px, .8fr) minmax(150px, 1fr); gap: 16px; align-items: start; padding: 20px 12px; border-bottom: 2px solid var(--ink); }
+.applicant-row strong { font-size: 14px; }
+.applicant-action { text-align: right; }
+.confirm-band { grid-column: 1 / -1; margin-top: 16px; padding: 15px; border-left: 7px solid var(--acid); background: var(--pale-acid); text-align: left; }
+.confirm-band p { margin: 7px 0 14px; max-width: 58ch; font-size: 14px; }
+.confirm-band .button + .button { margin-left: 9px; }
+@media (max-width: 850px) {
+  .detail-facts { grid-template-columns: 1fr; }
+  .fact-band, .fact-band + .fact-band { border-right: 0; border-bottom: 1px solid var(--line); padding: 20px 0; }
+  .application-row, .applicant-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .application-main { grid-column: 1 / -1; }
+  .applicant-row .row-index { grid-column: 1 / -1; }
+  .applicant-action { text-align: left; }
+}
+@media (max-width: 520px) {
+  .detail-topline { flex-direction: column; align-items: flex-start; }
+  .application-row, .applicant-row { grid-template-columns: 1fr; }
+  .applicant-row .row-index, .application-main { grid-column: 1; }
+}

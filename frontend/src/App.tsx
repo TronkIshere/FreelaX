@@ -3,6 +3,7 @@ import { useState, type FormEvent } from 'react';
 import { Link, Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { ApiError } from './api';
 import { ClientJobs, FreelancerDiscovery } from './Jobs';
+import { ClientApplicants, JobDetail, MyApplications } from './Workflow';
 import { useSession } from './session';
 import type { User, UserType } from './types';
 
@@ -65,7 +66,7 @@ function Overview({ user }: { user: User }) {
       title={isClient ? 'Công việc của bạn, trong một mạch rõ ràng.' : 'Tìm việc phù hợp, theo dõi từng bước.'}
       description={isClient
         ? 'Danh sách công việc đang lấy trực tiếp từ Marketplace. Tổng hợp thanh toán và hoạt động sẽ xuất hiện ở giai đoạn tiếp theo.'
-        : 'Khám phá công việc đang mở từ Marketplace. Dữ liệu ứng tuyển và thu nhập sẽ được kết nối ở giai đoạn tiếp theo.'}
+        : 'Khám phá công việc đang mở từ Marketplace. Ứng tuyển được theo dõi trực tiếp từ Marketplace; dữ liệu thu nhập sẽ được kết nối ở giai đoạn tiếp theo.'}
       aside={'Đã xác minh tài khoản: ' + user.displayName} />
     <div className="overview-grid">
       <section className="document-panel">
@@ -77,7 +78,7 @@ function Overview({ user }: { user: User }) {
         <Link className="button" to="/work">{isClient ? 'Xem công việc' : 'Khám phá công việc'}</Link>
       </section>
       <aside className="overview-side">
-        <span className="eyebrow">Giai đoạn P05.1</span>
+        <span className="eyebrow">Nền tảng hiện tại</span>
         <h2>Nền tảng giao diện</h2>
         <p>Trang tổng quan chỉ hiển thị thông tin đã được xác nhận. Chưa có số liệu ước tính hoặc dữ liệu mô phỏng.</p>
       </aside>
@@ -155,11 +156,13 @@ function RoleShell({ user }: { user: User }) {
         <Route path="/" element={<Overview user={user} />} />
         <Route path="/work" element={role === 'CLIENT' ? <ClientJobs /> : <FreelancerDiscovery />} />
         {role === 'FREELANCER' && <>
-          <Route path="/work/applications" element={<NextStage title="Ứng tuyển" description="Lịch sử ứng tuyển sẽ được kết nối ở bước tiếp theo." />} />
+          <Route path="/work/applications" element={<MyApplications />} />
           <Route path="/work/mine" element={<NextStage title="Công việc của tôi" description="Không gian công việc đang thực hiện sẽ được kết nối ở bước tiếp theo." />} />
         </>}
+        <Route path="/work/:jobId" element={<JobDetail user={user} />} />
+        {role === 'CLIENT' && <Route path="/work/:jobId/applications" element={<ClientApplicants user={user} />} />}
         <Route path="/finance" element={<NextStage title={role === 'CLIENT' ? 'Thanh toán' : 'Thu nhập'}
-          description="Dữ liệu tài chính theo từng công việc sẽ được kết nối sau nền tảng P05.1." />} />
+          description="Dữ liệu tài chính theo từng công việc sẽ được kết nối ở giai đoạn tiếp theo." />} />
         <Route path="/activity" element={<NextStage title="Hoạt động" description="Dòng hoạt động thực sẽ được kết nối ở bước tiếp theo." />} />
         <Route path="/account" element={<Account user={user} />} />
         <Route path="*" element={<Navigate to="/" replace />} />

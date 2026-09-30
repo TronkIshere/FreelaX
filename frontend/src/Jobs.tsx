@@ -1,23 +1,9 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from './api';
+import { applicationLabel, date, jobLabel, money } from './status';
 import { PageHeading, StatePanel } from './components';
 import type { DiscoverJob, DiscoveryFilters, Job, Page } from './types';
-
-const statusLabels: Record<string, string> = {
-  OPEN: 'Đang tuyển',
-  IN_PROGRESS: 'Đang thực hiện',
-  SUBMITTED_FOR_REVIEW: 'Chờ duyệt bàn giao',
-  REVISION_REQUESTED: 'Cần chỉnh sửa',
-  COMPLETED: 'Hoàn thành',
-  CANCELLED: 'Đã hủy',
-};
-
-const applicationLabels: Record<string, string> = {
-  PENDING: 'Đang chờ phản hồi',
-  ACCEPTED: 'Được chấp nhận',
-  REJECTED: 'Không được chọn',
-  CANCELLED: 'Đã hủy ứng tuyển',
-};
 
 const nextByStatus: Record<string, string> = {
   OPEN: 'Đang tuyển người thực hiện',
@@ -35,21 +21,11 @@ function statusClass(status: string) {
   return 'acid';
 }
 
-function money(value: number) {
-  return Number.isFinite(value)
-    ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(value)
-    : '—';
-}
-
-function date(value: string) {
-  return typeof value === 'string' && value.length >= 10 ? value.slice(0, 10) : '—';
-}
-
 function JobRow({ job, index, kind }: { job: Job | DiscoverJob; index: number; kind: 'client' | 'discover' }) {
   const discovered = kind === 'discover' ? job as DiscoverJob : null;
   const participant = kind === 'client' ? job as Job : null;
   const application = discovered?.applicationStatus
-    ? applicationLabels[discovered.applicationStatus] || 'Trạng thái ứng tuyển khác'
+    ? applicationLabel(discovered.applicationStatus)
     : discovered?.hasApplied ? 'Đã ứng tuyển' : 'Chưa ứng tuyển';
   const ownership = discovered
     ? discovered.client?.displayName || 'Khách hàng'
@@ -57,13 +33,13 @@ function JobRow({ job, index, kind }: { job: Job | DiscoverJob; index: number; k
   return <article className="job-row" aria-labelledby={'job-' + job.id}>
     <div className="row-index" aria-hidden="true">{String(index).padStart(2, '0')}</div>
     <div className="row-main">
-      <h3 id={'job-' + job.id}>{job.title}</h3>
+      <h3 id={'job-' + job.id}><Link to={'/work/' + job.id} state={{ job }}>{job.title}</Link></h3>
       <p>{job.description}</p>
       <span className="row-date">Đăng {date(job.createdAt)}</span>
     </div>
     <div className="cell">
       <span className="cell-label">Trạng thái</span>
-      <strong className={'state-mark ' + statusClass(job.status)}>{statusLabels[job.status] || 'Trạng thái khác'}</strong>
+      <strong className={'state-mark ' + statusClass(job.status)}>{jobLabel(job.status)}</strong>
     </div>
     <div className="cell">
       <span className="cell-label">{discovered ? 'Khách hàng' : 'Phân công'}</span>
@@ -218,7 +194,7 @@ export function FreelancerDiscovery() {
       <button className="button" type="submit">Áp dụng</button>
       {filterError && <p className="filter-error" role="alert">{filterError}</p>}
     </form>
-    <p className="inline-notice">Giai đoạn này chỉ hỗ trợ tìm kiếm và xem danh sách. Thao tác ứng tuyển sẽ được kết nối sau.</p>
+    <p className="inline-notice">Mở một công việc để xem chi tiết và ứng tuyển trực tiếp trên Marketplace.</p>
     <section className="list-section" aria-label="Kết quả khám phá">
       <div className="section-heading"><h2>Công việc đang mở</h2><span>NGUỒN / MARKETPLACE API</span></div>
       <JobResults result={result} loading={loading} error={error} retry={() => setAttempt(value => value + 1)}

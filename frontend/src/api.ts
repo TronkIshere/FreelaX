@@ -1,9 +1,9 @@
-import type { DiscoverJob, DiscoveryFilters, Job, Page, User, UserType } from './types';
+import type { DiscoverJob, DiscoveryFilters, Job, JobApplication, MyApplication, Page, User, UserType } from './types';
 
 const API_ROOT = '/api/v1';
 
 export class ApiError extends Error {
-  constructor(message: string, public readonly status: number) {
+  constructor(message: string, public readonly status: number, public readonly code: number | null = null) {
     super(message);
     this.name = 'ApiError';
   }
@@ -39,14 +39,14 @@ async function envelope<T>(response: Response): Promise<T> {
   try {
     value = await response.json();
   } catch {
-    throw new ApiError(response.status === 401 ? 'Phiên đăng nhập đã hết hạn.' : response.ok ? 'Máy chủ trả dữ liệu không hợp lệ.' : 'Không thể kết nối dịch vụ.', response.status);
+    throw new ApiError(response.status === 401 ? 'Phiên đăng nhập đã hết hạn.' : response.ok ? 'Máy chủ trả dữ liệu không hợp lệ.' : 'Dịch vụ trả phản hồi không hợp lệ (HTTP ' + response.status + '). Vui lòng tải lại trạng thái trước khi thử tiếp.', response.status);
   }
   const payload = record(value);
   if (!response.ok || !payload || payload.code !== 200) {
     const serverMessage = payload?.message || payload?.error;
     const message = typeof serverMessage === 'string' && serverMessage.trim()
       ? serverMessage : 'Yêu cầu không thành công. Vui lòng thử lại.';
-    throw new ApiError(message, response.status);
+    throw new ApiError(message, response.status, typeof payload?.status === 'number' ? payload.status : null);
   }
   return payload.data as T;
 }
@@ -146,6 +146,44 @@ export class MarketplaceApi {
     if (filters.minBudgetUsd) query.set('minBudgetUsd', filters.minBudgetUsd);
     if (filters.maxBudgetUsd) query.set('maxBudgetUsd', filters.maxBudgetUsd);
     return serverPage<DiscoverJob>(await this.authorized<unknown>('/marketplace/jobs/discover?' + query));
+  }
+
+  async job(jobId: string): Promise<Job> {
+    return this.authorized<Job>('/marketplace/jobs/' + encodeURIComponent(jobId));
+  }
+
+  async findDiscoverJob(jobId: string): Promise<DiscoverJob | null> {
+    const filters: DiscoveryFilters = { keyword: '', minBudgetUsd: '', maxBudgetUsd: '', sort: 'NEWEST', application: 'ALL' };
+    let page = 0;
+    let totalPages = 1;
+    while (page < totalPages) {
+      const result = await this.discoverJobs(page, filters, 100);
+      const found = result.data.find(job => job.id === jobId);
+      if (found) return found;
+      totalPages = result.totalPages;
+      page++;
+    }
+    return null;
+  }
+
+  async apply(jobId: string): Promise<JobApplication> {
+    return this.authorized<JobApplication>('/marketplace/jobs/' + encodeURIComponent(jobId) + '/apply',
+      { method: 'POST', body: '{}' });
+  }
+
+  async myApplications(page: number, status: string = 'ALL', size = 10): Promise<Page<MyApplication>> {
+    const query = new URLSearchParams({ page: String(page), size: String(size) });
+    if (status !== 'ALL') query.set('status', status);
+    return serverPage<MyApplication>(await this.authorized<unknown>('/marketplace/jobs/applications/me?' + query));
+  }
+
+  async applicants(jobId: string): Promise<JobApplication[]> {
+    return this.authorized<JobApplication[]>('/marketplace/jobs/' + encodeURIComponent(jobId) + '/applications');
+  }
+
+  async assign(jobId: string, freelancerId: string): Promise<Job> {
+    return this.authorized<Job>('/marketplace/jobs/' + encodeURIComponent(jobId) + '/assign-freelancer',
+      { method: 'PATCH', body: JSON.stringify({ freelancerId }) });
   }
 }
 

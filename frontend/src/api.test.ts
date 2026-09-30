@@ -109,3 +109,65 @@ it('expires the session only after a protected request and refresh both fail', a
   expect(fetchMock.mock.calls[3][0]).toBe('/api/v1/auth/refresh-token');
   expect(expired).toHaveBeenCalledOnce();
 });
+
+
+describe('P05.2 mutation contracts', () => {
+  it('POSTs empty JSON to Apply and reads the application response', async () => {
+    const application = { id: 'application-1', jobId: 'job-one', freelancerId: 'freelancer-1',
+      status: 'PENDING', createdAt: '2026-09-30T00:00:00' };
+    const fetchMock = vi.fn().mockResolvedValueOnce(response({ status: 'SUCCESS', accessToken: 'token' }))
+      .mockResolvedValueOnce(response({ ...user, userType: 'FREELANCER' }))
+      .mockResolvedValueOnce(response(application));
+    vi.stubGlobal('fetch', fetchMock);
+    const api = new MarketplaceApi();
+    await api.signIn('freelancer@example.test', 'pass');
+    expect((await api.apply('job-one')).status).toBe('PENDING');
+    expect(fetchMock.mock.calls[2][0]).toBe('/api/v1/marketplace/jobs/job-one/apply');
+    expect((fetchMock.mock.calls[2][1] as RequestInit).method).toBe('POST');
+    expect((fetchMock.mock.calls[2][1] as RequestInit).body).toBe('{}');
+  });
+
+  it('parses my applications page with exact status filter and pagination', async () => {
+    const applications = { ...page, data: [{ id: 'app-1', status: 'ACCEPTED',
+      createdAt: '2026-09-29T11:00:00', updatedAt: '2026-09-29T12:00:00',
+      job: { id: 'job-one', title: 'Real server row', budgetUsd: 250, status: 'IN_PROGRESS',
+        clientDisplayName: 'Client One' } }] };
+    const fetchMock = vi.fn().mockResolvedValueOnce(response({ status: 'SUCCESS', accessToken: 'token' }))
+      .mockResolvedValueOnce(response({ ...user, userType: 'FREELANCER' }))
+      .mockResolvedValueOnce(response(applications));
+    vi.stubGlobal('fetch', fetchMock);
+    const api = new MarketplaceApi();
+    await api.signIn('freelancer@example.test', 'pass');
+    const result = await api.myApplications(1, 'ACCEPTED', 5);
+    expect(result.data[0].job.clientDisplayName).toBe('Client One');
+    expect(fetchMock.mock.calls[2][0]).toBe('/api/v1/marketplace/jobs/applications/me?page=1&size=5&status=ACCEPTED');
+  });
+
+  it('reads applicants and PATCHes only the selected real freelancerId', async () => {
+    const application = { id: 'app-1', jobId: 'job-one', freelancerId: 'freelancer-1',
+      status: 'PENDING', createdAt: '2026-09-29T11:00:00' };
+    const fetchMock = vi.fn().mockResolvedValueOnce(response({ status: 'SUCCESS', accessToken: 'token' }))
+      .mockResolvedValueOnce(response(user)).mockResolvedValueOnce(response([application]))
+      .mockResolvedValueOnce(response({ ...page.data[0], status: 'IN_PROGRESS', freelancerId: 'freelancer-1' }));
+    vi.stubGlobal('fetch', fetchMock);
+    const api = new MarketplaceApi();
+    await api.signIn('client@example.test', 'pass');
+    const applicants = await api.applicants('job-one');
+    expect(applicants[0].freelancerId).toBe('freelancer-1');
+    expect((await api.assign('job-one', applicants[0].freelancerId)).status).toBe('IN_PROGRESS');
+    expect(fetchMock.mock.calls[2][0]).toBe('/api/v1/marketplace/jobs/job-one/applications');
+    expect(fetchMock.mock.calls[3][0]).toBe('/api/v1/marketplace/jobs/job-one/assign-freelancer');
+    expect((fetchMock.mock.calls[3][1] as RequestInit).method).toBe('PATCH');
+    expect(JSON.parse((fetchMock.mock.calls[3][1] as RequestInit).body as string)).toEqual({ freelancerId: 'freelancer-1' });
+  });
+
+  it('preserves backend numeric error codes for already applied reconciliation', async () => {
+    const failed = new Response(JSON.stringify({ status: 4008, error: 'Bạn đã ứng tuyển' }), { status: 409 });
+    const fetchMock = vi.fn().mockResolvedValueOnce(response({ status: 'SUCCESS', accessToken: 'token' }))
+      .mockResolvedValueOnce(response({ ...user, userType: 'FREELANCER' })).mockResolvedValueOnce(failed);
+    vi.stubGlobal('fetch', fetchMock);
+    const api = new MarketplaceApi();
+    await api.signIn('freelancer@example.test', 'pass');
+    await expect(api.apply('job-one')).rejects.toMatchObject({ status: 409, code: 4008 });
+  });
+});
