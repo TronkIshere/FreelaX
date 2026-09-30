@@ -1,6 +1,8 @@
 import type { DiscoverJob, DiscoveryFilters, Job, JobApplication, JobPaymentStatus, JobSubmission, MyApplication, Notification as MarketplaceNotification, Page, RegisterInput, TaxRecord, User, UserType } from './types';
 
-const API_ROOT = '/api/v1';
+// Same-origin by default; an optional public origin can be supplied at build time.
+const configuredApiOrigin = (import.meta.env.VITE_MARKETPLACE_API_ORIGIN || '').trim().replace(/\/+$/, '');
+const API_ROOT = configuredApiOrigin + '/api/v1';
 
 export class ApiError extends Error {
   constructor(message: string, public readonly status: number, public readonly code: number | null = null) {

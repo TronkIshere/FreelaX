@@ -6,7 +6,7 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
     ports:
-      - "3307:3306"
+      - "127.0.0.1:3307:3306"
     volumes:
       - mysql-data:/var/lib/mysql
       - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
@@ -21,7 +21,7 @@ services:
     container_name: shared-redis
     restart: unless-stopped
     ports:
-      - "6380:6379"
+      - "127.0.0.1:6380:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -50,7 +50,7 @@ services:
       SPRING_DATA_REDIS_DATABASE: 0
       INTERNAL_API_KEY: ${PAYMENT_INTERNAL_API_KEY:-dev-only-payment-internal-key}
     ports:
-      - "9190:9190"
+      - "127.0.0.1:9190:9190"
 
   marketplace-backend:
     build:
@@ -72,6 +72,9 @@ services:
         condition: service_started
     environment:
       SERVER_PORT: 9191
+      SPRING_PROFILES_ACTIVE: ${MARKETPLACE_SPRING_PROFILE:-dev}
+      JWT_SECRET: ${MARKETPLACE_JWT_SECRET:?Set MARKETPLACE_JWT_SECRET to the existing Marketplace signing secret}
+      CORS_ALLOWED_ORIGINS: ${MARKETPLACE_CORS_ALLOWED_ORIGINS:-http://localhost:3000}
       DB_URL: jdbc:mysql://mysql:3306/marketplace?useUnicode=true&characterEncoding=UTF-8
       DB_USERNAME: root
       DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
@@ -94,7 +97,7 @@ services:
       DEMO_CLIENT_SOLANA_PUBLIC_KEY: ${SOLANA_CUSTODIAL_CLIENT_PUBLIC_KEY:-}
       DEMO_FREELANCER_SOLANA_PUBLIC_KEY: ${DEMO_FREELANCER_SOLANA_PUBLIC_KEY:-}
     ports:
-      - "9191:9191"
+      - "127.0.0.1:9191:9191"
 
   misa-backend:
     build:
@@ -117,7 +120,7 @@ services:
       REDIS_PORT: 6379
       SPRING_DATA_REDIS_DATABASE: 2
     ports:
-      - "9192:9192"
+      - "127.0.0.1:9192:9192"
 
   solana-integration:
     build:
@@ -143,7 +146,29 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
-      - "9193:9193"
+      - "127.0.0.1:9193:9193"
+
+  frontend:
+    profiles: ["deploy"]
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_MARKETPLACE_API_ORIGIN: ${VITE_MARKETPLACE_API_ORIGIN:-}
+    restart: unless-stopped
+    depends_on:
+      marketplace-backend:
+        condition: service_started
+    environment:
+      FREELAX_SITE_ADDRESS: ${FREELAX_SITE_ADDRESS:-:80}
+    ports:
+      - "${FREELAX_HTTP_BIND:-127.0.0.1:8080}:80"
+      - "${FREELAX_HTTPS_BIND:-127.0.0.1:8443}:443"
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
 
 volumes:
   mysql-data:
+  caddy-data:
+  caddy-config:
