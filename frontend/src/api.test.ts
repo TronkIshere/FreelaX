@@ -221,3 +221,70 @@ describe('P05.3 work lifecycle API', () => {
     expect((fetchMock.mock.calls[3][1] as RequestInit).body).toBe('{}');
   });
 });
+
+describe('P05.4 financial and tax API', () => {
+  it('uses participant payment and tax-record endpoints with the server envelope', async () => {
+    const taxPage = { currentPage: 0, pageSize: 10, totalPages: 1, totalElements: 1,
+      data: [{ id: 'tax-one', jobId: 'job-one', status: 'ACCEPTED', statusLabel: 'Đã chấp nhận' }] };
+    const tax = taxPage.data[0];
+    const fetchMock = vi.fn().mockResolvedValueOnce(response({ status: 'SUCCESS', accessToken: 'token' }))
+      .mockResolvedValueOnce(response(user))
+      .mockResolvedValueOnce(response({ jobId: 'job-one', checkoutOrderStatus: 'CAPTURED' }))
+      .mockResolvedValueOnce(response(taxPage))
+      .mockResolvedValueOnce(response(tax))
+      .mockResolvedValueOnce(response(tax))
+      .mockResolvedValueOnce(response(tax))
+      .mockResolvedValueOnce(response(tax));
+    vi.stubGlobal('fetch', fetchMock);
+    const api = new MarketplaceApi();
+    await api.signIn('client@example.test', 'pass');
+    expect((await api.paymentStatus('job-one')).checkoutOrderStatus).toBe('CAPTURED');
+    expect((await api.taxRecords(0)).data[0].status).toBe('ACCEPTED');
+    expect((await api.taxRecord('tax-one')).id).toBe('tax-one');
+    expect((await api.taxRecordForJob('job-one')).id).toBe('tax-one');
+    expect((await api.syncTaxRecord('tax-one')).status).toBe('ACCEPTED');
+    expect((await api.retryTaxExport('tax-one')).status).toBe('ACCEPTED');
+    expect(fetchMock.mock.calls.slice(2).map(call => call[0])).toEqual([
+      '/api/v1/marketplace/jobs/job-one/payment-status',
+      '/api/v1/marketplace/tax-records?page=0&size=10',
+      '/api/v1/marketplace/tax-records/tax-one',
+      '/api/v1/marketplace/tax-records/jobs/job-one',
+      '/api/v1/marketplace/tax-records/tax-one/sync',
+      '/api/v1/marketplace/tax-records/tax-one/retry-export',
+    ]);
+    expect((fetchMock.mock.calls[6][1] as RequestInit).method).toBe('POST');
+    expect((fetchMock.mock.calls[7][1] as RequestInit).method).toBe('POST');
+  });
+
+  it('downloads authenticated PDF bytes without parsing the successful response as JSON', async () => {
+    const file = new Response(new Blob(['%PDF-test'], { type: 'application/pdf' }),
+      { headers: { 'Content-Type': 'application/pdf' } });
+    const json = vi.spyOn(file, 'json');
+    const fetchMock = vi.fn().mockResolvedValueOnce(response({ status: 'SUCCESS', accessToken: 'token' }))
+      .mockResolvedValueOnce(response(user)).mockResolvedValueOnce(file);
+    vi.stubGlobal('fetch', fetchMock);
+    const api = new MarketplaceApi();
+    await api.signIn('client@example.test', 'pass');
+    const blob = await api.downloadTaxFile('tax-one', 'pdf');
+    expect(await blob.text()).toBe('%PDF-test');
+    expect(json).not.toHaveBeenCalled();
+    expect(fetchMock.mock.calls[2][0]).toBe('/api/v1/marketplace/tax-records/tax-one/pdf');
+    expect(((fetchMock.mock.calls[2][1] as RequestInit).headers as Headers).get('Authorization')).toBe('Bearer token');
+    expect((fetchMock.mock.calls[2][1] as RequestInit).credentials).toBe('include');
+  });
+
+  it('refreshes the cookie session once for an expired authenticated file request', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(response({ status: 'SUCCESS', accessToken: 'old-token' }))
+      .mockResolvedValueOnce(response(user))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ status: 2005, error: 'expired' }), { status: 401 }))
+      .mockResolvedValueOnce(response({ accessToken: 'new-token' }))
+      .mockResolvedValueOnce(response(user))
+      .mockResolvedValueOnce(new Response('<xml/>', { headers: { 'Content-Type': 'application/xml' } }));
+    vi.stubGlobal('fetch', fetchMock);
+    const api = new MarketplaceApi();
+    await api.signIn('client@example.test', 'pass');
+    expect(await (await api.downloadTaxFile('tax-one', 'xml')).text()).toBe('<xml/>');
+    expect(fetchMock.mock.calls[3][0]).toBe('/api/v1/auth/refresh-token');
+    expect(((fetchMock.mock.calls[5][1] as RequestInit).headers as Headers).get('Authorization')).toBe('Bearer new-token');
+  });
+});

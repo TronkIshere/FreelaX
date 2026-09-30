@@ -1,4 +1,4 @@
-import type { DiscoverJob, DiscoveryFilters, Job, JobApplication, JobSubmission, MyApplication, Page, User, UserType } from './types';
+import type { DiscoverJob, DiscoveryFilters, Job, JobApplication, JobPaymentStatus, JobSubmission, MyApplication, Page, TaxRecord, User, UserType } from './types';
 
 const API_ROOT = '/api/v1';
 
@@ -207,6 +207,74 @@ export class MarketplaceApi {
     return this.authorized<Job>('/marketplace/jobs/' + encodeURIComponent(jobId) + '/approve',
       { method: 'POST', body: '{}' });
   }
+  async paymentStatus(jobId: string): Promise<JobPaymentStatus> {
+    return this.authorized<JobPaymentStatus>('/marketplace/jobs/' + encodeURIComponent(jobId) + '/payment-status');
+  }
+
+  async taxRecords(page: number, size = 10): Promise<Page<TaxRecord>> {
+    return serverPage<TaxRecord>(await this.authorized<unknown>('/marketplace/tax-records?page=' + page + '&size=' + size));
+  }
+
+  async taxRecord(taxRecordId: string): Promise<TaxRecord> {
+    return this.authorized<TaxRecord>('/marketplace/tax-records/' + encodeURIComponent(taxRecordId));
+  }
+
+  async taxRecordForJob(jobId: string): Promise<TaxRecord> {
+    return this.authorized<TaxRecord>('/marketplace/tax-records/jobs/' + encodeURIComponent(jobId));
+  }
+
+  async syncTaxRecord(taxRecordId: string): Promise<TaxRecord> {
+    return this.authorized<TaxRecord>('/marketplace/tax-records/' + encodeURIComponent(taxRecordId) + '/sync',
+      { method: 'POST' });
+  }
+
+  async retryTaxExport(taxRecordId: string): Promise<TaxRecord> {
+    return this.authorized<TaxRecord>('/marketplace/tax-records/' + encodeURIComponent(taxRecordId) + '/retry-export',
+      { method: 'POST' });
+  }
+
+  private async authorizedBlob(path: string): Promise<Blob> {
+    if (!this.accessToken) throw new ApiError('Phiên đăng nhập đã hết hạn.', 401);
+    const request = async (): Promise<Response> => {
+      const headers = new Headers({ Authorization: 'Bearer ' + this.accessToken });
+      try {
+        return await fetch(API_ROOT + path, { headers, credentials: 'include' });
+      } catch {
+        throw new ApiError('Không thể kết nối Marketplace. Kiểm tra máy chủ và thử lại.', 0);
+      }
+    };
+    let response = await request();
+    if (response.status === 401) {
+      try {
+        await this.restore();
+        response = await request();
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 401) {
+          this.clear();
+          this.onSessionExpired?.();
+        }
+        throw error;
+      }
+    }
+    if (!response.ok || response.headers.get('content-type')?.includes('application/json')) {
+      try {
+        await envelope<unknown>(response);
+        throw new ApiError('Máy chủ không trả tệp chứng từ hợp lệ.', 0);
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 401) {
+          this.clear();
+          this.onSessionExpired?.();
+        }
+        throw error;
+      }
+    }
+    return response.blob();
+  }
+
+  async downloadTaxFile(taxRecordId: string, format: 'pdf' | 'xml'): Promise<Blob> {
+    return this.authorizedBlob('/marketplace/tax-records/' + encodeURIComponent(taxRecordId) + '/' + format);
+  }
+
 }
 
 export const api = new MarketplaceApi();
