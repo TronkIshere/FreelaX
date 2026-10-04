@@ -30,7 +30,7 @@ Completed:
 
 ## P06.1 — Shared hierarchy foundation
 
-Status: `NOT_STARTED`
+Status: `PASS`
 
 Target:
 
@@ -53,6 +53,18 @@ Gate:
 - no route changes
 - no business/data changes
 - targeted tests PASS
+
+Completed:
+
+- Refined existing PageHeading and StatePanel without changing their content or action contracts.
+- Added shared type sizes, readable text measure and 24/32px section rhythm.
+- Quieter eyebrow, category and cell labels; stronger distinction between Ink primary actions and outlined secondary actions.
+- Added narrow presentation primitives: SectionHeading (h2/h3), FactGrid (native definition list), EvidenceDisclosure (native details, collapsed by default) and ActionGroup.
+- Reused existing section-heading and technical-evidence CSS; screen-specific adoption remains for later stages.
+- Extended common focus-visible treatment to textarea and summary; retained error/status announcements and reduced-motion behavior.
+- Removed the rigid body minimum width that caused overflow at a 320px viewport with a vertical scrollbar.
+- Targeted shared-component and consumer tests: 40/40 PASS.
+- Production build: PASS. No route, business, API, backend or dependency changes.
 
 ## P06.2 — Shell / navigation / global framing
 
@@ -272,3 +284,19 @@ Backend changed:
 Blockers:
 Next:
 ```
+
+### 2026-10-04 — P06.1
+
+Status: `PASS`
+Baseline HEAD: `1f602bbc5d5d25cacc41920fd35ea99892fd71bf`
+Files modified: `frontend/src/components.tsx`, `frontend/src/styles.css`, `docs/ui/UI_IMPLEMENTATION_PROGRESS.md`
+Files created: `frontend/src/components.test.tsx`
+Tests: `node node_modules/vitest/vitest.mjs run src/components.test.tsx src/Polish.test.tsx src/Jobs.test.tsx src/Workflow.test.tsx src/Finance.test.tsx` — 5 files, 40 tests PASS (8 focused shared-component tests). Existing React Router future-flag warnings only.
+Build: `npm run build` — PASS using the installed `C:/Program Files/nodejs/npm.cmd`.
+Browser smoke: isolated shared-component preview PASS, no console errors; native disclosure keyboard activation and visible focus verified. App session restoration returned HTTP 500 from the Vite proxy for `/api/v1/auth/refresh-token`; the proxy logged upstream `ECONNREFUSED`. Authenticated route smoke was not performed; runtime/backend were not changed.
+Responsive: shared preview at 1440px, 1024px, 390px and 320px; no horizontal overflow, including an expanded long technical identifier.
+Accessibility: semantic h1/h2/h3 and dl/dt/dd preserved; native details/summary, error/status roles, polite announcements, disabled actions, visible Cobalt focus and reduced motion retained.
+Backend changed: NO
+Blockers: none for the P06.1 gate; unavailable local API upstream limits live authenticated smoke.
+Next: stop for P06.1 review. P06.2–P06.8 remain `NOT_STARTED`.
+Git: uncommitted; no push.
