@@ -68,7 +68,7 @@ Completed:
 
 ## P06.2 — Shell / navigation / global framing
 
-Status: `NOT_STARTED`
+Status: `PASS`
 
 Expected files:
 
@@ -88,6 +88,18 @@ Target:
 - page heading density
 - footer
 - desktop/tablet/mobile behavior
+
+Completed:
+
+- Simplified the wordmark and removed the duplicate role/workspace context strip and explanatory shell footer text.
+- Kept trusted role, full display name and logout together in the masthead; reused the P06.1 ActionGroup.
+- Unified primary active navigation with a Vermilion edge, pale Vermilion surface and stronger label; retained native NavLink aria-current.
+- Made Freelancer work subnav quieter with an Ink underline and smaller type, preserving its three labels and paths.
+- Consolidated shell gutters, content width and footer rhythm; CSS alone handles desktop and mobile stacking/wrapping.
+- Kept all five destinations per role, route definitions, session handlers and business/API behavior unchanged.
+- Made the skip-link destination programmatically focusable and retained visible Cobalt focus.
+- Targeted tests: 18/18 PASS. Production build: PASS. Isolated shell visual gate: PASS at 1440/1024/390/320px for both roles, including long display names.
+- Authenticated runtime smoke: `ENVIRONMENT BLOCKED` — local Marketplace upstream unavailable; no runtime or backend workaround.
 
 ## P06.3 — Overview + Jobs / Discovery
 
@@ -299,4 +311,23 @@ Accessibility: semantic h1/h2/h3 and dl/dt/dd preserved; native details/summary,
 Backend changed: NO
 Blockers: none for the P06.1 gate; unavailable local API upstream limits live authenticated smoke.
 Next: stop for P06.1 review. P06.2–P06.8 remain `NOT_STARTED`.
+Git: uncommitted; no push.
+
+### 2026-10-04 — P06.2
+
+Status: `PASS` (shell UI/test/build gate)
+Baseline HEAD: `1406a430a457e334662e73ce5580c728ef00adb9`
+Files modified: `frontend/src/App.tsx`, `frontend/src/styles.css`, `docs/ui/UI_IMPLEMENTATION_PROGRESS.md`
+Files created: `frontend/src/App.test.tsx`
+Tests: `npm test -- src/App.test.tsx src/components.test.tsx` — 18 tests PASS (10 shell/navigation tests, 8 shared-component regression tests).
+Build: `npm run build` — PASS.
+Browser smoke: temporary isolated preview rendered the actual App with test-only session values; no production session/data changes and no console errors. This is UI evidence, not authenticated API validation.
+Responsive: Client and Freelancer inspected at 1440px, 1024px, 390px and 320px. No horizontal overflow; primary nav and Freelancer subnav readable; normal long and unbroken long names wrap; logout remains accessible.
+Accessibility: semantic navigation landmarks, NavLink aria-current, native links/buttons, visible Cobalt focus and keyboard skip-link activation verified. Pending/recoverable/successful logout behavior covered by tests.
+Authenticated runtime smoke: `ENVIRONMENT BLOCKED` — existing localhost:8080 page cannot restore its session; direct read-only request to localhost:9191/api/v1/auth/me could not connect (HTTP 000). Backend/runtime unchanged.
+Backend changed: NO
+Business/API behavior changed: NO
+Unsupported feature introduced: NO
+Blockers: none for the P06.2 UI/test/build gate; authenticated runtime smoke requires the existing Marketplace service to be available.
+Next: stop after P06.2 review. P06.3–P06.8 remain `NOT_STARTED`.
 Git: uncommitted; no push.
