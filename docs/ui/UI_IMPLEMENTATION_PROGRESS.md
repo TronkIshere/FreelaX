@@ -103,7 +103,7 @@ Completed:
 
 ## P06.3 — Overview + Jobs / Discovery
 
-Status: `NOT_STARTED`
+Status: `PASS`
 
 Expected files:
 
@@ -121,6 +121,18 @@ Target:
 - strengthen budget/status/next-action hierarchy
 - show real deadline/revision context only where it helps
 - reduce duplicate metadata
+
+Completed:
+
+- Put Cần xử lý first, with real Client review/recruiting/awaiting-payment states and Freelancer revision/working states prioritized from the existing returned page. Awaiting payment links to status only; no funding mutation.
+- Separate attention items from the recent-work ledger; keep Freelancer application responses, empty/error/retry states and truthful page coverage visible without extra API calls.
+- Shortened page introductions and removed repeated role/source/process labels and decorative row numbering.
+- Reused P06.1 SectionHeading, FactGrid and ActionGroup; preserved P06.2 shell/navigation.
+- Simplified job rows to title/short brief, prominent budget/single status, useful delivery/revision terms, quieter ownership/application context and explicit existing-route action.
+- Show terms only when returned; contract snapshot due date/revision values take precedence when present, including zero revisions. No countdown or fabricated contract/milestone data.
+- Preserve all Discovery filters, draft/apply validation, pagination, hasApplied/applicationStatus and detail-before-apply behavior.
+- Targeted tests: 38/38 PASS. Production build: PASS. Responsive UI preview: PASS at 1440/1024/390/320px.
+- Authenticated runtime smoke: `ENVIRONMENT BLOCKED` — existing local Marketplace unavailable; backend/runtime unchanged.
 
 ## P06.4 — Job Detail / Workflow / Work Lifecycle
 
@@ -330,4 +342,23 @@ Business/API behavior changed: NO
 Unsupported feature introduced: NO
 Blockers: none for the P06.2 UI/test/build gate; authenticated runtime smoke requires the existing Marketplace service to be available.
 Next: stop after P06.2 review. P06.3–P06.8 remain `NOT_STARTED`.
+Git: uncommitted; no push.
+
+### 2026-10-04 — P06.3
+
+Status: `PASS` (Overview/Jobs UI/test/build gate)
+Baseline HEAD: `2469997d24bdce6bb6f8b3007aa585c46ff1b059` — P06.2 already committed; starting worktree clean.
+Files modified: `frontend/src/Overview.tsx`, `frontend/src/Jobs.tsx`, `frontend/src/styles.css`, `frontend/src/Jobs.test.tsx`, `docs/ui/UI_IMPLEMENTATION_PROGRESS.md`
+Files created: `frontend/src/Overview.test.tsx`
+Tests: `npm test -- src/Overview.test.tsx src/Jobs.test.tsx src/Polish.test.tsx src/App.test.tsx` — 4 files, 38 tests PASS. Existing React Router future-flag warnings in the unchanged Polish test harness only.
+Build: `npm run build` — PASS using the existing Node installation.
+Browser smoke: actual App and SessionProvider rendered in a temporary loopback-only test preview with an isolated mock API. Overview role priority, Discovery filter interaction and query values verified; no console errors. Test data is not part of production source/runtime. Temporary preview removed after validation.
+Responsive: Client Overview, Freelancer Overview, Client Jobs and Freelancer Discovery inspected at 1440px, 1024px, 390px and 320px. No horizontal overflow, including long unbroken job/client names. Descriptions clamp to two lines; budget, status and next action remain readable. Mobile filters usable.
+Accessibility: h1/h2/h3 hierarchy, labelled regions/forms, native definition lists, links/buttons, error/status announcements retained. Keyboard interaction and visible Cobalt focus verified on mobile filter controls.
+Authenticated runtime smoke: `ENVIRONMENT BLOCKED` — localhost:8080 reports that Marketplace cannot be reached; read-only localhost:9191/api/v1/auth/me request returned HTTP 000 (connection unavailable). No service restart, auth workaround or backend change.
+Backend changed: NO
+Business/API behavior changed: NO — API calls, filter/query semantics, routes, role authority, applications and Contract/Milestone logic preserved.
+Unsupported feature introduced: NO
+Blockers: none for the P06.3 UI/test/build gate; authenticated runtime smoke requires the existing Marketplace service to be available.
+Next: stop after P06.3 review. P06.4–P06.8 remain `NOT_STARTED`.
 Git: uncommitted; no push.

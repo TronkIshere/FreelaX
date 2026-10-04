@@ -2,17 +2,8 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from './api';
 import { applicationLabel, date, jobLabel, money } from './status';
-import { PageHeading, StatePanel } from './components';
+import { ActionGroup, FactGrid, PageHeading, SectionHeading, StatePanel } from './components';
 import type { DiscoverJob, DiscoveryFilters, Job, Page } from './types';
-
-const nextByStatus: Record<string, string> = {
-  OPEN: 'Đang tuyển người thực hiện',
-  IN_PROGRESS: 'Đang chờ bàn giao',
-  SUBMITTED_FOR_REVIEW: 'Bàn giao chờ duyệt',
-  REVISION_REQUESTED: 'Đang chờ bản sửa',
-  COMPLETED: 'Quy trình đã đóng',
-  CANCELLED: 'Không còn bước tiếp',
-};
 
 function statusClass(status: string) {
   if (status === 'COMPLETED' || status === 'IN_PROGRESS') return 'mint';
@@ -21,7 +12,7 @@ function statusClass(status: string) {
   return 'acid';
 }
 
-function JobRow({ job, index, kind }: { job: Job | DiscoverJob; index: number; kind: 'client' | 'discover' }) {
+function JobRow({ job, kind }: { job: Job | DiscoverJob; kind: 'client' | 'discover' }) {
   const discovered = kind === 'discover' ? job as DiscoverJob : null;
   const participant = kind === 'client' ? job as Job : null;
   const application = discovered?.applicationStatus
@@ -30,28 +21,36 @@ function JobRow({ job, index, kind }: { job: Job | DiscoverJob; index: number; k
   const ownership = discovered
     ? discovered.client?.displayName || 'Khách hàng'
     : participant?.freelancerId ? 'Đã giao người thực hiện' : 'Chưa giao người thực hiện';
+  const due = participant?.contract?.deliveryDueAt ?? job.deliveryDueAt;
+  const maxRevisions = participant?.contract?.maxRevisions ?? job.maxRevisions;
+  const revisionsUsed = participant?.contract?.revisionsUsed;
+  const terms = [
+    ...(due ? [{ label: 'Hạn bàn giao', value: date(due) }] : []),
+    ...(typeof maxRevisions === 'number' && Number.isFinite(maxRevisions)
+      ? [{ label: 'Chỉnh sửa', value: typeof revisionsUsed === 'number'
+        ? revisionsUsed + '/' + maxRevisions + ' lần' : 'Tối đa ' + maxRevisions + ' lần' }] : []),
+  ];
+  const href = '/work/' + job.id + (!discovered && job.status === 'OPEN' ? '/applications' : '');
+  const action = discovered ? (discovered.hasApplied ? 'Xem công việc' : 'Chi tiết & ứng tuyển')
+    : job.status === 'OPEN' ? 'Xem ứng tuyển'
+    : job.status === 'SUBMITTED_FOR_REVIEW' ? 'Duyệt bàn giao' : 'Xem công việc';
   return <article className="job-row" aria-labelledby={'job-' + job.id}>
-    <div className="row-index" aria-hidden="true">{String(index).padStart(2, '0')}</div>
     <div className="row-main">
       <h3 id={'job-' + job.id}><Link to={'/work/' + job.id} state={{ job }}>{job.title}</Link></h3>
       <p>{job.description}</p>
-      <span className="row-date">Đăng {date(job.createdAt)}</span>
     </div>
-    <div className="cell">
-      <span className="cell-label">Trạng thái</span>
-      <strong className={'state-mark ' + statusClass(job.status)}>{jobLabel(job.status)}</strong>
+    <div className="job-row-facts">
+      <FactGrid label="Ngân sách và trạng thái" facts={[
+        { label: 'Ngân sách', value: <span className="amount">{money(job.budgetUsd)}</span> },
+        { label: 'Trạng thái', value: <span className={'state-mark ' + statusClass(job.status)}>{jobLabel(job.status)}</span> },
+      ]} />
+      {terms.length > 0 && <dl className="job-terms">{terms.map(term => <div key={term.label}>
+        <dt>{term.label}</dt><dd>{term.value}</dd></div>)}</dl>}
     </div>
-    <div className="cell">
-      <span className="cell-label">{discovered ? 'Khách hàng' : 'Phân công'}</span>
-      <strong>{ownership}</strong>
-    </div>
-    <div className="cell">
-      <span className="cell-label">Ngân sách</span>
-      <strong className="amount">{money(job.budgetUsd)}</strong>
-    </div>
-    <div className="cell next-cell">
-      <span className="cell-label">{discovered ? 'Ứng tuyển của bạn' : 'Bước tiếp'}</span>
-      <strong>{discovered ? application : nextByStatus[job.status] || 'Theo dõi trạng thái'}</strong>
+    <div className="job-row-next">
+      <p className="metadata">{ownership}{discovered && <><br />Ứng tuyển: {application}</>}</p>
+      <ActionGroup><Link className="button button-secondary" to={href} state={{ job }}>{action} →</Link></ActionGroup>
+      <span className="metadata">Đăng {date(job.createdAt)}</span>
     </div>
   </article>;
 }
@@ -89,12 +88,7 @@ function JobResults<T extends Job | DiscoverJob>({ result, loading, error, retry
   }
   return <>
     <div className="job-table">
-      <div className="table-head" aria-hidden="true">
-        <span>#</span><span>Công việc</span><span>Trạng thái</span>
-        <span>{kind === 'client' ? 'Phân công' : 'Khách hàng'}</span><span>Ngân sách</span><span>{kind === 'client' ? 'Bước tiếp' : 'Ứng tuyển'}</span>
-      </div>
-      {result.data.map((job, index) => <JobRow key={job.id} job={job}
-        index={result.currentPage * result.pageSize + index + 1} kind={kind} />)}
+      {result.data.map(job => <JobRow key={job.id} job={job} kind={kind} />)}
     </div>
     <Pagination page={result} onPage={onPage} />
   </>;
@@ -118,16 +112,14 @@ export function ClientJobs() {
     return () => { active = false; };
   }, [page, attempt]);
 
-  return <>
-    <PageHeading eyebrow="Client / Công việc" title="Công việc bạn tham gia"
-      description="Hồ sơ công việc được lấy từ Marketplace và sắp theo thời gian tạo mới nhất."
-      aside="Công việc → trạng thái → phân công → bước tiếp" />
+  return <div className="jobs-page">
+    <PageHeading eyebrow="Công việc" title="Công việc bạn tham gia" description="Quản lý ứng tuyển và theo dõi bàn giao." />
     <section className="list-section" aria-label="Danh sách công việc">
-      <div className="section-heading"><h2>Danh sách công việc</h2><span>NGUỒN / MARKETPLACE API</span></div>
+      <SectionHeading title="Danh sách công việc" />
       <JobResults result={result} loading={loading} error={error} retry={() => setAttempt(value => value + 1)}
         kind="client" requestedPage={page} onPage={setPage} />
     </section>
-  </>;
+  </div>;
 }
 
 const defaults: DiscoveryFilters = {
@@ -167,12 +159,9 @@ export function FreelancerDiscovery() {
     setFilters({ ...draft });
   }
 
-  return <>
-    <PageHeading eyebrow="Freelancer / Công việc / Khám phá" title="Tìm công việc hợp với bạn"
-      description="Duyệt công việc đang mở từ Marketplace. Bộ lọc và tình trạng ứng tuyển phản ánh dữ liệu của tài khoản hiện tại."
-      aside="Công việc → trạng thái → khách hàng → ứng tuyển" />
+  return <div className="jobs-page">
+    <PageHeading eyebrow="Khám phá" title="Tìm công việc hợp với bạn" description="Công việc đang tuyển, theo ngân sách và điều kiện của bạn." />
     <form className="filter-panel" onSubmit={submit} aria-label="Lọc công việc">
-      <div className="filter-intro"><span className="eyebrow">Bộ lọc khám phá</span><p>Chọn điều kiện rồi nhấn Áp dụng để cập nhật danh sách.</p></div>
       <label>Từ khóa<input type="search" placeholder="Tên hoặc mô tả công việc" value={draft.keyword}
         onChange={event => setDraft(value => ({ ...value, keyword: event.target.value }))} /></label>
       <label>USD từ<input type="number" min="0" step="0.01" inputMode="decimal" value={draft.minBudgetUsd}
@@ -194,11 +183,10 @@ export function FreelancerDiscovery() {
       <button className="button" type="submit">Áp dụng</button>
       {filterError && <p className="filter-error" role="alert">{filterError}</p>}
     </form>
-    <p className="inline-notice">Mở một công việc để xem chi tiết và ứng tuyển trực tiếp trên Marketplace.</p>
     <section className="list-section" aria-label="Kết quả khám phá">
-      <div className="section-heading"><h2>Công việc đang mở</h2><span>NGUỒN / MARKETPLACE API</span></div>
+      <SectionHeading title="Công việc đang mở" />
       <JobResults result={result} loading={loading} error={error} retry={() => setAttempt(value => value + 1)}
         kind="discover" requestedPage={page} onPage={setPage} />
     </section>
-  </>;
+  </div>;
 }
