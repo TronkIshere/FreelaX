@@ -2,10 +2,14 @@ package com.marketplace.backend.entity;
 
 public enum NotificationType {
     JOB_ASSIGNED,
+    FUNDING_CONFIRMED,
     JOB_CANCELLED,
     WORK_SUBMITTED,
     REVISION_REQUESTED,
     WORK_APPROVED,
+    REVIEW_GRACE_STARTED,
+    REVIEW_AUTO_APPROVED,
+    DISPUTE_OPENED,
     PAYMENT_SENT,
     PAYMENT_RECEIVED,
     TAX_EXPORT_FAILED,

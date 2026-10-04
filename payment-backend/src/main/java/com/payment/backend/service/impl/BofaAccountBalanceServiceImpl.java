@@ -61,7 +61,7 @@ public class BofaAccountBalanceServiceImpl implements BofaAccountBalanceService 
     }
 
     private BofaAccountBalance getOrCreate(String bankAccountNumber) {
-        return bofaAccountBalanceRepository.findByBankAccountNumber(bankAccountNumber)
+        return bofaAccountBalanceRepository.findWithLockByBankAccountNumber(bankAccountNumber)
                 .orElseGet(() -> {
                     BofaAccountBalance b = new BofaAccountBalance();
                     b.setBankAccountNumber(bankAccountNumber);

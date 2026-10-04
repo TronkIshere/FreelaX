@@ -320,6 +320,7 @@ public class JobServiceImpl implements JobService {
     @Transactional
     public JobResponse approve(UUID clientUserId, UUID jobId) {
         Job job = getOwnedByClientOrThrow(clientUserId, jobId);
+        rejectLegacyContractWorkflow(jobId);
 
         if (job.getStatus() != JobStatus.SUBMITTED_FOR_REVIEW || job.getCheckoutOrderId() == null) {
             throw new ApplicationException(ErrorCode.INVALID_JOB_STATUS);
@@ -369,6 +370,7 @@ public class JobServiceImpl implements JobService {
         if (job.getFreelancerId() == null || !job.getFreelancerId().equals(freelancerId)) {
             throw new ApplicationException(ErrorCode.JOB_NOT_FOUND, jobId);
         }
+        rejectLegacyContractWorkflow(jobId);
         if (job.getStatus() != JobStatus.IN_PROGRESS && job.getStatus() != JobStatus.REVISION_REQUESTED) {
             throw new ApplicationException(ErrorCode.INVALID_JOB_STATUS);
         }
@@ -400,6 +402,7 @@ public class JobServiceImpl implements JobService {
     @Transactional
     public JobSubmissionResponse requestRevision(UUID clientUserId, UUID jobId, RequestRevisionRequest request) {
         Job job = getOwnedByClientOrThrow(clientUserId, jobId);
+        rejectLegacyContractWorkflow(jobId);
         if (job.getStatus() != JobStatus.SUBMITTED_FOR_REVIEW) {
             throw new ApplicationException(ErrorCode.INVALID_JOB_STATUS);
         }
@@ -724,6 +727,12 @@ public class JobServiceImpl implements JobService {
     private JobSubmission latestSubmission(UUID jobId) {
         return jobSubmissionRepository.findFirstByJobIdOrderByVersionDesc(jobId)
                 .orElseThrow(() -> new ApplicationException(ErrorCode.JOB_SUBMISSION_NOT_FOUND, jobId));
+    }
+
+    private void rejectLegacyContractWorkflow(UUID jobId) {
+        if (workContractRepository.findByJobId(jobId).isPresent()) {
+            throw new ApplicationException(ErrorCode.CONTRACT_API_REQUIRED);
+        }
     }
 
     private JobSubmissionResponse toSubmissionResponse(JobSubmission submission) {

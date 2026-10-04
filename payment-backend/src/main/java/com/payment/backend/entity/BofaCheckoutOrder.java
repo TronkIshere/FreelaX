@@ -39,6 +39,9 @@ public class BofaCheckoutOrder {
     @Column(nullable = false, unique = true)
     String bofaOrderId;
 
+    @Column(unique = true, length = 100)
+    String idempotencyKey;
+
     String bofaCaptureId;
 
     @Column(nullable = false, length = 20)

@@ -270,7 +270,7 @@ Scheduler lấy submission quá `reviewDueAt` bằng DB lock/claim để tránh 
 - Milestone trên 500 USD: mở grace period 24 giờ, gửi cảnh báo; hết grace period thì auto-approve.
 - Nếu release lỗi, contract ở `RELEASE_PENDING`, không quay lại review và không tạo release thứ hai.
 
-**Cần chốt:** ngưỡng 500 USD và việc có dùng grace period hay auto-release mọi giá trị sau 72 giờ.
+**Đã chốt:** milestone `<= 500 USD` tự duyệt khi hết `reviewDueAt` (review window mặc định 72 giờ); milestone `> 500 USD` có thêm 24 giờ grace period tính từ `reviewDueAt`, sau đó mới tự duyệt nếu Client chưa quyết định và không có dispute. Tự duyệt chỉ tạo trạng thái `RELEASE_PENDING`; giải ngân thuộc worker riêng.
 
 ## 8. Cancel và dispute
 
@@ -399,4 +399,3 @@ Profile có thể làm UI sớm, nhưng funding/state machine nên được ch�
 5. Deliverable dùng URL ngoài hay cần upload file trong hệ thống?
 6. Admin dùng tài khoản seed/role trong Marketplace hay làm một service/backoffice riêng?
 7. Profile verification nào là thật, manual hoặc mô phỏng trong bản demo?
-

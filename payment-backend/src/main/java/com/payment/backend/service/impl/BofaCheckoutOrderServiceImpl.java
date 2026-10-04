@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -29,11 +30,26 @@ public class BofaCheckoutOrderServiceImpl implements BofaCheckoutOrderService {
     @Override
     @Transactional
     public BofaCheckoutOrderResponse create(CreateCheckoutOrderRequest request) {
+        if (request.getIdempotencyKey() != null) {
+            BofaCheckoutOrder existing = bofaCheckoutOrderRepository.findByIdempotencyKey(request.getIdempotencyKey()).orElse(null);
+            if (existing != null) {
+                if (!existing.getPayerUserId().equals(request.getPayerUserId())
+                        || !existing.getJobId().equals(request.getJobId())
+                        || existing.getAmountUsd().compareTo(request.getAmountUsd()) != 0
+                        || !Objects.equals(existing.getPayerBankCode(), request.getPayerBankCode())
+                        || !Objects.equals(existing.getPayerBankAccountNumber(), request.getPayerBankAccountNumber())
+                        || !Objects.equals(existing.getPayerBankAccountHolderName(), request.getPayerBankAccountHolderName())) {
+                    throw new ApplicationException(ErrorCode.DATA_ALREADY_EXISTS, request.getIdempotencyKey());
+                }
+                return toResponse(existing);
+            }
+        }
         BofaCheckoutOrder entity = new BofaCheckoutOrder();
         entity.setPayerUserId(request.getPayerUserId());
         entity.setJobId(request.getJobId());
         entity.setAmountUsd(request.getAmountUsd());
         entity.setBofaOrderId(UUID.randomUUID().toString());
+        entity.setIdempotencyKey(request.getIdempotencyKey());
         entity.setPayerBankCode(request.getPayerBankCode());
         entity.setPayerBankAccountNumber(request.getPayerBankAccountNumber());
         entity.setPayerBankAccountHolderName(request.getPayerBankAccountHolderName());
@@ -48,8 +64,12 @@ public class BofaCheckoutOrderServiceImpl implements BofaCheckoutOrderService {
     @Override
     @Transactional
     public BofaCheckoutOrderResponse capture(UUID orderId) {
-        BofaCheckoutOrder entity = getOrThrow(orderId);
+        BofaCheckoutOrder entity = bofaCheckoutOrderRepository.findWithLockById(orderId)
+                .orElseThrow(() -> new ApplicationException(ErrorCode.CHECKOUT_ORDER_NOT_FOUND, orderId));
 
+        if (entity.getStatus() == BofaCheckoutOrderStatus.CAPTURED) {
+            return toResponse(entity);
+        }
         if (entity.getStatus() != BofaCheckoutOrderStatus.CREATED) {
             throw new ApplicationException(ErrorCode.INVALID_CHECKOUT_ORDER_STATUS, entity.getStatus());
         }
@@ -67,6 +87,13 @@ public class BofaCheckoutOrderServiceImpl implements BofaCheckoutOrderService {
     @Override
     public BofaCheckoutOrderResponse getById(UUID orderId) {
         return toResponse(getOrThrow(orderId));
+    }
+
+    @Override
+    public BofaCheckoutOrderResponse getByIdempotencyKey(String key) {
+        return bofaCheckoutOrderRepository.findByIdempotencyKey(key)
+                .map(this::toResponse)
+                .orElseThrow(() -> new ApplicationException(ErrorCode.CHECKOUT_ORDER_NOT_FOUND, key));
     }
 
     private BofaCheckoutOrder getOrThrow(UUID orderId) {

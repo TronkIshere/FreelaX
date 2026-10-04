@@ -51,6 +51,7 @@ class JobWorkflowServiceImplTest {
     private JobSubmissionRepository submissionRepository;
     private PaymentBackendClient paymentBackendClient;
     private PayoutService payoutService;
+    private WorkContractRepository contractRepository;
     private JobServiceImpl service;
 
     @BeforeEach
@@ -64,7 +65,7 @@ class JobWorkflowServiceImplTest {
         NotificationService notificationService = mock(NotificationService.class);
         payoutService = mock(PayoutService.class);
         FreelancerPayoutRecordRepository payoutRecordRepository = mock(FreelancerPayoutRecordRepository.class);
-        WorkContractRepository contractRepository = mock(WorkContractRepository.class);
+        contractRepository = mock(WorkContractRepository.class);
         MilestoneRepository milestoneRepository = mock(MilestoneRepository.class);
         AcceptanceCriterionRepository criterionRepository = mock(AcceptanceCriterionRepository.class);
         DeliverableRequirementRepository deliverableRepository = mock(DeliverableRequirementRepository.class);
@@ -99,6 +100,37 @@ class JobWorkflowServiceImplTest {
         assertThat(response.getDeliverableUrl()).isEqualTo("https://example.test/delivery");
         assertThat(response.getStatus()).isEqualTo("SUBMITTED");
         verify(jobRepository).save(job);
+    }
+
+    @Test
+    void assignedFreelancerCannotSubmitBeforeFunding() {
+        Job job = job(JobStatus.AWAITING_PAYMENT);
+        stubUsers(job);
+        when(jobRepository.findById(job.getId())).thenReturn(Optional.of(job));
+        SubmitWorkRequest request = new SubmitWorkRequest();
+        request.setSummary("Work sent too early");
+
+        assertThatThrownBy(() -> service.submitWork(job.getFreelancerId(), job.getId(), request))
+                .isInstanceOf(ApplicationException.class)
+                .extracting(exception -> ((ApplicationException) exception).getErrorCode())
+                .isEqualTo(ErrorCode.INVALID_JOB_STATUS);
+        verify(submissionRepository, never()).save(any(JobSubmission.class));
+    }
+
+    @Test
+    void legacySubmitCannotBypassContractEvidenceWorkflow() {
+        Job job = job(JobStatus.IN_PROGRESS);
+        stubUsers(job);
+        when(jobRepository.findById(job.getId())).thenReturn(Optional.of(job));
+        when(contractRepository.findByJobId(job.getId())).thenReturn(Optional.of(new com.marketplace.backend.entity.WorkContract()));
+        SubmitWorkRequest request = new SubmitWorkRequest();
+        request.setSummary("Summary without structured evidence");
+
+        assertThatThrownBy(() -> service.submitWork(job.getFreelancerId(), job.getId(), request))
+                .isInstanceOf(ApplicationException.class)
+                .extracting(ex -> ((ApplicationException) ex).getErrorCode())
+                .isEqualTo(ErrorCode.CONTRACT_API_REQUIRED);
+        verify(submissionRepository, never()).save(any(JobSubmission.class));
     }
 
     @Test

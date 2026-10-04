@@ -16,7 +16,9 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.math.BigDecimal;
 import java.util.Map;
@@ -65,6 +67,43 @@ public class PaymentBackendClient {
                 null,
                 new ParameterizedTypeReference<ResponseAPI<CheckoutOrderResult>>() {}
         );
+    }
+
+    public CheckoutOrderResult findFundingOrder(String providerKey) {
+        String path = UriComponentsBuilder.fromPath("/internal/BofA/checkout/orders/by-idempotency-key")
+                .queryParam("key", providerKey).build().encode().toUriString();
+        try {
+            return fundingExchange(path, HttpMethod.GET, null);
+        } catch (HttpClientErrorException.NotFound ex) {
+            return null;
+        }
+    }
+
+    public CheckoutOrderResult createFundingOrder(UUID payerUserId, UUID jobId, BigDecimal amountUsd,
+                                                  String bankCode, String accountNumber, String holderName,
+                                                  String providerKey) {
+        return fundingExchange("/internal/BofA/checkout/orders", HttpMethod.POST, Map.of(
+                "payerUserId", payerUserId, "jobId", jobId, "amountUsd", amountUsd,
+                "payerBankCode", bankCode, "payerBankAccountNumber", accountNumber,
+                "payerBankAccountHolderName", holderName, "idempotencyKey", providerKey));
+    }
+
+    public CheckoutOrderResult captureFundingOrder(UUID orderId) {
+        return fundingExchange("/internal/BofA/checkout/orders/" + orderId + "/capture", HttpMethod.POST, null);
+    }
+
+    public CheckoutOrderResult getFundingOrder(UUID orderId) {
+        return fundingExchange("/internal/BofA/checkout/orders/" + orderId, HttpMethod.GET, null);
+    }
+
+    private CheckoutOrderResult fundingExchange(String path, HttpMethod method, Object body) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("X-Internal-Api-Key", properties.getInternalApiKey());
+        ResponseEntity<ResponseAPI<CheckoutOrderResult>> response = restTemplate.exchange(
+                properties.getBaseUrl() + path, method, new HttpEntity<>(body, headers),
+                new ParameterizedTypeReference<ResponseAPI<CheckoutOrderResult>>() {});
+        return response.getBody() != null ? response.getBody().getData() : null;
     }
 
     private <T> T exchange(String path, HttpMethod method, Object body,
