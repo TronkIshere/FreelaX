@@ -143,21 +143,21 @@ describe('P05.2 mutation contracts', () => {
     expect(fetchMock.mock.calls[2][0]).toBe('/api/v1/marketplace/jobs/applications/me?page=1&size=5&status=ACCEPTED');
   });
 
-  it('reads applicants and PATCHes only the selected real freelancerId', async () => {
+  it('reads applicants and creates an assignment for the selected real freelancerId', async () => {
     const application = { id: 'app-1', jobId: 'job-one', freelancerId: 'freelancer-1',
       status: 'PENDING', createdAt: '2026-09-29T11:00:00' };
     const fetchMock = vi.fn().mockResolvedValueOnce(response({ status: 'SUCCESS', accessToken: 'token' }))
       .mockResolvedValueOnce(response(user)).mockResolvedValueOnce(response([application]))
-      .mockResolvedValueOnce(response({ ...page.data[0], status: 'IN_PROGRESS', freelancerId: 'freelancer-1' }));
+      .mockResolvedValueOnce(response({ ...page.data[0], status: 'AWAITING_PAYMENT', freelancerId: 'freelancer-1' }));
     vi.stubGlobal('fetch', fetchMock);
     const api = new MarketplaceApi();
     await api.signIn('client@example.test', 'pass');
     const applicants = await api.applicants('job-one');
     expect(applicants[0].freelancerId).toBe('freelancer-1');
-    expect((await api.assign('job-one', applicants[0].freelancerId)).status).toBe('IN_PROGRESS');
+    expect((await api.assign('job-one', applicants[0].freelancerId)).status).toBe('AWAITING_PAYMENT');
     expect(fetchMock.mock.calls[2][0]).toBe('/api/v1/marketplace/jobs/job-one/applications');
-    expect(fetchMock.mock.calls[3][0]).toBe('/api/v1/marketplace/jobs/job-one/assign-freelancer');
-    expect((fetchMock.mock.calls[3][1] as RequestInit).method).toBe('PATCH');
+    expect(fetchMock.mock.calls[3][0]).toBe('/api/v1/marketplace/jobs/job-one/assignments');
+    expect((fetchMock.mock.calls[3][1] as RequestInit).method).toBe('POST');
     expect(JSON.parse((fetchMock.mock.calls[3][1] as RequestInit).body as string)).toEqual({ freelancerId: 'freelancer-1' });
   });
 

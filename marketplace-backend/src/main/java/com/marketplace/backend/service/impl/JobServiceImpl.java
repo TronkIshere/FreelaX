@@ -9,6 +9,7 @@ import com.marketplace.backend.dto.request.job.SubmitWorkRequest;
 import com.marketplace.backend.dto.request.job.UpdateJobRequest;
 import com.marketplace.backend.dto.response.common.PageResponse;
 import com.marketplace.backend.dto.response.job.CertificateSummaryResponse;
+import com.marketplace.backend.dto.response.job.ContractSummaryResponse;
 import com.marketplace.backend.dto.response.job.DiscoverJobResponse;
 import com.marketplace.backend.dto.response.job.JobApplicationResponse;
 import com.marketplace.backend.dto.response.job.JobClientSummaryResponse;
@@ -17,6 +18,7 @@ import com.marketplace.backend.dto.response.job.JobResponse;
 import com.marketplace.backend.dto.response.job.JobSubmissionResponse;
 import com.marketplace.backend.dto.response.job.MyApplicationJobResponse;
 import com.marketplace.backend.dto.response.job.MyApplicationResponse;
+import com.marketplace.backend.dto.response.job.RequirementResponse;
 import com.marketplace.backend.dto.response.bofa.CheckoutOrderResult;
 import com.marketplace.backend.entity.*;
 import com.marketplace.backend.exception.ApplicationException;
@@ -25,6 +27,10 @@ import com.marketplace.backend.repository.FreelancerPayoutRecordRepository;
 import com.marketplace.backend.repository.JobApplicationRepository;
 import com.marketplace.backend.repository.JobRepository;
 import com.marketplace.backend.repository.JobSubmissionRepository;
+import com.marketplace.backend.repository.AcceptanceCriterionRepository;
+import com.marketplace.backend.repository.DeliverableRequirementRepository;
+import com.marketplace.backend.repository.MilestoneRepository;
+import com.marketplace.backend.repository.WorkContractRepository;
 import com.marketplace.backend.repository.UserRepository;
 import com.marketplace.backend.service.JobService;
 import com.marketplace.backend.service.NotificationService;
@@ -42,6 +48,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.time.Duration;
+import java.time.Instant;
 import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.Locale;
@@ -69,39 +77,31 @@ public class JobServiceImpl implements JobService {
 
     PayoutService payoutService;
     FreelancerPayoutRecordRepository freelancerPayoutRecordRepository;
+    WorkContractRepository workContractRepository;
+    MilestoneRepository milestoneRepository;
+    AcceptanceCriterionRepository acceptanceCriterionRepository;
+    DeliverableRequirementRepository deliverableRequirementRepository;
 
     @Override
     @Transactional
     public JobResponse create(UUID clientUserId, CreateJobRequest request) {
         requireUserType(clientUserId, UserType.CLIENT);
+        if (request.getDeliveryDueAt() != null
+                && request.getDeliveryDueAt().isBefore(Instant.now().plus(Duration.ofHours(24)))) {
+            throw new ApplicationException(ErrorCode.JOB_DEADLINE_TOO_SOON);
+        }
         Job job = new Job();
         job.setClientUserId(clientUserId);
         job.setTitle(request.getTitle());
         job.setDescription(request.getDescription());
         job.setBudgetUsd(request.getBudgetUsd());
         job.setStatus(JobStatus.OPEN);
-
-        if (request.getFreelancerId() != null) {
-            job.setFreelancerId(validateAndGetFreelancer(request.getFreelancerId()).getId());
-        }
-
+        job.setDeliveryDueAt(request.getDeliveryDueAt());
+        job.setReviewWindowHours(request.getReviewWindowHours());
+        job.setMaxRevisions(request.getMaxRevisions());
         jobRepository.save(job);
 
-        CheckoutOrderResult checkoutOrder = paymentBackendClient.createCheckoutOrder(
-                clientUserId,
-                job.getId(),
-                request.getBudgetUsd(),
-                request.getPayerBankCode(),
-                request.getPayerBankAccountNumber(),
-                request.getPayerBankAccountHolderName()
-        );
-        job.setCheckoutOrderId(checkoutOrder.getId());
-
-        if (job.getFreelancerId() != null) {
-            job.setStatus(JobStatus.IN_PROGRESS);
-        }
-
-        jobRepository.save(job);
+        saveJobRequirements(job.getId(), request);
 
         return toResponse(job);
     }
@@ -146,6 +146,9 @@ public class JobServiceImpl implements JobService {
         if (job.getStatus() != JobStatus.OPEN) {
             throw new ApplicationException(ErrorCode.INVALID_JOB_STATUS);
         }
+        if (safeDeliverables(jobId).isEmpty() || safeCriteria(jobId).isEmpty()) {
+            throw new ApplicationException(ErrorCode.JOB_REQUIREMENTS_MISSING);
+        }
 
         User freelancer = validateAndGetFreelancer(request.getFreelancerId());
 
@@ -163,8 +166,30 @@ public class JobServiceImpl implements JobService {
         }
 
         job.setFreelancerId(freelancer.getId());
-        job.setStatus(JobStatus.IN_PROGRESS);
+        job.setStatus(JobStatus.AWAITING_PAYMENT);
         jobRepository.save(job);
+
+        WorkContract contract = new WorkContract();
+        contract.setJobId(job.getId());
+        contract.setClientUserId(job.getClientUserId());
+        contract.setFreelancerId(freelancer.getId());
+        contract.setTitleSnapshot(job.getTitle());
+        contract.setDescriptionSnapshot(job.getDescription());
+        contract.setBudgetUsd(job.getBudgetUsd());
+        contract.setDeliveryDueAt(job.getDeliveryDueAt());
+        contract.setReviewWindowHours(job.getReviewWindowHours());
+        contract.setMaxRevisions(job.getMaxRevisions());
+        contract.setRevisionsUsed(0);
+        contract.setStatus(ContractStatus.PENDING_FUNDING);
+        workContractRepository.save(contract);
+
+        Milestone milestone = new Milestone();
+        milestone.setContractId(contract.getId());
+        milestone.setAmount(job.getBudgetUsd());
+        milestone.setCurrency("USD");
+        milestone.setStatus(MilestoneStatus.PENDING_FUNDING);
+        milestoneRepository.save(milestone);
+        snapshotRequirements(job.getId(), contract.getId());
 
         notificationService.notify(
                 freelancer.getId(),
@@ -611,6 +636,11 @@ public class JobServiceImpl implements JobService {
                 .hasApplied(application != null)
                 .applicationId(application != null ? application.getId() : null)
                 .applicationStatus(application != null ? application.getStatus().name() : null)
+                .deliveryDueAt(job.getDeliveryDueAt())
+                .reviewWindowHours(job.getReviewWindowHours())
+                .maxRevisions(job.getMaxRevisions())
+                .deliverables(deliverablesForJob(job.getId()))
+                .acceptanceCriteria(criteriaForJob(job.getId()))
                 .createdAt(job.getCreatedAt())
                 .build();
     }
@@ -713,6 +743,8 @@ public class JobServiceImpl implements JobService {
     }
 
     private JobResponse toResponse(Job job) {
+        List<RequirementResponse> deliverables = deliverablesForJob(job.getId());
+        List<RequirementResponse> acceptanceCriteria = criteriaForJob(job.getId());
         return JobResponse.builder()
                 .id(job.getId())
                 .title(job.getTitle())
@@ -723,8 +755,109 @@ public class JobServiceImpl implements JobService {
                 .status(job.getStatus().name())
                 .checkoutOrderId(job.getCheckoutOrderId())
                 .taxExportStatus(job.getTaxExportStatus() != null ? job.getTaxExportStatus().name() : null)
+                .deliveryDueAt(job.getDeliveryDueAt())
+                .reviewWindowHours(job.getReviewWindowHours())
+                .maxRevisions(job.getMaxRevisions())
+                .deliverables(deliverables)
+                .acceptanceCriteria(acceptanceCriteria)
+                .contract(contractSummary(job.getId()))
                 .createdAt(job.getCreatedAt())
                 .updatedAt(job.getUpdatedAt())
+                .build();
+    }
+
+    private void saveJobRequirements(UUID jobId, CreateJobRequest request) {
+        if (request.getDeliverables() != null) {
+            for (int index = 0; index < request.getDeliverables().size(); index++) {
+                var input = request.getDeliverables().get(index);
+                DeliverableRequirement item = new DeliverableRequirement();
+                item.setJobId(jobId);
+                item.setOrder(index);
+                item.setTitle(input.getTitle().trim());
+                item.setDescription(input.getDescription().trim());
+                item.setRequired(input.isRequired());
+                deliverableRequirementRepository.save(item);
+            }
+        }
+        if (request.getAcceptanceCriteria() != null) {
+            for (int index = 0; index < request.getAcceptanceCriteria().size(); index++) {
+                var input = request.getAcceptanceCriteria().get(index);
+                AcceptanceCriterion item = new AcceptanceCriterion();
+                item.setJobId(jobId);
+                item.setOrder(index);
+                item.setDescription(input.getDescription().trim());
+                item.setRequired(input.isRequired());
+                acceptanceCriterionRepository.save(item);
+            }
+        }
+    }
+
+    private void snapshotRequirements(UUID jobId, UUID contractId) {
+        safeDeliverables(jobId).forEach(source -> {
+            DeliverableRequirement snapshot = new DeliverableRequirement();
+            snapshot.setContractId(contractId);
+            snapshot.setOrder(source.getOrder());
+            snapshot.setTitle(source.getTitle());
+            snapshot.setDescription(source.getDescription());
+            snapshot.setRequired(source.isRequired());
+            deliverableRequirementRepository.save(snapshot);
+        });
+        safeCriteria(jobId).forEach(source -> {
+            AcceptanceCriterion snapshot = new AcceptanceCriterion();
+            snapshot.setContractId(contractId);
+            snapshot.setOrder(source.getOrder());
+            snapshot.setDescription(source.getDescription());
+            snapshot.setRequired(source.isRequired());
+            acceptanceCriterionRepository.save(snapshot);
+        });
+    }
+
+    private List<DeliverableRequirement> safeDeliverables(UUID jobId) {
+        List<DeliverableRequirement> items = deliverableRequirementRepository.findByJobIdOrderByOrderAsc(jobId);
+        return items != null ? items : List.of();
+    }
+
+    private List<AcceptanceCriterion> safeCriteria(UUID jobId) {
+        List<AcceptanceCriterion> items = acceptanceCriterionRepository.findByJobIdOrderByOrderAsc(jobId);
+        return items != null ? items : List.of();
+    }
+
+    private List<RequirementResponse> deliverablesForJob(UUID jobId) {
+        return safeDeliverables(jobId).stream().map(item -> RequirementResponse.builder()
+                .id(item.getId()).title(item.getTitle()).description(item.getDescription())
+                .required(item.isRequired()).order(item.getOrder()).build()).toList();
+    }
+
+    private List<RequirementResponse> criteriaForJob(UUID jobId) {
+        return safeCriteria(jobId).stream().map(item -> RequirementResponse.builder()
+                .id(item.getId()).description(item.getDescription())
+                .required(item.isRequired()).order(item.getOrder()).build()).toList();
+    }
+
+    private ContractSummaryResponse contractSummary(UUID jobId) {
+        WorkContract contract = workContractRepository.findByJobId(jobId).orElse(null);
+        if (contract == null) return null;
+        Milestone milestone = milestoneRepository.findByContractId(contract.getId()).orElse(null);
+        List<DeliverableRequirement> deliverables = deliverableRequirementRepository
+                .findByContractIdOrderByOrderAsc(contract.getId());
+        List<AcceptanceCriterion> criteria = acceptanceCriterionRepository
+                .findByContractIdOrderByOrderAsc(contract.getId());
+        return ContractSummaryResponse.builder()
+                .id(contract.getId()).status(contract.getStatus().name())
+                .milestoneId(milestone != null ? milestone.getId() : null)
+                .milestoneStatus(milestone != null ? milestone.getStatus().name() : null)
+                .amount(milestone != null ? milestone.getAmount() : contract.getBudgetUsd())
+                .currency(milestone != null ? milestone.getCurrency() : "USD")
+                .deliveryDueAt(contract.getDeliveryDueAt())
+                .reviewWindowHours(contract.getReviewWindowHours())
+                .maxRevisions(contract.getMaxRevisions())
+                .revisionsUsed(contract.getRevisionsUsed())
+                .deliverables(deliverables == null ? List.of() : deliverables.stream().map(item -> RequirementResponse.builder()
+                        .id(item.getId()).title(item.getTitle()).description(item.getDescription())
+                        .required(item.isRequired()).order(item.getOrder()).build()).toList())
+                .acceptanceCriteria(criteria == null ? List.of() : criteria.stream().map(item -> RequirementResponse.builder()
+                        .id(item.getId()).description(item.getDescription())
+                        .required(item.isRequired()).order(item.getOrder()).build()).toList())
                 .build();
     }
 }

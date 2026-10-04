@@ -146,21 +146,20 @@ describe('P05.2 job detail and workflow', () => {
     expect(host.textContent).not.toMatch(/rating|avatar|kỹ năng/i);
     expect(button('Chọn Freelancer')).toBeTruthy();
     await click('Chọn Freelancer');
-    expect(host.textContent).toContain('Việc thực hiện bắt đầu');
-    expect(host.textContent).toContain('ứng tuyển đang chờ khác');
+    expect(host.textContent).toContain('chỉ bắt đầu sau khi milestone được funding');
   });
 
-  it('assigns the real applicant once and renders server-refreshed IN_PROGRESS/ACCEPTED', async () => {
+  it('assigns the real applicant once and renders server-refreshed AWAITING_PAYMENT/ACCEPTED', async () => {
     vi.spyOn(api, 'job').mockResolvedValueOnce(job)
-      .mockResolvedValueOnce({ ...job, status: 'IN_PROGRESS', freelancerId: freelancer.id });
+      .mockResolvedValueOnce({ ...job, status: 'AWAITING_PAYMENT', freelancerId: freelancer.id });
     vi.spyOn(api, 'applicants').mockResolvedValueOnce([pending])
       .mockResolvedValueOnce([{ ...pending, status: 'ACCEPTED' }]);
-    const assign = vi.spyOn(api, 'assign').mockResolvedValue({ ...job, status: 'IN_PROGRESS', freelancerId: freelancer.id });
+    const assign = vi.spyOn(api, 'assign').mockResolvedValue({ ...job, status: 'AWAITING_PAYMENT', freelancerId: freelancer.id });
     await render(<ClientApplicants user={client} />, '/work/job-1/applications');
     await click('Chọn Freelancer');
     await click('Xác nhận chọn');
     expect(assign).toHaveBeenCalledExactlyOnceWith(job.id, freelancer.id);
-    expect(host.textContent).toContain('Đang thực hiện');
+    expect(host.textContent).toContain('Chờ funding');
     expect(host.textContent).toContain('Đã được chọn');
     expect(button('Chọn Freelancer')).toBeUndefined();
   });

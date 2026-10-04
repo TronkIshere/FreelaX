@@ -121,6 +121,14 @@ export function JobDetail({ user }: { user: User }) {
       <span className="category-label">01 / Công việc</span>
       <h2 id="work-document-title">Nội dung công việc</h2>
       <p className="work-description">{job.description}</p>
+      {job.deliverables && job.deliverables.length > 0 && <>
+        <h3>Sản phẩm bàn giao</h3>
+        <ol>{job.deliverables.map(item => <li key={item.id}><strong>{item.title}</strong>: {item.description}</li>)}</ol>
+      </>}
+      {job.acceptanceCriteria && job.acceptanceCriteria.length > 0 && <>
+        <h3>Điều kiện nghiệm thu</h3>
+        <ol>{job.acceptanceCriteria.map(item => <li key={item.id}>{item.description}</li>)}</ol>
+      </>}
     </section>
     <div className="detail-facts">
       <section className="fact-band"><span className="eyebrow">02 / Trạng thái</span>
@@ -148,7 +156,9 @@ export function JobDetail({ user }: { user: User }) {
         {applied && <Link className="text-link" to="/work/applications">Xem ứng tuyển của tôi →</Link>}
       </>}
       {owner && <><h2>{job.status === 'OPEN' ? 'Xem người ứng tuyển' : 'Theo dõi công việc'}</h2>
-        <p>{job.status === 'OPEN' ? 'Chỉ ứng viên đang chờ mới có thể được chọn.' : 'Phân công đã đóng khi công việc rời trạng thái đang tuyển.'}</p>
+        <p>{job.status === 'OPEN' ? 'Chỉ ứng viên đang chờ mới có thể được chọn.'
+          : job.status === 'AWAITING_PAYMENT' ? 'Hợp đồng đã được chốt và đang chờ funding trước khi Freelancer bắt đầu.'
+          : 'Phân công đã đóng khi công việc rời trạng thái đang tuyển.'}</p>
         {job.status === 'OPEN' && <Link className="button" to={'/work/' + jobId + '/applications'}>Xem ứng viên</Link>}</>}
       {participant && !owner && user.userType === 'FREELANCER' && <><h2>Công việc của bạn</h2><p>Trạng thái và phân công được lấy từ hồ sơ tham gia.</p></>}
       {mutationError && <p className="form-error" role="alert">{mutationError} <button className="text-button" onClick={() => reload().then(data => { setJob(data); setApplyBlocked(false); setMutationError(''); }, cause => setMutationError(message(cause)))}>Tải lại</button></p>}
@@ -278,7 +288,7 @@ export function ClientApplicants({ user }: { user: User }) {
             {selected === application.id && job?.status === 'OPEN' && <div className="confirm-band" role="group"
               aria-label="Xác nhận chọn Freelancer">
               <strong>Giao công việc cho Freelancer này?</strong>
-              <p>Việc thực hiện bắt đầu sau khi phân công. Các ứng tuyển đang chờ khác có thể không còn được chọn theo quyết định của máy chủ.</p>
+              <p>Hợp đồng sẽ được chốt sau khi phân công. Freelancer chỉ bắt đầu sau khi milestone được funding.</p>
               <button className="button" type="button" disabled={busy} onClick={() => assign(application.freelancerId)}>
                 {busy ? 'Đang phân công…' : 'Xác nhận chọn'}</button>
               <button className="button button-secondary" type="button" disabled={busy} onClick={() => setSelected(null)}>Quay lại</button>

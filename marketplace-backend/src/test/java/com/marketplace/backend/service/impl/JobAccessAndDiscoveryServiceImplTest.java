@@ -3,6 +3,7 @@ package com.marketplace.backend.service.impl;
 import com.marketplace.backend.client.MisaBackendClient;
 import com.marketplace.backend.client.PaymentBackendClient;
 import com.marketplace.backend.dto.request.job.CreateJobRequest;
+import com.marketplace.backend.dto.request.job.AssignFreelancerRequest;
 import com.marketplace.backend.dto.response.common.PageResponse;
 import com.marketplace.backend.dto.response.job.DiscoverJobResponse;
 import com.marketplace.backend.dto.response.job.MyApplicationResponse;
@@ -12,6 +13,12 @@ import com.marketplace.backend.entity.JobApplicationStatus;
 import com.marketplace.backend.entity.JobStatus;
 import com.marketplace.backend.entity.User;
 import com.marketplace.backend.entity.UserType;
+import com.marketplace.backend.entity.ContractStatus;
+import com.marketplace.backend.entity.MilestoneStatus;
+import com.marketplace.backend.entity.WorkContract;
+import com.marketplace.backend.entity.Milestone;
+import com.marketplace.backend.entity.AcceptanceCriterion;
+import com.marketplace.backend.entity.DeliverableRequirement;
 import com.marketplace.backend.exception.ApplicationException;
 import com.marketplace.backend.exception.ErrorCode;
 import com.marketplace.backend.repository.FreelancerPayoutRecordRepository;
@@ -19,6 +26,10 @@ import com.marketplace.backend.repository.JobApplicationRepository;
 import com.marketplace.backend.repository.JobRepository;
 import com.marketplace.backend.repository.JobSubmissionRepository;
 import com.marketplace.backend.repository.UserRepository;
+import com.marketplace.backend.repository.AcceptanceCriterionRepository;
+import com.marketplace.backend.repository.DeliverableRequirementRepository;
+import com.marketplace.backend.repository.MilestoneRepository;
+import com.marketplace.backend.repository.WorkContractRepository;
 import com.marketplace.backend.service.NotificationService;
 import com.marketplace.backend.service.PayoutService;
 import org.junit.jupiter.api.BeforeEach;
@@ -50,6 +61,10 @@ class JobAccessAndDiscoveryServiceImplTest {
     private JobApplicationRepository applicationRepository;
     private PaymentBackendClient paymentBackendClient;
     private NotificationService notificationService;
+    private WorkContractRepository contractRepository;
+    private MilestoneRepository milestoneRepository;
+    private AcceptanceCriterionRepository criterionRepository;
+    private DeliverableRequirementRepository deliverableRepository;
     private JobServiceImpl service;
 
     @BeforeEach
@@ -63,8 +78,18 @@ class JobAccessAndDiscoveryServiceImplTest {
         notificationService = mock(NotificationService.class);
         PayoutService payoutService = mock(PayoutService.class);
         FreelancerPayoutRecordRepository payoutRecordRepository = mock(FreelancerPayoutRecordRepository.class);
+        contractRepository = mock(WorkContractRepository.class);
+        milestoneRepository = mock(MilestoneRepository.class);
+        criterionRepository = mock(AcceptanceCriterionRepository.class);
+        deliverableRepository = mock(DeliverableRequirementRepository.class);
         service = new JobServiceImpl(userRepository, jobRepository, applicationRepository, submissionRepository,
-                paymentBackendClient, misaBackendClient, notificationService, payoutService, payoutRecordRepository);
+                paymentBackendClient, misaBackendClient, notificationService, payoutService, payoutRecordRepository,
+                contractRepository, milestoneRepository, criterionRepository, deliverableRepository);
+        when(contractRepository.save(any(WorkContract.class))).thenAnswer(invocation -> {
+            WorkContract contract = invocation.getArgument(0);
+            if (contract.getId() == null) contract.setId(UUID.randomUUID());
+            return contract;
+        });
     }
 
     @Test
@@ -144,6 +169,40 @@ class JobAccessAndDiscoveryServiceImplTest {
         verify(applicationRepository).saveAll(List.of(first, second));
         verify(notificationService, times(2)).notify(any(), eq(com.marketplace.backend.entity.NotificationType.JOB_CANCELLED),
                 anyString(), anyString(), eq(job.getId()));
+    }
+
+    @Test
+    void assigningFreelancerCreatesPendingFundingContractAndMilestone() {
+        User client = user(UserType.CLIENT);
+        User freelancer = user(UserType.FREELANCER);
+        Job job = job(client.getId(), JobStatus.OPEN);
+        JobApplication application = application(job.getId(), freelancer.getId(), JobApplicationStatus.PENDING);
+        when(userRepository.findById(client.getId())).thenReturn(Optional.of(client));
+        when(userRepository.findById(freelancer.getId())).thenReturn(Optional.of(freelancer));
+        when(jobRepository.findById(job.getId())).thenReturn(Optional.of(job));
+        when(applicationRepository.findByJobIdAndFreelancerId(job.getId(), freelancer.getId()))
+                .thenReturn(Optional.of(application));
+        when(applicationRepository.findByJobIdAndStatus(job.getId(), JobApplicationStatus.PENDING))
+                .thenReturn(List.of());
+        AcceptanceCriterion criterion = new AcceptanceCriterion();
+        criterion.setDescription("API passes acceptance tests");
+        DeliverableRequirement deliverable = new DeliverableRequirement();
+        deliverable.setTitle("Source code");
+        deliverable.setDescription("Repository and instructions");
+        when(criterionRepository.findByJobIdOrderByOrderAsc(job.getId())).thenReturn(List.of(criterion));
+        when(deliverableRepository.findByJobIdOrderByOrderAsc(job.getId())).thenReturn(List.of(deliverable));
+        AssignFreelancerRequest request = new AssignFreelancerRequest();
+        request.setFreelancerId(freelancer.getId());
+
+        service.assignFreelancer(client.getId(), job.getId(), request);
+
+        assertThat(job.getStatus()).isEqualTo(JobStatus.AWAITING_PAYMENT);
+        verify(contractRepository).save(org.mockito.ArgumentMatchers.argThat(contract ->
+                contract.getStatus() == ContractStatus.PENDING_FUNDING
+                        && contract.getBudgetUsd().compareTo(job.getBudgetUsd()) == 0));
+        verify(milestoneRepository).save(org.mockito.ArgumentMatchers.argThat(milestone ->
+                milestone.getStatus() == MilestoneStatus.PENDING_FUNDING
+                        && "USD".equals(milestone.getCurrency())));
     }
 
     private User user(UserType type) {

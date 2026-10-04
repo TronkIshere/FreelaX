@@ -21,6 +21,10 @@ import com.marketplace.backend.repository.JobApplicationRepository;
 import com.marketplace.backend.repository.JobRepository;
 import com.marketplace.backend.repository.JobSubmissionRepository;
 import com.marketplace.backend.repository.UserRepository;
+import com.marketplace.backend.repository.AcceptanceCriterionRepository;
+import com.marketplace.backend.repository.DeliverableRequirementRepository;
+import com.marketplace.backend.repository.MilestoneRepository;
+import com.marketplace.backend.repository.WorkContractRepository;
 import com.marketplace.backend.service.NotificationService;
 import com.marketplace.backend.service.PayoutService;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,9 +41,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.times;
-import static org.mockito.ArgumentMatchers.eq;
 
 class JobWorkflowServiceImplTest {
 
@@ -61,8 +64,13 @@ class JobWorkflowServiceImplTest {
         NotificationService notificationService = mock(NotificationService.class);
         payoutService = mock(PayoutService.class);
         FreelancerPayoutRecordRepository payoutRecordRepository = mock(FreelancerPayoutRecordRepository.class);
+        WorkContractRepository contractRepository = mock(WorkContractRepository.class);
+        MilestoneRepository milestoneRepository = mock(MilestoneRepository.class);
+        AcceptanceCriterionRepository criterionRepository = mock(AcceptanceCriterionRepository.class);
+        DeliverableRequirementRepository deliverableRepository = mock(DeliverableRequirementRepository.class);
         service = new JobServiceImpl(userRepository, jobRepository, applicationRepository, submissionRepository,
-                paymentBackendClient, misaBackendClient, notificationService, payoutService, payoutRecordRepository);
+                paymentBackendClient, misaBackendClient, notificationService, payoutService, payoutRecordRepository,
+                contractRepository, milestoneRepository, criterionRepository, deliverableRepository);
         when(submissionRepository.save(any(JobSubmission.class))).thenAnswer(invocation -> {
             JobSubmission submission = invocation.getArgument(0);
             if (submission.getId() == null) {
@@ -172,7 +180,7 @@ class JobWorkflowServiceImplTest {
     }
 
     @Test
-    void jobCreationAndCheckoutUseTheSameBudget() {
+    void jobCreationDoesNotChargeBeforeAssignmentAndFunding() {
         UUID clientId = UUID.randomUUID();
         User client = new User();
         client.setId(clientId);
@@ -183,23 +191,14 @@ class JobWorkflowServiceImplTest {
             if (job.getId() == null) job.setId(UUID.randomUUID());
             return job;
         });
-        CheckoutOrderResult checkout = new CheckoutOrderResult();
-        checkout.setId(UUID.randomUUID());
-        when(paymentBackendClient.createCheckoutOrder(eq(clientId), any(),
-                eq(new BigDecimal("500")), any(), any(), any())).thenReturn(checkout);
         CreateJobRequest request = new CreateJobRequest();
         request.setTitle("Demo job");
         request.setDescription("Work");
         request.setBudgetUsd(new BigDecimal("500"));
-        request.setPayerBankCode("BANK_OF_AMERICA");
-        request.setPayerBankAccountNumber("0000000000");
-        request.setPayerBankAccountHolderName("DEMO CLIENT");
-
         service.create(clientId, request);
 
-        verify(paymentBackendClient).createCheckoutOrder(eq(clientId), any(),
-                eq(new BigDecimal("500")), eq("BANK_OF_AMERICA"), eq("0000000000"), eq("DEMO CLIENT"));
-        verify(jobRepository, times(2)).save(any(Job.class));
+        verifyNoInteractions(paymentBackendClient);
+        verify(jobRepository).save(any(Job.class));
     }
 
     @Test

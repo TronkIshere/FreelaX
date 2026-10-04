@@ -10,6 +10,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.UUID;
 
 @Entity
@@ -46,6 +47,14 @@ public class Job extends AbstractEntity<UUID> {
 
     @Column(name = "freelancer_id")
     private UUID freelancerId;
+
+    private Instant deliveryDueAt;
+
+    @Column(nullable = false)
+    private int reviewWindowHours = 72;
+
+    @Column(nullable = false)
+    private int maxRevisions = 2;
 
     private UUID misaPayoutTransactionId;
     private UUID misaCertificateId;

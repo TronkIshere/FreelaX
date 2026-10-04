@@ -1,15 +1,17 @@
 package com.marketplace.backend.configuration;
 
-import com.marketplace.backend.client.PaymentBackendClient;
-import com.marketplace.backend.dto.response.bofa.CheckoutOrderResult;
+import com.marketplace.backend.entity.AcceptanceCriterion;
 import com.marketplace.backend.entity.AuthProvider;
 import com.marketplace.backend.entity.BankCode;
 import com.marketplace.backend.entity.Job;
 import com.marketplace.backend.entity.JobStatus;
+import com.marketplace.backend.entity.DeliverableRequirement;
 import com.marketplace.backend.entity.Role;
 import com.marketplace.backend.entity.User;
 import com.marketplace.backend.entity.UserType;
 import com.marketplace.backend.repository.JobRepository;
+import com.marketplace.backend.repository.AcceptanceCriterionRepository;
+import com.marketplace.backend.repository.DeliverableRequirementRepository;
 import com.marketplace.backend.repository.RoleRepository;
 import com.marketplace.backend.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
@@ -20,6 +22,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -29,10 +33,6 @@ import java.util.UUID;
 public class DataInitializer {
 
     private static final String SEED_CLIENT_EMAIL = "nguyenhuutrong11133@gmail.com";
-    private static final String SEED_CLIENT_BANK_CODE = "BANK_OF_AMERICA";
-    private static final String SEED_CLIENT_BANK_ACCOUNT_NUMBER = "483920175610";
-    private static final String SEED_CLIENT_BANK_ACCOUNT_HOLDER_NAME = "NGUYEN HUU TRONG";
-
     private static final String SEED_FREELANCER_EMAIL = "freelancer.seed@example.com";
     private static final BankCode SEED_FREELANCER_BANK_CODE = BankCode.BIDV;
     private static final String SEED_FREELANCER_TAX_CODE = "DEMO-TAX-000001";
@@ -46,7 +46,8 @@ public class DataInitializer {
     public ApplicationRunner initData(RoleRepository roleRepository,
                                       UserRepository userRepository,
                                       JobRepository jobRepository,
-                                      PaymentBackendClient paymentBackendClient,
+                                      AcceptanceCriterionRepository acceptanceCriterionRepository,
+                                      DeliverableRequirementRepository deliverableRequirementRepository,
                                       DemoWalletSeeder demoWalletSeeder,
                                       PasswordEncoder passwordEncoder,
                                       @Value("${DEMO_CLIENT_PASSWORD:}") String clientPassword,
@@ -109,8 +110,9 @@ public class DataInitializer {
             fillMissingFreelancerDemoIdentity(freelancer, userRepository);
             demoWalletSeeder.seed(client, freelancer);
 
-            if (jobRepository.findByClientUserId(client.getId()).isEmpty()) {
-                List<Job> seedJobs = jobRepository.saveAll(List.of(
+            List<Job> clientJobs = jobRepository.findByClientUserId(client.getId());
+            if (clientJobs.isEmpty()) {
+                clientJobs = jobRepository.saveAll(List.of(
                         createOpenJob(client.getId(), "Landing page redesign",
                                 "Redesign trang landing page, mobile-first.", new BigDecimal("500")),
                         createOpenJob(client.getId(), "Viet REST API cho module giao dich",
@@ -118,29 +120,15 @@ public class DataInitializer {
                         createOpenJob(client.getId(), "Toi uu SEO trang chu",
                                 "Audit va toi uu SEO on-page cho trang chu va 5 landing page chinh.", new BigDecimal("300"))
                 ));
-
-                for (Job job : seedJobs) {
-                    CheckoutOrderResult checkoutOrder = paymentBackendClient.createCheckoutOrder(
-                            client.getId(),
-                            job.getId(),
-                            job.getBudgetUsd(),
-                            SEED_CLIENT_BANK_CODE,
-                            SEED_CLIENT_BANK_ACCOUNT_NUMBER,
-                            SEED_CLIENT_BANK_ACCOUNT_HOLDER_NAME
-                    );
-                    job.setCheckoutOrderId(checkoutOrder.getId());
-                    job.setPayerBankCode(SEED_CLIENT_BANK_CODE);
-                    job.setPayerBankAccountNumber(SEED_CLIENT_BANK_ACCOUNT_NUMBER);
-                    job.setPayerBankAccountHolderName(SEED_CLIENT_BANK_ACCOUNT_HOLDER_NAME);
-                    jobRepository.save(job);
-                }
-
-                log.info("Seed 3 job OPEN cho client {} -- CHUA gan freelancer nao ca, da tao checkout order tren payment-backend",
+                log.info("Seed 3 job OPEN cho client {} -- chua funding va chua gan freelancer",
                         SEED_CLIENT_EMAIL);
-                log.info("Freelancer seed {} (id={}) dang co 0 job -- goi PATCH /jobs/{{jobId}}/assign-freelancer " +
+                log.info("Freelancer seed {} (id={}) dang co 0 job -- goi POST /jobs/{{jobId}}/assignments " +
                                 "voi freelancerId nay de gan thu 1 trong 3 job tren.",
                         SEED_FREELANCER_EMAIL, freelancer.getId());
                 log.info("Freelancer seed {} has demo tax identity for external MISA registration on payout", freelancer.getId());
+            }
+            for (Job job : clientJobs) {
+                backfillJobRules(job, jobRepository, acceptanceCriterionRepository, deliverableRequirementRepository);
             }
         };
     }
@@ -208,6 +196,46 @@ public class DataInitializer {
         job.setDescription(description);
         job.setBudgetUsd(budgetUsd);
         job.setStatus(JobStatus.OPEN);
+        job.setDeliveryDueAt(Instant.now().plus(14, ChronoUnit.DAYS));
+        job.setReviewWindowHours(72);
+        job.setMaxRevisions(2);
         return job;
+    }
+
+    private void backfillJobRules(Job job, JobRepository jobRepository,
+                                  AcceptanceCriterionRepository acceptanceCriterionRepository,
+                                  DeliverableRequirementRepository deliverableRequirementRepository) {
+        boolean changed = false;
+        if (job.getDeliveryDueAt() == null) {
+            job.setDeliveryDueAt(Instant.now().plus(14, ChronoUnit.DAYS));
+            changed = true;
+        }
+        if (job.getReviewWindowHours() < 24) {
+            job.setReviewWindowHours(72);
+            changed = true;
+        }
+        if (job.getMaxRevisions() < 1) {
+            job.setMaxRevisions(2);
+            changed = true;
+        }
+        if (changed) jobRepository.save(job);
+
+        if (deliverableRequirementRepository.findByJobIdOrderByOrderAsc(job.getId()).isEmpty()) {
+            DeliverableRequirement deliverable = new DeliverableRequirement();
+            deliverable.setJobId(job.getId());
+            deliverable.setOrder(0);
+            deliverable.setTitle("Sản phẩm hoàn chỉnh");
+            deliverable.setDescription(job.getDescription() != null ? job.getDescription() : job.getTitle());
+            deliverable.setRequired(true);
+            deliverableRequirementRepository.save(deliverable);
+        }
+        if (acceptanceCriterionRepository.findByJobIdOrderByOrderAsc(job.getId()).isEmpty()) {
+            AcceptanceCriterion criterion = new AcceptanceCriterion();
+            criterion.setJobId(job.getId());
+            criterion.setOrder(0);
+            criterion.setDescription("Sản phẩm đáp ứng đầy đủ phạm vi công việc đã mô tả.");
+            criterion.setRequired(true);
+            acceptanceCriterionRepository.save(criterion);
+        }
     }
 }

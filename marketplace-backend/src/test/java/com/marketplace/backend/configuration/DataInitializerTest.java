@@ -1,11 +1,12 @@
 package com.marketplace.backend.configuration;
 
-import com.marketplace.backend.client.PaymentBackendClient;
 import com.marketplace.backend.entity.Job;
 import com.marketplace.backend.entity.Role;
 import com.marketplace.backend.entity.User;
 import com.marketplace.backend.entity.UserType;
 import com.marketplace.backend.repository.JobRepository;
+import com.marketplace.backend.repository.AcceptanceCriterionRepository;
+import com.marketplace.backend.repository.DeliverableRequirementRepository;
 import com.marketplace.backend.repository.RoleRepository;
 import com.marketplace.backend.repository.UserRepository;
 import org.junit.jupiter.api.Test;
@@ -27,7 +28,7 @@ class DataInitializerTest {
     @Test
     void rejectsMissingOrWeakRuntimePasswordsBeforeSeeding() {
         DataInitializer initializer = new DataInitializer();
-        assertThatThrownBy(() -> initializer.initData(null, null, null, null, null, null,
+        assertThatThrownBy(() -> initializer.initData(null, null, null, null, null, null, null,
                 "short", "f".repeat(32)).run(new DefaultApplicationArguments(new String[0])))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("DEMO_CLIENT_PASSWORD");
@@ -38,7 +39,8 @@ class DataInitializerTest {
         RoleRepository roles = mock(RoleRepository.class);
         UserRepository users = mock(UserRepository.class);
         JobRepository jobs = mock(JobRepository.class);
-        PaymentBackendClient payment = mock(PaymentBackendClient.class);
+        AcceptanceCriterionRepository criteria = mock(AcceptanceCriterionRepository.class);
+        DeliverableRequirementRepository deliverables = mock(DeliverableRequirementRepository.class);
         DemoWalletSeeder wallets = mock(DemoWalletSeeder.class);
         PasswordEncoder encoder = mock(PasswordEncoder.class);
         Role role = new Role();
@@ -60,7 +62,7 @@ class DataInitializerTest {
         when(encoder.encode(any())).thenAnswer(invocation -> "hash:" + invocation.getArgument(0));
         when(jobs.findByClientUserId(any())).thenReturn(List.of(new Job()));
 
-        new DataInitializer().initData(roles, users, jobs, payment, wallets, encoder,
+        new DataInitializer().initData(roles, users, jobs, criteria, deliverables, wallets, encoder,
                 "c".repeat(32), "f".repeat(32))
                 .run(new DefaultApplicationArguments(new String[0]));
 
@@ -77,7 +79,8 @@ class DataInitializerTest {
         RoleRepository roles = mock(RoleRepository.class);
         UserRepository users = mock(UserRepository.class);
         JobRepository jobs = mock(JobRepository.class);
-        PaymentBackendClient payment = mock(PaymentBackendClient.class);
+        AcceptanceCriterionRepository criteria = mock(AcceptanceCriterionRepository.class);
+        DeliverableRequirementRepository deliverables = mock(DeliverableRequirementRepository.class);
         DemoWalletSeeder wallets = mock(DemoWalletSeeder.class);
         PasswordEncoder encoder = mock(PasswordEncoder.class);
         Role role = new Role();
@@ -92,7 +95,7 @@ class DataInitializerTest {
         });
         when(jobs.findByClientUserId(any())).thenReturn(List.of(new Job()));
 
-        new DataInitializer().initData(roles, users, jobs, payment, wallets, encoder,
+        new DataInitializer().initData(roles, users, jobs, criteria, deliverables, wallets, encoder,
                 "c".repeat(32), "f".repeat(32))
                 .run(new DefaultApplicationArguments(new String[0]));
 

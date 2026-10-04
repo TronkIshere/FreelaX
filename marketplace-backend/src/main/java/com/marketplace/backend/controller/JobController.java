@@ -179,6 +179,17 @@ public class JobController {
                 .build();
     }
 
+    @PostMapping("/{jobId}/assignments")
+    public ResponseAPI<JobResponse> createAssignment(@AuthenticationPrincipal UserPrincipal principal,
+                                                      @PathVariable UUID jobId,
+                                                      @Valid @RequestBody AssignFreelancerRequest request) {
+        return ResponseAPI.<JobResponse>builder()
+                .code(200)
+                .message("Đã chọn Freelancer; hợp đồng đang chờ funding")
+                .data(jobService.assignFreelancer(principal.getId(), jobId, request))
+                .build();
+    }
+
     @PostMapping("/{jobId}/apply")
     public ResponseAPI<JobApplicationResponse> apply(@AuthenticationPrincipal UserPrincipal principal,
                                                      @PathVariable UUID jobId) {

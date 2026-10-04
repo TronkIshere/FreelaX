@@ -7,6 +7,8 @@ import lombok.experimental.FieldDefaults;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @Getter
@@ -22,6 +24,12 @@ public class JobResponse {
     String status;
     UUID checkoutOrderId;
     String taxExportStatus;
+    Instant deliveryDueAt;
+    int reviewWindowHours;
+    int maxRevisions;
+    List<RequirementResponse> deliverables;
+    List<RequirementResponse> acceptanceCriteria;
+    ContractSummaryResponse contract;
     LocalDateTime createdAt;
     LocalDateTime updatedAt;
 }

@@ -4,27 +4,23 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
 @Getter
 @Builder
-public class DiscoverJobResponse {
+public class ContractSummaryResponse {
     UUID id;
-    String title;
-    String description;
-    BigDecimal budgetUsd;
     String status;
-    JobClientSummaryResponse client;
-    boolean hasApplied;
-    UUID applicationId;
-    String applicationStatus;
+    UUID milestoneId;
+    String milestoneStatus;
+    BigDecimal amount;
+    String currency;
     Instant deliveryDueAt;
     int reviewWindowHours;
     int maxRevisions;
+    int revisionsUsed;
     List<RequirementResponse> deliverables;
     List<RequirementResponse> acceptanceCriteria;
-    LocalDateTime createdAt;
 }

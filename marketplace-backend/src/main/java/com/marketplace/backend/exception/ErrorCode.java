@@ -43,6 +43,8 @@ public enum ErrorCode {
     TAX_RECORD_INVALID_STATUS(4011, "Trạng thái bản ghi thuế không cho phép thao tác này: %s", HttpStatus.CONFLICT),
     JOB_SUBMISSION_NOT_FOUND(4012, "Không tìm thấy bản bàn giao công việc: %s", HttpStatus.NOT_FOUND),
     JOB_BUDGET_IMMUTABLE(4013, "Không thể đổi budgetUsd sau khi đã tạo checkout cho công việc", HttpStatus.CONFLICT),
+    JOB_DEADLINE_TOO_SOON(4014, "Hạn bàn giao phải cách thời điểm tạo ít nhất 24 giờ", HttpStatus.UNPROCESSABLE_ENTITY),
+    JOB_REQUIREMENTS_MISSING(4015, "Công việc phải có sản phẩm bàn giao và điều kiện nghiệm thu trước khi chọn Freelancer", HttpStatus.UNPROCESSABLE_ENTITY),
 
     MISA_BACKEND_CALL_FAILED(5000, "Gọi misa-backend thất bại: %s", HttpStatus.BAD_GATEWAY),
 

@@ -194,8 +194,8 @@ export class MarketplaceApi {
   }
 
   async assign(jobId: string, freelancerId: string): Promise<Job> {
-    return this.authorized<Job>('/marketplace/jobs/' + encodeURIComponent(jobId) + '/assign-freelancer',
-      { method: 'PATCH', body: JSON.stringify({ freelancerId }) });
+    return this.authorized<Job>('/marketplace/jobs/' + encodeURIComponent(jobId) + '/assignments',
+      { method: 'POST', body: JSON.stringify({ freelancerId }) });
   }
   async submissions(jobId: string): Promise<JobSubmission[]> {
     return this.authorized<JobSubmission[]>('/marketplace/jobs/' + encodeURIComponent(jobId) + '/submissions');

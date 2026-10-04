@@ -1,5 +1,5 @@
 export const jobLabels: Record<string, string> = {
-  OPEN: 'Đang tuyển', IN_PROGRESS: 'Đang thực hiện',
+  OPEN: 'Đang tuyển', AWAITING_PAYMENT: 'Chờ funding', IN_PROGRESS: 'Đang thực hiện',
   SUBMITTED_FOR_REVIEW: 'Chờ duyệt bàn giao', REVISION_REQUESTED: 'Cần chỉnh sửa',
   COMPLETED: 'Hoàn thành', CANCELLED: 'Đã hủy',
 };

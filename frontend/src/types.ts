@@ -27,6 +27,35 @@ export interface Job {
   updatedAt?: string | null;
   checkoutOrderId?: string | null;
   taxExportStatus?: string | null;
+  deliveryDueAt?: string | null;
+  reviewWindowHours?: number;
+  maxRevisions?: number;
+  deliverables?: Requirement[];
+  acceptanceCriteria?: Requirement[];
+  contract?: ContractSummary | null;
+}
+
+export interface Requirement {
+  id: string;
+  title?: string | null;
+  description: string;
+  required: boolean;
+  order: number;
+}
+
+export interface ContractSummary {
+  id: string;
+  status: string;
+  milestoneId: string | null;
+  milestoneStatus: string | null;
+  amount: number;
+  currency: string;
+  deliveryDueAt: string | null;
+  reviewWindowHours: number;
+  maxRevisions: number;
+  revisionsUsed: number;
+  deliverables: Requirement[];
+  acceptanceCriteria: Requirement[];
 }
 
 export interface DiscoverJob {
@@ -40,6 +69,11 @@ export interface DiscoverJob {
   applicationId: string | null;
   applicationStatus: string | null;
   createdAt: string | null;
+  deliveryDueAt?: string | null;
+  reviewWindowHours?: number;
+  maxRevisions?: number;
+  deliverables?: Requirement[];
+  acceptanceCriteria?: Requirement[];
 }
 
 export type DiscoverySort = 'NEWEST' | 'BUDGET_ASC' | 'BUDGET_DESC';
@@ -54,7 +88,7 @@ export interface DiscoveryFilters {
 }
 
 
-export type JobStatus = 'OPEN' | 'IN_PROGRESS' | 'SUBMITTED_FOR_REVIEW' | 'REVISION_REQUESTED' | 'COMPLETED' | 'CANCELLED';
+export type JobStatus = 'OPEN' | 'AWAITING_PAYMENT' | 'IN_PROGRESS' | 'SUBMITTED_FOR_REVIEW' | 'REVISION_REQUESTED' | 'COMPLETED' | 'CANCELLED';
 export type JobApplicationStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'CANCELLED';
 export type JobSubmissionStatus = 'SUBMITTED' | 'REVISION_REQUESTED' | 'APPROVED';
 export interface JobSubmission {
