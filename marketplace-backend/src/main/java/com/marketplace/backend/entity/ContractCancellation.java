@@ -11,7 +11,8 @@ import java.util.UUID;
 @Table(name = "contract_cancellations", uniqueConstraints = {
         @UniqueConstraint(name = "uk_cancellation_contract", columnNames = "contract_id"),
         @UniqueConstraint(name = "uk_cancellation_milestone", columnNames = "milestone_id"),
-        @UniqueConstraint(name = "uk_cancellation_refund_key", columnNames = "refund_key")})
+        @UniqueConstraint(name = "uk_cancellation_refund_key", columnNames = "refund_key")},
+        indexes = @Index(name = "idx_cancellation_due", columnList = "retryable,next_attempt_at"))
 public class ContractCancellation extends AbstractEntity<UUID> {
     @Version private long version;
     @Column(name = "contract_id", nullable = false, updatable = false) private UUID contractId;

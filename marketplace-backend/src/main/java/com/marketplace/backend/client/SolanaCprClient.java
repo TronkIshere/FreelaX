@@ -1,5 +1,7 @@
 package com.marketplace.backend.client;
 
+import com.marketplace.backend.configuration.RequestCorrelation;
+
 import com.marketplace.backend.configuration.SolanaCprProperties;
 import com.marketplace.backend.dto.request.solana.CreateInvoiceRequest;
 import com.marketplace.backend.dto.request.solana.CompleteOfframpRequest;
@@ -201,16 +203,17 @@ public class SolanaCprClient {
             int status = e.getStatusCode().value();
             boolean definitive = status >= 400 && status < 500 && status != 408 && status != 429;
             throw new SolanaCprException(
-                    operation + ": HTTP " + status + " " + e.getResponseBodyAsString(), definitive, status);
+                    operation + ": HTTP " + status, definitive, status);
         } catch (ResourceAccessException e) {
             throw new SolanaCprException(
-                    operation + ": khong ket noi duoc " + properties.getBaseUrl() + " (" + e.getMessage() + ")", false, null);
+                    operation + ": CONNECTION_FAILED", false, null);
         }
     }
 
     private HttpHeaders jsonHeaders() {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
+        RequestCorrelation.add(headers);
         if (StringUtils.hasText(properties.getInternalApiKey())) {
             headers.set(INTERNAL_API_KEY_HEADER, properties.getInternalApiKey());
         }

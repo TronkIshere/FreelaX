@@ -1,6 +1,7 @@
 package com.marketplace.backend.client;
 
 import com.marketplace.backend.configuration.PaymentBackendProperties;
+import com.marketplace.backend.configuration.RequestCorrelation;
 import com.marketplace.backend.dto.response.common.ResponseAPI;
 import com.marketplace.backend.dto.response.bofa.CheckoutOrderResult;
 import com.marketplace.backend.dto.response.bofa.PaymentReleaseResult;
@@ -106,6 +107,7 @@ public class PaymentBackendClient {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.set("X-Internal-Api-Key", properties.getInternalApiKey());
+        RequestCorrelation.add(headers);
         ResponseEntity<ResponseAPI<CheckoutOrderResult>> response = restTemplate.exchange(
                 properties.getBaseUrl() + path, method, new HttpEntity<>(body, headers),
                 new ParameterizedTypeReference<ResponseAPI<CheckoutOrderResult>>() {});
@@ -136,6 +138,7 @@ public class PaymentBackendClient {
     private PaymentRefundResult refundExchange(String path, HttpMethod method, Object body) {
         HttpHeaders headers = new HttpHeaders(); headers.setContentType(MediaType.APPLICATION_JSON);
         headers.set("X-Internal-Api-Key", properties.getInternalApiKey());
+        RequestCorrelation.add(headers);
         ResponseEntity<ResponseAPI<PaymentRefundResult>> response = restTemplate.exchange(
                 properties.getBaseUrl() + path, method, new HttpEntity<>(body, headers),
                 new ParameterizedTypeReference<ResponseAPI<PaymentRefundResult>>() {});
@@ -158,6 +161,7 @@ public class PaymentBackendClient {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.set("X-Internal-Api-Key", properties.getInternalApiKey());
+        RequestCorrelation.add(headers);
         ResponseEntity<ResponseAPI<PaymentReleaseResult>> response = restTemplate.exchange(
                 properties.getBaseUrl() + path, method, new HttpEntity<>(body, headers),
                 new ParameterizedTypeReference<ResponseAPI<PaymentReleaseResult>>() {});
@@ -174,6 +178,7 @@ public class PaymentBackendClient {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.set("X-Internal-Api-Key", properties.getInternalApiKey());
+        RequestCorrelation.add(headers);
 
         try {
             ResponseEntity<ResponseAPI<T>> response = restTemplate.exchange(

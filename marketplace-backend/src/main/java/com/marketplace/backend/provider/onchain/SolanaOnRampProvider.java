@@ -260,7 +260,7 @@ public class SolanaOnRampProvider implements OnRampProvider {
         try {
             return solanaCprClient.getConfig();
         } catch (SolanaCprException e) {
-            log.warn("Khong doc duoc Config Solana, bo qua precheck: {}", e.getMessage());
+            log.warn("Solana configuration precheck unavailable");
             return null;
         }
     }

@@ -16,7 +16,7 @@ import java.util.UUID;
         @UniqueConstraint(name = "uk_settlement_milestone", columnNames = "milestone_id"),
         @UniqueConstraint(name = "uk_settlement_release_key", columnNames = "release_key"),
         @UniqueConstraint(name = "uk_settlement_checkout", columnNames = "checkout_order_id")
-}, indexes = @Index(name = "idx_settlement_due", columnList = "next_attempt_at"))
+}, indexes = @Index(name = "idx_settlement_due", columnList = "retryable,next_attempt_at"))
 public class ContractSettlement extends AbstractEntity<UUID> {
     @Version
     private long version;

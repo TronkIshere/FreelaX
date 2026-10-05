@@ -94,7 +94,7 @@ public class PayoutServiceImpl implements PayoutService {
         try {
             payoutRecord = createRecord(job);
         } catch (Exception e) {
-            log.error("Khong tao duoc payout record cho job {}: {}", job.getId(), e.getMessage(), e);
+            log.warn("Payout record creation requires reconciliation for job {}", job.getId());
             notifyPayoutFailed(job);
             return;
         }
@@ -271,7 +271,7 @@ public class PayoutServiceImpl implements PayoutService {
         try {
             result = onRampProvider.execute(toQuote(payoutRecord), payoutRecord.getOnRampClientPublicKey());
         } catch (Exception e) {
-            result = OnRampResult.failed(null, null, null, e.getMessage());
+            result = OnRampResult.failed(null, null, null, "ON_RAMP_UNRESOLVED");
         }
         applyOnRampResult(payoutRecord, job, result);
     }

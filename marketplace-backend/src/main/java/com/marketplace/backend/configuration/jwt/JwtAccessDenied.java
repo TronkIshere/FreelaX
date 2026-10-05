@@ -1,6 +1,7 @@
 package com.marketplace.backend.configuration.jwt;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.marketplace.backend.configuration.RequestCorrelation;
 import com.marketplace.backend.dto.response.common.ErrorResponse;
 import com.marketplace.backend.exception.ErrorCode;
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,6 +26,9 @@ public class JwtAccessDenied implements AccessDeniedHandler {
                 .status(ErrorCode.ACCESS_DENIED.getCode())
                 .error(ErrorCode.ACCESS_DENIED.getMessage())
                 .path(request.getRequestURI())
+                .code(ErrorCode.ACCESS_DENIED.name())
+                .requestId(RequestCorrelation.id(request))
+                .retryable(false)
                 .build();
 
         response.setStatus(ErrorCode.ACCESS_DENIED.getHttpStatus().value());

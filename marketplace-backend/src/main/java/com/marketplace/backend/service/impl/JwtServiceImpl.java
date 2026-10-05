@@ -175,7 +175,7 @@ public class JwtServiceImpl implements JwtService {
             Date expiration = signedJWT.getJWTClaimsSet().getExpirationTime();
             return verified && expiration.after(new Date());
         } catch (Exception e) {
-            log.warn("Invalid JWT: {}", e.getMessage());
+            log.warn("Invalid JWT");
             return false;
         }
     }
@@ -220,7 +220,7 @@ public class JwtServiceImpl implements JwtService {
 
             return signedJWT.verify(new MACVerifier(jwtSecret.getBytes(StandardCharsets.UTF_8)));
         } catch (Exception e) {
-            log.warn("Invalid reset token: {}", e.getMessage());
+            log.warn("Invalid reset token");
             return false;
         }
     }

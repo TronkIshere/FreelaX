@@ -273,12 +273,12 @@ public class TaxCertificateServiceImpl implements TaxCertificateService {
 
         } catch (Exception e) {
             taxRecord.setStatus(TaxCertificateStatus.EXPORT_FAILED);
-            taxRecord.setLastError(e.getMessage());
+            taxRecord.setLastError("TAX_EXPORT_FAILED");
             taxCertificateRecordRepository.save(taxRecord);
 
             job.setTaxExportStatus(TaxExportStatus.FAILED);
             jobRepository.save(job);
-            log.error("Xuat chung tu MISA that bai cho job {}: {}", job.getId(), e.getMessage(), e);
+            log.warn("Tax export requires reconciliation for job {}", job.getId());
 
             if (notifyOnFailure) {
                 notificationService.notify(
@@ -318,9 +318,9 @@ public class TaxCertificateServiceImpl implements TaxCertificateService {
         } catch (HttpClientErrorException.Conflict e) {
             log.info("Chung tu {} da {} truoc do, dong bo lai trang thai", taxRecord.getMisaCertificateId(), step);
         } catch (Exception e) {
-            taxRecord.setLastError(step + ": " + e.getMessage());
+            taxRecord.setLastError("TAX_" + step.toUpperCase(java.util.Locale.ROOT) + "_FAILED");
             taxCertificateRecordRepository.save(taxRecord);
-            log.warn("Buoc {} chung tu {} that bai: {}", step, taxRecord.getMisaCertificateId(), e.getMessage());
+            log.warn("Tax step {} requires reconciliation for certificate {}", step, taxRecord.getMisaCertificateId());
             return;
         }
         refreshFromMisa(taxRecord);
@@ -330,9 +330,9 @@ public class TaxCertificateServiceImpl implements TaxCertificateService {
         try {
             applyMisaResult(taxRecord, misaBackendClient.getCertificateStatus(taxRecord.getMisaCertificateId()));
         } catch (Exception e) {
-            taxRecord.setLastError("sync: " + e.getMessage());
+            taxRecord.setLastError("TAX_SYNC_FAILED");
             taxCertificateRecordRepository.save(taxRecord);
-            log.warn("Khong dong bo duoc trang thai chung tu {}: {}", taxRecord.getMisaCertificateId(), e.getMessage());
+            log.warn("Tax sync requires reconciliation for certificate {}", taxRecord.getMisaCertificateId());
         }
     }
 
