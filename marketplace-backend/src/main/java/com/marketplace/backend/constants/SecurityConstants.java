@@ -14,7 +14,8 @@ public final class SecurityConstants {
     public static final List<String> CORS_ALLOWED_HEADERS = Arrays.asList(
             HttpHeaders.AUTHORIZATION,
             HttpHeaders.CONTENT_TYPE,
-            HttpHeaders.ACCEPT
+            HttpHeaders.ACCEPT,
+            "Idempotency-Key"
     );
 
     public static final List<String> CORS_ALLOWED_METHODS = Arrays.asList(

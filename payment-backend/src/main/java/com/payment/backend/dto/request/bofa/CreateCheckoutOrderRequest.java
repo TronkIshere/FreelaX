@@ -26,6 +26,8 @@ public class CreateCheckoutOrderRequest {
     @DecimalMin(value = "0.01", message = "amountUsd phải lớn hơn 0")
     BigDecimal amountUsd;
 
+    String idempotencyKey;
+
     @NotBlank(message = "payerBankCode không được để trống")
     String payerBankCode;
 

@@ -12,4 +12,6 @@ public interface BofaCheckoutOrderService {
     BofaCheckoutOrderResponse capture(UUID orderId);
 
     BofaCheckoutOrderResponse getById(UUID orderId);
+
+    BofaCheckoutOrderResponse getByIdempotencyKey(String key);
 }
