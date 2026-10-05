@@ -5,6 +5,10 @@ import com.marketplace.backend.dto.response.common.ResponseAPI;
 import com.marketplace.backend.dto.response.bofa.CheckoutOrderResult;
 import com.marketplace.backend.dto.response.bofa.PaymentReleaseResult;
 import com.marketplace.backend.dto.request.bofa.CreateReleaseRequest;
+import com.marketplace.backend.dto.request.bofa.CreateRefundRequest;
+import com.marketplace.backend.dto.response.bofa.PaymentRefundResult;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.marketplace.backend.exception.ApplicationException;
 import com.marketplace.backend.exception.ErrorCode;
 import lombok.AccessLevel;
@@ -110,6 +114,34 @@ public class PaymentBackendClient {
 
     public PaymentReleaseResult createRelease(CreateReleaseRequest request) {
         return releaseExchange("/internal/BofA/payout/releases", HttpMethod.POST, request);
+    }
+
+    public PaymentRefundResult createRefund(CreateRefundRequest request) {
+        return refundExchange("/internal/BofA/refunds", HttpMethod.POST, request);
+    }
+
+    public PaymentRefundResult findRefund(String key) {
+        String path = UriComponentsBuilder.fromPath("/internal/BofA/refunds/by-key")
+                .queryParam("refundKey", key).build().encode().toUriString();
+        try { return refundExchange(path, HttpMethod.GET, null); }
+        catch (HttpClientErrorException.NotFound ex) {
+            try {
+                var error = new ObjectMapper().readTree(ex.getResponseBodyAsString());
+                if (error != null && error.path("status").asInt() == 3016) return null;
+            } catch (JsonProcessingException ignored) { }
+            throw ex;
+        }
+    }
+
+    private PaymentRefundResult refundExchange(String path, HttpMethod method, Object body) {
+        HttpHeaders headers = new HttpHeaders(); headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("X-Internal-Api-Key", properties.getInternalApiKey());
+        ResponseEntity<ResponseAPI<PaymentRefundResult>> response = restTemplate.exchange(
+                properties.getBaseUrl() + path, method, new HttpEntity<>(body, headers),
+                new ParameterizedTypeReference<ResponseAPI<PaymentRefundResult>>() {});
+        if (response.getBody() == null || !java.util.Objects.equals(response.getBody().getCode(), 200)
+                || response.getBody().getData() == null) throw new RestClientException("Invalid refund response");
+        return response.getBody().getData();
     }
 
     public PaymentReleaseResult findRelease(String releaseKey) {

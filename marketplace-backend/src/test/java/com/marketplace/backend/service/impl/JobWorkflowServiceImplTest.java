@@ -263,6 +263,20 @@ class JobWorkflowServiceImplTest {
         verify(jobRepository, never()).save(job);
     }
 
+    @Test
+    void legacyCancelCannotBypassContractCancellation() {
+        Job job = job(JobStatus.OPEN);
+        stubUsers(job);
+        when(jobRepository.findWithLockById(job.getId())).thenReturn(Optional.of(job));
+        when(contractRepository.findByJobId(job.getId())).thenReturn(Optional.of(new com.marketplace.backend.entity.WorkContract()));
+        assertThatThrownBy(() -> service.cancel(job.getClientUserId(), job.getId()))
+                .isInstanceOf(ApplicationException.class)
+                .extracting(exception -> ((ApplicationException) exception).getErrorCode())
+                .isEqualTo(ErrorCode.CONTRACT_API_REQUIRED);
+        verify(jobRepository, never()).save(any());
+        verifyNoInteractions(paymentBackendClient);
+    }
+
     private Job job(JobStatus status) {
         Job job = new Job();
         job.setId(UUID.randomUUID());

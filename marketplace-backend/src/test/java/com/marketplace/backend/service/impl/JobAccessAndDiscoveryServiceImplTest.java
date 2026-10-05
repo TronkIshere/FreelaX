@@ -157,7 +157,7 @@ class JobAccessAndDiscoveryServiceImplTest {
         JobApplication first = application(job.getId(), UUID.randomUUID(), JobApplicationStatus.PENDING);
         JobApplication second = application(job.getId(), UUID.randomUUID(), JobApplicationStatus.PENDING);
         when(userRepository.findById(client.getId())).thenReturn(Optional.of(client));
-        when(jobRepository.findById(job.getId())).thenReturn(Optional.of(job));
+        when(jobRepository.findWithLockById(job.getId())).thenReturn(Optional.of(job));
         when(applicationRepository.findByJobIdAndStatus(job.getId(), JobApplicationStatus.PENDING))
                 .thenReturn(List.of(first, second));
 
@@ -179,7 +179,7 @@ class JobAccessAndDiscoveryServiceImplTest {
         JobApplication application = application(job.getId(), freelancer.getId(), JobApplicationStatus.PENDING);
         when(userRepository.findById(client.getId())).thenReturn(Optional.of(client));
         when(userRepository.findById(freelancer.getId())).thenReturn(Optional.of(freelancer));
-        when(jobRepository.findById(job.getId())).thenReturn(Optional.of(job));
+        when(jobRepository.findWithLockById(job.getId())).thenReturn(Optional.of(job));
         when(applicationRepository.findByJobIdAndFreelancerId(job.getId(), freelancer.getId()))
                 .thenReturn(Optional.of(application));
         when(applicationRepository.findByJobIdAndStatus(job.getId(), JobApplicationStatus.PENDING))

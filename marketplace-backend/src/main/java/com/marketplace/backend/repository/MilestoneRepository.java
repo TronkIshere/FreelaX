@@ -16,6 +16,8 @@ public interface MilestoneRepository extends JpaRepository<Milestone, UUID> {
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<Milestone> findWithLockById(UUID id);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Optional<Milestone> findWithLockByContractId(UUID contractId);
 
     @Query("""
             select m.id from Milestone m

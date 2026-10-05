@@ -30,6 +30,7 @@ public class BofaPayoutReleaseServiceImpl implements BofaPayoutReleaseService {
     private final BofaCheckoutOrderRepository orders;
     private final BofaPayoutReleaseRepository releases;
     private final BofaRecipientCreditRepository credits;
+    private final BofaCheckoutRefundRepository refunds;
     private final TransactionTemplate transactions;
 
     @Override
@@ -63,6 +64,9 @@ public class BofaPayoutReleaseServiceImpl implements BofaPayoutReleaseService {
         }
         if (releases.findByCheckoutOrderId(order.getId()).isPresent()) {
             throw new ApplicationException(ErrorCode.PAYOUT_ALREADY_RELEASED, order.getId());
+        }
+        if (refunds.findByCheckoutOrderId(order.getId()).isPresent()) {
+            throw new ApplicationException(ErrorCode.REFUND_RELEASE_CONFLICT);
         }
         if (order.getStatus() != BofaCheckoutOrderStatus.CAPTURED) {
             throw new ApplicationException(ErrorCode.INVALID_CHECKOUT_ORDER_STATUS);
