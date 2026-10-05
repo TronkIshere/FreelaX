@@ -20,6 +20,9 @@ const labels: Record<string, string> = {
   REVIEW_GRACE_STARTED: 'Gia hạn review',
   REVIEW_AUTO_APPROVED: 'Máy chủ tự duyệt',
   DISPUTE_OPENED: 'Đã mở tranh chấp',
+  DISPUTE_DECIDED: 'Admin đã quyết định tranh chấp',
+  REVIEW_INVITED: 'Mời đánh giá hợp đồng',
+  REVIEW_PUBLISHED: 'Đánh giá đã công bố',
   PAYMENT_SENT: 'Thanh toán Client',
   PAYMENT_RECEIVED: 'Chi trả mô phỏng',
   TAX_EXPORT_FAILED: 'Chứng từ thuế',
@@ -27,6 +30,7 @@ const labels: Record<string, string> = {
 };
 const stamp = (value: string | null) => value ? value.slice(0, 16).replace('T', ' · ') : 'Chưa có thời gian';
 const financialEvents = new Set(['RELEASE_CONFIRMED', 'REFUND_PENDING', 'REFUND_CONFIRMED']);
+const ratingEvents = new Set(['REVIEW_INVITED', 'REVIEW_PUBLISHED']);
 
 export function Activity() {
   const [page, setPage] = useState(0);
@@ -57,7 +61,8 @@ export function Activity() {
     setActionError('');
     try {
       const updated = await api.markNotificationRead(item.id);
-      if (item.jobId && ['WORK_SUBMITTED', 'REVISION_REQUESTED', 'WORK_APPROVED', 'REVIEW_GRACE_STARTED', 'REVIEW_AUTO_APPROVED', 'DISPUTE_OPENED'].includes(item.type)) {
+      if (ratingEvents.has(item.type)) window.dispatchEvent(new Event('freelax:rating-update'));
+      if (item.jobId && ['WORK_SUBMITTED', 'REVISION_REQUESTED', 'WORK_APPROVED', 'REVIEW_GRACE_STARTED', 'REVIEW_AUTO_APPROVED', 'DISPUTE_OPENED', 'DISPUTE_DECIDED'].includes(item.type)) {
         window.dispatchEvent(new CustomEvent('freelax:review-update', { detail: { jobId: item.jobId } }));
       }
       setResult(current => current ? { ...current, data: current.data.map(entry =>
@@ -90,8 +95,8 @@ export function Activity() {
           <div className="activity-row-content"><div className="activity-row-meta">
             <span>{labels[item.type] || 'Cập nhật từ Marketplace'}</span><time>{stamp(item.createdAt)}</time></div>
             <h2>{item.title}</h2><p>{item.message}</p>
-            {item.jobId && <Link to={financialEvents.has(item.type) ? financePath(item.jobId) : '/work/' + encodeURIComponent(item.jobId)}>
-              {financialEvents.has(item.type) ? 'Xem bằng chứng tài chính →' : 'Xem công việc →'}</Link>}
+            {item.jobId && <Link to={financialEvents.has(item.type) ? financePath(item.jobId) : '/work/' + encodeURIComponent(item.jobId) + (ratingEvents.has(item.type) ? '#contract-reviews' : '')}>
+              {financialEvents.has(item.type) ? 'Xem bằng chứng tài chính →' : ratingEvents.has(item.type) ? 'Xem đánh giá hợp đồng →' : 'Xem công việc →'}</Link>}
           </div>
           <div className="activity-row-action">{item.read ? <span>Đã đọc</span> :
             <button className="text-button" type="button" disabled={!!pendingId}

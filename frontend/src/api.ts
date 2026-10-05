@@ -2,12 +2,17 @@ import type { DiscoverJob, DiscoveryFilters, Job, JobApplication, JobPaymentStat
 
 import type { ClientBankAccount, ClientBankInput, FundingResponse, SubmissionPayload, ContractSubmission, ReviewDecision, ContractSettlement, ContractCancellationRecord, CancellationRequest, CancellationDecision } from './types';
 
+import type { AdminDisputeDetail, Dispute, DisputeDecision, DisputeEvidenceInput, DisputeStatus, OpenDisputeInput, SpringPage } from './types';
+import type { AdminReviewDetail, ModerationAction, PortfolioInput, PortfolioItem, Profile, ProfilePatch, Review, ReviewInput } from './types';
+
 // Same-origin by default; an optional public origin can be supplied at build time.
 const configuredApiOrigin = (import.meta.env.VITE_MARKETPLACE_API_ORIGIN || '').trim().replace(/\/+$/, '');
 const API_ROOT = configuredApiOrigin + '/api/v1';
 
 export class ApiError extends Error {
-  constructor(message: string, public readonly status: number, public readonly code: number | null = null) {
+  constructor(message: string, public readonly status: number, public readonly code: number | null = null,
+    public readonly businessCode: string | null = null, public readonly requestId: string | null = null,
+    public readonly retryable: boolean | null = null) {
     super(message);
     this.name = 'ApiError';
   }
@@ -47,6 +52,15 @@ export function serverPage<T>(value: unknown): Page<T> {
   return data as unknown as Page<T>;
 }
 
+export function springPage<T>(value: unknown): SpringPage<T> {
+  const data = record(value);
+  if (!data || !Array.isArray(data.content) || !Number.isInteger(data.number) || !Number.isInteger(data.size) ||
+      !Number.isInteger(data.totalPages) || !Number.isInteger(data.totalElements)) {
+    throw new ApiError('Phản hồi hàng đợi từ máy chủ không hợp lệ.', 0);
+  }
+  return data as unknown as SpringPage<T>;
+}
+
 async function envelope<T>(response: Response): Promise<T> {
   let value: unknown;
   try {
@@ -59,7 +73,10 @@ async function envelope<T>(response: Response): Promise<T> {
     const serverMessage = payload?.message || payload?.error;
     const message = typeof serverMessage === 'string' && serverMessage.trim()
       ? serverMessage : 'Yêu cầu không thành công. Vui lòng thử lại.';
-    throw new ApiError(message, response.status, typeof payload?.status === 'number' ? payload.status : null);
+    const safeToken = (value: unknown) => typeof value === 'string' && /^[a-zA-Z0-9_.:-]{1,100}$/.test(value) ? value : null;
+    throw new ApiError(message, response.status, typeof payload?.status === 'number' ? payload.status : null,
+      safeToken(payload?.code), safeToken(payload?.requestId ?? response.headers.get('X-Request-Id')),
+      typeof payload?.retryable === 'boolean' ? payload.retryable : null);
   }
   return payload.data as T;
 }
@@ -258,6 +275,61 @@ export class MarketplaceApi {
 
   async settlement(contractId: string): Promise<ContractSettlement | null> {
     return this.authorized('/contracts/' + encodeURIComponent(contractId) + '/settlement');
+  }
+
+  async dispute(contractId: string): Promise<Dispute | null> {
+    return (await this.authorized<Dispute | undefined>('/contracts/' + encodeURIComponent(contractId) + '/disputes')) ?? null;
+  }
+  async openDispute(contractId: string, payload: OpenDisputeInput): Promise<Dispute> {
+    return this.authorized('/contracts/' + encodeURIComponent(contractId) + '/disputes', { method: 'POST', body: JSON.stringify(payload) });
+  }
+  async appendDisputeEvidence(contractId: string, disputeId: string, key: string, payload: DisputeEvidenceInput[]): Promise<Dispute> {
+    return this.authorized('/contracts/' + encodeURIComponent(contractId) + '/disputes/' + encodeURIComponent(disputeId) + '/evidence',
+      { method: 'POST', headers: { 'Idempotency-Key': key }, body: JSON.stringify(payload) });
+  }
+  async adminDisputes(status: DisputeStatus, page: number, size = 20): Promise<SpringPage<Dispute>> {
+    return springPage<Dispute>(await this.authorized('/admin/disputes?status=' + encodeURIComponent(status) + '&page=' + page + '&size=' + size));
+  }
+  async adminDispute(id: string): Promise<AdminDisputeDetail> { return this.authorized('/admin/disputes/' + encodeURIComponent(id)); }
+
+  async ownProfile(): Promise<Profile> { return this.authorized('/profiles/me'); }
+  async profile(id: string): Promise<Profile> { return this.authorized('/profiles/' + encodeURIComponent(id)); }
+  async patchProfile(input: ProfilePatch): Promise<Profile> {
+    const fields = ['version', 'displayName', 'avatarUrl', 'headline', 'bio', 'countryCode', 'languages', 'hourlyRateUsd', 'availability', 'companyName', 'companyWebsite'];
+    const body = Object.fromEntries(fields.filter(key => key in input).map(key => [key, input[key as keyof ProfilePatch]]));
+    return this.authorized('/profiles/me', { method: 'PATCH', body: JSON.stringify(body) });
+  }
+  async replaceSkills(version: number, skills: string[]): Promise<Profile> {
+    return this.authorized('/profiles/me/skills', { method: 'PUT', body: JSON.stringify({ version, skills }) });
+  }
+  async portfolio(id: string): Promise<PortfolioItem[]> { return this.authorized('/profiles/' + encodeURIComponent(id) + '/portfolio'); }
+  async savePortfolio(input: PortfolioInput, item?: { id: string; version: number }): Promise<PortfolioItem> {
+    const { title, description, projectUrl, thumbnailUrl, skills, completedAt, sortOrder } = input;
+    return this.authorized('/profiles/me/portfolio' + (item ? '/' + encodeURIComponent(item.id) : ''), {
+      method: item ? 'PATCH' : 'POST', body: JSON.stringify({ ...(item ? { version: item.version } : {}), title, description, projectUrl, thumbnailUrl, skills, completedAt, sortOrder }),
+    });
+  }
+  async deletePortfolio(id: string): Promise<void> { return this.authorized('/profiles/me/portfolio/' + encodeURIComponent(id), { method: 'DELETE' }); }
+  async contractReviews(id: string): Promise<Review[]> { return this.authorized('/contracts/' + encodeURIComponent(id) + '/reviews'); }
+  async submitReview(id: string, input: ReviewInput): Promise<Review> {
+    const { overall, dimensions: { communication, requirementsOrQuality, timeliness }, comment } = input;
+    return this.authorized('/contracts/' + encodeURIComponent(id) + '/reviews', { method: 'POST', body: JSON.stringify({ overall, dimensions: { communication, requirementsOrQuality, timeliness }, comment }) });
+  }
+  async publicReviews(id: string, page: number, size = 20): Promise<Review[]> {
+    return this.authorized('/profiles/' + encodeURIComponent(id) + '/reviews?page=' + page + '&size=' + size);
+  }
+  async reportReview(contractId: string, id: string, reason: string): Promise<Review> {
+    return this.authorized('/contracts/' + encodeURIComponent(contractId) + '/reviews/' + encodeURIComponent(id) + '/reports', { method: 'POST', body: JSON.stringify({ reason }) });
+  }
+  async reportedReviews(size = 20): Promise<Review[]> { return this.authorized('/admin/reviews/reported?size=' + size); }
+  async adminReview(id: string): Promise<AdminReviewDetail> { return this.authorized('/admin/reviews/' + encodeURIComponent(id)); }
+  async moderateReview(id: string, action: ModerationAction, reason: string): Promise<Review> {
+    return this.authorized('/admin/reviews/' + encodeURIComponent(id) + '/moderation', { method: 'POST', body: JSON.stringify({ action, reason }) });
+  }
+  async claimDispute(id: string): Promise<Dispute> { return this.authorized('/admin/disputes/' + encodeURIComponent(id) + '/claim', { method: 'POST' }); }
+  async resolveDispute(id: string, key: string, payload: DisputeDecision): Promise<Dispute> {
+    return this.authorized('/admin/disputes/' + encodeURIComponent(id) + '/resolve',
+      { method: 'POST', headers: { 'Idempotency-Key': key }, body: JSON.stringify(payload) });
   }
   async cancellation(contractId: string): Promise<ContractCancellationRecord | null> {
     return this.authorized('/contracts/' + encodeURIComponent(contractId) + '/cancellations');

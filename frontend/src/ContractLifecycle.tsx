@@ -3,11 +3,14 @@ import { Link } from 'react-router-dom';
 import { api, ApiError } from './api';
 import { ActionGroup, EvidenceDisclosure, FactGrid, SectionHeading } from './components';
 import { ContractCancellation, type CancellationState } from './ContractCancellation';
+import { ContractDispute } from './ContractDispute';
+import { ContractReviews } from './ContractReviews';
+import { activeDispute } from './disputeContracts';
 import { FundingPanel } from './Funding';
 import { financialCopy, financialMoneyTone, settlementMoneyLabel, settlementNeedsRefresh, settlementStageLabel } from './financeStatus';
-import { submissionLabel } from './status';
+import { disputeLabel, submissionLabel } from './status';
 import { attemptScope, clearAttempt, httpsUrl, localInstant, readAttempt, saveAttempt, smallReview, validateSubmission } from './workflowContracts';
-import type { ContractSettlement, ContractSubmission, ContractSummary, Job, Requirement, ReviewDecision, SubmissionPayload, User } from './types';
+import type { Dispute, ContractSettlement, ContractSubmission, ContractSummary, Job, Requirement, ReviewDecision, SubmissionPayload, User } from './types';
 
 type SubmissionAttempt = { key: string; payload: SubmissionPayload; baselineVersion: number };
 type DraftEvidence = Record<string, { selected: boolean; url: string; text: string }>;
@@ -60,6 +63,8 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
   const freelancer = user.userType === 'FREELANCER' && job.freelancerId === user.id;
   const scope = attemptScope('submit', user.id, contract.id, contract.milestoneId || 'missing');
   const [list, setList] = useState<ContractSubmission[]>([]);
+  const [dispute, setDispute] = useState<Dispute | null>(null);
+  const [disputeBusy, setDisputeBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [verified, setVerified] = useState(false);
   const [error, setError] = useState('');
@@ -89,15 +94,15 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
   const recovery = useRef<SubmissionAttempt | null>(null);
   const syncing = useRef<Promise<void> | null>(null);
   const latest = list[0];
-  const disputed = contract.status === 'DISPUTED' || contract.milestoneStatus === 'DISPUTED' || latest?.status === 'DISPUTED';
-  const releaseRelevant = contract.milestoneStatus === 'RELEASE_PENDING' || contract.milestoneStatus === 'RELEASED' || contract.status === 'COMPLETED' || latest?.status === 'APPROVED';
+  const disputed = activeDispute(dispute) || (!dispute && (contract.status === 'DISPUTED' || contract.milestoneStatus === 'DISPUTED'));
+  const releaseRelevant = dispute?.status === 'DECISION_PENDING_RELEASE' || dispute?.status === 'RESOLVED_RELEASE' || contract.milestoneStatus === 'RELEASE_PENDING' || contract.milestoneStatus === 'RELEASED' || contract.status === 'COMPLETED' || latest?.status === 'APPROVED';
   const releaseConfirmed = settlement?.moneyStatus === 'SUCCEEDED';
   const releaseFailed = settlement?.moneyStatus === 'FAILED' && !settlement.retryable;
   const completed = contract.status === 'COMPLETED' || contract.milestoneStatus === 'RELEASED' || job.status === 'COMPLETED';
   const releasedPending = releaseRelevant && !releaseConfirmed && !completed;
-  const refundPending = contract.milestoneStatus === 'REFUND_PENDING' || cancellation.record?.cancellationStatus === 'REFUND_PENDING';
+  const refundPending = dispute?.status === 'DECISION_PENDING_REFUND' || contract.milestoneStatus === 'REFUND_PENDING' || cancellation.record?.cancellationStatus === 'REFUND_PENDING';
   const cancelled = contract.status === 'CANCELLED' || job.status === 'CANCELLED' || cancellation.record?.cancellationStatus === 'CANCELLED';
-  const workAllowed = cancellation.ready && !cancellation.busy && !cancellation.uncertain && !refundPending && !cancelled && !fundingBusy;
+  const workAllowed = cancellation.ready && !cancellation.busy && !cancellation.uncertain && !refundPending && !cancelled && !fundingBusy && !disputeBusy && !dispute;
   const canSubmit = freelancer && workAllowed && verified && !disputed && !releaseRelevant && !loading &&
     ['ACTIVE', 'REVISION'].includes(contract.status) && ['FUNDED', 'IN_PROGRESS'].includes(contract.milestoneStatus || '') &&
     ['IN_PROGRESS', 'REVISION_REQUESTED'].includes(job.status) && (!latest || latest.status === 'REVISION_REQUESTED');
@@ -113,9 +118,9 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
       const saved = freelancer ? readAttempt<SubmissionAttempt>(scope) : null;
       if (saved && (!saved.key || !saved.payload || !Number.isInteger(saved.baselineVersion))) throw new Error();
       recovery.current = saved; setPending(saved);
-      const returned = await api.contractSubmissions(contract.id);
+      const [returned, currentDispute] = await Promise.all([api.contractSubmissions(contract.id), api.dispute(contract.id)]);
       if (!active) return;
-      const ordered = [...returned].sort((a, b) => b.version - a.version); setList(ordered); setVerified(true);
+      const ordered = [...returned].sort((a, b) => b.version - a.version); setList(ordered); setDispute(currentDispute); setVerified(true);
       if (saved && (ordered[0]?.version || 0) > saved.baselineVersion) { clearAttempt(scope); recovery.current = null; setPending(null); const fresh = await api.job(job.id); if (active) onJobUpdated(fresh); }
     })().catch(() => { if (active) setError('Không thể đối chiếu lịch sử hoặc lần gửi trước. Hãy tải lại.'); }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
@@ -124,12 +129,12 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
   const synchronize = useCallback((): Promise<void> => {
     if (syncing.current) return syncing.current;
     const work = (async () => {
-      const [fresh, returned] = await Promise.all([api.job(job.id), api.contractSubmissions(contract.id)]);
+      const [fresh, returned, currentDispute] = await Promise.all([api.job(job.id), api.contractSubmissions(contract.id), api.dispute(contract.id)]);
       if (!alive.current) return;
       const ordered = [...returned].sort((a, b) => b.version - a.version);
-      setList(ordered); setVerified(true); onJobUpdated(fresh); setDecision(null); setDecisionUncertain(false);
+      setList(ordered); setDispute(currentDispute); setVerified(true); onJobUpdated(fresh); setDecision(null); setDecisionUncertain(false);
       if (recovery.current && (ordered[0]?.version || 0) > recovery.current.baselineVersion) { clearAttempt(scope); recovery.current = null; setPending(null); }
-    })().finally(() => { syncing.current = null; });
+    })().catch(cause => { if (alive.current) setVerified(false); throw cause; }).finally(() => { syncing.current = null; });
     syncing.current = work; return work;
   }, [contract.id, job.id, scope, onJobUpdated]);
   async function refresh() {
@@ -139,6 +144,18 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
     catch { if (alive.current) setError('Không tải lại được trạng thái. Chưa gửi thao tác mới.'); }
     finally { if (alive.current) setBusy(false); }
   }
+  useEffect(() => {
+    if (!client && !freelancer) return;
+    let active = true;
+    const refetch = () => {
+      if (lock.current || document.visibilityState === 'hidden') return;
+      void synchronize().catch(() => { if (active) setError('Chưa đối chiếu được hồ sơ tranh chấp. Hãy tải lại trước khi thao tác.'); });
+    };
+    const event = (value: Event) => { if ((value as CustomEvent<{ jobId: string }>).detail?.jobId === job.id) refetch(); };
+    const timer = dispute && ['OPEN', 'UNDER_REVIEW', 'DECISION_PENDING_RELEASE', 'DECISION_PENDING_REFUND'].includes(dispute.status) ? window.setInterval(refetch, 30000) : null;
+    window.addEventListener('focus', refetch); window.addEventListener('freelax:review-update', event);
+    return () => { active = false; if (timer) clearInterval(timer); window.removeEventListener('focus', refetch); window.removeEventListener('freelax:review-update', event); };
+  }, [client, freelancer, dispute?.status, synchronize, job.id]);
   useEffect(() => {
     if (latest?.status !== 'SUBMITTED' || disputed || releasedPending) return;
     let active = true; let inFlight = false; let lastFetch = 0;
@@ -230,7 +247,7 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
       if (!revisionAvailable || !feedback.trim() || feedback.length > 10000 || (!criterionIds.length && !deliverableIds.length)) { setError('Cần phản hồi và ít nhất một tiêu chí hoặc sản phẩm liên quan trong số lượt sửa còn lại.'); return; }
       body = { decision, feedback: feedback.trim(), criterionIds, deliverableIds };
     } else if (decision === 'OPEN_DISPUTE') {
-      if (!reason.trim() || reason.length > 60 || !description.trim() || description.length > 10000) { setError('Cần mã lý do (tối đa 60 ký tự) và mô tả (tối đa 10.000 ký tự).'); return; }
+      if (!reason.trim() || reason.length > 60 || !description.trim() || description.length > 2000) { setError('Cần mã lý do (tối đa 60 ký tự) và mô tả (tối đa 2.000 ký tự).'); return; }
       body = { decision, reasonCode: reason.trim(), description: description.trim() };
     } else body = { decision: 'APPROVE' };
     lock.current = true; setBusy(true); setError(''); setDecisionUncertain(true);
@@ -251,7 +268,8 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
     })}</fieldset>;
   }
   if (!client && !freelancer) return null;
-  const next = cancelled ? cancellation.record?.refundStatus === 'SUCCEEDED' ? 'Hợp đồng đã hủy; hoàn tiền đã xác nhận' : 'Hợp đồng đã hủy'
+  const next = dispute && !activeDispute(dispute) ? disputeLabel(dispute.status)
+    : cancelled ? cancellation.record?.refundStatus === 'SUCCEEDED' ? 'Hợp đồng đã hủy; hoàn tiền đã xác nhận' : 'Hợp đồng đã hủy'
     : refundPending ? 'Đang đối soát hoàn tiền; chưa hủy cuối cùng'
     : cancellation.busy ? 'Đang ghi nhận thao tác hủy hợp đồng'
     : cancellation.uncertain ? 'Đang đối soát ý định hủy; chưa gửi thao tác khác'
@@ -278,6 +296,12 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
     {latest && <section className="latest-submission" id="latest-submission" tabIndex={-1} aria-label="Bản bàn giao mới nhất"><SectionHeading title={'Bản bàn giao #' + latest.version} aside={submissionLabel(latest.status)} /><EvidenceRecord submission={latest} contract={contract} /><ReviewTiming submission={latest} contract={contract} now={now} /></section>}
     {loading && <p role="status">Đang tải lịch sử bàn giao…</p>}
     {disputed && <p role="status">Tranh chấp đang mở. Các thao tác bàn giao và review đã khóa; chờ Admin xử lý.</p>}
+    <ContractDispute key={'dispute:' + contract.id + ':' + user.id} contractId={contract.id} user={user} dispute={dispute} ready={verified}
+      eligible={verified && workAllowed && !busy && !releaseRelevant && !disputed && (
+        contract.status === 'ACTIVE' && ['FUNDED', 'IN_PROGRESS'].includes(contract.milestoneStatus || '') && job.status === 'IN_PROGRESS' && !latest ||
+        contract.status === 'REVISION' && contract.milestoneStatus === 'IN_PROGRESS' && job.status === 'REVISION_REQUESTED' && latest?.status === 'REVISION_REQUESTED' ||
+        contract.status === 'UNDER_REVIEW' && contract.milestoneStatus === 'SUBMITTED' && job.status === 'SUBMITTED_FOR_REVIEW' && latest?.status === 'SUBMITTED' && freelancer)}
+      blocked={busy || fundingBusy || cancellation.busy || cancellation.uncertain} operationLock={lock} onRefresh={synchronize} onBusy={setDisputeBusy} />
     {releaseRelevant && <section className="settlement-document" aria-label="Quyết toán hợp đồng">
       <SectionHeading title="Release hợp đồng" aside={settlement?.simulation ? 'Mô phỏng' : undefined} />
       {settlementLoading && <p role="status">Đang đọc trạng thái release…</p>}
@@ -301,7 +325,7 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
       <button className="text-button" disabled={settlementLoading || busy || cancellation.busy} onClick={() => setSettlementAttempt(value => value + 1)}>Đối chiếu release</button>
     </section>}
     <ContractCancellation key={contract.id + ':' + user.id} job={job} user={user} submissionCount={verified ? list.length : null}
-      workflowBusy={busy || fundingBusy} operationLock={lock} onJobUpdated={onJobUpdated} onStateChange={setCancellation} />
+      workflowBusy={busy || fundingBusy || disputeBusy} operationLock={lock} onJobUpdated={onJobUpdated} onStateChange={setCancellation} />
     {canSubmit && <section className="work-composer" id="work-primary-action" tabIndex={-1}><SectionHeading title={job.status === 'REVISION_REQUESTED' ? 'Gửi bản sửa' : 'Gửi bàn giao'} />
       {pending && <p role="status">Giữ nguyên nội dung lần gửi trước để đối chiếu. Không tạo phiên bản mới khi kết quả chưa rõ.</p>}
       <form onSubmit={submit}><label>Tóm tắt bàn giao<textarea required maxLength={10000} value={pending?.payload.summary ?? summary} disabled={busy || !!pending} onChange={e => setSummary(e.target.value)} /></label>
@@ -315,7 +339,7 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
           {decision === 'APPROVE' && <p>Duyệt bản #{latest.version}? Phần việc được duyệt; tiền chuyển sang chờ xử lý, chưa giải ngân.</p>}
           {decision === 'REQUEST_REVISION' && <><label>Phản hồi chỉnh sửa<textarea required maxLength={10000} disabled={busy} value={feedback} onChange={e => setFeedback(e.target.value)} /></label>
             {([['Tiêu chí liên quan', contract.acceptanceCriteria, criterionIds, setCriterionIds], ['Sản phẩm liên quan', contract.deliverables, deliverableIds, setDeliverableIds]] as const).map(([title, items, ids, setIds]) => <fieldset key={title}><legend>{title}</legend>{items.map(item => <label className="selection-label" key={item.id}><input type="checkbox" disabled={busy} checked={ids.includes(item.id)} onChange={e => setIds(e.target.checked ? [...ids, item.id] : ids.filter(id => id !== item.id))} />{item.title || item.description}</label>)}</fieldset>)}</>}
-          {decision === 'OPEN_DISPUTE' && <><p>Mở tranh chấp cho bản #{latest.version} và khóa review để chờ Admin.</p><label>Mã lý do<input required maxLength={60} value={reason} disabled={busy} onChange={e => setReason(e.target.value)} /></label><label>Mô tả tranh chấp<textarea required maxLength={10000} value={description} disabled={busy} onChange={e => setDescription(e.target.value)} /></label></>}
+          {decision === 'OPEN_DISPUTE' && <><p>Mở tranh chấp cho bản #{latest.version} và khóa review để chờ Admin.</p><label>Mã lý do<input required maxLength={60} value={reason} disabled={busy} onChange={e => setReason(e.target.value)} /></label><label>Mô tả tranh chấp<textarea required maxLength={2000} value={description} disabled={busy} onChange={e => setDescription(e.target.value)} /></label></>}
           <ActionGroup><button className="button" disabled={busy}>{busy ? 'Đang ghi nhận…' : decision === 'APPROVE' ? 'Xác nhận duyệt' : decision === 'REQUEST_REVISION' ? 'Gửi yêu cầu chỉnh sửa' : 'Xác nhận mở tranh chấp'}</button><button className="button button-secondary" type="button" disabled={busy} onClick={() => setDecision(null)}>Quay lại</button></ActionGroup>
         </form>}
     </section>}
@@ -327,6 +351,7 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
       {list.slice(1).map(item => <details className="ledger-row" key={item.id}><summary><strong>#{item.version}</strong><span>{submissionLabel(item.status)}</span><time>{localInstant(item.submittedAt)}</time></summary><div className="ledger-body"><EvidenceRecord submission={item} contract={contract} /></div></details>)}
     </section>
     {footer}
+    {completed && (client || freelancer) && <ContractReviews key={'reviews:' + contract.id + ':' + user.id} job={job} user={user} settlement={settlement} blocked={!cancellation.ready || cancellation.uncertain || refundPending || cancelled || !!settlementError} />}
     {list.length > 0 && <EvidenceDisclosure summary="Tham chiếu bàn giao"><dl className="reference-list">{list.map(item => <div key={item.id}><dt>Bản #{item.version}</dt><dd><code>{item.id}</code>{item.disputeId && <p>Dispute: <code>{item.disputeId}</code></p>}</dd></div>)}</dl></EvidenceDisclosure>}
   </div>;
 }

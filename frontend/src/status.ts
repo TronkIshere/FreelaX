@@ -16,6 +16,15 @@ export const submissionLabels: Record<string, string> = {
   DISPUTED: 'Đang tranh chấp',
 };
 
+export const disputeLabels: Record<string, string> = {
+  OPEN: 'Tranh chấp đang mở', UNDER_REVIEW: 'Admin đang xem xét',
+  DECISION_PENDING_RELEASE: 'Đã quyết định release; đang đối soát',
+  DECISION_PENDING_REFUND: 'Đã quyết định hoàn tiền; đang đối soát',
+  RESOLVED_RELEASE: 'Tranh chấp đã giải quyết: release', RESOLVED_REFUND: 'Tranh chấp đã giải quyết: hoàn tiền',
+  CANCELLED: 'Tranh chấp đã đóng',
+};
+export const disputeLabel = (status: string) => disputeLabels[status] || 'Chưa xác minh tranh chấp';
+
 export const fundingLabel = (status: string) => ({ PENDING: 'Chờ xử lý funding', PROCESSING: 'Đang xử lý funding', UNKNOWN: 'Đang đối soát funding', FAILED: 'Funding thất bại — có thể thử lại', SUCCEEDED: 'Funding đã xác nhận' }[status] || 'Chưa xác minh funding');
 
 export const cancellationLabel = (status: string) => ({

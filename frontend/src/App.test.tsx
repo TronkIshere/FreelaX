@@ -34,6 +34,8 @@ function SessionAuthority() {
 }
 async function render(user: User, path = '/account') {
   vi.spyOn(api, 'restore').mockResolvedValue(user);
+  vi.spyOn(api, 'ownProfile').mockResolvedValue({ userId: user.id, userType: user.userType, displayName: user.displayName, version: 1, skills: [], languages: [], verification: { email: 'UNVERIFIED', identity: 'UNVERIFIED', paymentMethod: 'UNVERIFIED', source: 'NOT_CONFIGURED' }, reputation: { completedContracts: 0, disputeCount: 0, reviewCount: 0, averageRating: null, calculatedAt: '2026-10-06' } });
+  vi.spyOn(api, 'portfolio').mockResolvedValue([]);
   await act(async () => {
     root.render(<MemoryRouter initialEntries={[path]} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <SessionProvider><App /><Location /><SessionAuthority /></SessionProvider>
@@ -43,6 +45,21 @@ async function render(user: User, path = '/account') {
 function currentPath() { return host.querySelector('[data-testid="path"]')?.textContent; }
 
 describe('P06.2 role-aware shell', () => {
+  it('reconciles edited display name through auth/me without trusting the form or changing role capability', async () => {
+    await render(client);
+    const authoritative = { ...client, displayName: 'Authoritative server name' };
+    const me = vi.spyOn(api, 'me').mockResolvedValue(authoritative);
+    vi.spyOn(api, 'patchProfile').mockResolvedValue({ ...(await api.ownProfile()), displayName: 'Form draft', version: 2 });
+    await act(async () => ([...host.querySelectorAll('button')].find(b => b.textContent === 'Chỉnh sửa hồ sơ')!).click());
+    const input = host.querySelector('.profile-editor input')! as HTMLInputElement;
+    await act(async () => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, 'Form draft'); input.dispatchEvent(new Event('input', { bubbles: true })); });
+    await act(async () => host.querySelector('.profile-editor')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
+    expect(me).toHaveBeenCalledOnce(); expect(host.querySelector('.identity strong')?.textContent).toBe('Authoritative server name'); expect(host.querySelector('.identity span')?.textContent).toBe('Client'); expect(host.querySelector('[data-testid="admin-authority"]')?.textContent).toBe('false');
+  });
+  it('extends the same trusted Admin workspace with reviews and preserves dispute entry', async () => {
+    vi.spyOn(api, 'reportedReviews').mockResolvedValue([]); await render({ ...client, authorities: ['ROLE_ADMIN'] }, '/admin/reviews');
+    expect(host.querySelector('nav[aria-label="Khu vực quản trị"] a[href="/admin/disputes"]')).not.toBeNull(); expect(host.querySelector('.primary-nav')?.querySelectorAll('a')).toHaveLength(5); expect(host.textContent).toContain('Nhận xét được báo cáo');
+  });
   it.each([client, freelancer, { ...client, authorities: ['ROLE_ADMIN'] }, { ...freelancer, authorities: ['ROLE_ADMIN'] }])('preserves the five destinations and trusted $userType identity', async user => {
     await render(user);
     const links = [...host.querySelectorAll('.primary-nav a')];
@@ -58,6 +75,8 @@ describe('P06.2 role-aware shell', () => {
     expect(host.querySelector('.primary-nav [aria-current="page"]')?.textContent).toBe('Tài khoản');
     expect(host.querySelector('.subnav')).toBeNull();
     expect(host.querySelector('[data-testid="admin-authority"]')?.textContent).toBe(String(hasAuthority(user, 'ROLE_ADMIN')));
+    expect(host.querySelector('.admin-entry')?.textContent ?? null).toBe(hasAuthority(user, 'ROLE_ADMIN') ? 'Quản trị' : null);
+    if (hasAuthority(user, 'ROLE_ADMIN')) expect(host.querySelector('.admin-entry')?.getAttribute('href')).toBe('/admin/disputes');
   });
 
   it.each([

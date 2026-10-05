@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from './api';
+import { reviewOpportunity } from './ContractReviews';
 import { ActionGroup, PageHeading, SectionHeading, StatePanel } from './components';
 import { applicationLabel, date, jobLabel, money } from './status';
 import { cancelledContract, contractFinanceLabel, financePath, refundOwned, releaseOwned, settlementNeedsRefresh } from './financeStatus';
@@ -48,6 +49,7 @@ export function Overview({ user }: { user: User }) {
   const [error, setError] = useState('');
   const [attempt, setAttempt] = useState(0);
   const [financial, setFinancial] = useState<Record<string, ContractFinance>>({});
+  const [reviewJobs, setReviewJobs] = useState<string[]>([]);
   const client = user.userType === 'CLIENT';
 
   useEffect(() => {
@@ -65,7 +67,15 @@ export function Overview({ user }: { user: User }) {
           error: [settlement, cancellation].flatMap(result => result.status === 'rejected' ? [errorText(result.reason)] : []).join(' · ') }] as const;
       })) : [];
       if (!active) return;
-      setFinancial(Object.fromEntries(records));
+      const financialRecords = Object.fromEntries(records);
+      setFinancial(financialRecords);
+      const invitations = jobResult.status === 'fulfilled' ? await Promise.all(jobResult.value.data.filter(job => job.status === 'COMPLETED' && job.contract).map(async job => {
+        const evidence = financialRecords[job.id];
+        if (!evidence || evidence.error || evidence.settlement?.moneyStatus !== 'SUCCEEDED' || ['REFUND_PENDING', 'CANCELLED'].includes(evidence.cancellation?.cancellationStatus || '') || evidence.cancellation?.refundStatus === 'SUCCEEDED') return null;
+        try { const rows = await api.contractReviews(job.contract!.id); return reviewOpportunity(job, user, evidence.settlement, rows) ? job.id : null; } catch { return null; }
+      })) : [];
+      if (!active) return;
+      setReviewJobs(invitations.filter((id): id is string => !!id));
       if (jobResult.status === 'fulfilled') setJobs(jobResult.value);
       else setError(errorText(jobResult.reason));
       if (applicationResult.status === 'fulfilled') setApplications(applicationResult.value);
@@ -79,10 +89,11 @@ export function Overview({ user }: { user: User }) {
     const refresh = () => { if (document.visibilityState !== 'hidden') setAttempt(value => value + 1); };
     window.addEventListener('focus', refresh);
     window.addEventListener('freelax:review-update', refresh);
-    return () => { window.removeEventListener('focus', refresh); window.removeEventListener('freelax:review-update', refresh); };
+    window.addEventListener('freelax:rating-update', refresh);
+    return () => { window.removeEventListener('focus', refresh); window.removeEventListener('freelax:review-update', refresh); window.removeEventListener('freelax:rating-update', refresh); };
   }, []);
 
-  const attention = attentionItems(client, jobs?.data.filter(job => client ? job.clientUserId === user.id : job.freelancerId === user.id) ?? [], financial);
+  const attention = [...attentionItems(client, jobs?.data.filter(job => client ? job.clientUserId === user.id : job.freelancerId === user.id) ?? [], financial), ...(jobs?.data.filter(job => reviewJobs.includes(job.id)).map(job => ({ job, label: 'Đánh giá đối tác', href: '/work/' + encodeURIComponent(job.id) + '#contract-reviews' })) || [])];
   const attentionIds = new Set(attention.map(item => item.job.id));
   const recent = jobs?.data.filter(job => !attentionIds.has(job.id)).slice(0, 4) ?? [];
   const pendingApplications = applications?.data.some(item => item.status === 'PENDING');
@@ -98,7 +109,7 @@ export function Overview({ user }: { user: User }) {
         <SectionHeading id="overview-attention-title" title="Cần xử lý"
           aside={jobs.totalElements > jobs.data.length ? 'Trong ' + jobs.data.length + ' công việc gần nhất' : undefined} />
         {attention.length ? <div className="overview-attention-rows">{attention.map(({ job, label, href }, index) =>
-          <article className="overview-attention-row" key={job.id}>
+          <article className="overview-attention-row" key={job.id + ':' + href}>
             <div><h3><Link to={'/work/' + job.id}>{job.title}</Link></h3>
               <span className="metadata">{href.startsWith('/finance') ? contractFinanceLabel(job, financial[job.id]) : jobLabel(job.status)} · {money(job.budgetUsd)}</span></div>
             <ActionGroup><Link className={'button' + (index ? ' button-secondary' : '')} to={href}>{label} →</Link></ActionGroup>

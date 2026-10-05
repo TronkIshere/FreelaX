@@ -1,7 +1,10 @@
 import { useState } from 'react';
 import { Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
-import { ApiError } from './api';
+import { ApiError, hasAuthority } from './api';
+import { AdminDisputes, AdminDisputeDetail } from './AdminDisputes';
 import { Account } from './Account';
+import { AdminReviews, AdminReview } from './AdminReviews';
+import { PublicProfile } from './PublicProfile';
 import { Activity } from './Activity';
 import { AuthEntry } from './Auth';
 import { ActionGroup, StatePanel } from './components';
@@ -18,7 +21,7 @@ function Brand() {
 }
 
 function RoleShell({ user }: { user: User }) {
-  const { signOut } = useSession();
+  const { signOut, reconcileUser } = useSession();
   const navigate = useNavigate();
   const [logoutError, setLogoutError] = useState('');
   const [loggingOut, setLoggingOut] = useState(false);
@@ -52,6 +55,7 @@ function RoleShell({ user }: { user: User }) {
       <Brand />
       <div className="identity"><span>{role === 'CLIENT' ? 'Client' : 'Freelancer'}</span><strong>{user.displayName}</strong></div>
       <ActionGroup label="Phiên làm việc">
+        {hasAuthority(user, 'ROLE_ADMIN') && <NavLink className="text-link admin-entry" to="/admin/disputes">Quản trị</NavLink>}
         <button className="text-button sign-out" type="button" onClick={() => void logout()} disabled={loggingOut}>
           {loggingOut ? 'Đang đăng xuất…' : 'Đăng xuất'}</button>
       </ActionGroup>
@@ -66,6 +70,7 @@ function RoleShell({ user }: { user: User }) {
       <NavLink to="/work/applications">Ứng tuyển</NavLink>
       <NavLink to="/work/mine">Công việc của tôi</NavLink>
     </nav>}
+    {hasAuthority(user, 'ROLE_ADMIN') && location.pathname.startsWith('/admin/') && <nav className="subnav" aria-label="Khu vực quản trị"><NavLink to="/admin/disputes">Tranh chấp</NavLink><NavLink to="/admin/reviews">Đánh giá được báo cáo</NavLink></nav>}
     <main id="main" className="view" tabIndex={-1}>
       <Routes>
         <Route path="/" element={<Overview user={user} />} />
@@ -80,7 +85,12 @@ function RoleShell({ user }: { user: User }) {
         <Route path="/finance/tax-records" element={<TaxRecordsPage />} />
         <Route path="/finance/tax-records/:taxRecordId" element={<TaxRecordDetail />} />
         <Route path="/activity" element={<Activity />} />
-        <Route path="/account" element={<Account user={user} onLogout={() => void logout()} loggingOut={loggingOut} />} />
+        <Route path="/admin/disputes" element={<AdminDisputes user={user} />} />
+        <Route path="/admin/disputes/:disputeId" element={<AdminDisputeDetail user={user} />} />
+        <Route path="/admin/reviews" element={<AdminReviews user={user} />} />
+        <Route path="/admin/reviews/:reviewId" element={<AdminReview user={user} />} />
+        <Route path="/profiles/:userId" element={<PublicProfile user={user} />} />
+        <Route path="/account" element={<Account user={user} onLogout={() => void logout()} loggingOut={loggingOut} onReconcileUser={reconcileUser} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </main>

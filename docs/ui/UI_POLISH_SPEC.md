@@ -208,7 +208,7 @@ Avoid nested cards.
 
 ## Account / Profile shell
 
-Current account source still supports only current identity/session fields unless a newer profile API is added.
+The current Step 8 API supports versioned profiles, role-specific fields, skills and Freelancer portfolio. Use it in Account while preserving identity/session controls. Step 9 supports participant reviews, authenticated public listings/reporting and trusted Admin moderation. Render only server-returned reputation; no local aggregates or publication countdown.
 
 Do not fabricate:
 
@@ -274,15 +274,14 @@ Any new motion must remain brief and non-essential.
 P06 does not implement backend/business features absent from current APIs, including:
 
 ```text
-profile persistence APIs
-portfolio CRUD
+backend profile persistence / portfolio implementation (frontend integrates existing Step 8 APIs)
 reputation calculation
 wallet onboarding
 Phantom connect
 backend funding/review implementation (frontend integrates existing APIs)
 backend release/refund orchestration implementation (frontend integrates existing Step 4/5 APIs)
-Admin dispute resolution
-rating
+backend Admin dispute resolution implementation (frontend integrates existing Step 6 APIs)
+backend rating/publication implementation (frontend integrates existing Step 9 APIs)
 chat
 AI skill verification
 ```
