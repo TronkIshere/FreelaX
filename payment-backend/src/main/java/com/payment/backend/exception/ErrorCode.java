@@ -37,6 +37,10 @@ public enum ErrorCode {
     PAYOUT_ALREADY_RELEASED(3009, "Giao dịch thanh toán này đã được giải ngân: %s", HttpStatus.CONFLICT),
     BOFA_PAYOUT_FAILED(3010, "Giải ngân BofA thất bại: %s", HttpStatus.BAD_GATEWAY),
     INSUFFICIENT_BALANCE(3011, "Số dư ledger nội bộ không đủ cho tài khoản: %s", HttpStatus.CONFLICT),
+    RELEASE_AMOUNT_MISMATCH(3012, "Giá trị giải ngân không khớp giao dịch đã capture", HttpStatus.CONFLICT),
+    RELEASE_CURRENCY_MISMATCH(3013, "Giao dịch capture chỉ hỗ trợ USD", HttpStatus.CONFLICT),
+    RELEASE_KEY_CONFLICT(3014, "Release key đã được dùng cho yêu cầu khác", HttpStatus.CONFLICT),
+    RELEASE_RECIPIENT_INVALID(3015, "Người nhận phải khác Client thanh toán", HttpStatus.CONFLICT),
 
     JOB_NOT_FOUND(4000, "Không tìm thấy công việc: %s", HttpStatus.NOT_FOUND),
 
