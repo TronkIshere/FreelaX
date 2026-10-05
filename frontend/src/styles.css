@@ -356,6 +356,13 @@ a { color: inherit; }
 .funding-document > strong { font-size: 22px; }
 .funding-document:focus-visible { outline: 3px solid var(--cobalt); outline-offset: 3px; }
 .funding-document > p { max-width: var(--content-measure); }
+.settlement-document, .cancellation-document { min-width: 0; padding: var(--space-5) 0; }
+.settlement-document > p, .cancellation-document > p { max-width: var(--content-measure); overflow-wrap: anywhere; }
+.cancellation-form { display: grid; min-width: 0; gap: var(--space-4); max-width: 860px; margin: var(--space-4) 0; }
+.cancellation-form label { display: grid; gap: var(--space-2); font-size: 14px; font-weight: 700; }
+.cancellation-form input, .cancellation-form textarea { width: 100%; min-width: 0; padding: var(--space-3); border: 2px solid var(--ink); background: var(--cream); color: var(--ink); }
+.cancellation-form textarea { min-height: 125px; resize: vertical; }
+.cancellation-document > .text-button { margin: var(--space-3) var(--space-4) 0 0; }
 .bank-form { display: grid; gap: var(--space-4); max-width: 680px; margin-top: var(--space-5); }
 .bank-form label { display: grid; gap: var(--space-2); font-weight: 650; }
 .bank-form :is(input, select), .decision-form input:not([type=checkbox]), .evidence-input input:not([type=checkbox]) { width: 100%; min-width: 0; padding: var(--space-3); border: 2px solid var(--ink); background: var(--cream); color: var(--ink); font: inherit; }

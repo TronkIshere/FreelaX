@@ -23,6 +23,8 @@ let host: HTMLDivElement, root: Root;
 beforeEach(() => {
   sessionStorage.clear(); host = document.createElement('div'); document.body.append(host); root = createRoot(host);
   vi.spyOn(api, 'contractSubmissions').mockResolvedValue([]); vi.spyOn(api, 'job').mockResolvedValue(working);
+  vi.spyOn(api, 'cancellation').mockResolvedValue(null); vi.spyOn(api, 'settlement').mockResolvedValue(null);
+  vi.spyOn(api, 'funding').mockResolvedValue({ fundingTransactionId: 'funding', fundingStatus: 'SUCCEEDED', simulation: true, providerReference: null, nextAction: 'WAIT', retryAfterSeconds: null });
 });
 afterEach(() => { act(() => root.unmount()); host.remove(); vi.restoreAllMocks(); vi.useRealTimers(); });
 function Harness({ job, user }: { job: Job; user: User }) { const [current, setJob] = useState(job); return <WorkLifecycle job={current} user={user} onJobUpdated={setJob}><p>Job document</p></WorkLifecycle>; }
@@ -86,7 +88,7 @@ describe('P06.4B contract workflow', () => {
   });
   it.each([4027, 4028])('conflict %s refreshes and removes stale decisions', async code => {
     vi.mocked(api.contractSubmissions).mockResolvedValueOnce([v1]).mockResolvedValue([{ ...v1, status: 'APPROVED' }]); vi.mocked(api.job).mockResolvedValue({ ...review, contract: { ...review.contract!, milestoneStatus: 'RELEASE_PENDING' } }); const post = vi.spyOn(api, 'decideSubmission').mockRejectedValue(new ApiError('changed', 409, code));
-    await mount(review, client); await click('Duyệt bàn giao'); await submit('.decision-form'); expect(post).toHaveBeenCalledTimes(1); expect(api.job).toHaveBeenCalled(); expect(button('Duyệt bàn giao')).toBeUndefined(); expect(host.textContent).toContain('đang xử lý tiền'); expect(host.textContent).not.toContain('payout completed');
+    await mount(review, client); await click('Duyệt bàn giao'); await submit('.decision-form'); expect(post).toHaveBeenCalledTimes(1); expect(api.job).toHaveBeenCalled(); expect(button('Duyệt bàn giao')).toBeUndefined(); expect(host.textContent).toContain('đang đối soát release'); expect(host.textContent).not.toContain('payout completed');
   });
   it('approval confirmation prevents double decisions', async () => {
     vi.mocked(api.contractSubmissions).mockResolvedValue([v1]); const post = vi.spyOn(api, 'decideSubmission').mockReturnValue(new Promise(() => {})); await mount(review, client); await click('Duyệt bàn giao'); expect(host.textContent).toContain('chưa giải ngân'); await act(async () => { const f = host.querySelector('.decision-form')!; f.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); f.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); }); expect(post).toHaveBeenCalledTimes(1);

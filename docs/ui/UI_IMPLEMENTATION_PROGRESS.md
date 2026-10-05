@@ -393,3 +393,30 @@ Backend changed: NO. Runtime/env/dependencies changed: NO. Browser calls interna
 Blockers: authenticated real-stack smoke `ENVIRONMENT BLOCKED` because Marketplace localhost:9191 is unavailable; contract integration with the running stack remains unverified. No blocker for the frontend UI/test/build gate.
 Next: stop after P06.4 review. P06.5–P06.8 remain `NOT_STARTED`.
 Git: 20 intended frontend/docs paths, uncommitted; no push; baseline HEAD/branch preserved.
+
+### 2026-10-05 — UI Steps 1–5 P0 integration
+
+Status: `PASS` (P0 frontend implementation/test/build gate); authenticated desktop runtime smoke `ENVIRONMENT BLOCKED`.
+Branch: `feat/mvp-ui-step1-5-20261005`; clean start at `6b866fb5fc71aa6bb7e0f75decbce3f20236be2d`. Backend Steps 1–5 controllers/DTOs re-verified read-only.
+
+Implemented:
+
+- Typed nullable settlement/cancellation reads and exact cancellation request/decision payloads in the existing MarketplaceApi. Settlement amount accepts numeric/string decimals; cancellation amount follows the backend string serialization. No browser settlement mutation or refund key was invented.
+- Submission APPROVED no longer implies permanent release pending. Ownership reads settlement money state and completed contract/milestone state independently; confirmed primary release survives downstream errors. A confirmed initial release also refreshes workflow state.
+- Contract cancellation region covers Client pre-funding cancellation, participant funded proposals, counterparty ACCEPT/REJECT, rejected/continuing work, refund pending and final cancellation/refund record. Pre-funding eligibility requires no funding attempt, including FAILED; local unresolved funding intent also blocks cancellation.
+- Eligibility/history/actions re-read before mutation, shared financial operation lock, exact persisted cancellation intent through uncertainty, GET reconciliation before explicit replay, and 30-second lifecycle-safe reads. REQUESTED does not stop work. REFUND_PENDING locks incompatible work actions and is not a final refund. ACCEPT is withdrawn when submission starts; REJECT remains available when the server permits it.
+- Funding is reused inside the contract lifecycle with small optional mutation guards; pre-funding and cancelled contract routes retain their work document and records. Existing evidence/submission/revision implementations retained.
+- Release/refund ledger simulation is explicit and does not claim a real bank transfer. Settlement tax-stage success is separate from certificate ACCEPTED. References/errors remain collapsed; no fake financial data in production UI.
+
+Validation:
+
+- Focused final gate: 6 files, `130/130 PASS` (financial, API, contract workflow, funding, legacy finance mapping and job workflow).
+- Added 37 focused contract financial/cancellation tests and 3 API contract tests; existing contract lifecycle test mocks/copy updated for the intentional integration.
+- Full frontend suite run once after implementation: 13 files, `193/193 PASS`. Existing React Router future-flag warnings only.
+- Production build: TypeScript `tsc -b` + Vite build `PASS`. npm was unavailable in this session's PATH, so the exact test/build script tools were invoked with the existing Node executable and installed local packages; no software/dependency installation.
+- Desktop real-stack smoke at 1440px/1024px: `ENVIRONMENT BLOCKED`. Read-only probes to localhost:3000, localhost:8080 and localhost:9191/api/v1/auth/me all timed out, including outside the filesystem sandbox. No runtime restart, backend workaround or mocked runtime PASS.
+- Mobile optimization is deferred. Current MVP delivery target remains desktop/laptop; no mobile validation performed in this P0 pass.
+- Final `git diff --check`: PASS. Backend/runtime/env/dependencies unchanged; browser API boundary remains Marketplace `/api/v1`.
+
+P1/P2 remain pending: Finance list/evidence migration for pending release/refund records, Overview attention routing, Step 4/5 Activity labels/destinations, broader financial polish and documentation cleanup. Steps 6/8/9 and full Admin/dispute remain out of scope.
+Git: 13 intended frontend/progress paths; uncommitted; no push/merge/branch switch. Stop after P0 review.

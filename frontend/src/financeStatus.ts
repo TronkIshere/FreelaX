@@ -1,4 +1,22 @@
-import type { DecimalValue, JobPaymentStatus, TaxRecord } from './types';
+import type { ContractSettlement, DecimalValue, JobPaymentStatus, TaxRecord } from './types';
+
+export const settlementMoneyLabel = (status: string) => ({
+  PENDING: 'Chờ xác nhận release', PROCESSING: 'Đang xử lý release', UNKNOWN: 'Đang đối soát release',
+  SUCCEEDED: 'Release đã xác nhận', FAILED_RETRYABLE: 'Release cần đối soát lại', FAILED: 'Release chưa thành công',
+}[status] || 'Chưa xác minh release');
+export const settlementStageLabel = (status: string) => ({
+  NOT_STARTED: 'Chưa bắt đầu', PROCESSING: 'Đang xử lý', SUCCEEDED: 'Đã xác nhận',
+  FAILED_RETRYABLE: 'Máy chủ đang thử lại', FAILED: 'Cần xử lý lỗi', UNKNOWN: 'Đang đối soát',
+}[status] || 'Chưa xác minh');
+
+// Primary money and downstream evidence terminate independently.
+export function settlementNeedsRefresh(value: ContractSettlement | null): boolean {
+  if (!value) return true;
+  if (value.moneyStatus === 'FAILED' && !value.retryable) return false;
+  if (value.moneyStatus !== 'SUCCEEDED' || value.retryable) return true;
+  return [value.onChainStatus, value.offRampStatus, value.taxStatus]
+    .some(status => status !== 'SUCCEEDED' && status !== 'FAILED');
+}
 
 export type EvidenceTone = 'done' | 'active' | 'pending' | 'error';
 export interface EvidenceStage {

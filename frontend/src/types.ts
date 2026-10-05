@@ -141,6 +141,30 @@ export interface MyApplication {
 }
 
 export type DecimalValue = number | string;
+export type SettlementMoneyStatus = 'PENDING' | 'PROCESSING' | 'SUCCEEDED' | 'FAILED_RETRYABLE' | 'FAILED' | 'UNKNOWN';
+export type SettlementStageStatus = 'NOT_STARTED' | 'PROCESSING' | 'SUCCEEDED' | 'FAILED_RETRYABLE' | 'FAILED' | 'UNKNOWN';
+export interface ContractSettlement {
+  contractId: string; milestoneId: string; jobId: string;
+  // BigDecimal is numeric in this DTO; accept decimal strings without rounding as well.
+  amount: DecimalValue; currency: string; simulation: boolean;
+  moneyStatus: SettlementMoneyStatus; onChainStatus: SettlementStageStatus;
+  offRampStatus: SettlementStageStatus; taxStatus: SettlementStageStatus;
+  releaseReference: string | null; onChainReference: string | null;
+  offRampReference: string | null; taxReference: string | null;
+  onChainError: string | null; offRampError: string | null; taxError: string | null;
+  retryable: boolean; lastError: string | null; createdAt: string; updatedAt: string;
+}
+export type CancellationDecision = 'ACCEPT' | 'REJECT';
+export interface CancellationRequest { reasonCode: string; description: string }
+export interface ContractCancellationRecord {
+  cancellationId: string; contractId: string; milestoneId: string;
+  cancellationStatus: 'REQUESTED' | 'REJECTED' | 'REFUND_PENDING' | 'CANCELLED';
+  refundStatus: SettlementMoneyStatus | null; refundReference: string | null; simulation: boolean;
+  requestedBy: string; decidedBy: string | null; reasonCode: string; reason: string;
+  amount: string; currency: string;
+  requestedAt: string; decidedAt: string | null; updatedAt: string;
+  retryable: boolean; lastError: string | null; allowedActions: CancellationDecision[];
+}
 export interface JobPaymentStatus {
   jobId: string;
   checkoutOrderId: string | null;

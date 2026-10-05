@@ -1,6 +1,6 @@
 import type { DiscoverJob, DiscoveryFilters, Job, JobApplication, JobPaymentStatus, JobSubmission, MyApplication, Notification as MarketplaceNotification, Page, RegisterInput, TaxRecord, User, UserType } from './types';
 
-import type { ClientBankAccount, ClientBankInput, FundingResponse, SubmissionPayload, ContractSubmission, ReviewDecision } from './types';
+import type { ClientBankAccount, ClientBankInput, FundingResponse, SubmissionPayload, ContractSubmission, ReviewDecision, ContractSettlement, ContractCancellationRecord, CancellationRequest, CancellationDecision } from './types';
 
 // Same-origin by default; an optional public origin can be supplied at build time.
 const configuredApiOrigin = (import.meta.env.VITE_MARKETPLACE_API_ORIGIN || '').trim().replace(/\/+$/, '');
@@ -245,6 +245,21 @@ export class MarketplaceApi {
   async decideSubmission(contractId: string, submissionId: string, decision: ReviewDecision): Promise<ContractSubmission> {
     return this.authorized('/contracts/' + encodeURIComponent(contractId) + '/submissions/' + encodeURIComponent(submissionId) + '/decisions',
       { method: 'POST', body: JSON.stringify(decision) });
+  }
+
+  async settlement(contractId: string): Promise<ContractSettlement | null> {
+    return this.authorized('/contracts/' + encodeURIComponent(contractId) + '/settlement');
+  }
+  async cancellation(contractId: string): Promise<ContractCancellationRecord | null> {
+    return this.authorized('/contracts/' + encodeURIComponent(contractId) + '/cancellations');
+  }
+  async requestCancellation(contractId: string, payload: CancellationRequest): Promise<ContractCancellationRecord> {
+    return this.authorized('/contracts/' + encodeURIComponent(contractId) + '/cancellations',
+      { method: 'POST', body: JSON.stringify(payload) });
+  }
+  async decideCancellation(contractId: string, cancellationId: string, decision: CancellationDecision): Promise<ContractCancellationRecord> {
+    return this.authorized('/contracts/' + encodeURIComponent(contractId) + '/cancellations/' + encodeURIComponent(cancellationId) + '/decisions',
+      { method: 'POST', body: JSON.stringify({ decision }) });
   }
 
   async taxRecords(page: number, size = 10): Promise<Page<TaxRecord>> {

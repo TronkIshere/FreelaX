@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type MutableRefObject } from 'react';
 import { api, ApiError } from './api';
 import { ActionGroup, EvidenceDisclosure, SectionHeading } from './components';
 import { fundingLabel } from './status';
@@ -8,7 +8,10 @@ import type { BankCode, ClientBankAccount, FundingResponse, Job, User } from './
 const banks: BankCode[] = ['VIETCOMBANK', 'VIETINBANK', 'BIDV', 'AGRIBANK', 'TECHCOMBANK', 'MBBANK', 'ACB', 'VPBANK', 'SACOMBANK', 'TPBANK'];
 type FundingAttempt = { key: string; amount: string; currency: string };
 
-export function FundingPanel({ job, user, onJobUpdated }: { job: Job; user: User; onJobUpdated: (job: Job) => void }) {
+export function FundingPanel({ job, user, onJobUpdated, blocked = false, operationLock, onMutationChange }: {
+  job: Job; user: User; onJobUpdated: (job: Job) => void; blocked?: boolean;
+  operationLock?: MutableRefObject<boolean>; onMutationChange?: (busy: boolean) => void;
+}) {
   const contract = job.contract;
   const owner = user.userType === 'CLIENT' && job.clientUserId === user.id;
   const participant = owner || (user.userType === 'FREELANCER' && job.freelancerId === user.id);
@@ -33,6 +36,7 @@ export function FundingPanel({ job, user, onJobUpdated }: { job: Job; user: User
   try { if (contract) amount = contractAmount(contract.amount); } catch { /* Invalid server amount disables mutation. */ }
 
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
+  useEffect(() => { onMutationChange?.(busy); }, [busy, onMutationChange]);
   useEffect(() => {
     if (!participant || !contract?.milestoneId) { setLoading(false); return; }
     let active = true;
@@ -75,7 +79,7 @@ export function FundingPanel({ job, user, onJobUpdated }: { job: Job; user: User
 
   async function saveBank(event: React.FormEvent) {
     event.preventDefault();
-    if (lock.current || !owner) return;
+    if (lock.current || blocked || operationLock?.current || !owner) return;
     if (!/^[0-9]{6,34}$/.test(number) || holder.trim().length < 2 || holder.trim().length > 255) { setError('Kiểm tra số tài khoản (6–34 chữ số) và tên chủ tài khoản (2–255 ký tự).'); return; }
     lock.current = true; setBusy(true); setError('');
     try {
@@ -85,8 +89,9 @@ export function FundingPanel({ job, user, onJobUpdated }: { job: Job; user: User
     finally { lock.current = false; if (alive.current) setBusy(false); }
   }
   async function fund() {
-    if (lock.current || !owner || !contract?.milestoneId || !amount || !bank?.ready || !initialized.current || fundingUnresolved(funding?.fundingStatus) || !confirm || contract.status !== 'PENDING_FUNDING' || job.status !== 'AWAITING_PAYMENT') return;
+    if (lock.current || blocked || operationLock?.current || !owner || !contract?.milestoneId || !amount || !bank?.ready || !initialized.current || fundingUnresolved(funding?.fundingStatus) || !confirm || contract.status !== 'PENDING_FUNDING' || job.status !== 'AWAITING_PAYMENT') return;
     lock.current = true; setBusy(true); setError('');
+    if (operationLock) operationLock.current = true;
     try {
       const saved = attempt.current ?? { key: crypto.randomUUID(), amount, currency: contract.currency };
       if (saved.amount !== amount || saved.currency !== contract.currency) throw new Error('amount conflict');
@@ -111,7 +116,7 @@ export function FundingPanel({ job, user, onJobUpdated }: { job: Job; user: User
           if (latest?.fundingStatus === 'SUCCEEDED' || latest?.fundingStatus === 'FAILED') { clearAttempt(scope); attempt.current = null; }
         }
       } catch { /* Keep the same attempt until authoritative reconciliation. */ }
-    } finally { lock.current = false; if (alive.current) setBusy(false); }
+    } finally { lock.current = false; if (operationLock) operationLock.current = false; if (alive.current) setBusy(false); }
   }
   if (!participant || !contract) return null;
   const eligible = owner && job.status === 'AWAITING_PAYMENT' && contract.status === 'PENDING_FUNDING' && !!contract.milestoneId && !!amount;
@@ -124,17 +129,17 @@ export function FundingPanel({ job, user, onJobUpdated }: { job: Job; user: User
     {owner && <>
       {bank?.ready && <p>Ngân hàng: {bank.bankCode} · {bank.maskedAccountNumber}</p>}
       {!bank?.ready && !loading && <p>Cần tài khoản ngân hàng Client trước khi funding.</p>}
-      {eligible && !editingBank && <button className="text-button" disabled={busy || loading || fundingUnresolved(funding?.fundingStatus)} onClick={() => setEditingBank(true)}>{bank?.ready ? 'Cập nhật ngân hàng' : 'Thiết lập ngân hàng'}</button>}
+      {eligible && !editingBank && <button className="text-button" disabled={blocked || busy || loading || fundingUnresolved(funding?.fundingStatus)} onClick={() => setEditingBank(true)}>{bank?.ready ? 'Cập nhật ngân hàng' : 'Thiết lập ngân hàng'}</button>}
       {eligible && editingBank && <form className="bank-form" onSubmit={saveBank}>
         <label>Ngân hàng<select value={bankCode} disabled={busy} onChange={e => setBankCode(e.target.value as BankCode)}>{banks.map(code => <option key={code}>{code}</option>)}</select></label>
         <label>Số tài khoản · 6–34 chữ số<input required pattern="[0-9]{6,34}" maxLength={34} inputMode="numeric" autoComplete="off" value={number} disabled={busy} onChange={e => setNumber(e.target.value)} /></label>
         <label>Tên chủ tài khoản<input required minLength={2} maxLength={255} autoComplete="off" value={holder} disabled={busy} onChange={e => setHolder(e.target.value)} /></label>
-        <ActionGroup><button className="button" disabled={busy}>{busy ? 'Đang lưu…' : 'Lưu ngân hàng'}</button><button className="button button-secondary" type="button" disabled={busy} onClick={() => { setNumber(''); setHolder(''); setEditingBank(false); }}>Quay lại</button></ActionGroup>
+        <ActionGroup><button className="button" disabled={blocked || busy}>{busy ? 'Đang lưu…' : 'Lưu ngân hàng'}</button><button className="button button-secondary" type="button" disabled={busy} onClick={() => { setNumber(''); setHolder(''); setEditingBank(false); }}>Quay lại</button></ActionGroup>
       </form>}
-      {eligible && !editingBank && !confirm && <ActionGroup><button className="button" disabled={busy || loading || !initialized.current || !bank?.ready || fundingUnresolved(funding?.fundingStatus) || funding?.fundingStatus === 'SUCCEEDED'} onClick={() => setConfirm(true)}>{funding?.fundingStatus === 'FAILED' ? 'Thử funding lại' : attempt.current ? 'Tiếp tục lần funding trước' : 'Funding mô phỏng'}</button></ActionGroup>}
+      {eligible && !editingBank && !confirm && <ActionGroup><button className="button" disabled={blocked || busy || loading || !initialized.current || !bank?.ready || fundingUnresolved(funding?.fundingStatus) || funding?.fundingStatus === 'SUCCEEDED'} onClick={() => setConfirm(true)}>{funding?.fundingStatus === 'FAILED' ? 'Thử funding lại' : attempt.current ? 'Tiếp tục lần funding trước' : 'Funding mô phỏng'}</button></ActionGroup>}
       {eligible && confirm && <div className="approval-confirm" role="group" aria-label="Xác nhận funding">
         <strong>Xác nhận {amount} {contract.currency} · Mô phỏng</strong><p>Capture mô phỏng theo số tiền hợp đồng đã chốt. Không xác nhận chi trả cho Freelancer.</p>
-        <ActionGroup><button className="button" disabled={busy} onClick={() => void fund()}>Xác nhận funding</button><button className="button button-secondary" disabled={busy} onClick={() => setConfirm(false)}>Quay lại</button></ActionGroup>
+        <ActionGroup><button className="button" disabled={blocked || busy} onClick={() => void fund()}>Xác nhận funding</button><button className="button button-secondary" disabled={busy} onClick={() => setConfirm(false)}>Quay lại</button></ActionGroup>
       </div>}
     </>}
     {error && <p role="alert" className="form-error">{error}</p>}

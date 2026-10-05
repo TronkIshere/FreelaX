@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { api, ApiError } from './api';
-import { ActionGroup, EvidenceDisclosure, SectionHeading } from './components';
+import { ActionGroup, EvidenceDisclosure, FactGrid, SectionHeading } from './components';
+import { ContractCancellation, type CancellationState } from './ContractCancellation';
+import { FundingPanel } from './Funding';
+import { settlementMoneyLabel, settlementNeedsRefresh, settlementStageLabel } from './financeStatus';
 import { submissionLabel } from './status';
 import { attemptScope, clearAttempt, httpsUrl, localInstant, readAttempt, saveAttempt, smallReview, validateSubmission } from './workflowContracts';
-import type { ContractSubmission, ContractSummary, Job, Requirement, ReviewDecision, SubmissionPayload, User } from './types';
+import type { ContractSettlement, ContractSubmission, ContractSummary, Job, Requirement, ReviewDecision, SubmissionPayload, User } from './types';
 
 type SubmissionAttempt = { key: string; payload: SubmissionPayload; baselineVersion: number };
 type DraftEvidence = Record<string, { selected: boolean; url: string; text: string }>;
@@ -74,17 +77,31 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
   const [description, setDescription] = useState('');
   const [decisionUncertain, setDecisionUncertain] = useState(false);
   const [now, setNow] = useState(Date.now());
+  const [cancellation, setCancellation] = useState<CancellationState>({ record: null, ready: false, busy: false, uncertain: false });
+  const [fundingBusy, setFundingBusy] = useState(false);
+  const [settlement, setSettlement] = useState<ContractSettlement | null>(null);
+  const [settlementLoading, setSettlementLoading] = useState(false);
+  const [settlementError, setSettlementError] = useState('');
+  const [settlementTick, setSettlementTick] = useState(0);
+  const [settlementAttempt, setSettlementAttempt] = useState(0);
   const lock = useRef(false);
   const alive = useRef(true);
   const recovery = useRef<SubmissionAttempt | null>(null);
   const syncing = useRef<Promise<void> | null>(null);
   const latest = list[0];
   const disputed = contract.status === 'DISPUTED' || contract.milestoneStatus === 'DISPUTED' || latest?.status === 'DISPUTED';
-  const releasedPending = contract.milestoneStatus === 'RELEASE_PENDING' || latest?.status === 'APPROVED';
-  const canSubmit = freelancer && verified && !disputed && !releasedPending && !loading &&
+  const releaseRelevant = contract.milestoneStatus === 'RELEASE_PENDING' || contract.milestoneStatus === 'RELEASED' || contract.status === 'COMPLETED' || latest?.status === 'APPROVED';
+  const releaseConfirmed = settlement?.moneyStatus === 'SUCCEEDED';
+  const releaseFailed = settlement?.moneyStatus === 'FAILED' && !settlement.retryable;
+  const completed = contract.status === 'COMPLETED' || contract.milestoneStatus === 'RELEASED' || job.status === 'COMPLETED';
+  const releasedPending = releaseRelevant && !releaseConfirmed && !completed;
+  const refundPending = contract.milestoneStatus === 'REFUND_PENDING' || cancellation.record?.cancellationStatus === 'REFUND_PENDING';
+  const cancelled = contract.status === 'CANCELLED' || job.status === 'CANCELLED' || cancellation.record?.cancellationStatus === 'CANCELLED';
+  const workAllowed = cancellation.ready && !cancellation.busy && !cancellation.uncertain && !refundPending && !cancelled && !fundingBusy;
+  const canSubmit = freelancer && workAllowed && verified && !disputed && !releaseRelevant && !loading &&
     ['ACTIVE', 'REVISION'].includes(contract.status) && ['FUNDED', 'IN_PROGRESS'].includes(contract.milestoneStatus || '') &&
     ['IN_PROGRESS', 'REVISION_REQUESTED'].includes(job.status) && (!latest || latest.status === 'REVISION_REQUESTED');
-  const canReview = client && verified && !disputed && !releasedPending && !loading && !decisionUncertain && latest?.status === 'SUBMITTED' && contract.status === 'UNDER_REVIEW' && contract.milestoneStatus === 'SUBMITTED';
+  const canReview = client && workAllowed && verified && !disputed && !releaseRelevant && !loading && !decisionUncertain && latest?.status === 'SUBMITTED' && contract.status === 'UNDER_REVIEW' && contract.milestoneStatus === 'SUBMITTED';
   const revisionAvailable = contract.revisionsUsed < contract.maxRevisions;
 
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
@@ -145,6 +162,36 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
     return () => { active = false; clearInterval(clock); clearInterval(poll); window.removeEventListener('focus', focus); window.removeEventListener('freelax:review-update', notification); };
   }, [latest?.id, latest?.status, latest?.reviewDueAt, latest?.reviewGraceDueAt, disputed, releasedPending, synchronize, job.id]);
 
+  useEffect(() => {
+    if ((!client && !freelancer) || !releaseRelevant) return;
+    let active = true;
+    setSettlementLoading(true);
+    api.settlement(contract.id).then(async value => {
+      if (!active) return;
+      setSettlement(value); setSettlementError('');
+      if (value?.moneyStatus === 'SUCCEEDED' && !completed) await synchronize();
+    }).catch(() => { if (active) setSettlementError('Chưa đối chiếu đầy đủ release/workflow; không suy ra kết quả từ funding hoặc checkout.'); })
+      .finally(() => { if (active) setSettlementLoading(false); });
+    return () => { active = false; };
+  }, [client, freelancer, contract.id, contract.status, contract.milestoneStatus, releaseRelevant, completed, settlementAttempt, synchronize]);
+
+  useEffect(() => {
+    if ((!client && !freelancer) || !releaseRelevant || settlementLoading || (!settlementError && !settlementNeedsRefresh(settlement))) return;
+    let active = true;
+    const timer = window.setTimeout(async () => {
+      if (document.visibilityState !== 'hidden' && !lock.current) {
+        try {
+          const value = await api.settlement(contract.id);
+          if (!active) return;
+          setSettlement(value); setSettlementError('');
+          await synchronize();
+        } catch { if (active) setSettlementError('Chưa cập nhật được release. Giữ bằng chứng đã xác nhận và tiếp tục đối soát.'); }
+      }
+      if (active) setSettlementTick(value => value + 1);
+    }, 30000);
+    return () => { active = false; window.clearTimeout(timer); };
+  }, [client, freelancer, releaseRelevant, settlement, settlementError, settlementLoading, settlementTick, contract.id, synchronize]);
+
   function payload(): SubmissionPayload {
     return { summary: summary.trim(),
       deliverables: contract.deliverables.filter(r => deliverables[r.id]?.selected).map(r => ({ requirementId: r.id, url: deliverables[r.id].url.trim(), description: deliverables[r.id].text.trim() })),
@@ -204,21 +251,56 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
     })}</fieldset>;
   }
   if (!client && !freelancer) return null;
-  const next = disputed ? 'Đang chờ Admin xử lý' : releasedPending ? 'Đã có quyết định — đang xử lý tiền'
+  const next = cancelled ? cancellation.record?.refundStatus === 'SUCCEEDED' ? 'Hợp đồng đã hủy; hoàn tiền đã xác nhận' : 'Hợp đồng đã hủy'
+    : refundPending ? 'Đang đối soát hoàn tiền; chưa hủy cuối cùng'
+    : cancellation.busy ? 'Đang ghi nhận thao tác hủy hợp đồng'
+    : cancellation.uncertain ? 'Đang đối soát ý định hủy; chưa gửi thao tác khác'
+    : disputed ? 'Đang chờ Admin xử lý'
+    : releaseConfirmed ? settlement.simulation ? 'Đã xác nhận release mô phỏng' : 'Đã xác nhận release'
+    : completed ? 'Phần việc đã hoàn tất theo Marketplace'
+    : releaseFailed ? 'Phần việc đã duyệt; release cần xử lý lỗi'
+    : releasedPending ? 'Đã duyệt; đang đối soát release'
+    : !cancellation.ready ? 'Đang đối soát trạng thái hợp đồng'
+    : job.status === 'AWAITING_PAYMENT' ? client ? 'Cần bạn funding hợp đồng' : 'Đang chờ Client hoàn tất funding'
     : canSubmit ? job.status === 'REVISION_REQUESTED' ? 'Bạn cần chỉnh sửa theo phản hồi' : 'Đến lượt bạn bàn giao công việc'
     : canReview ? 'Cần bạn duyệt bàn giao' : contract.status === 'REVISION' ? 'Đang chờ Freelancer gửi bản sửa'
     : contract.status === 'UNDER_REVIEW' ? 'Đang chờ Client phản hồi' : 'Đang chờ Freelancer bàn giao';
-  return <div className={'lifecycle lifecycle-' + (disputed ? 'revision' : releasedPending ? 'complete' : contract.status === 'REVISION' ? 'revision' : contract.status === 'UNDER_REVIEW' ? 'review' : 'working')}>
+  return <div className={'lifecycle lifecycle-' + (disputed || refundPending ? 'revision' : releaseRelevant || cancelled ? 'complete' : contract.status === 'REVISION' ? 'revision' : contract.status === 'UNDER_REVIEW' ? 'review' : 'working')}>
     <section className="ownership-band" aria-label="Lượt thực hiện"><h2>{next}</h2><ActionGroup>
       {canSubmit && <a className="text-link" href="#work-primary-action">{job.status === 'REVISION_REQUESTED' ? 'Soạn bản sửa ↓' : 'Soạn bàn giao ↓'}</a>}
       {latest && <a className="text-link" href="#latest-submission">{latest.reviewerFeedback && contract.status === 'REVISION' ? 'Xem phản hồi ↓' : 'Xem bản bàn giao ↓'}</a>}
-      {releasedPending && <Link className="text-link" to={'/finance?jobId=' + encodeURIComponent(job.id)}>Xem trạng thái tài chính →</Link>}
+      {releaseRelevant && <Link className="text-link" to={'/finance?jobId=' + encodeURIComponent(job.id)}>Xem trạng thái tài chính →</Link>}
     </ActionGroup></section>
     {children}
+    {job.status === 'AWAITING_PAYMENT' && !cancelled && <FundingPanel job={job} user={user} onJobUpdated={onJobUpdated}
+      blocked={!workAllowed || busy} operationLock={lock} onMutationChange={setFundingBusy} />}
     {latest && <section className="latest-submission" id="latest-submission" tabIndex={-1} aria-label="Bản bàn giao mới nhất"><SectionHeading title={'Bản bàn giao #' + latest.version} aside={submissionLabel(latest.status)} /><EvidenceRecord submission={latest} contract={contract} /><ReviewTiming submission={latest} contract={contract} now={now} /></section>}
     {loading && <p role="status">Đang tải lịch sử bàn giao…</p>}
     {disputed && <p role="status">Tranh chấp đang mở. Các thao tác bàn giao và review đã khóa; chờ Admin xử lý.</p>}
-    {releasedPending && <p role="status">Duyệt phần việc chưa xác nhận giải ngân. Release/settlement là bước riêng và chưa có API xử lý đầy đủ.</p>}
+    {releaseRelevant && <section className="settlement-document" aria-label="Quyết toán hợp đồng">
+      <SectionHeading title="Release hợp đồng" aside={settlement?.simulation ? 'Mô phỏng' : undefined} />
+      {settlementLoading && <p role="status">Đang đọc trạng thái release…</p>}
+      {!settlement && !settlementLoading && <p role="status">Chưa có bản ghi release để xác nhận. Đang đối soát với Marketplace.</p>}
+      {settlement && <>
+        <p className="submission-summary" role="status">{settlementMoneyLabel(settlement.moneyStatus)}</p>
+        {releaseConfirmed && <p>{settlement.simulation ? 'Đã xác nhận release ledger mô phỏng cho Freelancer. Không xác nhận tiền đã về ngân hàng thật.' : 'Marketplace đã xác nhận release. Chi trả ngân hàng cần bằng chứng riêng.'}</p>}
+        {!releaseConfirmed && <p>Funding đã xác nhận không có nghĩa Freelancer đã nhận release.</p>}
+        <FactGrid facts={[{ label: 'Giá trị release', value: String(settlement.amount) + ' ' + settlement.currency },
+          { label: 'Bằng chứng on-chain', value: settlementStageLabel(settlement.onChainStatus) },
+          { label: 'Off-ramp', value: settlementStageLabel(settlement.offRampStatus) },
+          { label: 'Tạo / Khôi phục chứng từ', value: settlementStageLabel(settlement.taxStatus) }]} />
+        <p className="metadata">Trạng thái tạo chứng từ không xác nhận cơ quan thuế đã ACCEPTED. Xem trạng thái riêng trong hồ sơ chứng từ.</p>
+        {settlement.moneyStatus === 'FAILED' && <p role="alert">Release chưa thành công. Máy chủ xử lý trạng thái này; không có thao tác giải ngân thủ công trong UI.</p>}
+        <EvidenceDisclosure summary="Tham chiếu release / Lỗi từng chặng"><dl className="reference-list">
+          {(['releaseReference', 'onChainReference', 'offRampReference', 'taxReference', 'lastError', 'onChainError', 'offRampError', 'taxError'] as const).map(field => settlement[field] && <div key={field}><dt>{field}</dt><dd><code>{settlement[field]}</code></dd></div>)}
+          <div><dt>Cập nhật từ Marketplace</dt><dd>{settlement.updatedAt}</dd></div>
+        </dl></EvidenceDisclosure>
+      </>}
+      {settlementError && <p className="form-error" role="alert">{settlementError}</p>}
+      <button className="text-button" disabled={settlementLoading || busy || cancellation.busy} onClick={() => setSettlementAttempt(value => value + 1)}>Đối chiếu release</button>
+    </section>}
+    <ContractCancellation key={contract.id + ':' + user.id} job={job} user={user} submissionCount={verified ? list.length : null}
+      workflowBusy={busy || fundingBusy} operationLock={lock} onJobUpdated={onJobUpdated} onStateChange={setCancellation} />
     {canSubmit && <section className="work-composer" id="work-primary-action" tabIndex={-1}><SectionHeading title={job.status === 'REVISION_REQUESTED' ? 'Gửi bản sửa' : 'Gửi bàn giao'} />
       {pending && <p role="status">Giữ nguyên nội dung lần gửi trước để đối chiếu. Không tạo phiên bản mới khi kết quả chưa rõ.</p>}
       <form onSubmit={submit}><label>Tóm tắt bàn giao<textarea required maxLength={10000} value={pending?.payload.summary ?? summary} disabled={busy || !!pending} onChange={e => setSummary(e.target.value)} /></label>
@@ -238,7 +320,7 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
     </section>}
     {notice && <p role="status" className="lifecycle-success">{notice}</p>}{error && <p role="alert" className="form-error">{error}</p>}
     <button className="text-button" disabled={busy || loading} onClick={() => void refresh()}>Đối chiếu workflow</button>
-    <nav className="workflow-rail" aria-label="Các bước trình bày workflow"><span className="past">Assigned</span><span className={contract.status === 'ACTIVE' ? 'current' : 'past'} aria-current={contract.status === 'ACTIVE' ? 'step' : undefined}>Working</span><span className={contract.status === 'UNDER_REVIEW' && !releasedPending ? 'current' : 'future'} aria-current={contract.status === 'UNDER_REVIEW' && !releasedPending ? 'step' : undefined}>Review</span><span className={contract.status === 'REVISION' ? 'current' : 'future'} aria-current={contract.status === 'REVISION' ? 'step' : undefined}>Revision</span><span className={releasedPending ? 'current' : 'future'} aria-current={releasedPending ? 'step' : undefined}>Approved</span>{disputed && <span className="current" aria-current="step">Tranh chấp</span>}</nav>
+    <nav className="workflow-rail" aria-label="Các bước trình bày workflow"><span className="past">Assigned</span><span className={contract.status === 'ACTIVE' && !refundPending && !cancelled ? 'current' : 'past'} aria-current={contract.status === 'ACTIVE' && !refundPending && !cancelled ? 'step' : undefined}>Working</span><span className={contract.status === 'UNDER_REVIEW' && !releaseRelevant ? 'current' : 'future'} aria-current={contract.status === 'UNDER_REVIEW' && !releaseRelevant ? 'step' : undefined}>Review</span><span className={contract.status === 'REVISION' ? 'current' : 'future'} aria-current={contract.status === 'REVISION' ? 'step' : undefined}>Revision</span><span className={releaseRelevant ? 'current' : 'future'} aria-current={releaseRelevant ? 'step' : undefined}>Approved</span>{disputed && <span className="current" aria-current="step">Tranh chấp</span>}{refundPending && <span className="current" aria-current="step">Đối soát hoàn tiền</span>}{cancelled && <span className="current" aria-current="step">Đã hủy</span>}</nav>
     <section className="submission-ledger" aria-label="Lịch sử bàn giao"><SectionHeading title="Lịch sử bàn giao" aside={!loading ? list.length + ' phiên bản' : undefined} />
       {!loading && !list.length && <p>Chưa có bản bàn giao.</p>}
       {list.slice(1).map(item => <details className="ledger-row" key={item.id}><summary><strong>#{item.version}</strong><span>{submissionLabel(item.status)}</span><time>{localInstant(item.submittedAt)}</time></summary><div className="ledger-body"><EvidenceRecord submission={item} contract={contract} /></div></details>)}
