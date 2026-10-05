@@ -71,6 +71,10 @@ public enum ErrorCode {
     DISPUTE_INELIGIBLE(4039, "Trạng thái không cho phép mở hoặc xử lý tranh chấp", HttpStatus.CONFLICT),
     DISPUTE_CONFLICT(4040, "Tranh chấp đã được xử lý hoặc yêu cầu không khớp", HttpStatus.CONFLICT),
     DISPUTE_EVIDENCE_INVALID(4041, "Bằng chứng tranh chấp không hợp lệ", HttpStatus.UNPROCESSABLE_ENTITY),
+    PROFILE_INVALID(4050, "Dữ liệu profile hoặc portfolio không hợp lệ", HttpStatus.UNPROCESSABLE_ENTITY),
+    PROFILE_STALE(4051, "Profile đã thay đổi; vui lòng tải lại", HttpStatus.CONFLICT),
+    PORTFOLIO_NOT_FOUND(4052, "Không tìm thấy portfolio item", HttpStatus.NOT_FOUND),
+    PORTFOLIO_LIMIT(4053, "Portfolio đã đạt giới hạn 12 item", HttpStatus.CONFLICT),
 
     MISA_BACKEND_CALL_FAILED(5000, "Gọi misa-backend thất bại: %s", HttpStatus.BAD_GATEWAY),
 
