@@ -41,6 +41,8 @@ public class ContractSettlement extends AbstractEntity<UUID> {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 24)
     private SettlementMoneyStatus moneyStatus = SettlementMoneyStatus.PENDING;
+    // Immutable start of the 14-day review publication window.
+    private Instant moneySucceededAt;
     private UUID paymentReleaseId;
     @Column(length = 128)
     private String paymentReleaseReference;

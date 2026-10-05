@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.net.URI;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -34,6 +35,7 @@ public class ProfileService {
     private final PortfolioItemRepository portfolio;
     private final WorkContractRepository contracts;
     private final FundingTransactionRepository funding;
+    private final ContractReviewRepository reviews;
     private final ObjectMapper mapper;
 
     @Transactional(readOnly = true)
@@ -160,8 +162,11 @@ public class ProfileService {
                 : funding.countDistinctContractsByClientAndStatus(user.getId(), FundingStatus.SUCCEEDED);
         long disputes = freelancer ? contracts.countFreelancerDisputes(user.getId())
                 : contracts.countClientDisputes(user.getId());
+        List<Integer> scores = reviews.findPublishedScores(user.getId());
+        BigDecimal average = scores.isEmpty() ? null : BigDecimal.valueOf(scores.stream().mapToInt(Integer::intValue).sum())
+                .divide(BigDecimal.valueOf(scores.size()), 2, RoundingMode.HALF_UP);
         ProfileResponse.Reputation reputation = new ProfileResponse.Reputation(completed, funded, disputes,
-                0, null, null, null, null, Instant.now());
+                scores.size(), average, null, null, null, Instant.now());
         ProfileResponse.Verification verification = new ProfileResponse.Verification(
                 row == null ? "UNVERIFIED" : row.getEmailVerification(),
                 row == null ? "UNVERIFIED" : row.getIdentityVerification(),

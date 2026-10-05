@@ -75,6 +75,10 @@ public enum ErrorCode {
     PROFILE_STALE(4051, "Profile đã thay đổi; vui lòng tải lại", HttpStatus.CONFLICT),
     PORTFOLIO_NOT_FOUND(4052, "Không tìm thấy portfolio item", HttpStatus.NOT_FOUND),
     PORTFOLIO_LIMIT(4053, "Portfolio đã đạt giới hạn 12 item", HttpStatus.CONFLICT),
+    REVIEW_NOT_FOUND(4060, "Không tìm thấy review", HttpStatus.NOT_FOUND),
+    REVIEW_INELIGIBLE(4061, "Hợp đồng chưa đủ điều kiện đánh giá", HttpStatus.CONFLICT),
+    REVIEW_CONFLICT(4062, "Review đã gửi hoặc nội dung yêu cầu không khớp", HttpStatus.CONFLICT),
+    REVIEW_INVALID(4063, "Nội dung đánh giá không hợp lệ", HttpStatus.UNPROCESSABLE_ENTITY),
 
     MISA_BACKEND_CALL_FAILED(5000, "Gọi misa-backend thất bại: %s", HttpStatus.BAD_GATEWAY),
 

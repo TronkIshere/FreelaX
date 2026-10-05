@@ -115,6 +115,7 @@ public class SettlementService {
             switch (result.status()) {
                 case "SUCCEEDED" -> {
                     s.setMoneyStatus(SettlementMoneyStatus.SUCCEEDED);
+                    if (s.getMoneySucceededAt() == null) s.setMoneySucceededAt(Instant.now());
                     s.setLastError(null);
                     s.setRetryable(true); // Independent unfinished downstream work.
                     s.setNextAttemptAt(Instant.now());

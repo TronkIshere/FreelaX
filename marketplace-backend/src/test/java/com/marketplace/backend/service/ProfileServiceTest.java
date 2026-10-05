@@ -25,6 +25,7 @@ class ProfileServiceTest {
     private PortfolioItemRepository portfolio;
     private WorkContractRepository contracts;
     private FundingTransactionRepository funding;
+    private ContractReviewRepository reviews;
     private ProfileService service;
     private User freelancer;
     private MemberProfile stored;
@@ -34,7 +35,8 @@ class ProfileServiceTest {
         users = mock(UserRepository.class); profiles = mock(MemberProfileRepository.class);
         portfolio = mock(PortfolioItemRepository.class); contracts = mock(WorkContractRepository.class);
         funding = mock(FundingTransactionRepository.class);
-        service = new ProfileService(users, profiles, portfolio, contracts, funding, mapper);
+        reviews = mock(ContractReviewRepository.class);
+        service = new ProfileService(users, profiles, portfolio, contracts, funding, reviews, mapper);
         freelancer = new User(); freelancer.setId(UUID.randomUUID()); freelancer.setEnabled(true);
         freelancer.setUserType(UserType.FREELANCER); freelancer.setDisplayName("Freelancer");
         freelancer.setEmail("private@example.test"); freelancer.setTaxCode("private-tax");
@@ -59,6 +61,14 @@ class ProfileServiceTest {
         assertThat(publicView.reputation().averageRating()).isNull();
         assertThat(publicView.reputation().onTimeRate()).isNull();
         assertThat(service.me(freelancer.getId()).email()).isEqualTo("private@example.test");
+    }
+
+    @Test
+    void reputationUsesOnlyPersistedPublishedReviewScores() {
+        when(reviews.findPublishedScores(freelancer.getId())).thenReturn(List.of(5, 4));
+        var reputation = service.publicProfile(freelancer.getId()).reputation();
+        assertThat(reputation.reviewCount()).isEqualTo(2);
+        assertThat(reputation.averageRating()).isEqualByComparingTo("4.50");
     }
 
     @Test
