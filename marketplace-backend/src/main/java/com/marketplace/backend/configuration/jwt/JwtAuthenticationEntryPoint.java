@@ -1,6 +1,7 @@
 package com.marketplace.backend.configuration.jwt;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.marketplace.backend.configuration.RequestCorrelation;
 import com.marketplace.backend.dto.response.common.ErrorResponse;
 import com.marketplace.backend.exception.ErrorCode;
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,6 +26,9 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
                 .status(ErrorCode.UNAUTHENTICATED.getCode())
                 .error(ErrorCode.UNAUTHENTICATED.getMessage())
                 .path(request.getRequestURI())
+                .code(ErrorCode.UNAUTHENTICATED.name())
+                .requestId(RequestCorrelation.id(request))
+                .retryable(false)
                 .build();
 
         response.setStatus(ErrorCode.UNAUTHENTICATED.getHttpStatus().value());

@@ -24,4 +24,7 @@ public class ErrorResponse implements Serializable {
     int status;
     String error;
     String path;
+    String code;
+    String requestId;
+    Boolean retryable;
 }

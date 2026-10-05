@@ -25,7 +25,7 @@ public class PayoutReconciliationScheduler {
             try {
                 payoutService.reconcile(recordId);
             } catch (Exception e) {
-                log.error("Reconcile payout record {} that bai: {}", recordId, e.getMessage(), e);
+                log.warn("Payout reconciliation will retry for record {}", recordId);
             }
         }
     }

@@ -5,6 +5,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import jakarta.persistence.Version;
@@ -17,7 +18,8 @@ import java.util.UUID;
 @Getter
 @Setter
 @Entity
-@Table(name = "milestones", uniqueConstraints = @UniqueConstraint(columnNames = "contract_id"))
+@Table(name = "milestones", uniqueConstraints = @UniqueConstraint(columnNames = "contract_id"),
+        indexes = @Index(name = "idx_milestone_status", columnList = "status"))
 public class Milestone extends AbstractEntity<UUID> {
     @Version
     private long version;

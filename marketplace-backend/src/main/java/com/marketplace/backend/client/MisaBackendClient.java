@@ -1,5 +1,7 @@
 package com.marketplace.backend.client;
 
+import com.marketplace.backend.configuration.RequestCorrelation;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -238,6 +240,7 @@ public class MisaBackendClient {
     public byte[] getCertificatePdf(UUID certificateId) {
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(getOrRefreshAccessToken());
+        RequestCorrelation.add(headers);
 
         ResponseEntity<byte[]> response = restTemplate.exchange(
                 baseUrl + "/api/v1/withholding-certificates/" + certificateId + "/pdf",
@@ -258,6 +261,7 @@ public class MisaBackendClient {
     public byte[] getCertificateXml(UUID certificateId) {
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(getOrRefreshAccessToken());
+        RequestCorrelation.add(headers);
 
         ResponseEntity<byte[]> response = restTemplate.exchange(
                 baseUrl + "/api/v1/withholding-certificates/" + certificateId + "/xml",
@@ -274,6 +278,7 @@ public class MisaBackendClient {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setBearerAuth(getOrRefreshAccessToken());
+        RequestCorrelation.add(headers);
         return headers;
     }
 
@@ -285,6 +290,7 @@ public class MisaBackendClient {
         Map<String, Object> body = Map.of("email", platformAccountEmail, "password", platformAccountPassword);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
+        RequestCorrelation.add(headers);
 
         Map<String, Object> response;
         try {

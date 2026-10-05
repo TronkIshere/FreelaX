@@ -29,6 +29,7 @@ class PaymentReleaseClientTest {
     @Test void createUsesActualStep40EndpointHeaderAndStringAmount() {
         server.expect(requestTo("http://payment.test/internal/BofA/payout/releases"))
                 .andExpect(method(HttpMethod.POST)).andExpect(header("X-Internal-Api-Key", "test-only-internal-key"))
+                .andExpect(request -> assertThat(UUID.fromString(request.getHeaders().getFirst("X-Request-Id"))).isNotNull())
                 .andExpect(content().json("""
                         {"checkoutOrderId":"%s","recipientUserId":"%s","expectedAmount":{"amount":"500.00","currency":"USD"},"releaseKey":"%s"}
                         """.formatted(checkout, recipient, key)))
