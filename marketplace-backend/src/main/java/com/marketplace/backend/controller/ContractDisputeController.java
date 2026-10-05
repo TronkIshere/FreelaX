@@ -5,6 +5,7 @@ import com.marketplace.backend.dto.request.dispute.*;
 import com.marketplace.backend.dto.response.common.ResponseAPI;
 import com.marketplace.backend.dto.response.dispute.DisputeResponse;
 import com.marketplace.backend.service.ContractDisputeService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -19,7 +20,7 @@ public class ContractDisputeController {
 
     @PostMapping
     public ResponseAPI<DisputeResponse> open(@AuthenticationPrincipal UserPrincipal user,
-            @PathVariable UUID contractId, @RequestBody OpenDisputeRequest request) {
+            @PathVariable UUID contractId, @Valid @RequestBody OpenDisputeRequest request) {
         return wrap(service.open(user.getId(), contractId, request));
     }
 
