@@ -25,4 +25,13 @@ public interface ContractSettlementRepository extends JpaRepository<ContractSett
             order by s.nextAttemptAt asc, s.id asc
             """)
     List<UUID> findDueIds(@Param("now") Instant now, Pageable pageable);
+
+    @Query("""
+            select s.contractId from ContractSettlement s
+            where s.moneyStatus = com.marketplace.backend.entity.SettlementMoneyStatus.SUCCEEDED
+            and s.moneySucceededAt is not null
+            and not exists (select r.id from ContractReview r where r.contractId = s.contractId)
+            order by s.moneySucceededAt asc, s.contractId asc
+            """)
+    List<UUID> findUninvitedCompletedContractIds(Pageable pageable);
 }

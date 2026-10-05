@@ -191,7 +191,11 @@ class SettlementServiceTest {
     }
 
     @Test void duplicateInvocationSkipsConfirmedMoneyAndNotification() {
-        UUID id = service.prepare(milestone.getId()); service.processMoney(id); service.processMoney(id);
+        UUID id = service.prepare(milestone.getId()); service.processMoney(id);
+        Instant completedAt = saved(id).getMoneySucceededAt();
+        service.processMoney(id);
+        assertThat(completedAt).isNotNull();
+        assertThat(saved(id).getMoneySucceededAt()).isEqualTo(completedAt);
         assertThat(credits.get()).isEqualTo(1); verify(payment, times(1)).createRelease(any());
         verify(notifications, times(1)).notify(eq(contract.getFreelancerId()), eq(NotificationType.RELEASE_CONFIRMED),
                 anyString(), contains("mô phỏng"), eq(job.getId()));
@@ -334,6 +338,7 @@ class SettlementServiceTest {
     private void due(UUID id) { edit(id, s -> s.setNextAttemptAt(Instant.now().minusSeconds(1))); }
     private void assertCompleted(UUID id) {
         assertThat(saved(id).getMoneyStatus()).isEqualTo(SettlementMoneyStatus.SUCCEEDED);
+        assertThat(saved(id).getMoneySucceededAt()).isNotNull();
         assertThat(milestones.findById(milestone.getId()).orElseThrow().getStatus()).isEqualTo(MilestoneStatus.RELEASED);
         assertThat(contracts.findById(contract.getId()).orElseThrow().getStatus()).isEqualTo(ContractStatus.COMPLETED);
         assertThat(jobs.findById(job.getId()).orElseThrow().getStatus()).isEqualTo(JobStatus.COMPLETED);
