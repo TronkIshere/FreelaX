@@ -393,3 +393,82 @@ Backend changed: NO. Runtime/env/dependencies changed: NO. Browser calls interna
 Blockers: authenticated real-stack smoke `ENVIRONMENT BLOCKED` because Marketplace localhost:9191 is unavailable; contract integration with the running stack remains unverified. No blocker for the frontend UI/test/build gate.
 Next: stop after P06.4 review. P06.5–P06.8 remain `NOT_STARTED`.
 Git: 20 intended frontend/docs paths, uncommitted; no push; baseline HEAD/branch preserved.
+
+### 2026-10-05 — UI Steps 1–5 P0 integration
+
+Status: `PASS` (P0 frontend implementation/test/build gate); authenticated desktop runtime smoke `ENVIRONMENT BLOCKED`.
+Branch: `feat/mvp-ui-step1-5-20261005`; clean start at `6b866fb5fc71aa6bb7e0f75decbce3f20236be2d`. Backend Steps 1–5 controllers/DTOs re-verified read-only.
+
+Implemented:
+
+- Typed nullable settlement/cancellation reads and exact cancellation request/decision payloads in the existing MarketplaceApi. Settlement amount accepts numeric/string decimals; cancellation amount follows the backend string serialization. No browser settlement mutation or refund key was invented.
+- Submission APPROVED no longer implies permanent release pending. Ownership reads settlement money state and completed contract/milestone state independently; confirmed primary release survives downstream errors. A confirmed initial release also refreshes workflow state.
+- Contract cancellation region covers Client pre-funding cancellation, participant funded proposals, counterparty ACCEPT/REJECT, rejected/continuing work, refund pending and final cancellation/refund record. Pre-funding eligibility requires no funding attempt, including FAILED; local unresolved funding intent also blocks cancellation.
+- Eligibility/history/actions re-read before mutation, shared financial operation lock, exact persisted cancellation intent through uncertainty, GET reconciliation before explicit replay, and 30-second lifecycle-safe reads. REQUESTED does not stop work. REFUND_PENDING locks incompatible work actions and is not a final refund. ACCEPT is withdrawn when submission starts; REJECT remains available when the server permits it.
+- Funding is reused inside the contract lifecycle with small optional mutation guards; pre-funding and cancelled contract routes retain their work document and records. Existing evidence/submission/revision implementations retained.
+- Release/refund ledger simulation is explicit and does not claim a real bank transfer. Settlement tax-stage success is separate from certificate ACCEPTED. References/errors remain collapsed; no fake financial data in production UI.
+
+Validation:
+
+- Focused final gate: 6 files, `130/130 PASS` (financial, API, contract workflow, funding, legacy finance mapping and job workflow).
+- Added 37 focused contract financial/cancellation tests and 3 API contract tests; existing contract lifecycle test mocks/copy updated for the intentional integration.
+- Full frontend suite run once after implementation: 13 files, `193/193 PASS`. Existing React Router future-flag warnings only.
+- Production build: TypeScript `tsc -b` + Vite build `PASS`. npm was unavailable in this session's PATH, so the exact test/build script tools were invoked with the existing Node executable and installed local packages; no software/dependency installation.
+- Desktop real-stack smoke at 1440px/1024px: `ENVIRONMENT BLOCKED`. Read-only probes to localhost:3000, localhost:8080 and localhost:9191/api/v1/auth/me all timed out, including outside the filesystem sandbox. No runtime restart, backend workaround or mocked runtime PASS.
+- Mobile optimization is deferred. Current MVP delivery target remains desktop/laptop; no mobile validation performed in this P0 pass.
+- Final `git diff --check`: PASS. Backend/runtime/env/dependencies unchanged; browser API boundary remains Marketplace `/api/v1`.
+
+P1/P2 remain pending: Finance list/evidence migration for pending release/refund records, Overview attention routing, Step 4/5 Activity labels/destinations, broader financial polish and documentation cleanup. Steps 6/8/9 and full Admin/dispute remain out of scope.
+Git: 13 intended frontend/progress paths; uncommitted; no push/merge/branch switch. Stop after P0 review.
+
+### 2026-10-05 — UI Steps 1–5 P1 integration
+
+Status: implementation/test/build gates `PASS`; final P1 runtime gate `ENVIRONMENT BLOCKED` (desktop smoke unavailable).
+Input gate: `feat/mvp-ui-step1-5-20261005`, clean HEAD `0e790a8d65f65831d751eed14f4110ef15753bf2` (accepted P0 commit). Backend controllers, response allowlists, notification types and contract/milestone transitions verified read-only.
+
+Implemented:
+
+- Finance includes contract-backed records before Job COMPLETED, including pending release/refund and unknown/retryable reconciliation. The existing API has no batch financial projection; parallel per-contract reads are bounded to a 20-job server page. Legacy completed-job evidence remains supported.
+- Contract Finance distinguishes funding, primary release, cancellation outcome and refund. REQUESTED/REJECTED remain continuing work; REFUND_PENDING is not final. Neither CAPTURED checkout nor funding success is used as release/refund proof. Pre-funding cancellation has no funding mutation on the Finance page; existing workflow remains the action destination.
+- Independent downstream on-chain/VND/tax states, available USDC/VND amounts and masked bank destination. Technical references/errors remain collapsed. Simulation wording does not claim external bank settlement; tax-stage success does not imply certificate ACCEPTED. Actual certificates link into the existing authenticated tax/download UI without duplicating its logic.
+- Contract evidence reconciles with current job state every 30 seconds while non-terminal, pauses automatic reads when hidden, resumes when visible, ignores obsolete responses and removes timers/listeners on unmount. Confirmed primary money survives later read/downstream errors. Unfunded Finance does not call legacy payment/tax APIs.
+- Overview verifies contract/milestone plus settlement/cancellation before recommending review/submission. Pending money routes to Finance; confirmed/final records remove incompatible work actions. REQUESTED/REJECTED preserve eligible work. Financial read errors fail closed; focus/notification refreshes ignore stale responses.
+- Activity uses the five verified Step 4/5 notification types. Release/refund events link to the existing role-shared Finance route; cancellation proposals/rejections link to workflow. Unknown events retain escaped text and a safe fallback.
+
+Validation:
+
+- Added 37 P1 regressions across Finance, Overview, Activity and financial mapping, including pending list visibility, stale ownership, refund/release truth, recovery/visibility polling, obsolete responses and actual App destinations for both trusted roles.
+- Final affected gate: 7 files, `139/139 PASS`; existing P0 financial/cancellation and contract lifecycle regressions included.
+- Full frontend suite run once: 13 files, `230/230 PASS`. Existing React Router future-flag warnings only.
+- Production build: `tsc -b` + Vite build `PASS`, using the existing Node executable/local packages (same tools as npm scripts); no installation or dependency change.
+- 1440px and 1024px authenticated runtime smoke: `ENVIRONMENT BLOCKED`. Both sandboxed and external read-only probes to localhost:3000, localhost:8080 and localhost:9191/api/v1/auth/me returned HTTP 000 / connection refused. No service restart, backend workaround or mocked runtime PASS.
+- Mobile remains deferred; no mobile implementation/validation. Backend, API/type contracts, shell, workflow production code, runtime/env and dependencies unchanged. Browser remains within Marketplace `/api/v1`.
+
+Remaining: resume the real desktop Finance/Overview/Activity/workflow smoke when the existing runtime is available. P2 broader financial polish/documentation cleanup remains pending; Steps 6/8/9 and full Admin/dispute remain out of scope.
+Git: 9 intended frontend/progress files, uncommitted; no push/merge/branch switch. Stop after P1 report.
+
+### 2026-10-05 — UI Steps 1–5 P2 final polish
+
+Input gate: branch `feat/mvp-ui-step1-5-20261005`, clean accepted P1 HEAD `7099bfa`.
+Current accepted baseline: P0 `PASS` (`0e790a8`); P1 implementation/test/build `PASS` (`7099bfa`), P1 runtime `ENVIRONMENT BLOCKED`. The earlier P0/P1 entries above record their original report states; their implementation is now committed.
+P2 implementation/test/build: `PASS`. Final Steps 1–5 runtime gate: `ENVIRONMENT BLOCKED`; do not claim final browser/UI PASS.
+
+Polished:
+
+- Shared Vietnamese release/refund simulation and tax/certificate caveats. Funding remains separate from release. REQUESTED wording now works for either participant; REQUESTED/REJECTED still mean continuing work. Confirmed primary money survives downstream failures and is not a claim of bank settlement.
+- State-first financial hierarchy using the locked palette, compact structural status cues, quieter supporting headings/spacing and clear cancellation confirmation treatment. Pending release ownership no longer shares the confirmed financial emphasis. Shared primitives and keyboard/focus semantics retained; no shell redesign or mobile-specific work.
+- Collapsed technical evidence uses readable Vietnamese labels and only populated, explicitly allowlisted references/errors. Empty evidence has one quiet message instead of repeated missing fields. Bank masking remains intact; unexpected provider secrets/tokens/internal keys are not rendered.
+- Failed reads are distinct from genuinely empty responses. Finance has one read-only reconciliation CTA on financial read failure; stored proof is retained. Unread tax evidence before release is not labelled an empty server response. Overview financial attention metadata follows financial truth instead of stale job status.
+- Minimal corrections in current START_HERE, UI memory/spec/workpack remove obsolete claims that Step 4/5 release/cancellation/refund support is absent. Historical audit entries/backend checklists and unrelated docs remain intact.
+
+Validation:
+
+- Added 5 focused regressions plus updated copy/hierarchy assertions: failed-vs-empty records, one read-only retry, allowlisted/collapsed evidence, confirmed money through downstream failure and clear cancellation confirmation. Existing funding/cancellation/settlement, stale Overview, pending Finance and safe Activity fallback tests preserved.
+- Final affected tests: 7 files, `148/148 PASS`.
+- Full frontend suite run once at closure: 13 files, `235/235 PASS`. Existing React Router future-flag warnings only.
+- Production frontend build: TypeScript `tsc -b` + Vite `PASS`, using existing installed Node/local packages (the npm script tools); no dependencies/software installed.
+- 1440px/1024px runtime smoke: `ENVIRONMENT BLOCKED`. Read-only probes inside and outside the sandbox to localhost:3000, localhost:8080 and localhost:9191/api/v1/auth/me returned HTTP 000 / connection refused. ContractLifecycle, Cancellation, Finance, Overview and Activity have not been verified in a live desktop browser in this pass. No fake browser PASS or service/auth workaround.
+- `git diff --check`: `PASS`. No backend, API/type contract, business flow, runtime/env or dependency changes. No backend suites or full backend E2E rerun.
+
+Remaining known limitations: live desktop validation requires the existing frontend/Marketplace runtime. Steps 6/8/9 remain backend-dependent future UI work and are not implemented or marked complete; full Admin dispute resolution, profile/reputation/rating and other unsupported features remain outside this pass.
+Git: 15 intended frontend/current UI documentation files, uncommitted and unstaged; HEAD/branch preserved. No commit/push/merge. Stop after P2 report.

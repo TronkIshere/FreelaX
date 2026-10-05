@@ -128,8 +128,6 @@ Do not add live UI controls/data for:
 profile persistence
 portfolio/reputation/rating
 wallet connect
-full release/settlement orchestration
-cancellation/refund
 Admin dispute resolution / case management
 auto-release
 chat
@@ -229,7 +227,7 @@ P06.4 now executes four ordered sub-stages on synced HEAD `cf0594f`:
 3. **P06.4C — Review Deadline:** server UTC due/grace timestamps and reviewedAutomatically; <=500.00 USD due policy, >500.00 USD 24h grace. Display-only countdown; zero waits for server. Refetch at boundaries/focus/handled actual review notifications, with timer cleanup and bounded polling. Never approve in browser.
 4. **P06.4D — Workflow Polish:** preserve Kinetic Editorial Brutalism, reduce repeated labels/cards, group real scope/terms, keep feedback tied to its version and technical references collapsed. Milestone RELEASE_PENDING is not RELEASED or payout completion; Job/Contract/Submission states remain independent.
 
-Verify actual ClientBankAccountController, FundingController, ContractSubmissionController, services, DTOs and ErrorCode before changes. Backend files are read-only. Current APIs have no full release/cancellation/refund/Admin resolution/profile/rating implementation.
+Verify actual ClientBankAccountController, FundingController, ContractSubmissionController, services, DTOs and ErrorCode before changes. Backend files are read-only. P0/P1 now integrate verified Step 4/5 settlement and cancellation/refund APIs; Admin resolution/profile/rating remain unsupported. Do not implement new backend orchestration in a frontend workpack.
 
 Final gate: targeted tests during work; full `npm test` and production build once at closure, diff check, both roles at 1440px and 1024px, keyboard/focus/privacy checks. Real-stack smoke uses existing local services only; unavailable services are ENVIRONMENT BLOCKED and must not trigger runtime/auth workarounds. Keep P06.5+ NOT_STARTED. No commit/push.
 

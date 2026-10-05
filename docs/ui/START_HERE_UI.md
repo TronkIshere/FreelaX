@@ -1,4 +1,4 @@
-# START HERE — FREELAX P06 UI
+# START HERE — FREELAX UI STEPS 1–5
 
 Read in this order:
 
@@ -12,13 +12,13 @@ Read in this order:
 
 Active instruction:
 
-> P06.4 integrates verified bank/funding, contract evidence submissions, decisions and server review deadlines, then polishes hierarchy. Current backend source is authoritative; read `.env.mvp-backend-checklist.md` first. Keep all changes frontend/docs only.
+> UI Steps 1–5 P2 polishes the accepted P0/P1 contract workflow, settlement/cancellation/refund, Finance, Overview and Activity integration. Preserve server authority and existing APIs. Keep all changes frontend/docs only; Steps 6/8/9 remain outside this pass.
 
 > Product Owner scope override: Mobile optimization is deferred. Current MVP delivery target is desktop/laptop, validated at 1440px and 1024px. Preserve existing responsive CSS; mobile is not a P06.4 gate.
 
 Current reviewed baseline:
 
-`feat/p06-ui-polish-20261004` at `cf0594f90af99375570e8557cbde283b51cd50f5` (backend sync includes `50841a3` and `6c605a9`).
+`feat/mvp-ui-step1-5-20261005` at `7099bfa` (accepted P0 `0e790a8` and P1 `7099bfa`). P1 implementation/test/build passed; authenticated runtime smoke remains ENVIRONMENT BLOCKED.
 
 Important baseline change:
 

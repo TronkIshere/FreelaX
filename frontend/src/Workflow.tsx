@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { ApiError, api } from './api';
 import { WorkLifecycle } from './WorkLifecycle';
-import { FundingPanel } from './Funding';
 import { contractAmount, localInstant } from './workflowContracts';
 import { ActionGroup, EvidenceDisclosure, FactGrid, PageHeading, SectionHeading, StatePanel } from './components';
 import { Pagination } from './Jobs';
@@ -21,7 +20,7 @@ const contractLabels: Record<string, string> = {
 };
 const milestoneLabels: Record<string, string> = {
   PENDING_FUNDING: 'Chờ funding', FUNDED: 'Đã funding', IN_PROGRESS: 'Đang thực hiện',
-  SUBMITTED: 'Đã bàn giao', RELEASE_PENDING: 'Chờ xử lý chi trả', RELEASED: 'Đã giải ngân',
+  SUBMITTED: 'Đã bàn giao', RELEASE_PENDING: 'Chờ xác nhận release', RELEASED: 'Release đã xác nhận',
   REFUND_PENDING: 'Chờ hoàn tiền', REFUNDED: 'Đã hoàn tiền', CANCELLED: 'Đã hủy',
   DISPUTED: 'Đang tranh chấp',
 };
@@ -185,8 +184,8 @@ export function JobDetail({ user }: { user: User }) {
   const participant = !discovered ? job as Job : null;
   const owner = user.userType === 'CLIENT' && participant?.clientUserId === user.id;
   const assignedFreelancer = user.userType === 'FREELANCER' && participant?.freelancerId === user.id;
-  const workState = (owner || assignedFreelancer) &&
-    ['IN_PROGRESS', 'SUBMITTED_FOR_REVIEW', 'REVISION_REQUESTED', 'COMPLETED'].includes(job.status);
+  const workState = (owner || assignedFreelancer) && (!!participant?.contract ||
+    ['IN_PROGRESS', 'SUBMITTED_FOR_REVIEW', 'REVISION_REQUESTED', 'COMPLETED'].includes(job.status));
   const applied = !!discovered?.hasApplied;
   const context = discovered ? 'Client · ' + (discovered.client?.displayName || 'Khách hàng')
     : owner ? (participant?.freelancerId ? 'Bạn là Client · Đã chọn Freelancer' : 'Bạn là Client · Chưa phân công')
@@ -223,7 +222,6 @@ export function JobDetail({ user }: { user: User }) {
         {mutationError && <p className="form-error" role="alert">{mutationError} <button className="text-button" onClick={() => reload().then(data => { setJob(data); setApplyBlocked(false); setMutationError(''); }, cause => setMutationError(message(cause)))}>Tải lại</button></p>}
       </section>
       {document}
-      {participant?.contract && job.status === 'AWAITING_PAYMENT' && (owner || assignedFreelancer) && <FundingPanel key={participant.contract.id} job={participant} user={user} onJobUpdated={setJob} />}
       {footer}
     </>}
   </article>;

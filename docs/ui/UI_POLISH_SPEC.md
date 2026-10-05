@@ -280,8 +280,8 @@ reputation calculation
 wallet onboarding
 Phantom connect
 backend funding/review implementation (frontend integrates existing APIs)
-full release/settlement orchestration
-cancellation/refund and Admin dispute resolution
+backend release/refund orchestration implementation (frontend integrates existing Step 4/5 APIs)
+Admin dispute resolution
 rating
 chat
 AI skill verification

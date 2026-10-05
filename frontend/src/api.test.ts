@@ -14,6 +14,51 @@ function response(data: unknown, status = 200) {
 
 afterEach(() => vi.unstubAllGlobals());
 
+describe('P0 settlement and cancellation Marketplace contracts', () => {
+  it('reads nullable settlement/cancellation envelopes and preserves distinct amount serializations', async () => {
+    const mock = vi.fn().mockResolvedValueOnce(response({ accessToken: 'test' })).mockResolvedValueOnce(response(user))
+      .mockResolvedValueOnce(response(null)).mockResolvedValueOnce(response(null))
+      .mockResolvedValueOnce(response({ amount: 500.01, moneyStatus: 'SUCCEEDED', simulation: true }))
+      .mockResolvedValueOnce(response({ amount: '500.01', cancellationStatus: 'REQUESTED', refundStatus: null }));
+    vi.stubGlobal('fetch', mock); const api = new MarketplaceApi(); await api.restore();
+    expect(await api.settlement('contract/one')).toBeNull(); expect(await api.cancellation('contract/one')).toBeNull();
+    expect((await api.settlement('contract/one'))?.amount).toBe(500.01);
+    expect((await api.cancellation('contract/one'))?.amount).toBe('500.01');
+    expect(mock.mock.calls.slice(2).map(call => call[0])).toEqual([
+      '/api/v1/contracts/contract%2Fone/settlement', '/api/v1/contracts/contract%2Fone/cancellations',
+      '/api/v1/contracts/contract%2Fone/settlement', '/api/v1/contracts/contract%2Fone/cancellations',
+    ]);
+  });
+  it('sends only cancellation intent and decision to Marketplace, with no invented refund key/amount', async () => {
+    const mock = vi.fn().mockResolvedValueOnce(response({ accessToken: 'test' })).mockResolvedValueOnce(response(user))
+      .mockImplementation(async () => response({ cancellationId: 'cancel' }));
+    vi.stubGlobal('fetch', mock); const api = new MarketplaceApi(); await api.restore();
+    await api.requestCancellation('c', { reasonCode: 'MUTUAL_CANCELLATION', description: 'Scope changed' });
+    await api.decideCancellation('c', 'cancel/one', 'ACCEPT'); await api.decideCancellation('c', 'cancel/one', 'REJECT');
+    expect(mock.mock.calls.slice(2).map(call => call[0])).toEqual([
+      '/api/v1/contracts/c/cancellations', '/api/v1/contracts/c/cancellations/cancel%2Fone/decisions', '/api/v1/contracts/c/cancellations/cancel%2Fone/decisions',
+    ]);
+    expect(mock.mock.calls.slice(2).map(call => JSON.parse(call[1].body))).toEqual([
+      { reasonCode: 'MUTUAL_CANCELLATION', description: 'Scope changed' }, { decision: 'ACCEPT' }, { decision: 'REJECT' },
+    ]);
+    for (const [, init] of mock.mock.calls.slice(2)) {
+      expect(init.method).toBe('POST'); expect(init.headers.get('Idempotency-Key')).toBeNull();
+      expect(init.credentials).toBe('include'); expect(init.headers.get('Authorization')).toBe('Bearer test');
+    }
+  });
+  it('preserves exact cancellation intent through cookie refresh and exposes backend conflicts', async () => {
+    const mock = vi.fn().mockResolvedValueOnce(response({ accessToken: 'before' })).mockResolvedValueOnce(response(user))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ status: 2005, error: 'expired' }), { status: 401 }))
+      .mockResolvedValueOnce(response({ accessToken: 'after' })).mockResolvedValueOnce(response(user))
+      .mockResolvedValueOnce(response({ cancellationId: 'saved' }));
+    vi.stubGlobal('fetch', mock); const api = new MarketplaceApi(); await api.restore();
+    await api.requestCancellation('c', { reasonCode: 'MUTUAL_CANCELLATION', description: 'Scope changed' });
+    expect(mock.mock.calls[2][1].body).toBe(mock.mock.calls[5][1].body);
+    mock.mockResolvedValueOnce(new Response(JSON.stringify({ status: 4037, error: 'conflict' }), { status: 409 }));
+    await expect(api.decideCancellation('c', 'cancel', 'ACCEPT')).rejects.toMatchObject({ status: 409, code: 4037 });
+  });
+});
+
 describe('Marketplace API contract', () => {
   it('accepts only a trusted backend role', () => {
     expect(trustedUser(user).userType).toBe('CLIENT');

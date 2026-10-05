@@ -244,8 +244,6 @@ profile persistence
 portfolio
 reputation/rating
 wallet onboarding / Phantom connect
-full release/settlement orchestration
-cancellation/refund
 Admin dispute resolution / case management
 auto-release
 chat
@@ -262,7 +260,8 @@ AI verification
 - POST `/api/v1/contracts/{contractId}/submissions/{submissionId}/decisions`: APPROVE, REQUEST_REVISION with related snapshot IDs and feedback, minimal OPEN_DISPUTE with reason/description. Latest active submission only; revision quota enforced by server.
 - Contract-backed legacy submit/revision/approve reject with 409/4029. Legacy frontend methods remain only for jobs without contracts.
 - Server returns UTC reviewDueAt, nullable reviewGraceDueAt, reviewedAutomatically. <=500 USD eligible at due; >500 USD adds 24h grace. Countdown is display only; due/grace/focus/handled review notifications refetch state. No browser approval.
-- Approval may leave Job SUBMITTED_FOR_REVIEW and Contract UNDER_REVIEW while Milestone RELEASE_PENDING. Show work decision complete / money processing; RELEASE_PENDING is not released money. Full release, cancellation/refund, Admin resolution, profile/reputation/rating remain future.
+- Approval may leave Job SUBMITTED_FOR_REVIEW and Contract UNDER_REVIEW while Milestone RELEASE_PENDING. Show work decision complete / money processing; RELEASE_PENDING is not released money. P0/P1 now integrate participant settlement and cancellation/refund APIs. Admin resolution and profile/reputation/rating remain unsupported.
+- Verified Step 4/5: GET `/api/v1/contracts/{contractId}/settlement`; GET/POST `/api/v1/contracts/{contractId}/cancellations`; POST `/api/v1/contracts/{contractId}/cancellations/{cancellationId}/decisions`. Public UI has no release/refund mutation; the decision API lets the server orchestrate refund. REQUESTED/REJECTED keep work continuing; REFUND_PENDING is not final. Primary money success is a simulated ledger confirmation, not bank settlement; settlement tax success is not certificate ACCEPTED.
 - Marketplace is the only browser-facing API; no backend/runtime changes in this stage. P06.5+ remain NOT_STARTED.
 
 Allowed by default:

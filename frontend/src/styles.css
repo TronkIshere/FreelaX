@@ -356,6 +356,27 @@ a { color: inherit; }
 .funding-document > strong { font-size: 22px; }
 .funding-document:focus-visible { outline: 3px solid var(--cobalt); outline-offset: 3px; }
 .funding-document > p { max-width: var(--content-measure); }
+.settlement-document, .cancellation-document { min-width: 0; padding: var(--space-5) 0; }
+.settlement-document > p, .cancellation-document > p { max-width: var(--content-measure); overflow-wrap: anywhere; }
+.cancellation-form { display: grid; min-width: 0; gap: var(--space-4); max-width: 860px; margin: var(--space-4) 0; }
+.cancellation-form label { display: grid; gap: var(--space-2); font-size: 14px; font-weight: 700; }
+.cancellation-form input, .cancellation-form textarea { width: 100%; min-width: 0; padding: var(--space-3); border: 2px solid var(--ink); background: var(--cream); color: var(--ink); }
+.cancellation-form textarea { min-height: 125px; resize: vertical; }
+.cancellation-document > .text-button { margin: var(--space-3) var(--space-4) 0 0; }
+/* Step 4/5: emphasize the server-owned state, keep supporting evidence quiet. */
+.financial-status { width: fit-content; max-width: 100%; margin: 0 0 var(--space-4); border-left: 4px solid var(--ink); padding: var(--space-2) var(--space-3); font-size: 18px; line-height: 1.4; font-weight: 750; }
+.financial-status-done { background: var(--mint); }
+.financial-status-pending, .financial-status-active { background: var(--pale-acid); }
+.financial-status-error { background: var(--pale-vermilion); }
+.lifecycle-money-pending .ownership-band, .lifecycle-money-active .ownership-band { background: var(--cream); border-top: 4px solid var(--acid); }
+.lifecycle-money-error .ownership-band { background: var(--cream); border-top: 4px solid var(--vermilion); }
+.settlement-document > .section-heading, .cancellation-document > .section-heading { padding-top: 0; }
+.settlement-document > .section-heading h2, .cancellation-document > .section-heading h2 { font-size: 24px; }
+.settlement-document > .metadata { margin-top: var(--space-4); }
+.cancellation-document .submission-summary { white-space: pre-wrap; font-size: var(--type-body); line-height: 1.6; }
+.button-caution { background: var(--acid); color: var(--ink); border: 2px solid var(--ink); font-weight: 800; }
+.button-caution:hover:not(:disabled) { background: var(--acid); color: var(--ink); }
+.cancellation-form > .action-group { padding-top: var(--space-3); }
 .bank-form { display: grid; gap: var(--space-4); max-width: 680px; margin-top: var(--space-5); }
 .bank-form label { display: grid; gap: var(--space-2); font-weight: 650; }
 .bank-form :is(input, select), .decision-form input:not([type=checkbox]), .evidence-input input:not([type=checkbox]) { width: 100%; min-width: 0; padding: var(--space-3); border: 2px solid var(--ink); background: var(--cream); color: var(--ink); font: inherit; }
@@ -397,6 +418,14 @@ a { color: inherit; }
 .finance-statement-top > span { margin-right: auto; font-size: 12px; font-weight: 900; letter-spacing: .05em; }
 .finance-statement h2, .tax-statement h2 { max-width: 29ch; margin: 18px 0 10px; font-size: 34px; line-height: 1.15; letter-spacing: -.035em; }
 .finance-statement > p { max-width: 72ch; margin: 0 0 22px; font-size: 16px; }
+.finance-primary > .section-heading { padding: 0 0 var(--space-4); }
+.finance-primary .section-heading h2 { margin: 0; font-size: 30px; border-left-color: var(--acid); }
+.finance-primary-done .section-heading h2 { border-left-color: var(--mint); }
+.finance-primary-error .section-heading h2 { border-left-color: var(--vermilion); }
+.finance-row-state { border-left: 3px solid var(--acid); padding-left: var(--space-3); }
+.finance-row-state-done { border-left-color: var(--mint); }
+.finance-row-state-error { border-left-color: var(--vermilion); }
+.finance-primary ~ .action-group { margin-top: var(--space-5); }
 .finance-outcomes, .tax-amounts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--line); }
 .finance-outcomes > div, .tax-amounts > div { display: grid; gap: 6px; min-width: 0; padding: 15px 15px 0 0; }
 .finance-outcomes span, .tax-amounts span { color: var(--soft-ink); font-size: 13px; font-weight: 850; }

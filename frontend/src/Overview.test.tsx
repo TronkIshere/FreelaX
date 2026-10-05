@@ -5,7 +5,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { api } from './api';
 import { Overview } from './Overview';
-import type { Job, MyApplication, Page, User } from './types';
+import type { ContractCancellationRecord, ContractSettlement, Job, MyApplication, Page, User } from './types';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 const client: User = { id: 'client', email: 'client@example.test', displayName: 'Client', userType: 'CLIENT' };
@@ -14,6 +14,77 @@ const job = (id: string, status: string): Job => ({ id, status, title: 'Job ' + 
   budgetUsd: 450, clientUserId: client.id, freelancerId: freelancer.id, createdAt: null });
 const page = <T,>(data: T[], totalElements = data.length): Page<T> => ({
   data, totalElements, currentPage: 0, pageSize: 8, totalPages: Math.ceil(totalElements / 8),
+});
+
+describe('P1 server-owned attention', () => {
+  const work = (status = 'SUBMITTED_FOR_REVIEW', milestoneStatus = 'SUBMITTED', contractStatus = 'UNDER_REVIEW'): Job => ({
+    ...job('contract-job', status), contract: { id: 'contract', status: contractStatus, milestoneId: 'milestone', milestoneStatus,
+      amount: '450', currency: 'USD', deliveryDueAt: null, reviewWindowHours: 72, maxRevisions: 2, revisionsUsed: 0,
+      deliverables: [], acceptanceCriteria: [] } });
+  beforeEach(() => {
+    vi.spyOn(api, 'settlement').mockResolvedValue(null);
+    vi.spyOn(api, 'cancellation').mockResolvedValue(null);
+  });
+  it('replaces stale Client review with Finance during release pending', async () => {
+    vi.mocked(api.myJobs).mockResolvedValue(page([work('SUBMITTED_FOR_REVIEW', 'RELEASE_PENDING')]));
+    await render(client);
+    expect(host.textContent).not.toContain('Duyệt bản bàn giao');
+    expect(host.querySelector('.overview-attention .button')?.getAttribute('href')).toBe('/finance?jobId=contract-job');
+  });
+  it('uses milestone refund pending even before cancellation evidence appears', async () => {
+    vi.mocked(api.myJobs).mockResolvedValue(page([work('IN_PROGRESS', 'REFUND_PENDING', 'ACTIVE')]));
+    await render(freelancer);
+    expect(host.textContent).toContain('Theo dõi hoàn tiền');
+    expect(host.textContent).not.toContain('Bàn giao công việc');
+  });
+  it.each([client, freelancer])('suppresses incompatible work during refund pending for $userType', async user => {
+    vi.mocked(api.myJobs).mockResolvedValue(page([work(user.userType === 'CLIENT' ? 'SUBMITTED_FOR_REVIEW' : 'IN_PROGRESS', 'FUNDED', 'ACTIVE')]));
+    vi.mocked(api.cancellation).mockResolvedValue({ cancellationStatus: 'REFUND_PENDING', refundStatus: 'UNKNOWN' } as ContractCancellationRecord);
+    await render(user);
+    expect(host.querySelector('.overview-attention')?.textContent).toContain('Theo dõi hoàn tiền');
+    expect(host.textContent).not.toContain('Duyệt bản bàn giao');
+    expect(host.textContent).not.toContain('Bàn giao công việc');
+  });
+  it.each(['REQUESTED', 'REJECTED'] as const)('retains continuing work for %s cancellation', async status => {
+    vi.mocked(api.myJobs).mockResolvedValue(page([work('IN_PROGRESS', 'FUNDED', 'ACTIVE')]));
+    vi.mocked(api.cancellation).mockResolvedValue({ cancellationStatus: status, refundStatus: null } as ContractCancellationRecord);
+    await render(freelancer);
+    expect(host.querySelector('.overview-attention')?.textContent).toContain('Bàn giao công việc');
+    expect(host.textContent).not.toContain('Đã hủy');
+  });
+  it('removes review actions for a confirmed release even when job status is stale', async () => {
+    vi.mocked(api.myJobs).mockResolvedValue(page([work()]));
+    vi.mocked(api.settlement).mockResolvedValue({ moneyStatus: 'SUCCEEDED', onChainStatus: 'SUCCEEDED',
+      offRampStatus: 'SUCCEEDED', taxStatus: 'SUCCEEDED', retryable: false } as ContractSettlement);
+    await render(client);
+    expect(host.textContent).not.toContain('Duyệt bản bàn giao');
+    expect(host.querySelectorAll('.overview-attention-row')).toHaveLength(0);
+  });
+  it('uses completed/released contract truth despite stale job status and missing release proof', async () => {
+    vi.mocked(api.myJobs).mockResolvedValue(page([work('IN_PROGRESS', 'RELEASED', 'COMPLETED')]));
+    await render(freelancer);
+    expect(host.textContent).not.toContain('Bàn giao công việc');
+    expect(host.querySelector('.overview-attention .button')?.getAttribute('href')).toBe('/finance?jobId=contract-job');
+  });
+  it('fails closed on cancellation read error, then restores workflow after a verified retry', async () => {
+    vi.mocked(api.myJobs).mockResolvedValue(page([work()]));
+    vi.mocked(api.cancellation).mockRejectedValueOnce(new Error('Cancellation unavailable'));
+    await render(client);
+    expect(host.textContent).not.toContain('Duyệt bản bàn giao');
+    await act(async () => window.dispatchEvent(new Event('focus')));
+    expect(host.textContent).toContain('Duyệt bản bàn giao');
+  });
+  it('does not let an older financial read replace the latest focus refresh', async () => {
+    let resolve!: (value: ContractCancellationRecord | null) => void;
+    vi.mocked(api.myJobs).mockResolvedValue(page([work()]));
+    vi.mocked(api.cancellation).mockImplementationOnce(() => new Promise(done => { resolve = done; }))
+      .mockResolvedValue({ cancellationStatus: 'REFUND_PENDING', refundStatus: 'UNKNOWN' } as ContractCancellationRecord);
+    await render(client);
+    await act(async () => window.dispatchEvent(new Event('focus')));
+    await act(async () => resolve(null));
+    expect(host.textContent).toContain('Theo dõi hoàn tiền');
+    expect(host.textContent).not.toContain('Duyệt bản bàn giao');
+  });
 });
 const application = (status: MyApplication['status']): MyApplication => ({ id: 'app', status,
   createdAt: null, updatedAt: null, job: { id: 'applied', title: 'Application job', description: 'Brief',
