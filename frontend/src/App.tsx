@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
-import { ApiError } from './api';
+import { ApiError, hasAuthority } from './api';
+import { AdminDisputes, AdminDisputeDetail } from './AdminDisputes';
 import { Account } from './Account';
 import { Activity } from './Activity';
 import { AuthEntry } from './Auth';
@@ -52,6 +53,7 @@ function RoleShell({ user }: { user: User }) {
       <Brand />
       <div className="identity"><span>{role === 'CLIENT' ? 'Client' : 'Freelancer'}</span><strong>{user.displayName}</strong></div>
       <ActionGroup label="Phiên làm việc">
+        {hasAuthority(user, 'ROLE_ADMIN') && <NavLink className="text-link admin-entry" to="/admin/disputes">Quản trị</NavLink>}
         <button className="text-button sign-out" type="button" onClick={() => void logout()} disabled={loggingOut}>
           {loggingOut ? 'Đang đăng xuất…' : 'Đăng xuất'}</button>
       </ActionGroup>
@@ -80,6 +82,8 @@ function RoleShell({ user }: { user: User }) {
         <Route path="/finance/tax-records" element={<TaxRecordsPage />} />
         <Route path="/finance/tax-records/:taxRecordId" element={<TaxRecordDetail />} />
         <Route path="/activity" element={<Activity />} />
+        <Route path="/admin/disputes" element={<AdminDisputes user={user} />} />
+        <Route path="/admin/disputes/:disputeId" element={<AdminDisputeDetail user={user} />} />
         <Route path="/account" element={<Account user={user} onLogout={() => void logout()} loggingOut={loggingOut} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

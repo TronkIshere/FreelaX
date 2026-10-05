@@ -472,3 +472,29 @@ Validation:
 
 Remaining known limitations: live desktop validation requires the existing frontend/Marketplace runtime. Steps 6/8/9 remain backend-dependent future UI work and are not implemented or marked complete; full Admin dispute resolution, profile/reputation/rating and other unsupported features remain outside this pass.
 Git: 15 intended frontend/current UI documentation files, uncommitted and unstaged; HEAD/branch preserved. No commit/push/merge. Stop after P2 report.
+
+### 2026-10-06 — UI Workpack A: Step 6 participant dispute and Admin workspace
+
+Input gate: `feat/mvp-ui-steps6-9-20261005`, clean HEAD `e10000b2380fb10735ab8cb4d3d574d0b1f99747` (`merge: expose trusted admin capability`).
+Implementation/test/build: `PASS`. Real desktop/runtime gate: `ENVIRONMENT BLOCKED`; overall Step 6 UI acceptance remains pending live validation.
+
+Implemented:
+
+- Typed participant dispute read/create and bare-array evidence append through existing Marketplace APIs. Missing GET data is normalized to no case. Description is nonblank and capped at 2,000, reasonCode at 60; evidence batches at 10, TEXT at 2,000, credential-free HTTPS LINK at 2,048 and optional SHA-256 at exactly 64 hex characters. Evidence history is immutable; there are no upload/edit/delete/cancel-dispute endpoints or controls.
+- Existing Client review `OPEN_DISPUTE` remains available and now enforces the same 2,000 limit. The authoritative case is reread after the mutation. Eligible Freelancer and pre-submission/revision participants can use direct dispute creation. Backend remains authoritative for eligibility and one-case uniqueness.
+- Current ownership uses dispute plus contract/milestone and settlement/refund state. Historical `DISPUTED` submissions remain readable history, without keeping resolved cases waiting for Admin. Pending release/refund remains pending; resolved release reads existing settlement truth and retains primary success despite downstream failure. Refund shows only returned status/reference and final contract truth, without invented amounts, retry metadata, simulation or bank proof.
+- Trusted `ROLE_ADMIN` adds a secondary masthead `Quản trị` entry; the five primary destinations and UserType stay unchanged. Direct Admin routes deny missing authorities. Queue uses a distinct Spring Page adapter; detail exposes only actual contract facts, requirements, submissions, evidence, funding and Admin audit. Participant UI never renders Admin audit. Admin participants cannot claim/resolve their own contract; resolution requires the current claimant, reason and explicit confirmation for one irreversible full-value outcome.
+- Evidence and Admin decisions retain exact payload/idempotency key across ambiguous responses and reload. Manual replay reads authoritative state first; decisions already persisted are not reposted. Shared mutation locks prevent duplicate clicks. Failed authority reads disable mutation; later 403/404 drops cached privileged detail. HTTP support requestId is collapsed and distinguished from audit/idempotency references. Numeric business-code consumers are preserved alongside safe symbolic code/retryable metadata.
+- Nonterminal cases refresh lightly while visible; listeners/timers are cleaned up. `DISPUTE_DECIDED` links to existing workflow and triggers authoritative refresh. No frontend release/refund mutation, direct Payment/MISA/Solana call, or Step 8/9 UI was added.
+
+Validation:
+
+- Added 48 focused Step 6 tests (22 contract/API and 26 UI), plus updated role-entry and existing workflow test mocks. Coverage includes 2,000/2,001 boundaries, safe evidence, exact arrays/keys, role access, claim lock, confirmed/pending outcomes, historical ownership, replay/reload, duplicate prevention, actual minimal review API and safe 403/support details.
+- Initial affected gate: 7 files, 185/185 PASS. After fixing duplicate React keys and adding minimal-path/revoked-access regressions, affected UI/workflow gate: 3 files, 97/97 PASS.
+- Full frontend suite run once: 15 files, 290/290 PASS. Final review then tightened malformed HTTPS slash/backslash rejection to match backend URI validation and added three URL boundary cases. Final affected gate covering those changes plus dispute/workflow/Finance/auth: 7 files, 190/190 PASS (including all 48 Step 6 tests). No failures. Existing React Router future-flag warnings only; duplicate-key warnings removed. The full suite was not repeated.
+- Production build: TypeScript `tsc -b` and Vite build PASS using the existing installed Node/local packages (the npm script tools); no software or dependency changes.
+- 1440px and 1024px authenticated runtime smoke: ENVIRONMENT BLOCKED. Read-only probes both within and outside the sandbox to localhost:9191/api/v1/auth/me, localhost:8080/api/v1/auth/me and localhost:3000/api/v1/auth/me were unavailable. Real open/append/claim/release/refund/Finance smoke and browser console/overflow checks were not performed; automated tests are not runtime proof.
+- Mobile optimization is deferred. Current MVP delivery target is desktop/laptop at 1440px and 1024px. No mobile work or validation.
+- Backend, runtime/env, dependencies and financial business logic unchanged. No backend suites/E2E rerun. No commit/push/merge or branch switch. Changes remain uncommitted for review.
+
+Remaining: run real desktop participant/Admin and both resolution outcomes when the existing runtime is available. No backend contract mismatch found. Do not mark overall Step 6 UI PASS until the live gate is complete; Steps 8/9 remain outside Workpack A.

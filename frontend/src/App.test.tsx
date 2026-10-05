@@ -58,6 +58,8 @@ describe('P06.2 role-aware shell', () => {
     expect(host.querySelector('.primary-nav [aria-current="page"]')?.textContent).toBe('Tài khoản');
     expect(host.querySelector('.subnav')).toBeNull();
     expect(host.querySelector('[data-testid="admin-authority"]')?.textContent).toBe(String(hasAuthority(user, 'ROLE_ADMIN')));
+    expect(host.querySelector('.admin-entry')?.textContent ?? null).toBe(hasAuthority(user, 'ROLE_ADMIN') ? 'Quản trị' : null);
+    if (hasAuthority(user, 'ROLE_ADMIN')) expect(host.querySelector('.admin-entry')?.getAttribute('href')).toBe('/admin/disputes');
   });
 
   it.each([

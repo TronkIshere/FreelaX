@@ -16,6 +16,34 @@ export interface Page<T> {
   data: T[];
 }
 
+export type DisputeStatus = 'OPEN' | 'UNDER_REVIEW' | 'DECISION_PENDING_RELEASE' | 'DECISION_PENDING_REFUND' | 'RESOLVED_RELEASE' | 'RESOLVED_REFUND' | 'CANCELLED';
+export interface DisputeEvidenceInput { kind: 'TEXT' | 'LINK'; text?: string; url?: string; sha256?: string }
+export interface DisputeEvidence {
+  id: string; actorId: string; createdAt: string | null; kind: 'TEXT' | 'LINK';
+  text?: string | null; url?: string | null; sha256?: string | null;
+}
+export interface OpenDisputeInput { reasonCode: string; description: string; evidence?: DisputeEvidenceInput[] }
+export interface Dispute {
+  disputeId: string; contractId: string; milestoneId: string; jobId: string; submissionId: string | null;
+  openedBy: string; reasonCode: string; description: string; status: DisputeStatus; openedAt: string;
+  claimedBy: string | null; claimedAt: string | null; resolvedBy: string | null; decisionAt: string | null;
+  resolvedAt: string | null; resolutionReason: string | null; refundStatus: SettlementMoneyStatus | null;
+  refundReference: string | null; evidence: DisputeEvidence[];
+}
+export interface SpringPage<T> { content: T[]; number: number; size: number; totalPages: number; totalElements: number }
+export interface AdminDisputeDetail {
+  dispute: Dispute;
+  contract: { contractId: string; clientId: string; freelancerId: string; title: string; description: string;
+    amount: DecimalValue; currency: string; deliveryDueAt: string | null; maxRevisions: number; revisionsUsed: number };
+  deliverables: { id: string; title: string; description: string; required: boolean }[];
+  acceptanceCriteria: { id: string; description: string; required: boolean }[];
+  submissions: { id: string; version: number; status: string; summary: string; reviewerFeedback: string | null;
+    submittedAt: string; reviewedAt: string | null; evidence: { requirementId: string; kind: string; description: string | null; url: string | null }[] }[];
+  fundingStatus: string | null;
+  audit: { actorId: string; action: string; beforeStatus: string | null; afterStatus: string; reason: string | null; requestId: string | null; createdAt: string }[];
+}
+export interface DisputeDecision { outcome: 'RELEASE_TO_FREELANCER' | 'REFUND_TO_CLIENT'; reason: string }
+
 export interface Job {
   id: string;
   title: string;
