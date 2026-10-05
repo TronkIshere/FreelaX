@@ -11,6 +11,7 @@ import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
 @Component
@@ -33,6 +34,7 @@ public class JwtAccessDenied implements AccessDeniedHandler {
 
         response.setStatus(ErrorCode.ACCESS_DENIED.getHttpStatus().value());
         response.setContentType("application/json");
+        response.setCharacterEncoding(StandardCharsets.UTF_8.name());
         response.getWriter().write(objectMapper.writeValueAsString(errorResponse));
     }
 }

@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 
 @Component
 public class InternalApiKeyFilter extends OncePerRequestFilter {
@@ -31,6 +32,7 @@ public class InternalApiKeyFilter extends OncePerRequestFilter {
         if (providedKey == null || !providedKey.equals(expectedApiKey)) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.setContentType("application/json");
+            response.setCharacterEncoding(StandardCharsets.UTF_8.name());
             response.getWriter().write("{\"code\":401,\"message\":\"Invalid or missing internal API key\"}");
             return;
         }
