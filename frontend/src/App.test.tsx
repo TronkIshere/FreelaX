@@ -4,8 +4,8 @@ import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
-import { api, ApiError } from './api';
-import { SessionProvider } from './session';
+import { api, ApiError, hasAuthority } from './api';
+import { SessionProvider, useSession } from './session';
 import type { User } from './types';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -28,18 +28,22 @@ afterEach(() => {
   act(() => root.unmount()); host.remove(); vi.restoreAllMocks();
 });
 function Location() { return <output data-testid="path">{useLocation().pathname}</output>; }
+function SessionAuthority() {
+  const { session } = useSession();
+  return <output data-testid="admin-authority">{String(session.status === 'ready' && hasAuthority(session.user, 'ROLE_ADMIN'))}</output>;
+}
 async function render(user: User, path = '/account') {
   vi.spyOn(api, 'restore').mockResolvedValue(user);
   await act(async () => {
     root.render(<MemoryRouter initialEntries={[path]} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-      <SessionProvider><App /><Location /></SessionProvider>
+      <SessionProvider><App /><Location /><SessionAuthority /></SessionProvider>
     </MemoryRouter>);
   });
 }
 function currentPath() { return host.querySelector('[data-testid="path"]')?.textContent; }
 
 describe('P06.2 role-aware shell', () => {
-  it.each([client, freelancer])('preserves the five destinations and trusted $userType identity', async user => {
+  it.each([client, freelancer, { ...client, authorities: ['ROLE_ADMIN'] }, { ...freelancer, authorities: ['ROLE_ADMIN'] }])('preserves the five destinations and trusted $userType identity', async user => {
     await render(user);
     const links = [...host.querySelectorAll('.primary-nav a')];
     expect(links.map(link => link.textContent)).toEqual([
@@ -53,6 +57,7 @@ describe('P06.2 role-aware shell', () => {
     expect(host.querySelector('.brand small')).toBeNull();
     expect(host.querySelector('.primary-nav [aria-current="page"]')?.textContent).toBe('Tài khoản');
     expect(host.querySelector('.subnav')).toBeNull();
+    expect(host.querySelector('[data-testid="admin-authority"]')?.textContent).toBe(String(hasAuthority(user, 'ROLE_ADMIN')));
   });
 
   it.each([

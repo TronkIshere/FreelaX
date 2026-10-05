@@ -115,5 +115,9 @@ class AuthControllerTest {
         ResponseAPI<UserResponse> response = authController.getCurrentUser(principal);
 
         assertEquals(userType, response.getData().getUserType());
+        assertEquals(userId, response.getData().getId());
+        assertEquals(user.getEmail(), response.getData().getEmail());
+        assertEquals(user.getDisplayName(), response.getData().getDisplayName());
+        assertEquals(java.util.List.of(), response.getData().getAuthorities());
     }
 }

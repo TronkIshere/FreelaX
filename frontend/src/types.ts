@@ -5,6 +5,7 @@ export interface User {
   email: string;
   displayName: string;
   userType: UserType;
+  authorities?: readonly string[];
 }
 
 export interface Page<T> {

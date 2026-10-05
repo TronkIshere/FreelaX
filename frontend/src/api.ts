@@ -26,7 +26,16 @@ export function trustedUser(value: unknown): User {
       typeof data.displayName !== 'string' || (role !== 'CLIENT' && role !== 'FREELANCER')) {
     throw new ApiError('Không thể xác minh vai trò tài khoản từ máy chủ.', 0);
   }
-  return { id: data.id, email: data.email, displayName: data.displayName, userType: role as UserType };
+  // Missing or malformed capability data never grants UI access or invalidates identity.
+  const authorities = Array.isArray(data.authorities) && data.authorities.every(
+    authority => typeof authority === 'string' && authority.length > 0 && authority.trim() === authority,
+  ) ? [...new Set<string>(data.authorities)] : [];
+  return { id: data.id, email: data.email, displayName: data.displayName, userType: role as UserType, authorities };
+}
+
+// UI discovery only; protected endpoints still enforce server authorization.
+export function hasAuthority(user: Pick<User, 'authorities'> | null | undefined, authority: string): boolean {
+  return user?.authorities?.includes(authority) === true;
 }
 
 export function serverPage<T>(value: unknown): Page<T> {

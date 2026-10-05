@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ApiError, MarketplaceApi, serverPage, trustedUser } from './api';
+import { ApiError, hasAuthority, MarketplaceApi, serverPage, trustedUser } from './api';
 import type { DiscoveryFilters } from './types';
 
 const user = { id: 'user-client', email: 'client@example.test', displayName: 'Client One', userType: 'CLIENT' };
@@ -60,6 +60,26 @@ describe('P0 settlement and cancellation Marketplace contracts', () => {
 });
 
 describe('Marketplace API contract', () => {
+  it('preserves exact server authorities without inventing an Admin userType', () => {
+    const parsed = trustedUser({ ...user, authorities: ['ROLE_USER', 'ROLE_ADMIN', 'ROLE_USER'] });
+    expect(parsed.authorities).toEqual(['ROLE_USER', 'ROLE_ADMIN']);
+    expect(parsed.userType).toBe('CLIENT');
+    expect(hasAuthority(parsed, 'ROLE_ADMIN')).toBe(true);
+    expect(hasAuthority(parsed, 'ADMIN')).toBe(false);
+    expect(() => trustedUser({ ...user, userType: 'ADMIN' })).toThrow(ApiError);
+    expect(hasAuthority(null, 'ROLE_ADMIN')).toBe(false);
+    expect(hasAuthority(undefined, 'ROLE_ADMIN')).toBe(false);
+  });
+
+  it.each([undefined, null, 'ROLE_ADMIN', {}, ['ROLE_ADMIN', null], [' ROLE_ADMIN '], ['']])(
+    'treats missing or malformed authorities %j as no capability without failing authentication', authorities => {
+      const parsed = trustedUser({ ...user, authorities });
+      expect(parsed.userType).toBe('CLIENT');
+      expect(parsed.authorities).toEqual([]);
+      expect(hasAuthority(parsed, 'ROLE_ADMIN')).toBe(false);
+    },
+  );
+
   it('accepts only a trusted backend role', () => {
     expect(trustedUser(user).userType).toBe('CLIENT');
     expect(() => trustedUser({ ...user, userType: undefined })).toThrow(ApiError);
@@ -72,11 +92,14 @@ describe('Marketplace API contract', () => {
 
   it('signs in, then resolves role from /auth/me', async () => {
     const fetchMock = vi.fn()
-      .mockResolvedValueOnce(response({ status: 'SUCCESS', accessToken: 'token-A', userId: user.id }))
-      .mockResolvedValueOnce(response(user));
+      .mockResolvedValueOnce(response({ status: 'SUCCESS', accessToken: 'token-A', userId: user.id, authorities: ['ROLE_ADMIN'] }))
+      .mockResolvedValueOnce(response({ ...user, authorities: ['ROLE_USER'] }));
     vi.stubGlobal('fetch', fetchMock);
     const api = new MarketplaceApi();
-    expect((await api.signIn('client@example.test', 'pass')).userType).toBe('CLIENT');
+    const signedIn = await api.signIn('client@example.test', 'pass');
+    expect(signedIn.userType).toBe('CLIENT');
+    expect(signedIn.authorities).toEqual(['ROLE_USER']);
+    expect(hasAuthority(signedIn, 'ROLE_ADMIN')).toBe(false);
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock.mock.calls[0][0]).toBe('/api/v1/auth/sign-in');
     expect(fetchMock.mock.calls[1][0]).toBe('/api/v1/auth/me');
@@ -86,10 +109,13 @@ describe('Marketplace API contract', () => {
   it('restores the session through the refresh cookie before /auth/me', async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(response({ accessToken: 'token-B' }))
-      .mockResolvedValueOnce(response({ ...user, userType: 'FREELANCER' }));
+      .mockResolvedValueOnce(response({ ...user, userType: 'FREELANCER', authorities: ['ROLE_ADMIN', 'ROLE_USER'] }));
     vi.stubGlobal('fetch', fetchMock);
     const api = new MarketplaceApi();
-    expect((await api.restore()).userType).toBe('FREELANCER');
+    const restored = await api.restore();
+    expect(restored.userType).toBe('FREELANCER');
+    expect(restored.authorities).toEqual(['ROLE_ADMIN', 'ROLE_USER']);
+    expect(hasAuthority(restored, 'ROLE_ADMIN')).toBe(true);
     expect(fetchMock.mock.calls[0][0]).toBe('/api/v1/auth/refresh-token');
     expect((fetchMock.mock.calls[0][1] as RequestInit).credentials).toBe('include');
     expect(fetchMock.mock.calls[1][0]).toBe('/api/v1/auth/me');
