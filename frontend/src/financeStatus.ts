@@ -8,6 +8,26 @@ export const releaseOwned = (job: Job) => job.contract?.milestoneStatus === 'REL
 export const cancelledContract = (job: Job) => job.contract?.status === 'CANCELLED' ||
   job.contract?.milestoneStatus === 'REFUNDED' || job.status === 'CANCELLED';
 export const refundOwned = (job: Job) => job.contract?.milestoneStatus === 'REFUND_PENDING';
+export const financialCopy = {
+  fundingVsRelease: 'Funding đã xác nhận không có nghĩa Freelancer đã nhận release.',
+  releaseSimulation: 'Đã xác nhận bản ghi release mô phỏng cho Freelancer. Không xác nhận tiền đã về ngân hàng thật.',
+  refundSimulation: 'Đã xác nhận bản ghi hoàn tiền mô phỏng cho Client. Không xác nhận hoàn tiền ngân hàng thật.',
+  taxVsCertificate: 'Trạng thái tạo chứng từ không xác nhận cơ quan thuế đã ACCEPTED. Xem trạng thái riêng trong hồ sơ chứng từ.',
+};
+
+export const financialMoneyTone = (status: string | null | undefined): EvidenceTone => status === 'SUCCEEDED' ? 'done'
+  : status === 'FAILED' || status === 'FAILED_RETRYABLE' ? 'error'
+  : status === 'PROCESSING' || status === 'UNKNOWN' ? 'active' : 'pending';
+
+export function contractFinanceTone(job: Job, value?: ContractFinance): EvidenceTone {
+  const cancellation = value?.cancellation;
+  if (cancellation?.refundStatus === 'SUCCEEDED') return 'done';
+  if (cancellation?.cancellationStatus === 'REFUND_PENDING') return financialMoneyTone(cancellation.refundStatus);
+  if (refundOwned(job)) return 'pending';
+  if (cancelledContract(job) || cancellation?.cancellationStatus === 'CANCELLED') return 'done';
+  if (value?.settlement) return financialMoneyTone(value.settlement.moneyStatus);
+  return value?.error ? 'error' : 'pending';
+}
 
 export function contractFinanceLabel(job: Job, value?: ContractFinance): string {
   const cancellation = value?.cancellation;
@@ -16,9 +36,9 @@ export function contractFinanceLabel(job: Job, value?: ContractFinance): string 
   if (refundOwned(job)) return 'Chưa có xác nhận hoàn tiền';
   if (cancelledContract(job) || cancellation?.cancellationStatus === 'CANCELLED') return 'Hợp đồng đã hủy';
   if (value?.settlement) return settlementMoneyLabel(value.settlement.moneyStatus);
+  if (value?.error) return 'Chưa xác minh hồ sơ tài chính';
   if (releaseOwned(job)) return 'Chưa có bản ghi release';
   if (cancellation) return cancellationLabel(cancellation.cancellationStatus);
-  if (value?.error) return 'Chưa xác minh hồ sơ tài chính';
   return job.status === 'AWAITING_PAYMENT' ? 'Chờ funding' : 'Funding và hồ sơ hợp đồng';
 }
 

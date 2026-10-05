@@ -4,7 +4,7 @@ import { api, ApiError } from './api';
 import { ActionGroup, EvidenceDisclosure, FactGrid, SectionHeading } from './components';
 import { ContractCancellation, type CancellationState } from './ContractCancellation';
 import { FundingPanel } from './Funding';
-import { settlementMoneyLabel, settlementNeedsRefresh, settlementStageLabel } from './financeStatus';
+import { financialCopy, financialMoneyTone, settlementMoneyLabel, settlementNeedsRefresh, settlementStageLabel } from './financeStatus';
 import { submissionLabel } from './status';
 import { attemptScope, clearAttempt, httpsUrl, localInstant, readAttempt, saveAttempt, smallReview, validateSubmission } from './workflowContracts';
 import type { ContractSettlement, ContractSubmission, ContractSummary, Job, Requirement, ReviewDecision, SubmissionPayload, User } from './types';
@@ -265,7 +265,8 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
     : canSubmit ? job.status === 'REVISION_REQUESTED' ? 'Bạn cần chỉnh sửa theo phản hồi' : 'Đến lượt bạn bàn giao công việc'
     : canReview ? 'Cần bạn duyệt bàn giao' : contract.status === 'REVISION' ? 'Đang chờ Freelancer gửi bản sửa'
     : contract.status === 'UNDER_REVIEW' ? 'Đang chờ Client phản hồi' : 'Đang chờ Freelancer bàn giao';
-  return <div className={'lifecycle lifecycle-' + (disputed || refundPending ? 'revision' : releaseRelevant || cancelled ? 'complete' : contract.status === 'REVISION' ? 'revision' : contract.status === 'UNDER_REVIEW' ? 'review' : 'working')}>
+  return <div className={'lifecycle lifecycle-' + (disputed || refundPending ? 'revision' : releaseRelevant || cancelled ? 'complete' : contract.status === 'REVISION' ? 'revision' : contract.status === 'UNDER_REVIEW' ? 'review' : 'working') +
+    (releasedPending ? ' lifecycle-money-' + (settlementError && !settlement ? 'error' : financialMoneyTone(settlement?.moneyStatus)) : '')}>
     <section className="ownership-band" aria-label="Lượt thực hiện"><h2>{next}</h2><ActionGroup>
       {canSubmit && <a className="text-link" href="#work-primary-action">{job.status === 'REVISION_REQUESTED' ? 'Soạn bản sửa ↓' : 'Soạn bàn giao ↓'}</a>}
       {latest && <a className="text-link" href="#latest-submission">{latest.reviewerFeedback && contract.status === 'REVISION' ? 'Xem phản hồi ↓' : 'Xem bản bàn giao ↓'}</a>}
@@ -280,19 +281,19 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
     {releaseRelevant && <section className="settlement-document" aria-label="Quyết toán hợp đồng">
       <SectionHeading title="Release hợp đồng" aside={settlement?.simulation ? 'Mô phỏng' : undefined} />
       {settlementLoading && <p role="status">Đang đọc trạng thái release…</p>}
-      {!settlement && !settlementLoading && <p role="status">Chưa có bản ghi release để xác nhận. Đang đối soát với Marketplace.</p>}
+      {!settlement && !settlementLoading && !settlementError && <p className="financial-status financial-status-pending" role="status">Chưa có bản ghi release để xác nhận. Đang đối soát với Marketplace.</p>}
       {settlement && <>
-        <p className="submission-summary" role="status">{settlementMoneyLabel(settlement.moneyStatus)}</p>
-        {releaseConfirmed && <p>{settlement.simulation ? 'Đã xác nhận release ledger mô phỏng cho Freelancer. Không xác nhận tiền đã về ngân hàng thật.' : 'Marketplace đã xác nhận release. Chi trả ngân hàng cần bằng chứng riêng.'}</p>}
-        {!releaseConfirmed && <p>Funding đã xác nhận không có nghĩa Freelancer đã nhận release.</p>}
+        <p className={'financial-status financial-status-' + financialMoneyTone(settlement.moneyStatus)} role="status">{settlementMoneyLabel(settlement.moneyStatus)}</p>
+        {releaseConfirmed && <p>{settlement.simulation ? financialCopy.releaseSimulation : 'Marketplace đã xác nhận release. Chi trả ngân hàng cần bằng chứng riêng.'}</p>}
+        {!releaseConfirmed && <p>{financialCopy.fundingVsRelease}</p>}
         <FactGrid facts={[{ label: 'Giá trị release', value: String(settlement.amount) + ' ' + settlement.currency },
           { label: 'Bằng chứng on-chain', value: settlementStageLabel(settlement.onChainStatus) },
           { label: 'Off-ramp', value: settlementStageLabel(settlement.offRampStatus) },
           { label: 'Tạo / Khôi phục chứng từ', value: settlementStageLabel(settlement.taxStatus) }]} />
-        <p className="metadata">Trạng thái tạo chứng từ không xác nhận cơ quan thuế đã ACCEPTED. Xem trạng thái riêng trong hồ sơ chứng từ.</p>
+        <p className="metadata">{financialCopy.taxVsCertificate}</p>
         {settlement.moneyStatus === 'FAILED' && <p role="alert">Release chưa thành công. Máy chủ xử lý trạng thái này; không có thao tác giải ngân thủ công trong UI.</p>}
         <EvidenceDisclosure summary="Tham chiếu release / Lỗi từng chặng"><dl className="reference-list">
-          {(['releaseReference', 'onChainReference', 'offRampReference', 'taxReference', 'lastError', 'onChainError', 'offRampError', 'taxError'] as const).map(field => settlement[field] && <div key={field}><dt>{field}</dt><dd><code>{settlement[field]}</code></dd></div>)}
+          {([['releaseReference', 'Tham chiếu release'], ['onChainReference', 'Tham chiếu on-chain'], ['offRampReference', 'Tham chiếu chi trả VND'], ['taxReference', 'Tham chiếu chứng từ'], ['lastError', 'Lỗi release'], ['onChainError', 'Lỗi on-chain'], ['offRampError', 'Lỗi VND'], ['taxError', 'Lỗi thuế']] as const).map(([field, label]) => settlement[field] && <div key={field}><dt>{label}</dt><dd><code>{settlement[field]}</code></dd></div>)}
           <div><dt>Cập nhật từ Marketplace</dt><dd>{settlement.updatedAt}</dd></div>
         </dl></EvidenceDisclosure>
       </>}

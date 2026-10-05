@@ -19,7 +19,7 @@ export const submissionLabels: Record<string, string> = {
 export const fundingLabel = (status: string) => ({ PENDING: 'Chờ xử lý funding', PROCESSING: 'Đang xử lý funding', UNKNOWN: 'Đang đối soát funding', FAILED: 'Funding thất bại — có thể thử lại', SUCCEEDED: 'Funding đã xác nhận' }[status] || 'Chưa xác minh funding');
 
 export const cancellationLabel = (status: string) => ({
-  REQUESTED: 'Đang chờ đối tác quyết định', REJECTED: 'Đề nghị bị từ chối; hợp đồng tiếp tục',
+  REQUESTED: 'Đề nghị hủy đang chờ quyết định', REJECTED: 'Đề nghị hủy bị từ chối; hợp đồng tiếp tục',
   REFUND_PENDING: 'Đang đối soát hoàn tiền', CANCELLED: 'Hợp đồng đã hủy',
 }[status] || 'Chưa xác minh đề nghị hủy');
 export const refundLabel = (status: string | null) => ({

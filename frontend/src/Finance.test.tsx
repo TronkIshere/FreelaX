@@ -181,6 +181,46 @@ describe('P1 contract financial evidence', () => {
     expect(host.textContent).not.toContain('Hoàn tiền đã xác nhận');
     expect(host.querySelector('.finance-stages')).toBeNull();
   });
+  it('distinguishes failed reads from empty records and offers one read-only reconciliation action', async () => {
+    vi.mocked(api.settlement).mockRejectedValue(new Error('Settlement unavailable'));
+    vi.mocked(api.cancellation).mockRejectedValue(new Error('Cancellation unavailable'));
+    const request = vi.spyOn(api, 'requestCancellation');
+    const decision = vi.spyOn(api, 'decideCancellation');
+    await evidence();
+    const primary = host.querySelector('[aria-label="Tiền chính của hợp đồng"]')!;
+    expect(primary.textContent).toContain('Chưa xác minh hồ sơ tài chính');
+    expect(primary.textContent).toContain('Chưa xác minh release');
+    expect(primary.textContent).toContain('Chưa xác minh hoàn tiền');
+    expect(primary.textContent).not.toContain('Chưa có bản ghi release');
+    expect(primary.classList.contains('finance-primary-error')).toBe(true);
+    expect([...host.querySelectorAll('button')].filter(item => item.textContent === 'Đối chiếu lại')).toHaveLength(1);
+    expect(button('Thử lại')).toBeUndefined();
+    vi.mocked(api.settlement).mockResolvedValue(null);
+    vi.mocked(api.cancellation).mockResolvedValue(null);
+    await act(async () => button('Đối chiếu lại')!.click());
+    expect(api.settlement).toHaveBeenCalledTimes(2);
+    expect(request).not.toHaveBeenCalled(); expect(decision).not.toHaveBeenCalled();
+    expect(host.querySelector('.finance-primary')?.textContent).toContain('Chưa có bản ghi release');
+  });
+  it('keeps technical evidence empty and collapsed without a wall of missing fields', async () => {
+    await evidence();
+    const disclosure = host.querySelector('details')!;
+    expect(disclosure.hasAttribute('open')).toBe(false);
+    expect(disclosure.textContent).toContain('Chưa có tham chiếu kỹ thuật');
+    expect(disclosure.querySelector('dl')).toBeNull();
+  });
+  it('shows only allowlisted technical references, never unexpected sensitive response fields', async () => {
+    vi.mocked(api.settlement).mockResolvedValue({ ...release, providerSecret: 'TEST_ONLY_PROVIDER_SECRET',
+      releaseKey: 'TEST_ONLY_INTERNAL_KEY', accessToken: 'TEST_ONLY_TOKEN', bankAccountNumber: '9876543210987654321' } as ContractSettlement);
+    await evidence();
+    const disclosure = host.querySelector('details')!;
+    expect(disclosure.textContent).toContain('Tham chiếu release');
+    expect(disclosure.textContent).toContain('sim-release');
+    expect(disclosure.querySelectorAll('dt')).toHaveLength(1);
+    expect(host.textContent).not.toContain('TEST_ONLY_');
+    expect(host.textContent).not.toContain('9876543210987654321');
+    expect(disclosure.hasAttribute('open')).toBe(false);
+  });
   it('keeps an active refund-pending record visible on the financial list', async () => {
     const active = { ...contractJob, status: 'IN_PROGRESS', contract: { ...contractJob.contract!, status: 'ACTIVE', milestoneStatus: 'REFUND_PENDING' } };
     vi.spyOn(api, 'myJobs').mockResolvedValue({ currentPage: 0, pageSize: 20, totalPages: 1, totalElements: 1, data: [active] });
@@ -194,6 +234,9 @@ describe('P1 contract financial evidence', () => {
     vi.mocked(api.settlement).mockResolvedValue({ ...release, onChainStatus: 'FAILED', onChainError: 'chain failure', retryable: true });
     await evidence();
     expect(host.querySelector('[aria-label="Tiền chính của hợp đồng"]')?.textContent).toContain('Release đã xác nhận');
+    expect(host.querySelector('.finance-primary-done')).not.toBeNull();
+    expect(host.textContent).toContain('Đã xác nhận bản ghi release mô phỏng');
+    expect(host.textContent).toContain('Không xác nhận tiền đã về ngân hàng thật');
     expect(host.textContent).toContain('Mô phỏng');
     expect(host.textContent).not.toContain('Cơ quan thuế đã chấp nhận');
     expect(host.querySelector('details')?.hasAttribute('open')).toBe(false);
@@ -230,6 +273,8 @@ describe('P1 contract financial evidence', () => {
     vi.mocked(api.cancellation).mockResolvedValue({ ...cancellation, cancellationStatus: 'CANCELLED', refundStatus: 'SUCCEEDED', refundReference: 'sim-refund' });
     await evidence();
     expect(host.querySelector('.finance-statement')?.textContent).toContain('Hoàn tiền đã xác nhận');
+    expect(host.textContent).toContain('Đã xác nhận bản ghi hoàn tiền mô phỏng');
+    expect(host.textContent).toContain('Không xác nhận hoàn tiền ngân hàng thật');
     expect(host.textContent).toContain('Hợp đồng đã hủy');
     await act(async () => { await vi.advanceTimersByTimeAsync(90000); });
     expect(api.cancellation).toHaveBeenCalledTimes(1);

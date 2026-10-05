@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 
 import { api, ApiError } from './api';
 import { ActionGroup, EvidenceDisclosure, FactGrid, SectionHeading } from './components';
 import { cancellationLabel, refundLabel } from './status';
+import { financialCopy, financialMoneyTone } from './financeStatus';
 import { attemptScope, clearAttempt, localInstant, readAttempt, saveAttempt } from './workflowContracts';
 import type { CancellationDecision, CancellationRequest, ContractCancellationRecord, Job, User } from './types';
 
@@ -196,11 +197,11 @@ export function ContractCancellation({ job, user, submissionCount, workflowBusy,
       aside={row?.simulation ? 'Mô phỏng' : undefined} />
     {loading && <p role="status">Đang đối chiếu điều kiện hủy…</p>}
     {row && <>
-      <p role="status">{cancellationLabel(row.cancellationStatus)}</p>
+      <p className={'financial-status financial-status-' + (row.refundStatus ? financialMoneyTone(row.refundStatus) : row.cancellationStatus === 'CANCELLED' || row.cancellationStatus === 'REJECTED' ? 'done' : 'pending')} role="status">{cancellationLabel(row.cancellationStatus)}</p>
       {row.cancellationStatus === 'REQUESTED' && <p>{ownRequest ? 'Bạn đã gửi đề nghị; chờ đối tác quyết định.' : 'Đối tác đề nghị hủy hợp đồng.'} Công việc vẫn tiếp tục; chưa có hoàn tiền.</p>}
       {row.cancellationStatus === 'REJECTED' && <p>Đề nghị hủy đã bị từ chối. Công việc tiếp tục, không có hoàn tiền.</p>}
       {row.cancellationStatus === 'REFUND_PENDING' && <p>Hai bên đã đồng ý; hợp đồng chưa được xác nhận hủy cuối cùng. {refundLabel(row.refundStatus)}.</p>}
-      {refundConfirmed && <p>{row.simulation ? 'Đã hoàn tiền ledger mô phỏng cho Client. Không xác nhận hoàn tiền ngân hàng thật.' : 'Marketplace đã xác nhận hoàn tiền. Không suy ra chuyển khoản ngân hàng từ bản ghi này.'}</p>}
+      {refundConfirmed && <p>{row.simulation ? financialCopy.refundSimulation : 'Marketplace đã xác nhận hoàn tiền. Không suy ra chuyển khoản ngân hàng từ bản ghi này.'}</p>}
       {row.cancellationStatus === 'CANCELLED' && row.refundStatus === null && <p>Đã hủy trước funding. Không có hoàn tiền.</p>}
       <p className="submission-summary">{row.reason}</p>
       <FactGrid facts={[{ label: 'Giá trị hợp đồng', value: row.amount + ' ' + row.currency },
@@ -212,7 +213,7 @@ export function ContractCancellation({ job, user, submissionCount, workflowBusy,
       </ActionGroup>}
       {confirmation && canDecide && row.allowedActions.includes(confirmation) && (confirmation === 'REJECT' || acceptEligible) && <div className="approval-confirm" role="group" aria-label="Xác nhận quyết định hủy">
         <p>{confirmation === 'ACCEPT' ? 'Đồng ý hủy và để máy chủ đối soát hoàn tiền. Đây chưa phải hoàn tiền đã xác nhận.' : 'Từ chối đề nghị hủy. Hợp đồng tiếp tục; không hoàn tiền.'}</p>
-        <ActionGroup><button className="button" onClick={() => void mutate({ kind: 'decision', cancellationId: row.cancellationId, decision: confirmation })}>Xác nhận {confirmation === 'ACCEPT' ? 'đồng ý hủy' : 'từ chối hủy'}</button>
+        <ActionGroup><button className={'button' + (confirmation === 'ACCEPT' ? ' button-caution' : '')} onClick={() => void mutate({ kind: 'decision', cancellationId: row.cancellationId, decision: confirmation })}>Xác nhận {confirmation === 'ACCEPT' ? 'đồng ý hủy' : 'từ chối hủy'}</button>
           <button className="button button-secondary" onClick={() => setConfirmation(null)}>Quay lại</button></ActionGroup>
       </div>}
       <EvidenceDisclosure summary="Tham chiếu hủy / Hoàn tiền"><dl className="reference-list">
@@ -225,10 +226,10 @@ export function ContractCancellation({ job, user, submissionCount, workflowBusy,
     {ready && !row && !uncertain && <>
       {eligible && !form && <button className="text-button" disabled={busy || workflowBusy} onClick={() => setForm(true)}>{contract.status === 'PENDING_FUNDING' ? 'Hủy trước funding' : 'Đề nghị hủy hợp đồng'}</button>}
       {form && eligible && <form className="cancellation-form" onSubmit={request}>
-        <p>{contract.status === 'PENDING_FUNDING' ? 'Chỉ hủy khi chưa có bất kỳ lần funding nào. Không có hoàn tiền.' : 'Gửi đề nghị cho đối tác. Hợp đồng tiếp tục cho tới khi hai bên đồng ý và refund được xác nhận.'}</p>
+        <p>{contract.status === 'PENDING_FUNDING' ? 'Chỉ hủy khi chưa có bất kỳ lần funding nào. Không có hoàn tiền.' : 'Gửi đề nghị cho đối tác. Công việc vẫn tiếp tục khi đề nghị chờ quyết định; nếu hai bên đồng ý, máy chủ đối soát hoàn tiền.'}</p>
         <label>Mã lý do<input required maxLength={60} value={reasonCode} disabled={busy || workflowBusy} onChange={e => setReasonCode(e.target.value)} /></label>
         <label>Lý do hủy<textarea required maxLength={2000} value={description} disabled={busy || workflowBusy} onChange={e => setDescription(e.target.value)} /></label>
-        <ActionGroup><button className="button button-secondary" disabled={busy || workflowBusy}>Xác nhận {contract.status === 'PENDING_FUNDING' ? 'hủy trước funding' : 'gửi đề nghị'}</button>
+        <ActionGroup><button className={'button button-secondary' + (contract.status === 'PENDING_FUNDING' ? ' button-caution' : '')} disabled={busy || workflowBusy}>Xác nhận {contract.status === 'PENDING_FUNDING' ? 'hủy trước funding' : 'gửi đề nghị'}</button>
           <button className="text-button" type="button" disabled={busy || workflowBusy} onClick={() => setForm(false)}>Quay lại</button></ActionGroup>
       </form>}
       {!eligible && <p className="metadata">Chưa đủ điều kiện hủy theo trạng thái, lịch sử funding hoặc bàn giao hiện có.</p>}

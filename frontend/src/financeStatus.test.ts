@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { contractFinanceLabel, contractFinanceNeedsRefresh, maskedBank, paymentStages, paymentTerminal, rateSource, safeExplorerUrl, vnd } from './financeStatus';
+import { contractFinanceLabel, contractFinanceNeedsRefresh, contractFinanceTone, maskedBank, paymentStages, paymentTerminal, rateSource, safeExplorerUrl, vnd } from './financeStatus';
 import type { ContractCancellationRecord, ContractSettlement, Job, JobPaymentStatus, TaxRecord } from './types';
 
 const status = (values: Partial<JobPaymentStatus> = {}) => ({
@@ -50,8 +50,17 @@ describe('P1 independent contract financial truth', () => {
   it('retains confirmed primary money while unresolved downstream evidence needs refresh', () => {
     const value = { settlement: release, cancellation: null, error: '' };
     expect(contractFinanceLabel(job, value)).toBe('Release đã xác nhận');
+    expect(contractFinanceTone(job, value)).toBe('done');
     expect(contractFinanceNeedsRefresh(job, value)).toBe(true);
     expect(contractFinanceNeedsRefresh(job, { ...value, settlement: { ...release, offRampStatus: 'FAILED', taxStatus: 'SUCCEEDED' } })).toBe(false);
+  });
+  it('does not present a failed read as an empty release record or success', () => {
+    const pending = { ...job, contract: { ...job.contract!, milestoneStatus: 'RELEASE_PENDING' } };
+    const error = { settlement: null, cancellation: null, error: 'Read unavailable' };
+    expect(contractFinanceLabel(pending, error)).toBe('Chưa xác minh hồ sơ tài chính');
+    expect(contractFinanceTone(pending, error)).toBe('error');
+    expect(contractFinanceNeedsRefresh(pending, error)).toBe(true);
+    expect(contractFinanceTone(pending, { ...error, error: '' })).toBe('pending');
   });
   it('never invents refund proof from a refund-pending milestone or cancelled contract', () => {
     const pending = { ...job, contract: { ...job.contract!, milestoneStatus: 'REFUND_PENDING' } };

@@ -5,7 +5,8 @@ import { ActionGroup, EvidenceDisclosure, FactGrid, PageHeading, SectionHeading,
 import { Pagination } from './Jobs';
 import { checkoutLabel, clientPaymentLabel, decimal, exportLabel, maskedBank, offRampLabel,
   paymentStages, paymentTerminal, rateSource, safeExplorerUrl, syncableTaxStatuses, usdc, vnd,
-  financePath, contractFinanceLabel, contractFinanceNeedsRefresh, settlementMoneyLabel, settlementStageLabel, releaseOwned } from './financeStatus';
+  financePath, contractFinanceLabel, contractFinanceNeedsRefresh, contractFinanceTone, financialCopy,
+  settlementMoneyLabel, settlementStageLabel, releaseOwned } from './financeStatus';
 import { cancellationLabel, date, fundingLabel, money, refundLabel } from './status';
 import type { ContractFinance, EvidenceStage } from './financeStatus';
 import type { FundingResponse, Job, JobPaymentStatus, Page, TaxRecord, User } from './types';
@@ -95,7 +96,7 @@ function FinanceList({ user }: { user: User }) {
             <div><span className="finance-category">{job.contract ? 'Hồ sơ hợp đồng' : 'Công việc hoàn thành'}</span>
               <h2><Link to={financePath(job.id)}>{job.title}</Link></h2>
               <p>Giá trị công việc: {money(job.budgetUsd)}</p></div>
-            <div><span className="cell-label">{job.contract ? 'Release / hoàn tiền' : 'Thanh toán Client'}</span>
+            <div className={job.contract ? 'finance-row-state finance-row-state-' + contractFinanceTone(job, entry?.contract) : undefined}><span className="cell-label">{job.contract ? 'Release / hoàn tiền' : 'Thanh toán Client'}</span>
               <strong>{job.contract ? contractFinanceLabel(job, entry?.contract) : status ? checkoutLabel(status.checkoutOrderStatus) : entry?.error || 'Đang tải…'}</strong>
               {entry?.contract?.error && <span role="alert">{entry.contract.error}</span>}</div>
             <div><span className="cell-label">USDC / VND</span>
@@ -211,26 +212,41 @@ function ContractEvidence({ initialJob }: { initialJob: Job }) {
   }, [ready, busy, job, record, tick, attempt]);
   const { settlement, cancellation } = record;
   const refreshed = () => setAttempt(value => value + 1);
+  const technicalFacts = [
+    { label: 'Tham chiếu release', value: settlement?.releaseReference },
+    { label: 'Tham chiếu hoàn tiền', value: cancellation?.refundReference },
+    { label: 'Tham chiếu on-chain', value: settlement?.onChainReference },
+    { label: 'Tham chiếu chi trả VND', value: settlement?.offRampReference },
+    { label: 'Tham chiếu chứng từ', value: settlement?.taxReference },
+    { label: 'Lỗi release', value: settlement?.lastError },
+    { label: 'Lỗi on-chain', value: settlement?.onChainError },
+    { label: 'Lỗi VND', value: settlement?.offRampError },
+    { label: 'Lỗi thuế', value: settlement?.taxError },
+    { label: 'Lỗi hoàn tiền', value: cancellation?.lastError },
+    { label: 'Lỗi bản ghi chi trả', value: paymentError },
+  ].filter(fact => fact.value);
   return <>
     {!ready && <StatePanel kind="loading" title="Đang đối chiếu hồ sơ hợp đồng" body="Đọc funding, release và đề nghị hủy từ Marketplace." />}
     {ready && <>
-      <section className="finance-statement" aria-label="Tiền chính của hợp đồng">
+      <section className={'finance-statement finance-primary finance-primary-' + contractFinanceTone(job, record)} aria-label="Tiền chính của hợp đồng">
         <SectionHeading title={contractFinanceLabel(job, record)} aside={settlement?.simulation || cancellation?.simulation || funding?.simulation ? 'Mô phỏng' : undefined} />
-        <p>Funding, release và hoàn tiền là ba bản ghi riêng. Bản ghi release/hoàn tiền mô phỏng không xác nhận chuyển khoản ngân hàng thật.</p>
+        <p>{cancellation?.refundStatus === 'SUCCEEDED' && cancellation.simulation ? financialCopy.refundSimulation :
+          settlement?.moneyStatus === 'SUCCEEDED' && settlement.simulation ? financialCopy.releaseSimulation :
+          'Funding, release và hoàn tiền là ba bản ghi riêng. Bản ghi mô phỏng không xác nhận chuyển khoản ngân hàng thật.'}</p>
         <FactGrid facts={[
           { label: 'Giá trị hợp đồng', value: decimal(job.contract!.amount) + ' ' + job.contract!.currency },
           { label: 'Funding', value: funding ? fundingLabel(funding.fundingStatus) : fundingError ? 'Chưa đọc được funding' : 'Chưa có bản ghi funding' },
-          { label: 'Release', value: settlement ? settlementMoneyLabel(settlement.moneyStatus) : 'Chưa có bản ghi release' },
-          { label: 'Hoàn tiền', value: refundLabel(cancellation?.refundStatus ?? null) },
+          { label: 'Release', value: settlement ? settlementMoneyLabel(settlement.moneyStatus) : record.error ? 'Chưa xác minh release' : 'Chưa có bản ghi release' },
+          { label: 'Hoàn tiền', value: cancellation ? refundLabel(cancellation.refundStatus) : record.error ? 'Chưa xác minh hoàn tiền' : refundLabel(null) },
         ]} />
       </section>
-      {record.error && <StatePanel kind="error" title="Chưa thể đối chiếu đầy đủ" body={record.error} action={{ label: 'Thử lại', onClick: refreshed }} />}
+      {record.error && <StatePanel kind="error" title="Chưa thể đối chiếu đầy đủ" body={record.error + ' Bằng chứng đã đọc được giữ lại; đối chiếu lại để cập nhật.'} />}
       {fundingError && <p role="alert">Không thể cập nhật funding: {fundingError}</p>}
       {cancellation && <section className="cancellation-document" aria-label="Đề nghị hủy và hoàn tiền">
         <SectionHeading title={cancellationLabel(cancellation.cancellationStatus)} />
         <p>{cancellation.cancellationStatus === 'REQUESTED' ? 'Đề nghị đang chờ quyết định; công việc tiếp tục, chưa có hủy cuối cùng.' :
           cancellation.cancellationStatus === 'REJECTED' ? 'Đề nghị bị từ chối; công việc tiếp tục, không có hoàn tiền từ đề nghị này.' :
-          cancellation.refundStatus === 'SUCCEEDED' ? 'Đã xác nhận bản ghi hoàn tiền. Không xác nhận tiền đã về ngân hàng thật.' :
+          cancellation.refundStatus === 'SUCCEEDED' ? cancellation.simulation ? financialCopy.refundSimulation : 'Marketplace đã xác nhận hoàn tiền. Không suy ra chuyển khoản ngân hàng từ bản ghi này.' :
           cancellation.cancellationStatus === 'REFUND_PENDING' ? 'Hoàn tiền chưa được xác nhận; chưa phải hủy và hoàn tiền cuối cùng.' : 'Hợp đồng đã hủy; không suy ra hoàn tiền nếu chưa có bản ghi.'}</p>
         <FactGrid facts={[
           { label: 'Lý do', value: cancellation.reason || 'Chưa có lý do' },
@@ -249,30 +265,19 @@ function ContractEvidence({ initialJob }: { initialJob: Job }) {
           { label: 'VND dự kiến', value: payment?.estimatedAmountVnd == null ? 'Chưa có ước tính' : vnd(payment.estimatedAmountVnd) },
           { label: 'Ngân hàng', value: (payment?.payoutBankCode || 'Chưa có ngân hàng') + ' · ' + maskedBank(payment?.payoutBankAccountNumber) },
         ]} />
-        <p>Chặng thuế đã xác nhận chỉ chứng minh lập/khôi phục chứng từ; trạng thái cơ quan thuế lấy từ chứng từ thực tế bên dưới.</p>
+        <p className="metadata">{financialCopy.taxVsCertificate}</p>
       </section>}
       <section className="finance-tax-callout" aria-label="Chứng từ thực tế">
-        <div><h2>{tax ? tax.statusLabel || tax.status : 'Chưa có chứng từ'}</h2>
+        <div><h2>{tax ? tax.statusLabel || tax.status : taxError ? 'Chưa đọc được chứng từ' : settlement || releaseOwned(job) ? 'Chưa có chứng từ' : 'Chứng từ sau chi trả'}</h2>
           {taxError && <p role="alert">Chưa thể đọc chứng từ: {taxError}</p>}</div>
         <Link className="button button-secondary" to={tax ? '/finance/tax-records/' + encodeURIComponent(tax.id) : '/finance/tax-records'}>Xem chứng từ</Link>
       </section>
       <EvidenceDisclosure summary="Tham chiếu và lỗi kỹ thuật">
-        <FactGrid facts={[
-          { label: 'Release reference', value: settlement?.releaseReference || '—' },
-          { label: 'Refund reference', value: cancellation?.refundReference || '—' },
-          { label: 'On-chain reference', value: settlement?.onChainReference || '—' },
-          { label: 'Off-ramp reference', value: settlement?.offRampReference || '—' },
-          { label: 'Tax reference', value: settlement?.taxReference || '—' },
-          { label: 'Lỗi release', value: settlement?.lastError || '—' },
-          { label: 'Lỗi on-chain', value: settlement?.onChainError || '—' },
-          { label: 'Lỗi VND', value: settlement?.offRampError || '—' },
-          { label: 'Lỗi thuế', value: settlement?.taxError || '—' },
-          { label: 'Lỗi hoàn tiền', value: cancellation?.lastError || '—' },
-          { label: 'Lỗi bản ghi chi trả', value: paymentError || '—' },
-        ]} />
+        {technicalFacts.length ? <FactGrid facts={technicalFacts.map(fact => ({ label: fact.label, value: <code>{fact.value}</code> }))} />
+          : <p className="metadata">Chưa có tham chiếu kỹ thuật.</p>}
       </EvidenceDisclosure>
       <ActionGroup><Link className="button button-secondary" to={'/work/' + encodeURIComponent(job.id)}>Xem hồ sơ công việc</Link>
-        <button className="text-button" type="button" disabled={busy} onClick={refreshed}>{busy ? 'Đang đối chiếu…' : 'Làm mới từ Marketplace'}</button></ActionGroup>
+        <button className="text-button" type="button" disabled={busy} onClick={refreshed}>{busy ? 'Đang đối chiếu…' : record.error ? 'Đối chiếu lại' : 'Làm mới từ Marketplace'}</button></ActionGroup>
     </>}
   </>;
 }

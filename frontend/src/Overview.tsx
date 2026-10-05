@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from './api';
 import { ActionGroup, PageHeading, SectionHeading, StatePanel } from './components';
 import { applicationLabel, date, jobLabel, money } from './status';
-import { cancelledContract, financePath, refundOwned, releaseOwned, settlementNeedsRefresh } from './financeStatus';
+import { cancelledContract, contractFinanceLabel, financePath, refundOwned, releaseOwned, settlementNeedsRefresh } from './financeStatus';
 import type { ContractFinance } from './financeStatus';
 import type { Job, MyApplication, Page, User } from './types';
 
@@ -100,7 +100,7 @@ export function Overview({ user }: { user: User }) {
         {attention.length ? <div className="overview-attention-rows">{attention.map(({ job, label, href }, index) =>
           <article className="overview-attention-row" key={job.id}>
             <div><h3><Link to={'/work/' + job.id}>{job.title}</Link></h3>
-              <span className="metadata">{jobLabel(job.status)} · {money(job.budgetUsd)}</span></div>
+              <span className="metadata">{href.startsWith('/finance') ? contractFinanceLabel(job, financial[job.id]) : jobLabel(job.status)} · {money(job.budgetUsd)}</span></div>
             <ActionGroup><Link className={'button' + (index ? ' button-secondary' : '')} to={href}>{label} →</Link></ActionGroup>
           </article>)}</div> : <div className="overview-clear">
           <p>{jobs.totalElements ? 'Chưa có bước cần xử lý trong các hồ sơ gần nhất.' : 'Chưa có công việc trong tài khoản.'}</p>

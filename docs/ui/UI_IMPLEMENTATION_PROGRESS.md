@@ -446,3 +446,29 @@ Validation:
 
 Remaining: resume the real desktop Finance/Overview/Activity/workflow smoke when the existing runtime is available. P2 broader financial polish/documentation cleanup remains pending; Steps 6/8/9 and full Admin/dispute remain out of scope.
 Git: 9 intended frontend/progress files, uncommitted; no push/merge/branch switch. Stop after P1 report.
+
+### 2026-10-05 — UI Steps 1–5 P2 final polish
+
+Input gate: branch `feat/mvp-ui-step1-5-20261005`, clean accepted P1 HEAD `7099bfa`.
+Current accepted baseline: P0 `PASS` (`0e790a8`); P1 implementation/test/build `PASS` (`7099bfa`), P1 runtime `ENVIRONMENT BLOCKED`. The earlier P0/P1 entries above record their original report states; their implementation is now committed.
+P2 implementation/test/build: `PASS`. Final Steps 1–5 runtime gate: `ENVIRONMENT BLOCKED`; do not claim final browser/UI PASS.
+
+Polished:
+
+- Shared Vietnamese release/refund simulation and tax/certificate caveats. Funding remains separate from release. REQUESTED wording now works for either participant; REQUESTED/REJECTED still mean continuing work. Confirmed primary money survives downstream failures and is not a claim of bank settlement.
+- State-first financial hierarchy using the locked palette, compact structural status cues, quieter supporting headings/spacing and clear cancellation confirmation treatment. Pending release ownership no longer shares the confirmed financial emphasis. Shared primitives and keyboard/focus semantics retained; no shell redesign or mobile-specific work.
+- Collapsed technical evidence uses readable Vietnamese labels and only populated, explicitly allowlisted references/errors. Empty evidence has one quiet message instead of repeated missing fields. Bank masking remains intact; unexpected provider secrets/tokens/internal keys are not rendered.
+- Failed reads are distinct from genuinely empty responses. Finance has one read-only reconciliation CTA on financial read failure; stored proof is retained. Unread tax evidence before release is not labelled an empty server response. Overview financial attention metadata follows financial truth instead of stale job status.
+- Minimal corrections in current START_HERE, UI memory/spec/workpack remove obsolete claims that Step 4/5 release/cancellation/refund support is absent. Historical audit entries/backend checklists and unrelated docs remain intact.
+
+Validation:
+
+- Added 5 focused regressions plus updated copy/hierarchy assertions: failed-vs-empty records, one read-only retry, allowlisted/collapsed evidence, confirmed money through downstream failure and clear cancellation confirmation. Existing funding/cancellation/settlement, stale Overview, pending Finance and safe Activity fallback tests preserved.
+- Final affected tests: 7 files, `148/148 PASS`.
+- Full frontend suite run once at closure: 13 files, `235/235 PASS`. Existing React Router future-flag warnings only.
+- Production frontend build: TypeScript `tsc -b` + Vite `PASS`, using existing installed Node/local packages (the npm script tools); no dependencies/software installed.
+- 1440px/1024px runtime smoke: `ENVIRONMENT BLOCKED`. Read-only probes inside and outside the sandbox to localhost:3000, localhost:8080 and localhost:9191/api/v1/auth/me returned HTTP 000 / connection refused. ContractLifecycle, Cancellation, Finance, Overview and Activity have not been verified in a live desktop browser in this pass. No fake browser PASS or service/auth workaround.
+- `git diff --check`: `PASS`. No backend, API/type contract, business flow, runtime/env or dependency changes. No backend suites or full backend E2E rerun.
+
+Remaining known limitations: live desktop validation requires the existing frontend/Marketplace runtime. Steps 6/8/9 remain backend-dependent future UI work and are not implemented or marked complete; full Admin dispute resolution, profile/reputation/rating and other unsupported features remain outside this pass.
+Git: 15 intended frontend/current UI documentation files, uncommitted and unstaged; HEAD/branch preserved. No commit/push/merge. Stop after P2 report.
