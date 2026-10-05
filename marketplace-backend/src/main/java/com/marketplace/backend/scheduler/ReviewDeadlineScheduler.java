@@ -26,7 +26,7 @@ public class ReviewDeadlineScheduler {
             try {
                 submissionService.autoReview(submissionId, Instant.now());
             } catch (Exception ex) {
-                log.error("Unable to process review deadline for submission {}", submissionId, ex);
+                log.warn("Review deadline will retry for submission {}", submissionId);
             }
         }
     }

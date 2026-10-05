@@ -1,8 +1,9 @@
 import { PageHeading } from './components';
 import type { User } from './types';
+import { OwnProfile } from './Profile';
 
-export function Account({ user, onLogout, loggingOut }: {
-  user: User; onLogout: () => void; loggingOut: boolean;
+export function Account({ user, onLogout, loggingOut, onReconcileUser }: {
+  user: User; onLogout: () => void; loggingOut: boolean; onReconcileUser?: () => Promise<void>;
 }) {
   const client = user.userType === 'CLIENT';
   return <>
@@ -10,7 +11,7 @@ export function Account({ user, onLogout, loggingOut }: {
       description="Thông tin xác thực được lấy từ /auth/me. Vai trò hiện tại quyết định các khu vực công việc và tài chính có thể xem."
       aside={client ? 'CLIENT / Đăng việc và duyệt bàn giao' : 'FREELANCER / Ứng tuyển và bàn giao'} />
     <section className="account-document" aria-labelledby="account-identity-title">
-      <span className="category-label">Hồ sơ đã xác minh</span>
+      <span className="category-label">Danh tính phiên</span>
       <h2 id="account-identity-title">{user.displayName}</h2>
       <dl className="account-record">
         <div><dt>Email</dt><dd>{user.email}</dd></div>
@@ -19,6 +20,7 @@ export function Account({ user, onLogout, loggingOut }: {
       <details className="technical-evidence account-technical"><summary>Mã tài khoản Marketplace</summary>
         <code>{user.id}</code></details>
     </section>
+    <OwnProfile key={user.id} user={user} onReconcileUser={onReconcileUser} />
     <section className="account-actions" aria-label="Phiên đăng nhập">
       <div><span className="eyebrow">Phiên hiện tại</span><h2>Hoàn tất phiên làm việc?</h2>
         <p>Đăng xuất khỏi tài khoản này trên trình duyệt hiện tại.</p></div>

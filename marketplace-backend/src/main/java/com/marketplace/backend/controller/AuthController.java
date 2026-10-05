@@ -116,6 +116,9 @@ public class AuthController {
                         .email(user.getEmail())
                         .displayName(user.getDisplayName())
                         .userType(user.getUserType())
+                        .authorities(principal.getAuthorities().stream()
+                                .map(authority -> authority.getAuthority())
+                                .distinct().sorted().toList())
                         .build())
                 .build();
     }

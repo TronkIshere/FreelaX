@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ApiError, MarketplaceApi, serverPage, trustedUser } from './api';
+import { ApiError, hasAuthority, MarketplaceApi, serverPage, trustedUser } from './api';
 import type { DiscoveryFilters } from './types';
 
 const user = { id: 'user-client', email: 'client@example.test', displayName: 'Client One', userType: 'CLIENT' };
@@ -14,7 +14,72 @@ function response(data: unknown, status = 200) {
 
 afterEach(() => vi.unstubAllGlobals());
 
+describe('P0 settlement and cancellation Marketplace contracts', () => {
+  it('reads nullable settlement/cancellation envelopes and preserves distinct amount serializations', async () => {
+    const mock = vi.fn().mockResolvedValueOnce(response({ accessToken: 'test' })).mockResolvedValueOnce(response(user))
+      .mockResolvedValueOnce(response(null)).mockResolvedValueOnce(response(null))
+      .mockResolvedValueOnce(response({ amount: 500.01, moneyStatus: 'SUCCEEDED', simulation: true }))
+      .mockResolvedValueOnce(response({ amount: '500.01', cancellationStatus: 'REQUESTED', refundStatus: null }));
+    vi.stubGlobal('fetch', mock); const api = new MarketplaceApi(); await api.restore();
+    expect(await api.settlement('contract/one')).toBeNull(); expect(await api.cancellation('contract/one')).toBeNull();
+    expect((await api.settlement('contract/one'))?.amount).toBe(500.01);
+    expect((await api.cancellation('contract/one'))?.amount).toBe('500.01');
+    expect(mock.mock.calls.slice(2).map(call => call[0])).toEqual([
+      '/api/v1/contracts/contract%2Fone/settlement', '/api/v1/contracts/contract%2Fone/cancellations',
+      '/api/v1/contracts/contract%2Fone/settlement', '/api/v1/contracts/contract%2Fone/cancellations',
+    ]);
+  });
+  it('sends only cancellation intent and decision to Marketplace, with no invented refund key/amount', async () => {
+    const mock = vi.fn().mockResolvedValueOnce(response({ accessToken: 'test' })).mockResolvedValueOnce(response(user))
+      .mockImplementation(async () => response({ cancellationId: 'cancel' }));
+    vi.stubGlobal('fetch', mock); const api = new MarketplaceApi(); await api.restore();
+    await api.requestCancellation('c', { reasonCode: 'MUTUAL_CANCELLATION', description: 'Scope changed' });
+    await api.decideCancellation('c', 'cancel/one', 'ACCEPT'); await api.decideCancellation('c', 'cancel/one', 'REJECT');
+    expect(mock.mock.calls.slice(2).map(call => call[0])).toEqual([
+      '/api/v1/contracts/c/cancellations', '/api/v1/contracts/c/cancellations/cancel%2Fone/decisions', '/api/v1/contracts/c/cancellations/cancel%2Fone/decisions',
+    ]);
+    expect(mock.mock.calls.slice(2).map(call => JSON.parse(call[1].body))).toEqual([
+      { reasonCode: 'MUTUAL_CANCELLATION', description: 'Scope changed' }, { decision: 'ACCEPT' }, { decision: 'REJECT' },
+    ]);
+    for (const [, init] of mock.mock.calls.slice(2)) {
+      expect(init.method).toBe('POST'); expect(init.headers.get('Idempotency-Key')).toBeNull();
+      expect(init.credentials).toBe('include'); expect(init.headers.get('Authorization')).toBe('Bearer test');
+    }
+  });
+  it('preserves exact cancellation intent through cookie refresh and exposes backend conflicts', async () => {
+    const mock = vi.fn().mockResolvedValueOnce(response({ accessToken: 'before' })).mockResolvedValueOnce(response(user))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ status: 2005, error: 'expired' }), { status: 401 }))
+      .mockResolvedValueOnce(response({ accessToken: 'after' })).mockResolvedValueOnce(response(user))
+      .mockResolvedValueOnce(response({ cancellationId: 'saved' }));
+    vi.stubGlobal('fetch', mock); const api = new MarketplaceApi(); await api.restore();
+    await api.requestCancellation('c', { reasonCode: 'MUTUAL_CANCELLATION', description: 'Scope changed' });
+    expect(mock.mock.calls[2][1].body).toBe(mock.mock.calls[5][1].body);
+    mock.mockResolvedValueOnce(new Response(JSON.stringify({ status: 4037, error: 'conflict' }), { status: 409 }));
+    await expect(api.decideCancellation('c', 'cancel', 'ACCEPT')).rejects.toMatchObject({ status: 409, code: 4037 });
+  });
+});
+
 describe('Marketplace API contract', () => {
+  it('preserves exact server authorities without inventing an Admin userType', () => {
+    const parsed = trustedUser({ ...user, authorities: ['ROLE_USER', 'ROLE_ADMIN', 'ROLE_USER'] });
+    expect(parsed.authorities).toEqual(['ROLE_USER', 'ROLE_ADMIN']);
+    expect(parsed.userType).toBe('CLIENT');
+    expect(hasAuthority(parsed, 'ROLE_ADMIN')).toBe(true);
+    expect(hasAuthority(parsed, 'ADMIN')).toBe(false);
+    expect(() => trustedUser({ ...user, userType: 'ADMIN' })).toThrow(ApiError);
+    expect(hasAuthority(null, 'ROLE_ADMIN')).toBe(false);
+    expect(hasAuthority(undefined, 'ROLE_ADMIN')).toBe(false);
+  });
+
+  it.each([undefined, null, 'ROLE_ADMIN', {}, ['ROLE_ADMIN', null], [' ROLE_ADMIN '], ['']])(
+    'treats missing or malformed authorities %j as no capability without failing authentication', authorities => {
+      const parsed = trustedUser({ ...user, authorities });
+      expect(parsed.userType).toBe('CLIENT');
+      expect(parsed.authorities).toEqual([]);
+      expect(hasAuthority(parsed, 'ROLE_ADMIN')).toBe(false);
+    },
+  );
+
   it('accepts only a trusted backend role', () => {
     expect(trustedUser(user).userType).toBe('CLIENT');
     expect(() => trustedUser({ ...user, userType: undefined })).toThrow(ApiError);
@@ -27,11 +92,14 @@ describe('Marketplace API contract', () => {
 
   it('signs in, then resolves role from /auth/me', async () => {
     const fetchMock = vi.fn()
-      .mockResolvedValueOnce(response({ status: 'SUCCESS', accessToken: 'token-A', userId: user.id }))
-      .mockResolvedValueOnce(response(user));
+      .mockResolvedValueOnce(response({ status: 'SUCCESS', accessToken: 'token-A', userId: user.id, authorities: ['ROLE_ADMIN'] }))
+      .mockResolvedValueOnce(response({ ...user, authorities: ['ROLE_USER'] }));
     vi.stubGlobal('fetch', fetchMock);
     const api = new MarketplaceApi();
-    expect((await api.signIn('client@example.test', 'pass')).userType).toBe('CLIENT');
+    const signedIn = await api.signIn('client@example.test', 'pass');
+    expect(signedIn.userType).toBe('CLIENT');
+    expect(signedIn.authorities).toEqual(['ROLE_USER']);
+    expect(hasAuthority(signedIn, 'ROLE_ADMIN')).toBe(false);
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock.mock.calls[0][0]).toBe('/api/v1/auth/sign-in');
     expect(fetchMock.mock.calls[1][0]).toBe('/api/v1/auth/me');
@@ -41,10 +109,13 @@ describe('Marketplace API contract', () => {
   it('restores the session through the refresh cookie before /auth/me', async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(response({ accessToken: 'token-B' }))
-      .mockResolvedValueOnce(response({ ...user, userType: 'FREELANCER' }));
+      .mockResolvedValueOnce(response({ ...user, userType: 'FREELANCER', authorities: ['ROLE_ADMIN', 'ROLE_USER'] }));
     vi.stubGlobal('fetch', fetchMock);
     const api = new MarketplaceApi();
-    expect((await api.restore()).userType).toBe('FREELANCER');
+    const restored = await api.restore();
+    expect(restored.userType).toBe('FREELANCER');
+    expect(restored.authorities).toEqual(['ROLE_ADMIN', 'ROLE_USER']);
+    expect(hasAuthority(restored, 'ROLE_ADMIN')).toBe(true);
     expect(fetchMock.mock.calls[0][0]).toBe('/api/v1/auth/refresh-token');
     expect((fetchMock.mock.calls[0][1] as RequestInit).credentials).toBe('include');
     expect(fetchMock.mock.calls[1][0]).toBe('/api/v1/auth/me');
@@ -169,6 +240,38 @@ describe('P05.2 mutation contracts', () => {
     const api = new MarketplaceApi();
     await api.signIn('freelancer@example.test', 'pass');
     await expect(api.apply('job-one')).rejects.toMatchObject({ status: 409, code: 4008 });
+  });
+});
+
+describe('P06.4 real funding/contract API', () => {
+  it('uses bank GET/PUT, latest/exact funding reads and exact decimal POST', async () => {
+    const mock = vi.fn().mockImplementation(async () => response(null));
+    mock.mockResolvedValueOnce(response({ accessToken: 'test' })).mockResolvedValueOnce(response(user));
+    vi.stubGlobal('fetch', mock); const api = new MarketplaceApi(); await api.restore();
+    await api.clientBank(); await api.saveClientBank({ bankCode: 'BIDV', bankAccountNumber: '123456', bankAccountHolderName: 'Client' });
+    await api.funding('contract', 'milestone'); await api.funding('contract', 'milestone', 'tx'); await api.fund('contract', 'milestone', 'stable-key', '500.01', 'USD');
+    expect(mock.mock.calls.slice(2).map(c => c[0])).toEqual(['/api/v1/payment-methods/bank-account', '/api/v1/payment-methods/bank-account', '/api/v1/contracts/contract/milestones/milestone/fund', '/api/v1/contracts/contract/milestones/milestone/fund/tx', '/api/v1/contracts/contract/milestones/milestone/fund']);
+    expect(mock.mock.calls[3][1].method).toBe('PUT');
+    expect(JSON.parse(mock.mock.calls[6][1].body)).toEqual({ paymentMethodId: 'BANK_ACCOUNT_ON_FILE', expectedAmount: { amount: '500.01', currency: 'USD' } });
+    expect(mock.mock.calls[6][1].headers.get('Idempotency-Key')).toBe('stable-key');
+  });
+  it.each(['fund', 'submit'] as const)('keeps %s key and exact payload through 401 refresh', async kind => {
+    const mock = vi.fn().mockResolvedValueOnce(response({ accessToken: 'before' })).mockResolvedValueOnce(response(user))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ status: 2005, error: 'expired' }), { status: 401 }))
+      .mockResolvedValueOnce(response({ accessToken: 'after' })).mockResolvedValueOnce(response(user)).mockResolvedValueOnce(response({ id: 'saved' }));
+    vi.stubGlobal('fetch', mock); const api = new MarketplaceApi(); await api.restore();
+    if (kind === 'fund') await api.fund('c', 'm', 'same', '500.00', 'USD');
+    else await api.submitContract('c', 'same', { summary: 'Work', deliverables: [], acceptanceEvidence: [{ criterionId: 'a', note: 'Verified', url: '' }] });
+    expect(mock.mock.calls[2][1].body).toBe(mock.mock.calls[5][1].body); expect(mock.mock.calls[2][1].headers.get('Idempotency-Key')).toBe('same'); expect(mock.mock.calls[5][1].headers.get('Idempotency-Key')).toBe('same');
+  });
+  it('uses only contract submissions and decisions with real response/error envelope', async () => {
+    const mock = vi.fn().mockImplementation(async () => response([])); mock.mockResolvedValueOnce(response({ accessToken: 'test' })).mockResolvedValueOnce(response(user));
+    vi.stubGlobal('fetch', mock); const api = new MarketplaceApi(); await api.restore(); await api.contractSubmissions('c');
+    await api.decideSubmission('c', 's', { decision: 'REQUEST_REVISION', feedback: 'Fix', criterionIds: ['criterion'], deliverableIds: [] });
+    expect(mock.mock.calls[2][0]).toBe('/api/v1/contracts/c/submissions'); expect(mock.mock.calls[3][0]).toBe('/api/v1/contracts/c/submissions/s/decisions');
+    expect(JSON.parse(mock.mock.calls[3][1].body).criterionIds).toEqual(['criterion']);
+    mock.mockResolvedValueOnce(new Response(JSON.stringify({ status: 4027, error: 'stale' }), { status: 409 }));
+    await expect(api.decideSubmission('c', 's', { decision: 'APPROVE' })).rejects.toMatchObject({ status: 409, code: 4027 });
   });
 });
 

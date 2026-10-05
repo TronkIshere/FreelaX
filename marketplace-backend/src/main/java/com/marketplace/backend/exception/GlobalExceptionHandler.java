@@ -1,6 +1,7 @@
 package com.marketplace.backend.exception;
 
 import com.marketplace.backend.dto.response.common.ErrorResponse;
+import com.marketplace.backend.configuration.RequestCorrelation;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -12,12 +13,28 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.PessimisticLockingFailureException;
+import org.springframework.security.access.AccessDeniedException;
 
 import java.util.Date;
 
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAccessDenied(
+            AccessDeniedException ex, HttpServletRequest request) {
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .timestamp(new Date())
+                .status(ErrorCode.ACCESS_DENIED.getCode())
+                .error(ErrorCode.ACCESS_DENIED.getMessage())
+                .path(request.getRequestURI())
+                .code(ErrorCode.ACCESS_DENIED.name())
+                .requestId(RequestCorrelation.id(request))
+                .retryable(false)
+                .build();
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);
+    }
 
     @ExceptionHandler({ObjectOptimisticLockingFailureException.class,
             PessimisticLockingFailureException.class, DataIntegrityViolationException.class})
@@ -28,6 +45,9 @@ public class GlobalExceptionHandler {
                 .status(ErrorCode.CONCURRENT_WORKFLOW_CHANGE.getCode())
                 .error(ErrorCode.CONCURRENT_WORKFLOW_CHANGE.getMessage())
                 .path(request.getRequestURI())
+                .code(ErrorCode.CONCURRENT_WORKFLOW_CHANGE.name())
+                .requestId(RequestCorrelation.id(request))
+                .retryable(false)
                 .build();
         return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
     }
@@ -43,6 +63,10 @@ public class GlobalExceptionHandler {
                 .status(errorCode.getCode())
                 .error(ex.getMessage())
                 .path(request.getRequestURI())
+                .code(errorCode.name())
+                .requestId(RequestCorrelation.id(request))
+                // A gateway error can mean an ambiguous financial result; callers must read status first.
+                .retryable(false)
                 .build();
 
         return ResponseEntity.status(errorCode.getHttpStatus()).body(errorResponse);
@@ -62,6 +86,9 @@ public class GlobalExceptionHandler {
                 .status(ErrorCode.INVALID_DATA.getCode())
                 .error(message)
                 .path(request.getRequestURI())
+                .code(ErrorCode.INVALID_DATA.name())
+                .requestId(RequestCorrelation.id(request))
+                .retryable(false)
                 .build();
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
@@ -71,13 +98,17 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleGenericException(
             Exception ex, HttpServletRequest request) {
 
-        log.error("Unhandled exception at {}", request.getRequestURI(), ex);
+        log.error("Unhandled request failure id={} type={}", RequestCorrelation.id(request),
+                ex.getClass().getSimpleName());
 
         ErrorResponse errorResponse = ErrorResponse.builder()
                 .timestamp(new Date())
                 .status(ErrorCode.INTERNAL_ERROR.getCode())
                 .error(ErrorCode.INTERNAL_ERROR.getMessage())
                 .path(request.getRequestURI())
+                .code(ErrorCode.INTERNAL_ERROR.name())
+                .requestId(RequestCorrelation.id(request))
+                .retryable(false)
                 .build();
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);

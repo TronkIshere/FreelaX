@@ -25,7 +25,7 @@ public class TaxCertificateSyncScheduler {
             try {
                 taxCertificateService.syncById(taxRecordId);
             } catch (Exception e) {
-                log.error("Dong bo chung tu {} that bai: {}", taxRecordId, e.getMessage(), e);
+                log.warn("Tax certificate sync will retry for record {}", taxRecordId);
             }
         }
     }

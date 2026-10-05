@@ -5,6 +5,7 @@ export interface User {
   email: string;
   displayName: string;
   userType: UserType;
+  authorities?: readonly string[];
 }
 
 export interface Page<T> {
@@ -14,6 +15,62 @@ export interface Page<T> {
   totalElements: number;
   data: T[];
 }
+
+export interface ProfileLanguage { code: string; proficiency: string }
+export interface Profile {
+  userId: string; userType: UserType; displayName: string; email?: string; version: number;
+  avatarUrl?: string | null; headline?: string | null; bio?: string | null; countryCode?: string | null;
+  languages: ProfileLanguage[]; skills: string[]; hourlyRateUsd?: DecimalValue | null; availability?: string | null;
+  companyName?: string | null; companyWebsite?: string | null;
+  verification: { email: string; identity: string; paymentMethod: string; source: string };
+  reputation: { completedContracts: number; fundedContracts?: number | null; disputeCount: number; reviewCount: number;
+    averageRating?: DecimalValue | null; onTimeRate?: DecimalValue | null; paymentReleaseRate?: DecimalValue | null;
+    medianReviewHours?: DecimalValue | null; calculatedAt: string };
+}
+export interface ProfilePatch {
+  version: number; displayName: string; avatarUrl: string | null; headline: string | null; bio: string | null;
+  countryCode: string | null; languages: ProfileLanguage[]; hourlyRateUsd?: number | null; availability?: string | null;
+  companyName?: string | null; companyWebsite?: string | null;
+}
+export interface PortfolioInput { title: string; description: string; projectUrl: string | null; thumbnailUrl: string | null;
+  skills: string[]; completedAt: string | null; sortOrder: number }
+export interface PortfolioItem extends PortfolioInput { id: string; userId: string; version: number }
+export interface ReviewInput { overall: number; dimensions: { communication: number; requirementsOrQuality: number; timeliness: number }; comment?: string | null }
+export interface Review {
+  id: string; contractId: string; reviewerId: string; revieweeId: string; submitted: boolean;
+  submittedAt?: string | null; publishedAt?: string | null; overall?: number | null; dimensions?: ReviewInput['dimensions'] | null;
+  comment?: string | null; contentHidden: boolean; reported: boolean;
+}
+export type ModerationAction = 'HIDE_CONTENT' | 'INVALIDATE';
+export interface AdminReviewDetail { review: Review; audit: { actorId: string; action: string; beforeState: string; afterState: string; reason: string; requestId: string; createdAt: string }[] }
+
+export type DisputeStatus = 'OPEN' | 'UNDER_REVIEW' | 'DECISION_PENDING_RELEASE' | 'DECISION_PENDING_REFUND' | 'RESOLVED_RELEASE' | 'RESOLVED_REFUND' | 'CANCELLED';
+export interface DisputeEvidenceInput { kind: 'TEXT' | 'LINK'; text?: string; url?: string; sha256?: string }
+export interface DisputeEvidence {
+  id: string; actorId: string; createdAt: string | null; kind: 'TEXT' | 'LINK';
+  text?: string | null; url?: string | null; sha256?: string | null;
+}
+export interface OpenDisputeInput { reasonCode: string; description: string; evidence?: DisputeEvidenceInput[] }
+export interface Dispute {
+  disputeId: string; contractId: string; milestoneId: string; jobId: string; submissionId: string | null;
+  openedBy: string; reasonCode: string; description: string; status: DisputeStatus; openedAt: string;
+  claimedBy: string | null; claimedAt: string | null; resolvedBy: string | null; decisionAt: string | null;
+  resolvedAt: string | null; resolutionReason: string | null; refundStatus: SettlementMoneyStatus | null;
+  refundReference: string | null; evidence: DisputeEvidence[];
+}
+export interface SpringPage<T> { content: T[]; number: number; size: number; totalPages: number; totalElements: number }
+export interface AdminDisputeDetail {
+  dispute: Dispute;
+  contract: { contractId: string; clientId: string; freelancerId: string; title: string; description: string;
+    amount: DecimalValue; currency: string; deliveryDueAt: string | null; maxRevisions: number; revisionsUsed: number };
+  deliverables: { id: string; title: string; description: string; required: boolean }[];
+  acceptanceCriteria: { id: string; description: string; required: boolean }[];
+  submissions: { id: string; version: number; status: string; summary: string; reviewerFeedback: string | null;
+    submittedAt: string; reviewedAt: string | null; evidence: { requirementId: string; kind: string; description: string | null; url: string | null }[] }[];
+  fundingStatus: string | null;
+  audit: { actorId: string; action: string; beforeStatus: string | null; afterStatus: string; reason: string | null; requestId: string | null; createdAt: string }[];
+}
+export interface DisputeDecision { outcome: 'RELEASE_TO_FREELANCER' | 'REFUND_TO_CLIENT'; reason: string }
 
 export interface Job {
   id: string;
@@ -48,7 +105,7 @@ export interface ContractSummary {
   status: string;
   milestoneId: string | null;
   milestoneStatus: string | null;
-  amount: number;
+  amount: DecimalValue;
   currency: string;
   deliveryDueAt: string | null;
   reviewWindowHours: number;
@@ -57,6 +114,33 @@ export interface ContractSummary {
   deliverables: Requirement[];
   acceptanceCriteria: Requirement[];
 }
+
+export interface ClientBankAccount {
+  paymentMethodId: 'BANK_ACCOUNT_ON_FILE'; ready: boolean;
+  bankCode: BankCode | null; maskedAccountNumber: string | null;
+}
+export interface ClientBankInput { bankCode: BankCode; bankAccountNumber: string; bankAccountHolderName: string }
+export interface FundingResponse {
+  fundingTransactionId: string; fundingStatus: 'PENDING' | 'PROCESSING' | 'SUCCEEDED' | 'FAILED' | 'UNKNOWN';
+  simulation: boolean; providerReference: string | null; nextAction: string; retryAfterSeconds: number | null;
+}
+export interface SubmissionPayload {
+  summary: string;
+  deliverables: { requirementId: string; url: string; description: string }[];
+  acceptanceEvidence: { criterionId: string; note: string; url: string }[];
+}
+export interface ContractSubmission {
+  id: string; contractId: string; milestoneId: string; freelancerId: string; version: number;
+  status: 'SUBMITTED' | 'REVISION_REQUESTED' | 'APPROVED' | 'DISPUTED'; summary: string;
+  submittedAt: string; submittedLate: boolean; reviewDueAt: string | null; reviewGraceDueAt: string | null;
+  reviewedAutomatically: boolean; disputeId: string | null; reviewerFeedback: string | null;
+  reviewCriterionIds: string[]; reviewDeliverableIds: string[];
+  deliverables: { requirementId: string; description: string | null; url: string | null }[];
+  acceptanceEvidence: { requirementId: string; description: string | null; url: string | null }[];
+}
+export type ReviewDecision = { decision: 'APPROVE'; note?: string }
+  | { decision: 'REQUEST_REVISION'; feedback: string; criterionIds: string[]; deliverableIds: string[] }
+  | { decision: 'OPEN_DISPUTE'; reasonCode: string; description: string };
 
 export interface DiscoverJob {
   id: string;
@@ -114,6 +198,30 @@ export interface MyApplication {
 }
 
 export type DecimalValue = number | string;
+export type SettlementMoneyStatus = 'PENDING' | 'PROCESSING' | 'SUCCEEDED' | 'FAILED_RETRYABLE' | 'FAILED' | 'UNKNOWN';
+export type SettlementStageStatus = 'NOT_STARTED' | 'PROCESSING' | 'SUCCEEDED' | 'FAILED_RETRYABLE' | 'FAILED' | 'UNKNOWN';
+export interface ContractSettlement {
+  contractId: string; milestoneId: string; jobId: string;
+  // BigDecimal is numeric in this DTO; accept decimal strings without rounding as well.
+  amount: DecimalValue; currency: string; simulation: boolean;
+  moneyStatus: SettlementMoneyStatus; onChainStatus: SettlementStageStatus;
+  offRampStatus: SettlementStageStatus; taxStatus: SettlementStageStatus;
+  releaseReference: string | null; onChainReference: string | null;
+  offRampReference: string | null; taxReference: string | null;
+  onChainError: string | null; offRampError: string | null; taxError: string | null;
+  retryable: boolean; lastError: string | null; createdAt: string; updatedAt: string;
+}
+export type CancellationDecision = 'ACCEPT' | 'REJECT';
+export interface CancellationRequest { reasonCode: string; description: string }
+export interface ContractCancellationRecord {
+  cancellationId: string; contractId: string; milestoneId: string;
+  cancellationStatus: 'REQUESTED' | 'REJECTED' | 'REFUND_PENDING' | 'CANCELLED';
+  refundStatus: SettlementMoneyStatus | null; refundReference: string | null; simulation: boolean;
+  requestedBy: string; decidedBy: string | null; reasonCode: string; reason: string;
+  amount: string; currency: string;
+  requestedAt: string; decidedAt: string | null; updatedAt: string;
+  retryable: boolean; lastError: string | null; allowedActions: CancellationDecision[];
+}
 export interface JobPaymentStatus {
   jobId: string;
   checkoutOrderId: string | null;

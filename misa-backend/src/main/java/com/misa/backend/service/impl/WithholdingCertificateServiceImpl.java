@@ -19,6 +19,7 @@ import com.misa.backend.dto.response.misa.IncorrectRecordNotificationResponse;
 import com.misa.backend.dto.response.misa.SignatureInfo;
 import com.misa.backend.dto.response.misa.TaxpayerSummary;
 import com.misa.backend.dto.response.misa.WithholdingCertificateResponse;
+import com.misa.backend.dto.response.misa.CertificateRecoveryResponse;
 import com.misa.backend.entity.CertificateStatus;
 import com.misa.backend.entity.IncorrectRecordNotification;
 import com.misa.backend.entity.PayoutTransaction;
@@ -42,6 +43,14 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.UUID;
+import java.util.Objects;
+import java.util.List;
+import java.util.HexFormat;
+import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -60,11 +69,35 @@ public class WithholdingCertificateServiceImpl implements WithholdingCertificate
     @Override
     @Transactional
     public WithholdingCertificateResponse create(CreateWithholdingCertificateRequest request) {
-        PayoutTransaction payoutTransaction = payoutTransactionRepository.findById(request.getPayoutTransactionId())
+        if (request == null || request.getPayoutTransactionId() == null) {
+            throw new ApplicationException(ErrorCode.INVALID_DATA);
+        }
+        String key = request.getIdempotencyKey() == null
+                ? "payout-" + request.getPayoutTransactionId() : request.getIdempotencyKey();
+        if (!StringUtils.hasText(key) || key.length() > 100 || !key.equals(key.trim())) {
+            throw new ApplicationException(ErrorCode.INVALID_DATA);
+        }
+        // Same payout contenders wait here, then read the authoritative winning certificate.
+        PayoutTransaction payoutTransaction = payoutTransactionRepository.findWithLockById(request.getPayoutTransactionId())
                 .orElseThrow(() -> new ApplicationException(ErrorCode.PAYOUT_NOT_FOUND, request.getPayoutTransactionId()));
-
-        if (withholdingCertificateRepository.existsByPayoutTransactionId(payoutTransaction.getId())) {
-            throw new ApplicationException(ErrorCode.PAYOUT_ALREADY_HAS_CERTIFICATE);
+        String hash = fingerprint(payoutTransaction);
+        WithholdingCertificate keyed = withholdingCertificateRepository.findByIdempotencyKey(key).orElse(null);
+        if (keyed != null && (!keyed.getPayoutTransaction().getId().equals(payoutTransaction.getId())
+                || !Objects.equals(keyed.getPayloadHash(), hash))) {
+            throw new ApplicationException(ErrorCode.CERTIFICATE_KEY_CONFLICT);
+        }
+        WithholdingCertificate existing = withholdingCertificateRepository
+                .findByPayoutTransactionId(payoutTransaction.getId()).orElse(null);
+        if (existing != null) {
+            if (!key.equals(certificateKey(existing))) {
+                throw new ApplicationException(ErrorCode.CERTIFICATE_IDENTITY_CONFLICT);
+            }
+            if ((existing.getPayloadHash() != null && !hash.equals(existing.getPayloadHash()))
+                    || existing.getTaxableIncome().compareTo(payoutTransaction.getAmountVndGross()) != 0
+                    || !existing.getTaxpayer().getId().equals(payoutTransaction.getTaxpayer().getId())) {
+                throw new ApplicationException(ErrorCode.CERTIFICATE_KEY_CONFLICT);
+            }
+            return toResponse(existing);
         }
 
         WithholdingCertificate certificate = new WithholdingCertificate();
@@ -73,16 +106,50 @@ public class WithholdingCertificateServiceImpl implements WithholdingCertificate
         certificate.setTaxableIncome(payoutTransaction.getAmountVndGross());
         certificate.setTaxWithheld(taxEngineService.calculateTaxWithheld(payoutTransaction.getAmountVndGross()));
         certificate.setStatus(CertificateStatus.DRAFT);
+        certificate.setIdempotencyKey(key);
+        certificate.setPayloadHash(hash);
 
         MisaProviderClient.MisaCertificateAssignment assignment = misaProviderClient.createCertificate(certificate);
         certificate.setSymbol(assignment.symbol());
         certificate.setCertificateNumber(assignment.certificateNumber());
         certificate.setLookupCode(assignment.lookupCode());
 
-        withholdingCertificateRepository.save(certificate);
+        withholdingCertificateRepository.saveAndFlush(certificate);
 
         return toResponse(certificate);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CertificateRecoveryResponse findByPlatformPayout(String platformPayoutId) {
+        WithholdingCertificate c = withholdingCertificateRepository
+                .findByPayoutTransactionPlatformPayoutId(platformPayoutId)
+                .orElseThrow(() -> new ApplicationException(ErrorCode.CERTIFICATE_NOT_FOUND, platformPayoutId));
+        PayoutTransaction p = c.getPayoutTransaction();
+        return new CertificateRecoveryResponse(c.getId(), p.getId(), p.getPlatformPayoutId(), certificateKey(c),
+                c.getStatus().name(), c.getCertificateNumber(), c.getSymbol(), p.getAmountUsdc(),
+                p.getExchangeRate(), c.getTaxableIncome(), c.getTaxWithheld(), c.getCurrency(),
+                c.getCreatedAt(), c.getIssuedAt(), true); // Current MISA provider is simulation-only.
+    }
+
+    private String certificateKey(WithholdingCertificate c) {
+        return c.getIdempotencyKey() == null ? "payout-" + c.getPayoutTransaction().getId() : c.getIdempotencyKey();
+    }
+
+    private String fingerprint(PayoutTransaction p) {
+        List<String> values = List.of(p.getId().toString(), p.getPlatformPayoutId(),
+                p.getTaxpayer().getId().toString(), decimal(p.getAmountUsdc()), decimal(p.getExchangeRate()),
+                decimal(p.getAmountVndGross()), p.getBlockchain(), p.getTransactionHash(), "VND");
+        String canonical = values.stream().map(v -> v.length() + ":" + v).collect(Collectors.joining());
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                    .digest(canonical.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalStateException(ex);
+        }
+    }
+
+    private String decimal(BigDecimal value) { return value.stripTrailingZeros().toPlainString(); }
 
     @Override
     @Transactional
@@ -326,6 +393,8 @@ public class WithholdingCertificateServiceImpl implements WithholdingCertificate
     private WithholdingCertificateResponse toResponse(WithholdingCertificate certificate) {
         return WithholdingCertificateResponse.builder()
                 .id(certificate.getId())
+                .payoutTransactionId(certificate.getPayoutTransaction().getId())
+                .idempotencyKey(certificateKey(certificate))
                 .platformPayoutId(certificate.getPayoutTransaction().getPlatformPayoutId())
                 .status(certificate.getStatus().name())
                 .form(FormInfo.builder()

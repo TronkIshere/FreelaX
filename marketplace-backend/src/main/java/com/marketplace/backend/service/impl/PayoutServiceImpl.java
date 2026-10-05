@@ -5,6 +5,7 @@ import com.marketplace.backend.entity.ExchangeRateSource;
 import com.marketplace.backend.entity.ClientPaymentStatus;
 import com.marketplace.backend.entity.FreelancerPayoutRecord;
 import com.marketplace.backend.entity.Job;
+import com.marketplace.backend.entity.ContractSettlement;
 import com.marketplace.backend.entity.NotificationType;
 import com.marketplace.backend.entity.OffRampStatus;
 import com.marketplace.backend.entity.OnChainOffRampStatus;
@@ -64,6 +65,23 @@ public class PayoutServiceImpl implements PayoutService {
     NotificationService notificationService;
     SolanaCprProperties solanaCprProperties;
 
+    /** Called under the settlement row lock. Quote/identities commit before any chain mutation. */
+    @Transactional
+    public FreelancerPayoutRecord prepareContractRecord(Job job, ContractSettlement settlement) {
+        FreelancerPayoutRecord prior = freelancerPayoutRecordRepository.findByJobId(job.getId()).orElse(null);
+        if (prior != null) {
+            if (!settlement.getId().equals(prior.getContractSettlementId())
+                    || !settlement.getFreelancerId().equals(prior.getFreelancerId())
+                    || settlement.getAmount().compareTo(prior.getAmountUsd()) != 0) {
+                throw new ApplicationException(ErrorCode.SETTLEMENT_INELIGIBLE);
+            }
+            return prior;
+        }
+        FreelancerPayoutRecord record = createRecord(job);
+        record.setContractSettlementId(settlement.getId());
+        return freelancerPayoutRecordRepository.saveAndFlush(record);
+    }
+
     @Override
     @Transactional
     public void settle(Job job) {
@@ -76,7 +94,7 @@ public class PayoutServiceImpl implements PayoutService {
         try {
             payoutRecord = createRecord(job);
         } catch (Exception e) {
-            log.error("Khong tao duoc payout record cho job {}: {}", job.getId(), e.getMessage(), e);
+            log.warn("Payout record creation requires reconciliation for job {}", job.getId());
             notifyPayoutFailed(job);
             return;
         }
@@ -104,6 +122,7 @@ public class PayoutServiceImpl implements PayoutService {
         if (payoutRecord == null) {
             return;
         }
+        if (payoutRecord.getContractSettlementId() != null) return;
         Job job = jobRepository.findById(payoutRecord.getJobId()).orElse(null);
         if (job == null) {
             return;
@@ -166,8 +185,10 @@ public class PayoutServiceImpl implements PayoutService {
         LinkedHashSet<UUID> ids = new LinkedHashSet<>();
         freelancerPayoutRecordRepository
                 .findByOnRampStatusIn(List.of(OnRampStatus.NOT_STARTED, OnRampStatus.SUBMITTED))
+                .stream().filter(r -> r.getContractSettlementId() == null)
                 .forEach(r -> ids.add(r.getId()));
         freelancerPayoutRecordRepository.findByOnRampStatus(OnRampStatus.CONFIRMED).stream()
+                .filter(r -> r.getContractSettlementId() == null)
                 .filter(r -> (r.getOffRampStatus() == OffRampStatus.COMPLETED
                         && r.getMisaCertificateId() == null
                         && jobRepository.findById(r.getJobId())
@@ -250,7 +271,7 @@ public class PayoutServiceImpl implements PayoutService {
         try {
             result = onRampProvider.execute(toQuote(payoutRecord), payoutRecord.getOnRampClientPublicKey());
         } catch (Exception e) {
-            result = OnRampResult.failed(null, null, null, e.getMessage());
+            result = OnRampResult.failed(null, null, null, "ON_RAMP_UNRESOLVED");
         }
         applyOnRampResult(payoutRecord, job, result);
     }

@@ -141,7 +141,7 @@ public class JobServiceImpl implements JobService {
     @Override
     @Transactional
     public JobResponse assignFreelancer(UUID clientUserId, UUID jobId, AssignFreelancerRequest request) {
-        Job job = getOwnedByClientOrThrow(clientUserId, jobId);
+        Job job = getOwnedByClientWithLockOrThrow(clientUserId, jobId);
 
         if (job.getStatus() != JobStatus.OPEN) {
             throw new ApplicationException(ErrorCode.INVALID_JOB_STATUS);
@@ -439,7 +439,10 @@ public class JobServiceImpl implements JobService {
     @Override
     @Transactional
     public JobResponse cancel(UUID clientUserId, UUID jobId) {
-        Job job = getOwnedByClientOrThrow(clientUserId, jobId);
+        Job job = getOwnedByClientWithLockOrThrow(clientUserId, jobId);
+        if (workContractRepository.findByJobId(jobId).isPresent()) {
+            throw new ApplicationException(ErrorCode.CONTRACT_API_REQUIRED);
+        }
 
         if (job.getStatus() != JobStatus.OPEN) {
             throw new ApplicationException(ErrorCode.INVALID_JOB_STATUS);
@@ -594,6 +597,17 @@ public class JobServiceImpl implements JobService {
     private Job getOrThrow(UUID jobId) {
         return jobRepository.findById(jobId)
                 .orElseThrow(() -> new ApplicationException(ErrorCode.JOB_NOT_FOUND, jobId));
+    }
+
+    private Job getOwnedByClientWithLockOrThrow(UUID clientUserId, UUID jobId) {
+        // Assignment and legacy OPEN cancellation must not overwrite each other's winner.
+        Job job = jobRepository.findWithLockById(jobId)
+                .orElseThrow(() -> new ApplicationException(ErrorCode.JOB_NOT_FOUND, jobId));
+        requireUserType(clientUserId, UserType.CLIENT);
+        if (!job.getClientUserId().equals(clientUserId)) {
+            throw new ApplicationException(ErrorCode.JOB_NOT_FOUND, jobId);
+        }
+        return job;
     }
 
     private Job getOwnedByClientOrThrow(UUID clientUserId, UUID jobId) {

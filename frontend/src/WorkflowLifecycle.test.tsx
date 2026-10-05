@@ -78,7 +78,8 @@ describe('P05.3 work lifecycle', () => {
     vi.spyOn(api, 'submissions').mockResolvedValue([]);
     await render(<Harness initial={working} user={freelancer} />);
     expect(host.textContent).toContain('Đến lượt bạn bàn giao công việc');
-    expect(host.textContent).toContain('Công việc hiện tại');
+    expect(host.querySelector('.work-composer form')).not.toBeNull();
+    expect(host.querySelector('.work-composer h2')?.textContent).toBe('Gửi bàn giao');
     expect(button('Gửi bàn giao')).toBeTruthy();
     expect(host.querySelector('[aria-current="step"]')?.textContent).toBe('Working');
     await render(<Harness initial={working} user={client} />);

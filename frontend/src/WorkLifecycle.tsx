@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import { ContractLifecycle } from './ContractLifecycle';
 import { ApiError, api } from './api';
-import { PageHeading, StatePanel } from './components';
+import { ActionGroup, EvidenceDisclosure, PageHeading, SectionHeading, StatePanel } from './components';
 import { Pagination } from './Jobs';
 import { date, jobLabel, money, shortId, submissionLabel } from './status';
 import type { Job, JobSubmission, Page, User } from './types';
@@ -59,12 +60,13 @@ function ownership(job: Job, user: User) {
 }
 
 function LatestSubmission({ submission }: { submission: JobSubmission }) {
-  return <section className="latest-submission" aria-label="Bản bàn giao mới nhất">
-    <div className="lifecycle-section-top">
-      <span className="lifecycle-label latest-label">Bàn giao mới nhất</span>
-      <span>Phiên bản {submission.version} · {submissionLabel(submission.status)}</span>
-    </div>
-    <h2>Bản bàn giao #{submission.version}</h2>
+  return <section className="latest-submission" id="latest-submission" tabIndex={-1} aria-label="Bản bàn giao mới nhất">
+    <SectionHeading title={'Bản bàn giao #' + submission.version} aside={submissionLabel(submission.status)} />
+    {submission.reviewerFeedback && <section className="feedback-document" aria-label={'Phản hồi Client cho bản #' + submission.version}>
+      <SectionHeading title="Phản hồi Client" level={3} />
+      <p>{submission.reviewerFeedback}</p>
+      <span className="metadata">Đã phản hồi {timestamp(submission.reviewedAt)}</span>
+    </section>}
     <p className="submission-summary">{submission.summary}</p>
     <DeliverableLink value={submission.deliverableUrl} />
     <div className="submission-meta">
@@ -80,31 +82,31 @@ function HistoryLedger({ submissions, loading, error, retry }: {
 }) {
   const older = submissions.slice(1);
   return <section className="submission-ledger" aria-label="Lịch sử bàn giao">
-    <div className="lifecycle-section-top">
-      <h2 className="lifecycle-label history-label">Lịch sử bàn giao</h2>
-      <span>{submissions.length} phiên bản từ Marketplace</span>
-    </div>
+    <SectionHeading title="Lịch sử bàn giao" aside={submissions.length + ' phiên bản'} />
     {loading ? <p role="status">Đang tải lịch sử bàn giao…</p>
       : error ? <div className="inline-state-error" role="alert"><p>{error}</p>
         <button className="text-button" type="button" onClick={retry}>Tải lại lịch sử</button></div>
       : submissions.length === 0 ? <p className="ledger-empty">Chưa có bản bàn giao nào được ghi nhận.</p>
       : older.length === 0 ? <p className="ledger-empty">Bản mới nhất được trình bày ở trên. Chưa có phiên bản cũ.</p>
       : <div className="ledger-rows">{older.map((submission) =>
-        <article className="ledger-row" key={submission.id}>
-          <strong>#{submission.version}</strong>
-          <div><span className="cell-label">{submissionLabel(submission.status)}</span>
-            <span>{timestamp(submission.createdAt)}</span></div>
-          <p>{submission.summary}</p>
+        <details className="ledger-row" key={submission.id}>
+          <summary><strong>#{submission.version}</strong><span>{submissionLabel(submission.status)}</span>
+            <time>{timestamp(submission.createdAt)}</time></summary>
+          <div className="ledger-body"><p>{submission.summary}</p>
           {submission.reviewerFeedback && <p className="ledger-feedback">Phản hồi: {submission.reviewerFeedback}</p>}
           {submission.deliverableUrl && <div className="ledger-link"><DeliverableLink value={submission.deliverableUrl} /></div>}
           <div className="ledger-dates">{submission.reviewedAt && <span>Đã xem xét {timestamp(submission.reviewedAt)}</span>}
-            {submission.updatedAt && <span>Cập nhật {timestamp(submission.updatedAt)}</span>}</div>
-        </article>)}</div>}
+            {submission.updatedAt && <span>Cập nhật {timestamp(submission.updatedAt)}</span>}</div></div>
+        </details>)}</div>}
   </section>;
 }
 
-export function WorkLifecycle({ job, user, onJobUpdated }: {
-  job: Job; user: User; onJobUpdated: (job: Job) => void;
+export function WorkLifecycle(props: { job: Job; user: User; onJobUpdated: (job: Job) => void; children?: ReactNode; footer?: ReactNode }) {
+  return props.job.contract ? <ContractLifecycle {...props} /> : <LegacyWorkLifecycle {...props} />;
+}
+
+function LegacyWorkLifecycle({ job, user, onJobUpdated, children, footer }: {
+  job: Job; user: User; onJobUpdated: (job: Job) => void; children?: ReactNode; footer?: ReactNode;
 }) {
   const client = user.userType === 'CLIENT' && job.clientUserId === user.id;
   const freelancer = user.userType === 'FREELANCER' && job.freelancerId === user.id;
@@ -250,36 +252,22 @@ export function WorkLifecycle({ job, user, onJobUpdated }: {
 
   if (!client && !freelancer) return null;
   return <div className={'lifecycle lifecycle-' + tone}>
-    <nav className="workflow-rail" aria-label="Tiến trình công việc; các bước trình bày, không phải trạng thái API">
-      {railSteps.map((step, index) => <span key={step} className={index === active ? 'current'
-        : index < active ? 'past' : 'future'} aria-current={index === active ? 'step' : undefined}>{step}</span>)}
-    </nav>
     <section className="ownership-band" aria-label="Lượt thực hiện">
-      <div><span className="eyebrow">Lượt thực hiện hiện tại</span><h2>{ownership(job, user)}</h2>
-        <p>{job.status === 'COMPLETED'
-          ? 'Công việc đã duyệt; xử lý tài chính có thể tiếp tục sau khi phần việc hoàn tất.'
-          : jobLabel(job.status) + ' · trạng thái từ Marketplace'}</p></div>
-      <strong>{jobLabel(job.status)}</strong>
+      <div><h2>{ownership(job, user)}</h2>
+        {job.status === 'COMPLETED' && <p>Xử lý tài chính có thể tiếp tục sau khi phần việc hoàn tất.</p>}</div>
+      <ActionGroup>
+        {job.status === 'REVISION_REQUESTED' && latest?.reviewerFeedback && <a className="text-link" href="#latest-submission">Xem phản hồi ↓</a>}
+        {canSubmit && <a className="text-link" href="#work-primary-action">{job.status === 'REVISION_REQUESTED' ? 'Soạn bản sửa' : 'Soạn bàn giao'} ↓</a>}
+        {canReview && <a className="text-link" href="#latest-submission">Xem bản bàn giao ↓</a>}
+        {job.status === 'COMPLETED' && <Link className="button" to={'/finance?jobId=' + encodeURIComponent(job.id)}>Xem bằng chứng thanh toán →</Link>}
+      </ActionGroup>
     </section>
 
+    {children}
     {latest && <LatestSubmission submission={latest} />}
-    {job.status === 'REVISION_REQUESTED' && latest?.reviewerFeedback && <section className="feedback-document" aria-label="Phản hồi Client">
-      <span className="lifecycle-label feedback-label">Phản hồi Client</span>
-      <h2>Cần chỉnh sửa bản bàn giao #{latest.version}</h2>
-      <p>{latest.reviewerFeedback}</p>
-      <span>Đã phản hồi {timestamp(latest.reviewedAt)}</span>
-    </section>}
 
-    {job.status === 'IN_PROGRESS' && !latest && <section className="current-work" aria-label="Công việc hiện tại">
-      <span className="lifecycle-label work-label">Công việc hiện tại</span>
-      <h2>Chuẩn bị bản bàn giao đầu tiên</h2>
-      <p>Nội dung công việc ở phần trên là bản mô tả chính. Bản bàn giao sẽ được lưu thành một phiên bản mới.</p>
-    </section>}
-
-    {canSubmit && <section className="work-composer" aria-label="Soạn bàn giao">
-      <span className="lifecycle-label work-label">Bản bàn giao mới</span>
-      <h2>{job.status === 'REVISION_REQUESTED' ? 'Gửi bản sửa' : 'Gửi bàn giao'}</h2>
-      <p>Gửi tóm tắt công việc đã làm. Liên kết bàn giao là tùy chọn; bản cũ vẫn nằm trong lịch sử.</p>
+    {canSubmit && <section className="work-composer" id="work-primary-action" tabIndex={-1} aria-label="Soạn bàn giao">
+      <SectionHeading title={job.status === 'REVISION_REQUESTED' ? 'Gửi bản sửa' : 'Gửi bàn giao'} />
       <form onSubmit={submit}>
         <label>Tóm tắt bàn giao <span>· bắt buộc, tối đa 10.000 ký tự</span>
           <textarea value={summary} onChange={event => setSummary(event.target.value)}
@@ -287,48 +275,39 @@ export function WorkLifecycle({ job, user, onJobUpdated }: {
         <label>Liên kết bàn giao <span>· tùy chọn, HTTP/HTTPS</span>
           <input type="url" value={deliverableUrl} onChange={event => setDeliverableUrl(event.target.value)}
             maxLength={MAX_URL} disabled={busy || confirmed} placeholder="https://..." /></label>
-        <div className="lifecycle-action"><strong>Đến lượt bạn gửi bản bàn giao.</strong>
+        <ActionGroup>
           <button className="button" type="submit" disabled={busy || confirmed}>
-            {busy ? 'Đang gửi…' : job.status === 'REVISION_REQUESTED' ? 'Gửi bản sửa' : 'Gửi bàn giao'}</button></div>
+            {busy ? 'Đang gửi…' : job.status === 'REVISION_REQUESTED' ? 'Gửi bản sửa' : 'Gửi bàn giao'}</button></ActionGroup>
       </form>
     </section>}
 
-    {canReview && <section className="review-action" aria-label="Quyết định duyệt bàn giao">
-      <span className="lifecycle-label review-label">Quyết định của Client</span>
-      <h2>Xem xét bản bàn giao #{latest.version}</h2>
-      <p>Bản mới nhất cần quyết định của bạn. Các bản trước vẫn có trong lịch sử bên dưới.</p>
-      {!decision && <div className="review-buttons">
+    {canReview && <section className="review-action" id="work-primary-action" tabIndex={-1} aria-label="Quyết định duyệt bàn giao">
+      <SectionHeading title="Quyết định của bạn" />
+      {!decision && <ActionGroup>
         <button className="button" type="button" onClick={() => setDecision('approve')} disabled={busy || confirmed}>Duyệt bàn giao</button>
         <button className="button button-secondary" type="button" onClick={() => setDecision('revision')}
           disabled={busy || confirmed}>Yêu cầu chỉnh sửa</button>
-      </div>}
+      </ActionGroup>}
       {decision === 'revision' && <form className="decision-form" onSubmit={requestRevision}>
         <p>Phản hồi này sẽ gắn với bản bàn giao #{latest.version}; Freelancer sẽ gửi một phiên bản mới.</p>
         <label>Phản hồi chỉnh sửa <span>· bắt buộc, tối đa 10.000 ký tự</span>
           <textarea value={feedback} onChange={event => setFeedback(event.target.value)}
             maxLength={MAX_TEXT} required rows={5} disabled={busy || confirmed} /></label>
-        <div className="review-buttons"><button className="button" type="submit" disabled={busy || confirmed}>
+        <ActionGroup><button className="button" type="submit" disabled={busy || confirmed}>
           {busy ? 'Đang gửi…' : 'Gửi yêu cầu chỉnh sửa'}</button>
           <button className="button button-secondary" type="button" onClick={() => setDecision(null)}
-            disabled={busy || confirmed}>Quay lại</button></div>
+            disabled={busy || confirmed}>Quay lại</button></ActionGroup>
       </form>}
       {decision === 'approve' && <div className="approval-confirm" role="group" aria-label="Xác nhận duyệt bàn giao">
         <strong>Duyệt bản bàn giao #{latest.version}?</strong>
         <p>Duyệt sẽ hoàn tất phần việc và kích hoạt xử lý thanh toán/chi trả của backend. Tiền về ngân hàng có thể tiếp tục xử lý sau khi công việc chuyển sang Hoàn thành.</p>
-        <div className="review-buttons"><button className="button" type="button" disabled={busy || confirmed}
+        <ActionGroup><button className="button" type="button" disabled={busy || confirmed}
           onClick={() => void mutate(() => api.approveWork(job.id), 'COMPLETED',
             'Đã duyệt bàn giao. Công việc hoàn thành theo trạng thái Marketplace.')}>
           {busy ? 'Đang duyệt…' : 'Xác nhận duyệt'}</button>
           <button className="button button-secondary" type="button" disabled={busy || confirmed}
-            onClick={() => setDecision(null)}>Quay lại</button></div>
+            onClick={() => setDecision(null)}>Quay lại</button></ActionGroup>
       </div>}
-    </section>}
-
-    {job.status === 'COMPLETED' && <section className="completion-next" aria-label="Bước tiếp sau hoàn thành">
-      <span className="lifecycle-label approved-label">Bản ghi đã duyệt</span>
-      <h2>Công việc hoàn thành</h2>
-      <p>Bản bàn giao mới nhất đã được duyệt. Bằng chứng thanh toán và các bước chi trả được theo dõi ở khu vực tài chính.</p>
-      <Link className="button" to={'/finance?jobId=' + encodeURIComponent(job.id)}>Xem bằng chứng thanh toán →</Link>
     </section>}
 
     {success && <p className="lifecycle-success" role="status">{success}</p>}
@@ -337,8 +316,17 @@ export function WorkLifecycle({ job, user, onJobUpdated }: {
       <button className="text-button" type="button" onClick={() => void retrySync()}>Tải lại trạng thái</button></div>}
     {!historyLoading && !historyError && job.status === 'SUBMITTED_FOR_REVIEW' && !latest &&
       <p className="inline-state-error" role="alert">Marketplace chưa trả bản bàn giao để duyệt. Hãy tải lại lịch sử.</p>}
+    <nav className="workflow-rail" aria-label="Tiến trình công việc; các bước trình bày, không phải trạng thái API">
+      {railSteps.map((step, index) => <span key={step} className={index === active ? 'current'
+        : index < active ? 'past' : 'future'} aria-current={index === active ? 'step' : undefined}>{step}</span>)}
+    </nav>
     <HistoryLedger submissions={submissions} loading={historyLoading} error={historyError}
       retry={() => setAttempt(value => value + 1)} />
+    {footer}
+    {submissions.length > 0 && <EvidenceDisclosure summary="Mã tham chiếu bàn giao">
+      <dl className="reference-list">{submissions.map(item => <div key={item.id}>
+        <dt>Bản #{item.version}</dt><dd><code>{item.id}</code></dd></div>)}</dl>
+    </EvidenceDisclosure>}
   </div>;
 }
 

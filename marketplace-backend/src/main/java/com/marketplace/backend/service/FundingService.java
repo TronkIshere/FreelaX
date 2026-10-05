@@ -152,7 +152,7 @@ public class FundingService {
             try {
                 process(record.getId());
             } catch (RuntimeException ex) {
-                log.warn("Funding reconciliation will retry transaction {}", record.getId(), ex);
+                log.warn("Funding reconciliation will retry transaction {}", record.getId());
             }
         }
     }

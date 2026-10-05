@@ -13,6 +13,8 @@ import java.util.UUID;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class WithholdingCertificateResponse {
     UUID id;
+    UUID payoutTransactionId;
+    String idempotencyKey;
     String platformPayoutId;
     String status;
     FormInfo form;

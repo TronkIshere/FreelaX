@@ -4,6 +4,8 @@ import com.marketplace.backend.entity.FundingStatus;
 import com.marketplace.backend.entity.FundingTransaction;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import jakarta.persistence.LockModeType;
 import java.time.LocalDateTime;
@@ -20,4 +22,6 @@ public interface FundingTransactionRepository extends JpaRepository<FundingTrans
             Collection<FundingStatus> statuses, LocalDateTime before);
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<FundingTransaction> findWithLockById(UUID id);
+    @Query("select count(distinct f.contractId) from FundingTransaction f where f.clientUserId = :userId and f.status = :status")
+    long countDistinctContractsByClientAndStatus(@Param("userId") UUID userId, @Param("status") FundingStatus status);
 }

@@ -1,4 +1,76 @@
-import type { DecimalValue, JobPaymentStatus, TaxRecord } from './types';
+import type { ContractCancellationRecord, ContractSettlement, DecimalValue, Job, JobPaymentStatus, TaxRecord } from './types';
+import { cancellationLabel, refundLabel } from './status';
+
+export type ContractFinance = { settlement: ContractSettlement | null; cancellation: ContractCancellationRecord | null; error: string };
+export const financePath = (jobId: string) => '/finance?jobId=' + encodeURIComponent(jobId);
+export const releaseOwned = (job: Job) => job.contract?.milestoneStatus === 'RELEASE_PENDING' ||
+  job.contract?.milestoneStatus === 'RELEASED' || job.contract?.status === 'COMPLETED' || job.status === 'COMPLETED';
+export const cancelledContract = (job: Job) => job.contract?.status === 'CANCELLED' ||
+  job.contract?.milestoneStatus === 'REFUNDED' || job.status === 'CANCELLED';
+export const refundOwned = (job: Job) => job.contract?.milestoneStatus === 'REFUND_PENDING';
+export const financialCopy = {
+  fundingVsRelease: 'Funding đã xác nhận không có nghĩa Freelancer đã nhận release.',
+  releaseSimulation: 'Đã xác nhận bản ghi release mô phỏng cho Freelancer. Không xác nhận tiền đã về ngân hàng thật.',
+  refundSimulation: 'Đã xác nhận bản ghi hoàn tiền mô phỏng cho Client. Không xác nhận hoàn tiền ngân hàng thật.',
+  taxVsCertificate: 'Trạng thái tạo chứng từ không xác nhận cơ quan thuế đã ACCEPTED. Xem trạng thái riêng trong hồ sơ chứng từ.',
+};
+
+export const financialMoneyTone = (status: string | null | undefined): EvidenceTone => status === 'SUCCEEDED' ? 'done'
+  : status === 'FAILED' || status === 'FAILED_RETRYABLE' ? 'error'
+  : status === 'PROCESSING' || status === 'UNKNOWN' ? 'active' : 'pending';
+
+export function contractFinanceTone(job: Job, value?: ContractFinance): EvidenceTone {
+  const cancellation = value?.cancellation;
+  if (cancellation?.refundStatus === 'SUCCEEDED') return 'done';
+  if (cancellation?.cancellationStatus === 'REFUND_PENDING') return financialMoneyTone(cancellation.refundStatus);
+  if (refundOwned(job)) return 'pending';
+  if (cancelledContract(job) || cancellation?.cancellationStatus === 'CANCELLED') return 'done';
+  if (value?.settlement) return financialMoneyTone(value.settlement.moneyStatus);
+  return value?.error ? 'error' : 'pending';
+}
+
+export function contractFinanceLabel(job: Job, value?: ContractFinance): string {
+  const cancellation = value?.cancellation;
+  if (cancellation?.refundStatus === 'SUCCEEDED') return 'Hoàn tiền đã xác nhận';
+  if (cancellation?.cancellationStatus === 'REFUND_PENDING') return refundLabel(cancellation.refundStatus);
+  if (refundOwned(job)) return 'Chưa có xác nhận hoàn tiền';
+  if (cancelledContract(job) || cancellation?.cancellationStatus === 'CANCELLED') return 'Hợp đồng đã hủy';
+  if (value?.settlement) return settlementMoneyLabel(value.settlement.moneyStatus);
+  if (value?.error) return 'Chưa xác minh hồ sơ tài chính';
+  if (releaseOwned(job)) return 'Chưa có bản ghi release';
+  if (cancellation) return cancellationLabel(cancellation.cancellationStatus);
+  return job.status === 'AWAITING_PAYMENT' ? 'Chờ funding' : 'Funding và hồ sơ hợp đồng';
+}
+
+export function contractFinanceNeedsRefresh(job: Job, value: ContractFinance): boolean {
+  if (value.error) return true;
+  const cancellation = value.cancellation;
+  if (cancellation?.refundStatus === 'SUCCEEDED') return false;
+  if (cancellation?.cancellationStatus === 'REFUND_PENDING') return cancellation.refundStatus !== 'FAILED' || cancellation.retryable;
+  if (refundOwned(job)) return true;
+  if (cancelledContract(job) || cancellation?.cancellationStatus === 'CANCELLED') return false;
+  if (value.settlement || releaseOwned(job)) return settlementNeedsRefresh(value.settlement);
+  // Active contracts may receive a proposal or review decision while this page is open.
+  return true;
+}
+
+export const settlementMoneyLabel = (status: string) => ({
+  PENDING: 'Chờ xác nhận release', PROCESSING: 'Đang xử lý release', UNKNOWN: 'Đang đối soát release',
+  SUCCEEDED: 'Release đã xác nhận', FAILED_RETRYABLE: 'Release cần đối soát lại', FAILED: 'Release chưa thành công',
+}[status] || 'Chưa xác minh release');
+export const settlementStageLabel = (status: string) => ({
+  NOT_STARTED: 'Chưa bắt đầu', PROCESSING: 'Đang xử lý', SUCCEEDED: 'Đã xác nhận',
+  FAILED_RETRYABLE: 'Máy chủ đang thử lại', FAILED: 'Cần xử lý lỗi', UNKNOWN: 'Đang đối soát',
+}[status] || 'Chưa xác minh');
+
+// Primary money and downstream evidence terminate independently.
+export function settlementNeedsRefresh(value: ContractSettlement | null): boolean {
+  if (!value) return true;
+  if (value.moneyStatus === 'FAILED' && !value.retryable) return false;
+  if (value.moneyStatus !== 'SUCCEEDED' || value.retryable) return true;
+  return [value.onChainStatus, value.offRampStatus, value.taxStatus]
+    .some(status => status !== 'SUCCEEDED' && status !== 'FAILED');
+}
 
 export type EvidenceTone = 'done' | 'active' | 'pending' | 'error';
 export interface EvidenceStage {

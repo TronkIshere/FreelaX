@@ -12,12 +12,15 @@ import com.misa.backend.dto.response.misa.CertificateStatusResponse;
 import com.misa.backend.dto.response.misa.CertificateSubmitResponse;
 import com.misa.backend.dto.response.misa.IncorrectRecordNotificationResponse;
 import com.misa.backend.dto.response.misa.WithholdingCertificateResponse;
+import com.misa.backend.dto.response.misa.CertificateRecoveryResponse;
 
 import java.util.UUID;
 
 public interface WithholdingCertificateService {
 
     WithholdingCertificateResponse create(CreateWithholdingCertificateRequest request);
+
+    CertificateRecoveryResponse findByPlatformPayout(String platformPayoutId);
 
     CertificateIssueResponse issue(UUID certificateId, IssueCertificateRequest request);
 

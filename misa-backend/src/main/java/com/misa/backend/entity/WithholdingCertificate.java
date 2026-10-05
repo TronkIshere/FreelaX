@@ -30,6 +30,13 @@ import java.util.UUID;
 @Table(name = "withholding_certificate")
 public class WithholdingCertificate extends AbstractEntity<UUID> {
 
+    // Nullable for historical certificates; new creates always persist both fields.
+    @Column(name = "idempotency_key", unique = true, length = 100, updatable = false)
+    String idempotencyKey;
+
+    @Column(name = "payload_hash", length = 64, updatable = false)
+    String payloadHash;
+
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "payout_transaction_id", nullable = false, unique = true)
     PayoutTransaction payoutTransaction;

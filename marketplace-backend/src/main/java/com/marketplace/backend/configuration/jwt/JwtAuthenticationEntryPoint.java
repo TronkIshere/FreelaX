@@ -1,6 +1,7 @@
 package com.marketplace.backend.configuration.jwt;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.marketplace.backend.configuration.RequestCorrelation;
 import com.marketplace.backend.dto.response.common.ErrorResponse;
 import com.marketplace.backend.exception.ErrorCode;
 import jakarta.servlet.http.HttpServletRequest;
@@ -10,6 +11,7 @@ import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
 @Component
@@ -25,10 +27,14 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
                 .status(ErrorCode.UNAUTHENTICATED.getCode())
                 .error(ErrorCode.UNAUTHENTICATED.getMessage())
                 .path(request.getRequestURI())
+                .code(ErrorCode.UNAUTHENTICATED.name())
+                .requestId(RequestCorrelation.id(request))
+                .retryable(false)
                 .build();
 
         response.setStatus(ErrorCode.UNAUTHENTICATED.getHttpStatus().value());
         response.setContentType("application/json");
+        response.setCharacterEncoding(StandardCharsets.UTF_8.name());
         response.getWriter().write(objectMapper.writeValueAsString(errorResponse));
     }
 }

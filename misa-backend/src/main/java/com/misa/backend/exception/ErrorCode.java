@@ -35,6 +35,8 @@ public enum ErrorCode {
     CERTIFICATE_ALREADY_SUBMITTED(3007, "Chứng từ đã được gửi trước đó", HttpStatus.CONFLICT),
     LOOKUP_CODE_NOT_FOUND(3008, "Mã tra cứu không hợp lệ hoặc không tồn tại", HttpStatus.NOT_FOUND),
     EXTERNAL_ID_REQUIRED(3009, "externalId là bắt buộc khi đăng ký người nộp thuế qua đường B2B", HttpStatus.BAD_REQUEST),
+    CERTIFICATE_KEY_CONFLICT(3010, "Identity chứng từ đã được dùng với nội dung khác", HttpStatus.CONFLICT),
+    CERTIFICATE_IDENTITY_CONFLICT(3011, "Payout đã có chứng từ dưới identity khác", HttpStatus.CONFLICT),
 
     RATE_LIMIT_EXCEEDED(5000, "Bạn thao tác quá nhanh, vui lòng thử lại sau", HttpStatus.TOO_MANY_REQUESTS),
 

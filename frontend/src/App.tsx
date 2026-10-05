@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import { Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
-import { ApiError } from './api';
+import { ApiError, hasAuthority } from './api';
+import { AdminDisputes, AdminDisputeDetail } from './AdminDisputes';
 import { Account } from './Account';
+import { AdminReviews, AdminReview } from './AdminReviews';
+import { PublicProfile } from './PublicProfile';
 import { Activity } from './Activity';
 import { AuthEntry } from './Auth';
-import { StatePanel } from './components';
+import { ActionGroup, StatePanel } from './components';
 import { FinanceHome, TaxRecordDetail, TaxRecordsPage } from './Finance';
 import { ClientJobs, FreelancerDiscovery } from './Jobs';
 import { Overview } from './Overview';
@@ -14,11 +17,11 @@ import { MyWork } from './WorkLifecycle';
 import type { User, UserType } from './types';
 
 function Brand() {
-  return <div className="brand" aria-label="FreelaX">Freela<span>X</span><small>MARKETPLACE / WORKSPACE</small></div>;
+  return <div className="brand" aria-label="FreelaX">Freela<span>X</span></div>;
 }
 
 function RoleShell({ user }: { user: User }) {
-  const { signOut } = useSession();
+  const { signOut, reconcileUser } = useSession();
   const navigate = useNavigate();
   const [logoutError, setLogoutError] = useState('');
   const [loggingOut, setLoggingOut] = useState(false);
@@ -50,22 +53,25 @@ function RoleShell({ user }: { user: User }) {
     <a className="skip-link" href="#main">Đi tới nội dung</a>
     <header className="masthead">
       <Brand />
-      <div className="identity"><span>{role === 'CLIENT' ? 'KHÁCH HÀNG' : 'FREELANCER'}</span><strong>{user.displayName}</strong></div>
-      <button className="text-button sign-out" type="button" onClick={() => void logout()} disabled={loggingOut}>
-        {loggingOut ? 'Đang đăng xuất…' : 'Đăng xuất'}</button>
+      <div className="identity"><span>{role === 'CLIENT' ? 'Client' : 'Freelancer'}</span><strong>{user.displayName}</strong></div>
+      <ActionGroup label="Phiên làm việc">
+        {hasAuthority(user, 'ROLE_ADMIN') && <NavLink className="text-link admin-entry" to="/admin/disputes">Quản trị</NavLink>}
+        <button className="text-button sign-out" type="button" onClick={() => void logout()} disabled={loggingOut}>
+          {loggingOut ? 'Đang đăng xuất…' : 'Đăng xuất'}</button>
+      </ActionGroup>
     </header>
     {logoutError && <p className="form-error logout-error" role="alert">{logoutError}</p>}
     <nav className="primary-nav" aria-label="Điều hướng chính">
       {nav.map(item => <NavLink key={item.path} to={item.path} end={item.end}
         className={({ isActive }) => 'nav-link' + (isActive ? ' active' : '')}>{item.label}</NavLink>)}
     </nav>
-    <div className="top-context"><span>FREELAX / {role} WORKSPACE</span><span>Vai trò đã xác minh</span></div>
     {role === 'FREELANCER' && location.pathname.startsWith('/work') && <nav className="subnav" aria-label="Khu vực công việc Freelancer">
       <NavLink to="/work" end>Khám phá</NavLink>
       <NavLink to="/work/applications">Ứng tuyển</NavLink>
       <NavLink to="/work/mine">Công việc của tôi</NavLink>
     </nav>}
-    <main id="main" className="view">
+    {hasAuthority(user, 'ROLE_ADMIN') && location.pathname.startsWith('/admin/') && <nav className="subnav" aria-label="Khu vực quản trị"><NavLink to="/admin/disputes">Tranh chấp</NavLink><NavLink to="/admin/reviews">Đánh giá được báo cáo</NavLink></nav>}
+    <main id="main" className="view" tabIndex={-1}>
       <Routes>
         <Route path="/" element={<Overview user={user} />} />
         <Route path="/work" element={role === 'CLIENT' ? <ClientJobs /> : <FreelancerDiscovery />} />
@@ -79,11 +85,16 @@ function RoleShell({ user }: { user: User }) {
         <Route path="/finance/tax-records" element={<TaxRecordsPage />} />
         <Route path="/finance/tax-records/:taxRecordId" element={<TaxRecordDetail />} />
         <Route path="/activity" element={<Activity />} />
-        <Route path="/account" element={<Account user={user} onLogout={() => void logout()} loggingOut={loggingOut} />} />
+        <Route path="/admin/disputes" element={<AdminDisputes user={user} />} />
+        <Route path="/admin/disputes/:disputeId" element={<AdminDisputeDetail user={user} />} />
+        <Route path="/admin/reviews" element={<AdminReviews user={user} />} />
+        <Route path="/admin/reviews/:reviewId" element={<AdminReview user={user} />} />
+        <Route path="/profiles/:userId" element={<PublicProfile user={user} />} />
+        <Route path="/account" element={<Account user={user} onLogout={() => void logout()} loggingOut={loggingOut} onReconcileUser={reconcileUser} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </main>
-    <footer className="page-footer"><span>FreelaX / Marketplace</span><span>Không gian công việc theo vai trò</span></footer>
+    <footer className="page-footer"><span>FreelaX / Marketplace</span></footer>
   </div>;
 }
 

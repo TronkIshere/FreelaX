@@ -76,7 +76,7 @@ public class LiveExchangeRateProvider implements ExchangeRateProvider {
             cache.set(result);
             return result;
         } catch (RuntimeException e) {
-            log.warn("Khong lay duoc ty gia {} song, dung fallback placeholder ({}): {}", pair, fallbackRate, e.getMessage());
+            log.warn("Live exchange rate unavailable for {}; using configured fallback", pair);
             return new ExchangeRateResult(fallbackRate, ExchangeRateSource.FALLBACK_PLACEHOLDER, Instant.now());
         }
     }
