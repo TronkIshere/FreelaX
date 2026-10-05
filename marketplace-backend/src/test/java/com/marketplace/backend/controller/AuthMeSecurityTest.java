@@ -25,10 +25,12 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Optional;
+import java.nio.charset.StandardCharsets;
 import java.util.Set;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
@@ -36,6 +38,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 
 @WebMvcTest(AuthController.class)
 @Import({SecurityConfiguration.class, InternalApiKeyFilter.class,
@@ -66,7 +69,15 @@ class AuthMeSecurityTest {
         mockMvc.perform(get("/api/v1/auth/me").param("admin", "true")
                         .header("X-Authorities", "ROLE_ADMIN"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.status").value(2000));
+                .andExpect(content().contentType("application/json;charset=UTF-8"))
+                .andExpect(jsonPath("$.status").value(2000))
+                .andExpect(jsonPath("$.code").value("UNAUTHENTICATED"))
+                .andExpect(jsonPath("$.requestId").isNotEmpty())
+                .andExpect(jsonPath("$.retryable").value(false))
+                .andExpect(jsonPath("$.error").value("Chưa đăng nhập"))
+                .andExpect(result -> assertThat(new String(
+                        result.getResponse().getContentAsByteArray(), StandardCharsets.UTF_8))
+                        .contains("Chưa đăng nhập").doesNotContain("?"));
     }
 
     @ParameterizedTest
