@@ -1,7 +1,7 @@
 # FREELAX UI DEVELOPMENT MEMORY
 
 > Status: ACTIVE UI MEMORY
-> Scope: UI-first polish only
+> Scope: P06.4 verified contract integration + UI polish; frontend/docs only
 > Repository: `TronkIshere/FreelaX`
 > Baseline reviewed: `master` at `3332d30ad542a5d49f721e1a1f46d9da8b8203c3`
 > Product spec: `docs/mvp-functional-spec.md` — Draft 0.1
@@ -69,7 +69,7 @@ Current frontend also recognizes the job state:
 AWAITING_PAYMENT
 ```
 
-Do not invent a funding action merely because the state exists.
+Funding controls are now supported by verified Marketplace contract APIs (backend sync `cf0594f`). Never infer funding success from a click; refetch the job.
 
 ## Current frontend source inventory
 
@@ -244,15 +244,26 @@ profile persistence
 portfolio
 reputation/rating
 wallet onboarding / Phantom connect
-funding mutation button
-reviewDueAt countdown
-cancel/dispute/Admin actions
+full release/settlement orchestration
+cancellation/refund
+Admin dispute resolution / case management
 auto-release
 chat
 AI verification
 ```
 
 ## P06 technical boundary
+
+### Verified P06.4 contracts — 2026-10-05
+
+- GET/PUT `/api/v1/payment-methods/bank-account`: Client owner only, masked saved state. Full account/holder are transient form values and cleared after save; no storage/logging.
+- POST and GET latest/exact `/api/v1/contracts/{contractId}/milestones/{milestoneId}/fund`: simulated capture, `BANK_ACCOUNT_ON_FILE`, immutable decimal contract amount, one sessionStorage key per Client/contract/milestone attempt. PENDING/PROCESSING/UNKNOWN reconcile; UNKNOWN is not definitive failure. Rotate only after SUCCEEDED/FAILED.
+- POST/GET `/api/v1/contracts/{contractId}/submissions`: structured HTTPS evidence using snapshot IDs, stable key plus exact draft per uncertain attempt. Server owns versions; GET before retry.
+- POST `/api/v1/contracts/{contractId}/submissions/{submissionId}/decisions`: APPROVE, REQUEST_REVISION with related snapshot IDs and feedback, minimal OPEN_DISPUTE with reason/description. Latest active submission only; revision quota enforced by server.
+- Contract-backed legacy submit/revision/approve reject with 409/4029. Legacy frontend methods remain only for jobs without contracts.
+- Server returns UTC reviewDueAt, nullable reviewGraceDueAt, reviewedAutomatically. <=500 USD eligible at due; >500 USD adds 24h grace. Countdown is display only; due/grace/focus/handled review notifications refetch state. No browser approval.
+- Approval may leave Job SUBMITTED_FOR_REVIEW and Contract UNDER_REVIEW while Milestone RELEASE_PENDING. Show work decision complete / money processing; RELEASE_PENDING is not released money. Full release, cancellation/refund, Admin resolution, profile/reputation/rating remain future.
+- Marketplace is the only browser-facing API; no backend/runtime changes in this stage. P06.5+ remain NOT_STARTED.
 
 Allowed by default:
 
@@ -294,7 +305,9 @@ Each batch must preserve:
 - no console errors
 - no horizontal overflow
 - keyboard focus
-- desktop / ~1024px / mobile usability
+- desktop/laptop usability at 1440px and 1024px for current MVP
+
+Mobile optimization is deferred. Current MVP delivery target is desktop/laptop, validated at 1440px and 1024px. Existing responsive CSS remains; no mobile validation gate applies to P06.4.
 
 Final P06 gate:
 

@@ -172,6 +172,38 @@ describe('P05.2 mutation contracts', () => {
   });
 });
 
+describe('P06.4 real funding/contract API', () => {
+  it('uses bank GET/PUT, latest/exact funding reads and exact decimal POST', async () => {
+    const mock = vi.fn().mockImplementation(async () => response(null));
+    mock.mockResolvedValueOnce(response({ accessToken: 'test' })).mockResolvedValueOnce(response(user));
+    vi.stubGlobal('fetch', mock); const api = new MarketplaceApi(); await api.restore();
+    await api.clientBank(); await api.saveClientBank({ bankCode: 'BIDV', bankAccountNumber: '123456', bankAccountHolderName: 'Client' });
+    await api.funding('contract', 'milestone'); await api.funding('contract', 'milestone', 'tx'); await api.fund('contract', 'milestone', 'stable-key', '500.01', 'USD');
+    expect(mock.mock.calls.slice(2).map(c => c[0])).toEqual(['/api/v1/payment-methods/bank-account', '/api/v1/payment-methods/bank-account', '/api/v1/contracts/contract/milestones/milestone/fund', '/api/v1/contracts/contract/milestones/milestone/fund/tx', '/api/v1/contracts/contract/milestones/milestone/fund']);
+    expect(mock.mock.calls[3][1].method).toBe('PUT');
+    expect(JSON.parse(mock.mock.calls[6][1].body)).toEqual({ paymentMethodId: 'BANK_ACCOUNT_ON_FILE', expectedAmount: { amount: '500.01', currency: 'USD' } });
+    expect(mock.mock.calls[6][1].headers.get('Idempotency-Key')).toBe('stable-key');
+  });
+  it.each(['fund', 'submit'] as const)('keeps %s key and exact payload through 401 refresh', async kind => {
+    const mock = vi.fn().mockResolvedValueOnce(response({ accessToken: 'before' })).mockResolvedValueOnce(response(user))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ status: 2005, error: 'expired' }), { status: 401 }))
+      .mockResolvedValueOnce(response({ accessToken: 'after' })).mockResolvedValueOnce(response(user)).mockResolvedValueOnce(response({ id: 'saved' }));
+    vi.stubGlobal('fetch', mock); const api = new MarketplaceApi(); await api.restore();
+    if (kind === 'fund') await api.fund('c', 'm', 'same', '500.00', 'USD');
+    else await api.submitContract('c', 'same', { summary: 'Work', deliverables: [], acceptanceEvidence: [{ criterionId: 'a', note: 'Verified', url: '' }] });
+    expect(mock.mock.calls[2][1].body).toBe(mock.mock.calls[5][1].body); expect(mock.mock.calls[2][1].headers.get('Idempotency-Key')).toBe('same'); expect(mock.mock.calls[5][1].headers.get('Idempotency-Key')).toBe('same');
+  });
+  it('uses only contract submissions and decisions with real response/error envelope', async () => {
+    const mock = vi.fn().mockImplementation(async () => response([])); mock.mockResolvedValueOnce(response({ accessToken: 'test' })).mockResolvedValueOnce(response(user));
+    vi.stubGlobal('fetch', mock); const api = new MarketplaceApi(); await api.restore(); await api.contractSubmissions('c');
+    await api.decideSubmission('c', 's', { decision: 'REQUEST_REVISION', feedback: 'Fix', criterionIds: ['criterion'], deliverableIds: [] });
+    expect(mock.mock.calls[2][0]).toBe('/api/v1/contracts/c/submissions'); expect(mock.mock.calls[3][0]).toBe('/api/v1/contracts/c/submissions/s/decisions');
+    expect(JSON.parse(mock.mock.calls[3][1].body).criterionIds).toEqual(['criterion']);
+    mock.mockResolvedValueOnce(new Response(JSON.stringify({ status: 4027, error: 'stale' }), { status: 409 }));
+    await expect(api.decideSubmission('c', 's', { decision: 'APPROVE' })).rejects.toMatchObject({ status: 409, code: 4027 });
+  });
+});
+
 describe('P05.3 work lifecycle API', () => {
   it('uses the participant jobs and ordered submissions contracts', async () => {
     const submission = { id: 'submission-1', jobId: 'job-one', freelancerId: 'freelancer-1',

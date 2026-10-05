@@ -1,5 +1,7 @@
 import type { DiscoverJob, DiscoveryFilters, Job, JobApplication, JobPaymentStatus, JobSubmission, MyApplication, Notification as MarketplaceNotification, Page, RegisterInput, TaxRecord, User, UserType } from './types';
 
+import type { ClientBankAccount, ClientBankInput, FundingResponse, SubmissionPayload, ContractSubmission, ReviewDecision } from './types';
+
 // Same-origin by default; an optional public origin can be supplied at build time.
 const configuredApiOrigin = (import.meta.env.VITE_MARKETPLACE_API_ORIGIN || '').trim().replace(/\/+$/, '');
 const API_ROOT = configuredApiOrigin + '/api/v1';
@@ -217,6 +219,32 @@ export class MarketplaceApi {
   }
   async paymentStatus(jobId: string): Promise<JobPaymentStatus> {
     return this.authorized<JobPaymentStatus>('/marketplace/jobs/' + encodeURIComponent(jobId) + '/payment-status');
+  }
+
+  async clientBank(): Promise<ClientBankAccount> {
+    return this.authorized('/payment-methods/bank-account');
+  }
+  async saveClientBank(input: ClientBankInput): Promise<ClientBankAccount> {
+    return this.authorized('/payment-methods/bank-account', { method: 'PUT', body: JSON.stringify(input) });
+  }
+  async funding(contractId: string, milestoneId: string, transactionId?: string): Promise<FundingResponse | null> {
+    return this.authorized('/contracts/' + encodeURIComponent(contractId) + '/milestones/' + encodeURIComponent(milestoneId)
+      + '/fund' + (transactionId ? '/' + encodeURIComponent(transactionId) : ''));
+  }
+  async fund(contractId: string, milestoneId: string, key: string, amount: string, currency: string): Promise<FundingResponse> {
+    return this.authorized('/contracts/' + encodeURIComponent(contractId) + '/milestones/' + encodeURIComponent(milestoneId) + '/fund',
+      { method: 'POST', headers: { 'Idempotency-Key': key }, body: JSON.stringify({ paymentMethodId: 'BANK_ACCOUNT_ON_FILE', expectedAmount: { amount, currency } }) });
+  }
+  async contractSubmissions(contractId: string): Promise<ContractSubmission[]> {
+    return this.authorized('/contracts/' + encodeURIComponent(contractId) + '/submissions');
+  }
+  async submitContract(contractId: string, key: string, payload: SubmissionPayload): Promise<ContractSubmission> {
+    return this.authorized('/contracts/' + encodeURIComponent(contractId) + '/submissions',
+      { method: 'POST', headers: { 'Idempotency-Key': key }, body: JSON.stringify(payload) });
+  }
+  async decideSubmission(contractId: string, submissionId: string, decision: ReviewDecision): Promise<ContractSubmission> {
+    return this.authorized('/contracts/' + encodeURIComponent(contractId) + '/submissions/' + encodeURIComponent(submissionId) + '/decisions',
+      { method: 'POST', body: JSON.stringify(decision) });
   }
 
   async taxRecords(page: number, size = 10): Promise<Page<TaxRecord>> {

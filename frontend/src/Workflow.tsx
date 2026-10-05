@@ -2,15 +2,91 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { ApiError, api } from './api';
 import { WorkLifecycle } from './WorkLifecycle';
-import { PageHeading, StatePanel } from './components';
+import { FundingPanel } from './Funding';
+import { contractAmount, localInstant } from './workflowContracts';
+import { ActionGroup, EvidenceDisclosure, FactGrid, PageHeading, SectionHeading, StatePanel } from './components';
 import { Pagination } from './Jobs';
 import { applicationLabel, date, jobLabel, money, shortId } from './status';
-import type { DiscoverJob, Job, JobApplication, MyApplication, Page, User } from './types';
+import type { DiscoverJob, Job, JobApplication, MyApplication, Page, Requirement, User } from './types';
 
 type Detail = Job | DiscoverJob;
 const isDiscover = (job: Detail): job is DiscoverJob => 'hasApplied' in job;
 const message = (error: unknown) => error instanceof Error ? error.message : 'Yêu cầu không thành công. Vui lòng thử lại.';
 const timestamp = (value: string | null | undefined) => value ? value.replace('T', ' ').slice(0, 16) : '—';
+
+const contractLabels: Record<string, string> = {
+  PENDING_FUNDING: 'Chờ funding', ACTIVE: 'Đang hiệu lực', UNDER_REVIEW: 'Đang xét bàn giao',
+  REVISION: 'Đang chỉnh sửa', COMPLETED: 'Đã hoàn tất', CANCELLED: 'Đã hủy',
+  DISPUTED: 'Đang tranh chấp',
+};
+const milestoneLabels: Record<string, string> = {
+  PENDING_FUNDING: 'Chờ funding', FUNDED: 'Đã funding', IN_PROGRESS: 'Đang thực hiện',
+  SUBMITTED: 'Đã bàn giao', RELEASE_PENDING: 'Chờ xử lý chi trả', RELEASED: 'Đã giải ngân',
+  REFUND_PENDING: 'Chờ hoàn tiền', REFUNDED: 'Đã hoàn tiền', CANCELLED: 'Đã hủy',
+  DISPUTED: 'Đang tranh chấp',
+};
+
+function ScopeList({ title, items }: { title: string; items: Requirement[] | undefined }) {
+  if (!items?.length) return null;
+  return <section className="job-scope">
+    <SectionHeading title={title} level={3} />
+    <ol>{[...items].sort((a, b) => a.order - b.order).map(item => <li key={item.id}>
+      {item.title && <strong>{item.title}</strong>}
+      <p>{item.description}</p>
+      {typeof item.required === 'boolean' && <span className="metadata">{item.required ? 'Bắt buộc' : 'Tùy chọn'}</span>}
+    </li>)}</ol>
+  </section>;
+}
+
+function JobDocument({ job }: { job: Detail }) {
+  const contract = !isDiscover(job) ? job.contract : null;
+  const due = contract?.deliveryDueAt ?? job.deliveryDueAt;
+  const reviewWindow = contract?.reviewWindowHours ?? job.reviewWindowHours;
+  const maxRevisions = contract?.maxRevisions ?? job.maxRevisions;
+  const terms = [
+    ...(due ? [{ label: 'Hạn bàn giao', value: localInstant(due) }] : []),
+    ...(typeof reviewWindow === 'number' ? [{ label: 'Thời hạn review mỗi lượt', value: reviewWindow + ' giờ' }] : []),
+    ...(typeof maxRevisions === 'number' ? [{ label: 'Số lần chỉnh sửa tối đa', value: maxRevisions }] : []),
+    ...(contract && typeof contract.revisionsUsed === 'number' && typeof contract.maxRevisions === 'number'
+      ? [{ label: 'Chỉnh sửa đã dùng', value: contract.revisionsUsed + '/' + contract.maxRevisions + ' lần' }] : []),
+  ];
+  return <section className="work-document" aria-labelledby="work-document-title">
+    <SectionHeading id="work-document-title" title="Nội dung công việc" />
+    <p className="work-description">{job.description}</p>
+    <div className="job-scope-grid">
+      <ScopeList title="Sản phẩm bàn giao" items={contract?.deliverables ?? job.deliverables} />
+      <ScopeList title="Điều kiện nghiệm thu" items={contract?.acceptanceCriteria ?? job.acceptanceCriteria} />
+    </div>
+    {terms.length > 0 && <section className="job-terms-document" aria-label="Điều khoản công việc">
+      <SectionHeading title="Điều khoản" level={3} /><FactGrid facts={terms} />
+    </section>}
+    {contract && <section className="contract-context" aria-label="Hợp đồng và milestone">
+      <SectionHeading title="Hợp đồng / Milestone" level={3} />
+      <FactGrid facts={[
+        { label: 'Hợp đồng', value: contractLabels[contract.status] ?? 'Trạng thái khác' },
+        ...(contract.milestoneStatus ? [{ label: 'Milestone', value: milestoneLabels[contract.milestoneStatus] ?? 'Trạng thái khác' }] : []),
+        ...(contract.amount != null && contract.currency
+          ? [{ label: 'Giá trị hợp đồng', value: contractAmount(contract.amount) + ' ' + contract.currency }] : []),
+      ]} />
+    </section>}
+  </section>;
+}
+
+function JobRecordFooter({ job }: { job: Detail }) {
+  const participant = !isDiscover(job) ? job : null;
+  return <footer className="job-record-footer">
+    <p className="metadata">Tạo {timestamp(job.createdAt)}{participant?.updatedAt && <> · Cập nhật {timestamp(participant.updatedAt)}</>}</p>
+    <EvidenceDisclosure summary="Mã tham chiếu công việc">
+      <dl className="reference-list">
+        <div><dt>Công việc</dt><dd><CopyId value={job.id} label="công việc" /></dd></div>
+        <div><dt>Client</dt><dd><CopyId value={isDiscover(job) ? job.client.id : job.clientUserId} label="khách hàng" /></dd></div>
+        {participant?.freelancerId && <div><dt>Freelancer</dt><dd><CopyId value={participant.freelancerId} label="Freelancer" /></dd></div>}
+        {participant?.contract && <div><dt>Hợp đồng</dt><dd><CopyId value={participant.contract.id} label="hợp đồng" /></dd></div>}
+        {participant?.contract?.milestoneId && <div><dt>Milestone</dt><dd><CopyId value={participant.contract.milestoneId} label="milestone" /></dd></div>}
+      </dl>
+    </EvidenceDisclosure>
+  </footer>;
+}
 
 export function CopyId({ value, label }: { value: string; label: string }) {
   const [copied, setCopied] = useState(false);
@@ -112,60 +188,46 @@ export function JobDetail({ user }: { user: User }) {
   const workState = (owner || assignedFreelancer) &&
     ['IN_PROGRESS', 'SUBMITTED_FOR_REVIEW', 'REVISION_REQUESTED', 'COMPLETED'].includes(job.status);
   const applied = !!discovered?.hasApplied;
-  return <>
-    <PageHeading eyebrow={(user.userType === 'CLIENT' ? 'Client' : 'Freelancer') + ' / Hồ sơ công việc'}
-      title={job.title} description="Thông tin công việc và quyền thao tác được xác nhận từ Marketplace."
-      aside={'Tạo ngày ' + date(job.createdAt)} />
-    <div className="detail-topline"><Link to="/work">← Danh sách công việc</Link><CopyId value={job.id} label="công việc" /></div>
-    <section className="work-document" aria-labelledby="work-document-title">
-      <span className="category-label">01 / Công việc</span>
-      <h2 id="work-document-title">Nội dung công việc</h2>
-      <p className="work-description">{job.description}</p>
-      {job.deliverables && job.deliverables.length > 0 && <>
-        <h3>Sản phẩm bàn giao</h3>
-        <ol>{job.deliverables.map(item => <li key={item.id}><strong>{item.title}</strong>: {item.description}</li>)}</ol>
-      </>}
-      {job.acceptanceCriteria && job.acceptanceCriteria.length > 0 && <>
-        <h3>Điều kiện nghiệm thu</h3>
-        <ol>{job.acceptanceCriteria.map(item => <li key={item.id}>{item.description}</li>)}</ol>
-      </>}
-    </section>
-    <div className="detail-facts">
-      <section className="fact-band"><span className="eyebrow">02 / Trạng thái</span>
-        <strong className="fact-state">{jobLabel(job.status)}</strong>
-        <span>Cập nhật {timestamp(participant?.updatedAt)}</span></section>
-      <section className="fact-band"><span className="eyebrow">03 / Ngân sách</span>
-        <strong>{money(job.budgetUsd)}</strong><span>Giá trị công việc bằng USD · chỉ xem</span></section>
-      <section className="fact-band"><span className="eyebrow">04 / Chủ sở hữu</span>
-        {discovered ? <><strong>{discovered.client?.displayName || 'Khách hàng'}</strong>
-          {discovered.client?.id && <CopyId value={discovered.client.id} label="khách hàng" />}</>
-          : <><strong>Khách hàng</strong><CopyId value={participant!.clientUserId} label="khách hàng" /></>}
-        {participant?.freelancerId && <div><span>Freelancer đã chọn</span><CopyId value={participant.freelancerId} label="Freelancer" /></div>}
-        {!discovered && !participant?.freelancerId && <span>Chưa giao người thực hiện</span>}
+  const context = discovered ? 'Client · ' + (discovered.client?.displayName || 'Khách hàng')
+    : owner ? (participant?.freelancerId ? 'Bạn là Client · Đã chọn Freelancer' : 'Bạn là Client · Chưa phân công')
+    : assignedFreelancer ? 'Bạn là Freelancer được giao công việc' : 'Hồ sơ công việc';
+  const document = <JobDocument job={job} />;
+  const footer = <JobRecordFooter job={job} />;
+  return <article className="job-detail">
+    <div className="detail-topline"><Link to="/work">← Danh sách công việc</Link></div>
+    <PageHeading eyebrow="Hồ sơ công việc" title={job.title} description={context} />
+    <FactGrid label="Thông tin chính" facts={[
+      { label: 'Ngân sách', value: money(job.budgetUsd) },
+      { label: 'Trạng thái công việc', value: <span className="job-current-state">{participant?.contract?.milestoneStatus === 'RELEASE_PENDING' ? 'Đã duyệt · Chờ xử lý tiền' : participant?.contract?.status === 'DISPUTED' ? 'Đang tranh chấp' : jobLabel(job.status)}</span> },
+    ]} />
+    {workState && participant ? <WorkLifecycle key={participant.id} job={participant} user={user}
+      onJobUpdated={setJob} footer={footer}>{document}</WorkLifecycle> : <>
+      <section className="action-band" aria-label="Bước tiếp">
+        {discovered && user.userType === 'FREELANCER' && <>
+          <h2>{applied ? 'Ứng tuyển đã ghi nhận' : job.status === 'OPEN' ? 'Sẵn sàng ứng tuyển?' : 'Ứng tuyển đã đóng'}</h2>
+          {applied && <p>{applicationLabel(discovered.applicationStatus || 'PENDING')}</p>}
+          <ActionGroup>
+            <button className="button" type="button" onClick={apply}
+              disabled={busy || applied || applyBlocked || job.status !== 'OPEN'}>{busy ? 'Đang gửi ứng tuyển…' : applied ? 'Đã ứng tuyển' : 'Ứng tuyển'}</button>
+            {applied && <Link className="text-link" to="/work/applications">Xem ứng tuyển của tôi →</Link>}
+          </ActionGroup>
+        </>}
+        {owner && <><h2>{job.status === 'OPEN' ? 'Xem người ứng tuyển' : job.status === 'AWAITING_PAYMENT' ? 'Cần bạn funding hợp đồng' : 'Không có bước cần xử lý'}</h2>
+          {job.status === 'AWAITING_PAYMENT' && <p>Hợp đồng đã chốt; Freelancer chưa thể bắt đầu công việc.</p>}
+          {job.status === 'OPEN' && <ActionGroup><Link className="button" to={'/work/' + jobId + '/applications'}>Xem ứng viên</Link></ActionGroup>}</>}
+        {owner && participant?.contract?.milestoneId && job.status === 'AWAITING_PAYMENT' && <ActionGroup><a className="text-link" href="#funding">Kiểm tra ngân hàng / Funding mô phỏng ↓</a></ActionGroup>}
+        {participant && !owner && user.userType === 'FREELANCER' && <>
+          <h2>{assignedFreelancer && job.status === 'AWAITING_PAYMENT' ? 'Đang chờ Client hoàn tất funding' : 'Không có thao tác công việc khả dụng'}</h2>
+          {assignedFreelancer && job.status === 'AWAITING_PAYMENT' && <p>Bàn giao sẽ mở khi trạng thái công việc cho phép.</p>}
+        </>}
+        {mutationError && <p className="form-error" role="alert">{mutationError} <button className="text-button" onClick={() => reload().then(data => { setJob(data); setApplyBlocked(false); setMutationError(''); }, cause => setMutationError(message(cause)))}>Tải lại</button></p>}
       </section>
-    </div>
-    {workState && participant ? <WorkLifecycle key={participant.id} job={participant} user={user} onJobUpdated={setJob} /> :
-    <section className="action-band" aria-label="Bước tiếp">
-      <span className="category-label label-acid">05 / Bước tiếp</span>
-      {discovered && user.userType === 'FREELANCER' && <>
-        <h2>{applied ? 'Ứng tuyển đã ghi nhận' : 'Sẵn sàng ứng tuyển?'}</h2>
-        <p>{applied ? 'Trạng thái: ' + applicationLabel(discovered.applicationStatus || 'PENDING')
-          : 'Bạn có thể gửi ứng tuyển khi công việc còn mở.'}</p>
-        <button className="button" type="button" onClick={apply}
-          disabled={busy || applied || applyBlocked || job.status !== 'OPEN'}>{busy ? 'Đang gửi ứng tuyển…' : applied ? 'Đã ứng tuyển' : 'Ứng tuyển'}</button>
-        {applied && <Link className="text-link" to="/work/applications">Xem ứng tuyển của tôi →</Link>}
-      </>}
-      {owner && <><h2>{job.status === 'OPEN' ? 'Xem người ứng tuyển' : 'Theo dõi công việc'}</h2>
-        <p>{job.status === 'OPEN' ? 'Chỉ ứng viên đang chờ mới có thể được chọn.'
-          : job.status === 'AWAITING_PAYMENT' ? 'Hợp đồng đã được chốt và đang chờ funding trước khi Freelancer bắt đầu.'
-          : 'Phân công đã đóng khi công việc rời trạng thái đang tuyển.'}</p>
-        {job.status === 'OPEN' && <Link className="button" to={'/work/' + jobId + '/applications'}>Xem ứng viên</Link>}</>}
-      {participant && !owner && user.userType === 'FREELANCER' && <><h2>Công việc của bạn</h2><p>Trạng thái và phân công được lấy từ hồ sơ tham gia.</p></>}
-      {mutationError && <p className="form-error" role="alert">{mutationError} <button className="text-button" onClick={() => reload().then(data => { setJob(data); setApplyBlocked(false); setMutationError(''); }, cause => setMutationError(message(cause)))}>Tải lại</button></p>}
-    </section>}
-  </>;
+      {document}
+      {participant?.contract && job.status === 'AWAITING_PAYMENT' && (owner || assignedFreelancer) && <FundingPanel key={participant.contract.id} job={participant} user={user} onJobUpdated={setJob} />}
+      {footer}
+    </>}
+  </article>;
 }
-
 const filterOptions = [
   ['ALL', 'Tất cả'], ['PENDING', 'Đang chờ'], ['ACCEPTED', 'Đã được chọn'],
   ['REJECTED', 'Không được chọn'], ['CANCELLED', 'Đã hủy'],

@@ -77,7 +77,7 @@ frontend/src/types.ts
 frontend/src/status.ts
 ```
 
-These files are current product contracts. Modify only if a proven UI integration bug requires it and report first.
+P06.4 explicitly authorizes api/types/status updates for the verified synced bank/funding and contract submission/review APIs. Backend source remains authoritative; never add imagined contracts.
 
 ## Forbidden by default
 
@@ -128,15 +128,15 @@ Do not add live UI controls/data for:
 profile persistence
 portfolio/reputation/rating
 wallet connect
-funding mutation
-reviewDueAt countdown
-dispute/Admin
+full release/settlement orchestration
+cancellation/refund
+Admin dispute resolution / case management
 auto-release
 chat
 AI verification
 ```
 
-A visible `PENDING_FUNDING` or `AWAITING_PAYMENT` state does not imply the frontend already has a funding mutation.
+A visible state alone does not authorize a mutation. P06.4 verified the synced FundingController, ClientBankAccountController and ContractSubmissionController before wiring actions.
 
 ## Visual lock
 
@@ -222,7 +222,18 @@ job
 → technical evidence
 ```
 
-Preserve existing mutations. Do not invent new ones.
+P06.4 now executes four ordered sub-stages on synced HEAD `cf0594f`:
+
+1. **P06.4A — Bank / Funding:** masked Client bank GET/PUT, immutable contract amount, confirmed simulated capture, per-attempt sessionStorage key, latest/exact reads and bounded PENDING/PROCESSING/UNKNOWN reconciliation. Finance must not call payment-status for an unfunded contract.
+2. **P06.4B — Contract Submission / Review:** structured HTTPS evidence using snapshot IDs, stable key plus exact draft, GET before ambiguous retry, server-owned versions, latest/history hierarchy, revision quota/related IDs, approve and minimal OPEN_DISPUTE. Contract-backed jobs never use legacy mutations (409/4029 guard).
+3. **P06.4C — Review Deadline:** server UTC due/grace timestamps and reviewedAutomatically; <=500.00 USD due policy, >500.00 USD 24h grace. Display-only countdown; zero waits for server. Refetch at boundaries/focus/handled actual review notifications, with timer cleanup and bounded polling. Never approve in browser.
+4. **P06.4D — Workflow Polish:** preserve Kinetic Editorial Brutalism, reduce repeated labels/cards, group real scope/terms, keep feedback tied to its version and technical references collapsed. Milestone RELEASE_PENDING is not RELEASED or payout completion; Job/Contract/Submission states remain independent.
+
+Verify actual ClientBankAccountController, FundingController, ContractSubmissionController, services, DTOs and ErrorCode before changes. Backend files are read-only. Current APIs have no full release/cancellation/refund/Admin resolution/profile/rating implementation.
+
+Final gate: targeted tests during work; full `npm test` and production build once at closure, diff check, both roles at 1440px and 1024px, keyboard/focus/privacy checks. Real-stack smoke uses existing local services only; unavailable services are ENVIRONMENT BLOCKED and must not trigger runtime/auth workarounds. Keep P06.5+ NOT_STARTED. No commit/push.
+
+Mobile optimization is deferred. Current MVP delivery target is desktop/laptop, validated at 1440px and 1024px. Do not roll back compatible CSS; no mobile optimization, screenshots or validation gate for P06.4.
 
 ### Stage D — Finance / Activity / Account / Auth
 
@@ -258,9 +269,9 @@ npm run build
 Also verify:
 
 ```text
-desktop
-~1024px
-mobile
+1440px desktop
+1024px laptop / narrow desktop
+mobile DEFERRED for current MVP
 no horizontal overflow
 keyboard/focus-visible
 Client five routes

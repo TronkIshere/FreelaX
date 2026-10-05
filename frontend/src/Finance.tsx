@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { ApiError, api } from './api';
+import { FundingPanel } from './Funding';
 import { PageHeading, StatePanel } from './components';
 import { Pagination } from './Jobs';
 import { checkoutLabel, clientPaymentLabel, decimal, exportLabel, maskedBank, offRampLabel,
@@ -41,6 +42,7 @@ function FinanceList({ user }: { user: User }) {
       setResult(data);
       const completed = data.data.filter(job => job.status === 'COMPLETED');
       const entries = await Promise.all(completed.map(async job => {
+        if (job.contract && !job.checkoutOrderId) return [job.id, { data: null, error: 'Xem funding trong hồ sơ công việc' }] as const;
         try {
           return [job.id, { data: await api.paymentStatus(job.id), error: '' }] as const;
         } catch (cause) {
@@ -155,7 +157,13 @@ function JobEvidence({ jobId, user }: { jobId: string; user: User }) {
     setJobError('');
     setPaymentError('');
     setTaxError('');
-    Promise.allSettled([api.job(jobId), api.paymentStatus(jobId), api.taxRecordForJob(jobId)]).then(results => {
+    api.job(jobId).then(async currentJob => {
+      if (!active) return;
+      setJob(currentJob);
+      if (currentJob.contract && (currentJob.status === 'AWAITING_PAYMENT' || !currentJob.checkoutOrderId)) {
+        setPayment(null); setTax(null); setLoading(false); return;
+      }
+      const results = await Promise.allSettled([Promise.resolve(currentJob), api.paymentStatus(jobId), api.taxRecordForJob(jobId)]);
       if (!active) return;
       const [jobResult, paymentResult, taxResult] = results;
       if (jobResult.status === 'fulfilled') setJob(jobResult.value);
@@ -166,7 +174,7 @@ function JobEvidence({ jobId, user }: { jobId: string; user: User }) {
       else if (missingTax(taxResult.reason)) setTax(null);
       else setTaxError(message(taxResult.reason));
       setLoading(false);
-    });
+    }).catch(cause => { if (active) { setJobError(message(cause)); setLoading(false); } });
     return () => { active = false; };
   }, [jobId, attempt]);
 
@@ -204,7 +212,9 @@ function JobEvidence({ jobId, user }: { jobId: string; user: User }) {
       aside={'Giá trị công việc ' + money(job.budgetUsd)} />
     <FinanceNav />
     <div className="finance-back"><Link to="/finance">← Danh sách công việc</Link><Link to={'/work/' + job.id}>Hồ sơ công việc</Link></div>
-    {!payment && <StatePanel kind="error" title="Chưa thể đọc trạng thái thanh toán"
+    {job.contract && (job.status === 'AWAITING_PAYMENT' || !job.checkoutOrderId) && <FundingPanel key={job.contract.id} job={job} user={user} onJobUpdated={next => { setJob(next); retry(); }} />}
+    {job.contract?.milestoneStatus === 'RELEASE_PENDING' && <p role="status">Đã có quyết định — đang xử lý tiền. Chưa có xác nhận giải ngân.</p>}
+    {!payment && !(job.contract && (job.status === 'AWAITING_PAYMENT' || !job.checkoutOrderId)) && <StatePanel kind="error" title="Chưa thể đọc trạng thái thanh toán"
       body={paymentError || 'Marketplace chưa trả dữ liệu.'} action={{ label: 'Tải lại', onClick: retry }} />}
     {payment && <>
       <section className="finance-statement" aria-label="Tóm tắt tài chính">

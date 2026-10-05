@@ -48,7 +48,7 @@ export interface ContractSummary {
   status: string;
   milestoneId: string | null;
   milestoneStatus: string | null;
-  amount: number;
+  amount: DecimalValue;
   currency: string;
   deliveryDueAt: string | null;
   reviewWindowHours: number;
@@ -57,6 +57,33 @@ export interface ContractSummary {
   deliverables: Requirement[];
   acceptanceCriteria: Requirement[];
 }
+
+export interface ClientBankAccount {
+  paymentMethodId: 'BANK_ACCOUNT_ON_FILE'; ready: boolean;
+  bankCode: BankCode | null; maskedAccountNumber: string | null;
+}
+export interface ClientBankInput { bankCode: BankCode; bankAccountNumber: string; bankAccountHolderName: string }
+export interface FundingResponse {
+  fundingTransactionId: string; fundingStatus: 'PENDING' | 'PROCESSING' | 'SUCCEEDED' | 'FAILED' | 'UNKNOWN';
+  simulation: boolean; providerReference: string | null; nextAction: string; retryAfterSeconds: number | null;
+}
+export interface SubmissionPayload {
+  summary: string;
+  deliverables: { requirementId: string; url: string; description: string }[];
+  acceptanceEvidence: { criterionId: string; note: string; url: string }[];
+}
+export interface ContractSubmission {
+  id: string; contractId: string; milestoneId: string; freelancerId: string; version: number;
+  status: 'SUBMITTED' | 'REVISION_REQUESTED' | 'APPROVED' | 'DISPUTED'; summary: string;
+  submittedAt: string; submittedLate: boolean; reviewDueAt: string | null; reviewGraceDueAt: string | null;
+  reviewedAutomatically: boolean; disputeId: string | null; reviewerFeedback: string | null;
+  reviewCriterionIds: string[]; reviewDeliverableIds: string[];
+  deliverables: { requirementId: string; description: string | null; url: string | null }[];
+  acceptanceEvidence: { requirementId: string; description: string | null; url: string | null }[];
+}
+export type ReviewDecision = { decision: 'APPROVE'; note?: string }
+  | { decision: 'REQUEST_REVISION'; feedback: string; criterionIds: string[]; deliverableIds: string[] }
+  | { decision: 'OPEN_DISPUTE'; reasonCode: string; description: string };
 
 export interface DiscoverJob {
   id: string;

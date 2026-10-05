@@ -13,7 +13,10 @@ export const submissionLabels: Record<string, string> = {
   SUBMITTED: 'Đã gửi bàn giao',
   REVISION_REQUESTED: 'Cần chỉnh sửa',
   APPROVED: 'Đã duyệt',
+  DISPUTED: 'Đang tranh chấp',
 };
+
+export const fundingLabel = (status: string) => ({ PENDING: 'Chờ xử lý funding', PROCESSING: 'Đang xử lý funding', UNKNOWN: 'Đang đối soát funding', FAILED: 'Funding thất bại — có thể thử lại', SUCCEEDED: 'Funding đã xác nhận' }[status] || 'Chưa xác minh funding');
 
 export const jobLabel = (status: string) => jobLabels[status] ?? 'Trạng thái khác';
 export const submissionLabel = (status: string) => submissionLabels[status] ?? 'Trạng thái bàn giao khác';

@@ -10,6 +10,10 @@ const labels: Record<string, string> = {
   WORK_SUBMITTED: 'Có bản bàn giao',
   REVISION_REQUESTED: 'Yêu cầu chỉnh sửa',
   WORK_APPROVED: 'Bàn giao được duyệt',
+  FUNDING_CONFIRMED: 'Funding đã xác nhận',
+  REVIEW_GRACE_STARTED: 'Gia hạn review',
+  REVIEW_AUTO_APPROVED: 'Máy chủ tự duyệt',
+  DISPUTE_OPENED: 'Đã mở tranh chấp',
   PAYMENT_SENT: 'Thanh toán Client',
   PAYMENT_RECEIVED: 'Chi trả mô phỏng',
   TAX_EXPORT_FAILED: 'Chứng từ thuế',
@@ -46,6 +50,9 @@ export function Activity() {
     setActionError('');
     try {
       const updated = await api.markNotificationRead(item.id);
+      if (item.jobId && ['WORK_SUBMITTED', 'REVISION_REQUESTED', 'WORK_APPROVED', 'REVIEW_GRACE_STARTED', 'REVIEW_AUTO_APPROVED', 'DISPUTE_OPENED'].includes(item.type)) {
+        window.dispatchEvent(new CustomEvent('freelax:review-update', { detail: { jobId: item.jobId } }));
+      }
       setResult(current => current ? { ...current, data: current.data.map(entry =>
         entry.id === item.id ? updated : entry) } : current);
     } catch (cause) {

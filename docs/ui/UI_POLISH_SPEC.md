@@ -156,6 +156,10 @@ Do not create a review countdown until the backend returns an actual review due 
 
 Do not create a “Fund” button until a current Marketplace API mutation exists for funding.
 
+P06.4 backend sync now supplies both contracts. Integrate bank readiness and simulated funding confirmation, then contract evidence and Client decisions. Use immutable scope IDs and server deadlines; preserve idempotency across uncertainty/reload. Keep minimal dispute opening separate from future Admin case management.
+
+Reading order: identity → current state/valid action → brief → scope → terms → funding/contract/milestone → latest evidence/feedback/deadline → primary action → compact history → metadata → collapsed references. RELEASE_PENDING means a work decision exists and money processing remains; never claim payout completion. No browser-generated approval or grace timestamp.
+
 ## Finance / Tax
 
 Preferred structure:
@@ -249,7 +253,7 @@ Wide editorial layout.
 Reduce columns, preserve hierarchy.
 
 ### Mobile
-Single-column. Keep primary action near current state. Do not create long metadata walls.
+Mobile optimization is deferred. Current MVP delivery target is desktop/laptop, validated at 1440px and 1024px. Preserve existing mobile-compatible CSS without further optimization or validation for P06.4.
 
 ## Accessibility
 
@@ -275,9 +279,9 @@ portfolio CRUD
 reputation calculation
 wallet onboarding
 Phantom connect
-funding mutation
-review deadline enforcement
-dispute/Admin
+backend funding/review implementation (frontend integrates existing APIs)
+full release/settlement orchestration
+cancellation/refund and Admin dispute resolution
 rating
 chat
 AI skill verification

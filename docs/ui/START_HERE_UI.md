@@ -12,11 +12,13 @@ Read in this order:
 
 Active instruction:
 
-> UI-first only. Reduce text density, clarify hierarchy, preserve current functionality, and use only data/actions that the current API actually exposes.
+> P06.4 integrates verified bank/funding, contract evidence submissions, decisions and server review deadlines, then polishes hierarchy. Current backend source is authoritative; read `.env.mvp-backend-checklist.md` first. Keep all changes frontend/docs only.
+
+> Product Owner scope override: Mobile optimization is deferred. Current MVP delivery target is desktop/laptop, validated at 1440px and 1024px. Preserve existing responsive CSS; mobile is not a P06.4 gate.
 
 Current reviewed baseline:
 
-`master` at `3332d30ad542a5d49f721e1a1f46d9da8b8203c3`
+`feat/p06-ui-polish-20261004` at `cf0594f90af99375570e8557cbde283b51cd50f5` (backend sync includes `50841a3` and `6c605a9`).
 
 Important baseline change:
 

@@ -134,9 +134,9 @@ Completed:
 - Targeted tests: 38/38 PASS. Production build: PASS. Responsive UI preview: PASS at 1440/1024/390/320px.
 - Authenticated runtime smoke: `ENVIRONMENT BLOCKED` — existing local Marketplace unavailable; backend/runtime unchanged.
 
-## P06.4 — Job Detail / Workflow / Work Lifecycle
+## P06.4 — Contract-backed Workflow Integration + UI Polish
 
-Status: `NOT_STARTED`
+Status: `PASS` (frontend contract/UI/test/build gate; authenticated real-stack smoke `ENVIRONMENT BLOCKED`)
 
 Priority: `HIGHEST`
 
@@ -165,11 +165,26 @@ job identity
 
 Rules:
 
-- preserve V1/V2/revision behavior
+- integrate P06.4A bank/funding before P06.4B contract evidence/decisions
+- integrate P06.4C server deadlines before P06.4D visual polish
+- preserve server-owned versions and immutable contract scope
 - render acceptance criteria only from API data
 - render revision usage only from API-backed contract data
-- do not invent review countdown without reviewDueAt
-- do not invent funding/dispute actions
+- countdown uses returned reviewDueAt only; never approves in browser
+- use verified funding/contract decisions including minimal OPEN_DISPUTE
+- RELEASE_PENDING is not released money
+
+Completed:
+
+- P06.4A `PASS`: Client bank readiness/save with masked response and cleared full-number inputs; immutable decimal funding amount, explicit simulation confirmation, stable per-attempt idempotency and bounded reconciliation. Freelancer receives a waiting/read-only view. Unfunded contract finance routes use funding instead of legacy payment-status.
+- P06.4B `PASS`: contract snapshot evidence, HTTPS links, exact request validation, stable submission payload/key across uncertainty, server versions/history and Client approval/revision/minimal dispute decisions. Contract-backed jobs do not call legacy workflow mutations.
+- P06.4C `PASS`: server UTC review/grace timestamps, display-only countdown, custom review window, late/automatic-review markers, revision quota and boundary/focus/actual-notification reconciliation. Zero does not approve in the browser.
+- P06.4D `PASS`: document-first desktop hierarchy, current ownership/action, grouped scope/terms, latest evidence, associated feedback, quiet history and collapsed technical references. DISPUTED is frozen; RELEASE_PENDING is processing, never payout complete.
+- Full frontend suite: 152/152 PASS. Final narrowly scoped funding unmount guard verified with 14/14 focused tests; final production build PASS.
+- Isolated actual-App preview: desktop 1440px and 1024px PASS, no horizontal overflow or console errors. Keyboard forms and visible Cobalt focus verified. Synthetic preview data is UI evidence only, not real API/runtime proof.
+- Authenticated real-stack smoke: `ENVIRONMENT BLOCKED` — read-only localhost:9191/api/v1/auth/me could not connect (HTTP 000). Backend/runtime unchanged; live contract integration remains unverified.
+- Mobile optimization is deferred. Current MVP delivery target is desktop/laptop, validated at 1440px and 1024px.
+- No commit or push. P06.5–P06.8 remain `NOT_STARTED`.
 
 ## P06.5 — Finance + Tax + Activity
 
@@ -279,9 +294,8 @@ Not part of P06 unless current master gains the corresponding API and Product Ow
 
 ```text
 Profile persistence / Portfolio / Reputation backend
-Funding mutation
-Review deadline enforcement/countdown
-Cancel / Dispute / Admin
+Full release/settlement orchestration
+Cancellation/refund and Admin dispute resolution
 Rating
 Auto-release
 Wallet onboarding
@@ -362,3 +376,20 @@ Unsupported feature introduced: NO
 Blockers: none for the P06.3 UI/test/build gate; authenticated runtime smoke requires the existing Marketplace service to be available.
 Next: stop after P06.3 review. P06.4–P06.8 remain `NOT_STARTED`.
 Git: uncommitted; no push.
+
+### 2026-10-05 — P06.4
+
+Status: `PASS` (frontend contract/UI/test/build gate)
+Baseline HEAD: `cf0594f90af99375570e8557cbde283b51cd50f5`, branch `feat/p06-ui-polish-20261004`; four intentional workflow WIP files preserved. Synced backend contracts at `50841a3` and checklist `6c605a9` inspected read-only.
+Files modified: `frontend/src/Workflow.tsx`, `frontend/src/WorkLifecycle.tsx`, `frontend/src/styles.css`, `frontend/src/WorkflowLifecycle.test.tsx`, `frontend/src/api.ts`, `frontend/src/api.test.ts`, `frontend/src/types.ts`, `frontend/src/status.ts`, `frontend/src/Finance.tsx`, `frontend/src/Activity.tsx`, `docs/ui/START_HERE_UI.md`, `docs/ui/UI_DEVELOPMENT_MEMORY.md`, `docs/ui/UI_POLISH_SPEC.md`, `docs/ui/WORKPACK_P06_UI_POLISH.md`, `docs/ui/UI_IMPLEMENTATION_PROGRESS.md`.
+Files created: `frontend/src/Funding.tsx`, `frontend/src/Funding.test.tsx`, `frontend/src/ContractLifecycle.tsx`, `frontend/src/ContractLifecycle.test.tsx`, `frontend/src/workflowContracts.ts`.
+Tests: full `npm test` — 12 files, 152 tests PASS. After the final funding unmount guard, focused `Funding.test.tsx` — 14/14 PASS. API, legacy workflow and finance regressions included in the full run; no repeated full-suite cycle.
+Build: final `npm run build` PASS after the last source edit.
+Browser smoke: isolated actual App/session UI with test-only API; Client funding/unknown reconciliation, masked bank save, Freelancer waiting/composer, review/revision, release pending and disputed states inspected. No real funding or backend workflow mutation was executed.
+Responsive: 1440px PASS; 1024px PASS; Mobile DEFERRED — not required for current MVP. Mobile optimization is deferred. Current MVP delivery target is desktop/laptop, validated at 1440px and 1024px.
+Accessibility: semantic headings/forms/fieldsets, native links/buttons/disclosures, error/status announcements, disabled duplicate actions and visible Cobalt keyboard focus retained.
+Security/privacy: full bank number/holder are transient and cleared after save; no bank details in persistent storage. Scoped sessionStorage contains only idempotency attempt metadata/submission draft. HTTPS evidence excludes credential URLs; text is escaped, external links use safe target attributes; technical IDs collapsed.
+Backend changed: NO. Runtime/env/dependencies changed: NO. Browser calls internal services directly: NO.
+Blockers: authenticated real-stack smoke `ENVIRONMENT BLOCKED` because Marketplace localhost:9191 is unavailable; contract integration with the running stack remains unverified. No blocker for the frontend UI/test/build gate.
+Next: stop after P06.4 review. P06.5–P06.8 remain `NOT_STARTED`.
+Git: 20 intended frontend/docs paths, uncommitted; no push; baseline HEAD/branch preserved.
