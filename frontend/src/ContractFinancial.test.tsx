@@ -37,6 +37,7 @@ const refundPending: ContractCancellationRecord = { ...proposal, cancellationSta
 const refunded: ContractCancellationRecord = { ...refundPending, cancellationStatus: 'CANCELLED', refundStatus: 'SUCCEEDED', refundReference: 'sim-refund-reference', retryable: false };
 let host: HTMLDivElement, root: Root, serverJob: Job, cancellation: ContractCancellationRecord | null;
 beforeEach(() => {
+  vi.spyOn(api, 'contractReviews').mockResolvedValue([]);
   vi.spyOn(api, 'dispute').mockResolvedValue(null);
   sessionStorage.clear(); serverJob = working; cancellation = null;
   host = document.createElement('div'); document.body.append(host); root = createRoot(host);

@@ -52,6 +52,7 @@ function JobDocument({ job }: { job: Detail }) {
   return <section className="work-document" aria-labelledby="work-document-title">
     <SectionHeading id="work-document-title" title="Nội dung công việc" />
     <p className="work-description">{job.description}</p>
+    <ActionGroup label="Hồ sơ các bên"><Link className="text-link" to={'/profiles/' + encodeURIComponent(isDiscover(job) ? job.client.id : job.clientUserId)}>Hồ sơ Client</Link>{!isDiscover(job) && job.freelancerId && <Link className="text-link" to={'/profiles/' + encodeURIComponent(job.freelancerId)}>Hồ sơ Freelancer</Link>}</ActionGroup>
     <div className="job-scope-grid">
       <ScopeList title="Sản phẩm bàn giao" items={contract?.deliverables ?? job.deliverables} />
       <ScopeList title="Điều kiện nghiệm thu" items={contract?.acceptanceCriteria ?? job.acceptanceCriteria} />

@@ -16,6 +16,34 @@ export interface Page<T> {
   data: T[];
 }
 
+export interface ProfileLanguage { code: string; proficiency: string }
+export interface Profile {
+  userId: string; userType: UserType; displayName: string; email?: string; version: number;
+  avatarUrl?: string | null; headline?: string | null; bio?: string | null; countryCode?: string | null;
+  languages: ProfileLanguage[]; skills: string[]; hourlyRateUsd?: DecimalValue | null; availability?: string | null;
+  companyName?: string | null; companyWebsite?: string | null;
+  verification: { email: string; identity: string; paymentMethod: string; source: string };
+  reputation: { completedContracts: number; fundedContracts?: number | null; disputeCount: number; reviewCount: number;
+    averageRating?: DecimalValue | null; onTimeRate?: DecimalValue | null; paymentReleaseRate?: DecimalValue | null;
+    medianReviewHours?: DecimalValue | null; calculatedAt: string };
+}
+export interface ProfilePatch {
+  version: number; displayName: string; avatarUrl: string | null; headline: string | null; bio: string | null;
+  countryCode: string | null; languages: ProfileLanguage[]; hourlyRateUsd?: number | null; availability?: string | null;
+  companyName?: string | null; companyWebsite?: string | null;
+}
+export interface PortfolioInput { title: string; description: string; projectUrl: string | null; thumbnailUrl: string | null;
+  skills: string[]; completedAt: string | null; sortOrder: number }
+export interface PortfolioItem extends PortfolioInput { id: string; userId: string; version: number }
+export interface ReviewInput { overall: number; dimensions: { communication: number; requirementsOrQuality: number; timeliness: number }; comment?: string | null }
+export interface Review {
+  id: string; contractId: string; reviewerId: string; revieweeId: string; submitted: boolean;
+  submittedAt?: string | null; publishedAt?: string | null; overall?: number | null; dimensions?: ReviewInput['dimensions'] | null;
+  comment?: string | null; contentHidden: boolean; reported: boolean;
+}
+export type ModerationAction = 'HIDE_CONTENT' | 'INVALIDATE';
+export interface AdminReviewDetail { review: Review; audit: { actorId: string; action: string; beforeState: string; afterState: string; reason: string; requestId: string; createdAt: string }[] }
+
 export type DisputeStatus = 'OPEN' | 'UNDER_REVIEW' | 'DECISION_PENDING_RELEASE' | 'DECISION_PENDING_REFUND' | 'RESOLVED_RELEASE' | 'RESOLVED_REFUND' | 'CANCELLED';
 export interface DisputeEvidenceInput { kind: 'TEXT' | 'LINK'; text?: string; url?: string; sha256?: string }
 export interface DisputeEvidence {

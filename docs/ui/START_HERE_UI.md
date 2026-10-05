@@ -1,4 +1,4 @@
-# START HERE — FREELAX UI STEPS 1–5
+# START HERE — FREELAX MVP UI
 
 Read in this order:
 
@@ -12,13 +12,13 @@ Read in this order:
 
 Active instruction:
 
-> UI Steps 1–5 P2 polishes the accepted P0/P1 contract workflow, settlement/cancellation/refund, Finance, Overview and Activity integration. Preserve server authority and existing APIs. Keep all changes frontend/docs only; Steps 6/8/9 remain outside this pass.
+> UI Workpack B integrates existing Step 8 Profile/Portfolio and Step 9 Review APIs. Preserve the committed Step 6 participant/Admin workspace and Steps 1–5 workflow/Finance. Keep changes frontend/docs only; use trusted session authorities and server-owned reputation/visibility.
 
 > Product Owner scope override: Mobile optimization is deferred. Current MVP delivery target is desktop/laptop, validated at 1440px and 1024px. Preserve existing responsive CSS; mobile is not a P06.4 gate.
 
 Current reviewed baseline:
 
-`feat/mvp-ui-step1-5-20261005` at `7099bfa` (accepted P0 `0e790a8` and P1 `7099bfa`). P1 implementation/test/build passed; authenticated runtime smoke remains ENVIRONMENT BLOCKED.
+`feat/mvp-ui-steps6-9-20261005` at `11f0611` (`feat(frontend): integrate dispute and admin workflow`). Workpack B changes remain uncommitted; consult UI_IMPLEMENTATION_PROGRESS for current tests/build and runtime gates. Authenticated runtime smoke remains ENVIRONMENT BLOCKED.
 
 Important baseline change:
 

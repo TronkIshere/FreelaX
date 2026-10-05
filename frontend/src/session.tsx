@@ -13,6 +13,7 @@ interface SessionContextValue {
   retryRestore: () => void;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  reconcileUser: () => Promise<void>;
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -54,6 +55,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     signOut: async () => {
       await api.signOut();
       setSession({ status: 'guest' });
+    },
+    reconcileUser: async () => {
+      const trusted = await api.me();
+      if (session.status !== 'ready' || trusted.id !== session.user.id) throw new Error('Không thể đối chiếu danh tính phiên.');
+      setSession(current => current.status === 'ready' && current.user.id === trusted.id ? { status: 'ready', user: trusted } : current);
     },
   };
 

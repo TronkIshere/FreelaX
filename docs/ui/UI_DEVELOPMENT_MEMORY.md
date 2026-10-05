@@ -214,7 +214,7 @@ Prioritize amount → main state → independent financial stages → useful act
 Timeline/list hierarchy: event type → title → one-line message → time → action.
 
 ### Account / Profile shell
-Current real account data is display name, email, role and user ID. Polish it to look like a marketplace profile shell, but do not invent profile/reputation data that is not yet returned by current APIs.
+The account workspace retains trusted identity/session controls and integrates authenticated own profile editing. Step 8 provides versioned profiles, role-specific fields, skills and Freelancer portfolio. Public profiles exclude private fields; nullable reputation values stay unavailable rather than becoming zero. Step 9 review lists/publication and reputation are server-owned; no invented trust score or publication countdown.
 
 ## What is real vs still future
 
@@ -240,11 +240,7 @@ AWAITING_PAYMENT job state
 Do not add live controls/data for:
 
 ```text
-profile persistence
-portfolio
-reputation/rating
 wallet onboarding / Phantom connect
-Admin dispute resolution / case management
 auto-release
 chat
 AI verification
@@ -260,7 +256,7 @@ AI verification
 - POST `/api/v1/contracts/{contractId}/submissions/{submissionId}/decisions`: APPROVE, REQUEST_REVISION with related snapshot IDs and feedback, minimal OPEN_DISPUTE with reason/description. Latest active submission only; revision quota enforced by server.
 - Contract-backed legacy submit/revision/approve reject with 409/4029. Legacy frontend methods remain only for jobs without contracts.
 - Server returns UTC reviewDueAt, nullable reviewGraceDueAt, reviewedAutomatically. <=500 USD eligible at due; >500 USD adds 24h grace. Countdown is display only; due/grace/focus/handled review notifications refetch state. No browser approval.
-- Approval may leave Job SUBMITTED_FOR_REVIEW and Contract UNDER_REVIEW while Milestone RELEASE_PENDING. Show work decision complete / money processing; RELEASE_PENDING is not released money. P0/P1 now integrate participant settlement and cancellation/refund APIs. Admin resolution and profile/reputation/rating remain unsupported.
+- Approval may leave Job SUBMITTED_FOR_REVIEW and Contract UNDER_REVIEW while Milestone RELEASE_PENDING. Show work decision complete / money processing; RELEASE_PENDING is not released money. P0/P1 integrate participant settlement and cancellation/refund APIs. Workpack A integrates trusted Admin dispute handling; Workpack B integrates the existing profile/portfolio/review APIs. Live desktop integration remains pending the runtime gate.
 - Verified Step 4/5: GET `/api/v1/contracts/{contractId}/settlement`; GET/POST `/api/v1/contracts/{contractId}/cancellations`; POST `/api/v1/contracts/{contractId}/cancellations/{cancellationId}/decisions`. Public UI has no release/refund mutation; the decision API lets the server orchestrate refund. REQUESTED/REJECTED keep work continuing; REFUND_PENDING is not final. Primary money success is a simulated ledger confirmation, not bank settlement; settlement tax success is not certificate ACCEPTED.
 - Marketplace is the only browser-facing API; no backend/runtime changes in this stage. P06.5+ remain NOT_STARTED.
 

@@ -4,6 +4,7 @@ import { api, ApiError } from './api';
 import { ActionGroup, EvidenceDisclosure, FactGrid, SectionHeading } from './components';
 import { ContractCancellation, type CancellationState } from './ContractCancellation';
 import { ContractDispute } from './ContractDispute';
+import { ContractReviews } from './ContractReviews';
 import { activeDispute } from './disputeContracts';
 import { FundingPanel } from './Funding';
 import { financialCopy, financialMoneyTone, settlementMoneyLabel, settlementNeedsRefresh, settlementStageLabel } from './financeStatus';
@@ -350,6 +351,7 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
       {list.slice(1).map(item => <details className="ledger-row" key={item.id}><summary><strong>#{item.version}</strong><span>{submissionLabel(item.status)}</span><time>{localInstant(item.submittedAt)}</time></summary><div className="ledger-body"><EvidenceRecord submission={item} contract={contract} /></div></details>)}
     </section>
     {footer}
+    {completed && (client || freelancer) && <ContractReviews key={'reviews:' + contract.id + ':' + user.id} job={job} user={user} settlement={settlement} blocked={!cancellation.ready || cancellation.uncertain || refundPending || cancelled || !!settlementError} />}
     {list.length > 0 && <EvidenceDisclosure summary="Tham chiếu bàn giao"><dl className="reference-list">{list.map(item => <div key={item.id}><dt>Bản #{item.version}</dt><dd><code>{item.id}</code>{item.disputeId && <p>Dispute: <code>{item.disputeId}</code></p>}</dd></div>)}</dl></EvidenceDisclosure>}
   </div>;
 }

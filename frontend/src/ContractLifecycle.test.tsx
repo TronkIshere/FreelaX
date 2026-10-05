@@ -21,6 +21,7 @@ const v1: ContractSubmission = { id: 'v1', contractId: contract.id, milestoneId:
 const payload: SubmissionPayload = { summary: 'Delivered', deliverables: [{ requirementId: 'deliverable', url: 'https://example.test/source', description: 'Source' }], acceptanceEvidence: [] };
 let host: HTMLDivElement, root: Root;
 beforeEach(() => {
+  vi.spyOn(api, 'contractReviews').mockResolvedValue([]);
   sessionStorage.clear(); host = document.createElement('div'); document.body.append(host); root = createRoot(host);
   vi.spyOn(api, 'contractSubmissions').mockResolvedValue([]); vi.spyOn(api, 'job').mockResolvedValue(working);
   vi.spyOn(api, 'cancellation').mockResolvedValue(null); vi.spyOn(api, 'settlement').mockResolvedValue(null);

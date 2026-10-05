@@ -27,6 +27,7 @@ const oldSubmission: ContractSubmission = { id: 'v1', contractId: 'contract', mi
 const settlement: ContractSettlement = { contractId: 'contract', milestoneId: 'milestone', jobId: 'job', amount: 500, currency: 'USD', simulation: true, moneyStatus: 'SUCCEEDED', onChainStatus: 'FAILED', offRampStatus: 'NOT_STARTED', taxStatus: 'NOT_STARTED', releaseReference: 'sim-release', onChainReference: null, offRampReference: null, taxReference: null, retryable: false, lastError: null, onChainError: 'Provider unavailable', offRampError: null, taxError: null, createdAt: '2026-10-06T00:00:00', updatedAt: '2026-10-06T00:00:00' };
 let host: HTMLDivElement, root: Root, serverCase: Dispute | null, detail: Detail, job: Job;
 beforeEach(() => {
+  vi.spyOn(api, 'contractReviews').mockResolvedValue([]);
   sessionStorage.clear(); serverCase = null; detail = structuredClone(originalDetail); job = structuredClone(working);
   host = document.createElement('div'); document.body.append(host); root = createRoot(host);
   vi.spyOn(api, 'dispute').mockImplementation(async () => serverCase);
