@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.marketplace.backend.dto.response.misa.MisaCertificateStatusResult;
 import com.marketplace.backend.dto.response.misa.MisaPayoutTransactionResult;
+import com.marketplace.backend.dto.response.misa.MisaCertificateRecoveryResult;
+import org.springframework.web.client.RestClientException;
 import com.marketplace.backend.dto.response.common.ResponseAPI;
 import com.marketplace.backend.exception.ApplicationException;
 import com.marketplace.backend.exception.ErrorCode;
@@ -124,7 +126,11 @@ public class MisaBackendClient {
     }
 
     public MisaCertificateStatusResult createWithholdingCertificate(UUID payoutTransactionId) {
-        Map<String, Object> body = Map.of("payoutTransactionId", payoutTransactionId.toString());
+        return createWithholdingCertificate(payoutTransactionId, "payout-" + payoutTransactionId);
+    }
+
+    public MisaCertificateStatusResult createWithholdingCertificate(UUID payoutTransactionId, String stableKey) {
+        Map<String, Object> body = Map.of("payoutTransactionId", payoutTransactionId.toString(), "idempotencyKey", stableKey);
 
         ResponseEntity<JsonNode> response = restTemplate.exchange(
                 baseUrl + "/api/v1/withholding-certificates",
@@ -136,6 +142,29 @@ public class MisaBackendClient {
             throw new ApplicationException(ErrorCode.MISA_BACKEND_CALL_FAILED, "create-certificate: missing id");
         }
         return result;
+    }
+
+    public MisaCertificateRecoveryResult findCertificateByPlatformPayout(UUID platformPayoutId) {
+        // Authenticate before the lookup try block: auth 404 is not certificate absence.
+        HttpHeaders headers = authorizedJsonHeaders();
+        try {
+            ResponseEntity<ResponseAPI<MisaCertificateRecoveryResult>> response = restTemplate.exchange(
+                    baseUrl + "/api/v1/withholding-certificates/by-platform-payout/" + platformPayoutId,
+                    HttpMethod.GET, new HttpEntity<>(headers),
+                    new ParameterizedTypeReference<ResponseAPI<MisaCertificateRecoveryResult>>() {});
+            if (response.getBody() == null || !java.util.Objects.equals(response.getBody().getCode(), 200)
+                    || response.getBody().getData() == null) {
+                throw new RestClientException("Invalid certificate lookup response");
+            }
+            return response.getBody().getData();
+        } catch (HttpClientErrorException.NotFound ex) {
+            // Only the MISA certificate-not-found code proves absence, not an unknown route.
+            try {
+                JsonNode error = objectMapper.readTree(ex.getResponseBodyAsString());
+                if (error.path("status").asInt() == 3004) return null;
+            } catch (JsonProcessingException ignored) { }
+            throw ex;
+        }
     }
 
     public MisaCertificateStatusResult getCertificateStatus(UUID certificateId) {

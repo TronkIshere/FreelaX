@@ -25,7 +25,7 @@ class SettlementDownstreamServiceTest {
     ClientPaymentService client;
     OnChainOffRampService withdrawal;
     VndPayoutService vnd;
-    TaxCertificateRecordRepository tax;
+    SettlementTaxService tax;
     PlatformTransactionManager manager;
     SettlementDownstreamService service;
     ContractSettlement s;
@@ -37,7 +37,7 @@ class SettlementDownstreamServiceTest {
         settlements = mock(ContractSettlementRepository.class); payouts = mock(FreelancerPayoutRecordRepository.class);
         jobs = mock(JobRepository.class); preparation = mock(PayoutServiceImpl.class); onRamp = mock(OnRampProvider.class);
         client = mock(ClientPaymentService.class); withdrawal = mock(OnChainOffRampService.class); vnd = mock(VndPayoutService.class);
-        tax = mock(TaxCertificateRecordRepository.class); manager = mock(PlatformTransactionManager.class);
+        tax = mock(SettlementTaxService.class); manager = mock(PlatformTransactionManager.class);
         when(manager.getTransaction(any())).thenAnswer(a -> new SimpleTransactionStatus());
         commits = new AtomicInteger(); doAnswer(a -> { commits.incrementAndGet(); return null; }).when(manager).commit(any());
         service = new SettlementDownstreamService(settlements, payouts, jobs, preparation, onRamp, client,
@@ -120,20 +120,22 @@ class SettlementDownstreamServiceTest {
         verifyNoInteractions(onRamp, client, withdrawal, vnd, tax); assertThat(s.isRetryable()).isFalse();
     }
 
-    @Test void taxPrimitiveBlockedInsteadOfUnsafeDuplicateCertificateCreation() {
+    @Test void taxPreparationCommitsBeforeRemoteReconciliation() {
         chainSucceeded(); s.setOffRampStatus(SettlementStageStatus.SUCCEEDED);
+        doAnswer(a -> { assertThat(commits.get()).isGreaterThanOrEqualTo(5);
+            s.setTaxStatus(SettlementStageStatus.UNKNOWN); return null; }).when(tax).advance(s);
         service.process(s.getId());
-        assertThat(s.getTaxStatus()).isEqualTo(SettlementStageStatus.FAILED);
-        assertThat(s.getTaxError()).isEqualTo("TAX_DOWNSTREAM_CONTRACT_BLOCKED");
-        assertThat(s.isRetryable()).isFalse(); assertPrimaryUnchanged();
+        var order = inOrder(tax); order.verify(tax).prepare(s); order.verify(tax).advance(s);
+        assertThat(s.isRetryable()).isTrue(); assertPrimaryUnchanged();
     }
 
     @Test void existingAcceptedCertificateCanBeReportedWithoutProviderMutation() {
         chainSucceeded(); s.setOffRampStatus(SettlementStageStatus.SUCCEEDED);
-        TaxCertificateRecord t = new TaxCertificateRecord(); t.setMisaCertificateId(UUID.randomUUID()); t.setStatus(TaxCertificateStatus.ACCEPTED);
-        when(tax.findByJobId(job.getId())).thenReturn(Optional.of(t)); service.process(s.getId());
+        UUID id = UUID.randomUUID();
+        doAnswer(a -> { s.setTaxStatus(SettlementStageStatus.SUCCEEDED); s.setTaxReference("certificate:" + id); return null; }).when(tax).advance(s);
+        service.process(s.getId());
         assertThat(s.getTaxStatus()).isEqualTo(SettlementStageStatus.SUCCEEDED);
-        assertThat(s.getTaxReference()).isEqualTo("certificate:" + t.getMisaCertificateId()); assertPrimaryUnchanged();
+        assertThat(s.getTaxReference()).isEqualTo("certificate:" + id); assertPrimaryUnchanged();
     }
 
     @Test void pendingPrimaryDoesNotStartAnyDownstream() {

@@ -51,11 +51,13 @@ public class TaxpayerServiceImpl implements TaxpayerService {
         if (!StringUtils.hasText(request.getExternalId())) {
             throw new ApplicationException(ErrorCode.EXTERNAL_ID_REQUIRED);
         }
-        if (StringUtils.hasText(request.getTaxCode()) && taxpayerRepository.existsByTaxCode(request.getTaxCode())) {
-            throw new ApplicationException(ErrorCode.TAX_CODE_ALREADY_EXISTS, request.getTaxCode());
-        }
-
         Taxpayer taxpayer = taxpayerRepository.findByExternalId(request.getExternalId()).orElseGet(Taxpayer::new);
+        if (StringUtils.hasText(request.getTaxCode())) {
+            Taxpayer owner = taxpayerRepository.findByTaxCode(request.getTaxCode()).orElse(null);
+            if (owner != null && !owner.getId().equals(taxpayer.getId())) {
+                throw new ApplicationException(ErrorCode.TAX_CODE_ALREADY_EXISTS, request.getTaxCode());
+            }
+        }
         taxpayer.setExternalId(request.getExternalId());
         taxpayer.setFullName(request.getFullName());
         taxpayer.setAddress(request.getAddress());

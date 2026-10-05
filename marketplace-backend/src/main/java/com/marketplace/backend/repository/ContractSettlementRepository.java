@@ -19,7 +19,9 @@ public interface ContractSettlementRepository extends JpaRepository<ContractSett
     Optional<UUID> findMilestoneId(@Param("id") UUID id);
 
     @Query("""
-            select s.id from ContractSettlement s where s.retryable = true and s.nextAttemptAt <= :now
+            select s.id from ContractSettlement s where s.nextAttemptAt <= :now and
+            (s.retryable = true or (s.moneyStatus = com.marketplace.backend.entity.SettlementMoneyStatus.SUCCEEDED
+                and s.taxError = 'TAX_DOWNSTREAM_CONTRACT_BLOCKED'))
             order by s.nextAttemptAt asc, s.id asc
             """)
     List<UUID> findDueIds(@Param("now") Instant now, Pageable pageable);

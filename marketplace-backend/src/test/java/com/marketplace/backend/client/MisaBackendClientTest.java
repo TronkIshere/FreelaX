@@ -24,6 +24,47 @@ import static org.springframework.http.HttpMethod.POST;
 
 class MisaBackendClientTest {
 
+    @Test void certificateCreateSendsStableKeyAndPayout() {
+        var client = client(); var server = server(client); UUID payout = UUID.randomUUID(); UUID certificate = UUID.randomUUID();
+        server.expect(requestTo("http://misa.test/api/v1/withholding-certificates"))
+                .andExpect(method(POST)).andExpect(jsonPath("$.payoutTransactionId").value(payout.toString()))
+                .andExpect(jsonPath("$.idempotencyKey").value("stable-key"))
+                .andRespond(withSuccess("{\"code\":200,\"data\":{\"id\":\"" + certificate + "\",\"status\":\"DRAFT\"}}", MediaType.APPLICATION_JSON));
+        assertThat(client.createWithholdingCertificate(payout, "stable-key").getId()).isEqualTo(certificate.toString()); server.verify();
+    }
+
+    @Test void lookupAuthenticatesAndReturnsTypedRecovery() {
+        var client = client(); var server = server(client); UUID payout = UUID.randomUUID(), certificate = UUID.randomUUID();
+        server.expect(requestTo("http://misa.test/api/v1/withholding-certificates/by-platform-payout/" + payout))
+                .andExpect(method(org.springframework.http.HttpMethod.GET))
+                .andExpect(org.springframework.test.web.client.match.MockRestRequestMatchers.header("Authorization", "Bearer test-token"))
+                .andRespond(withSuccess("{\"code\":200,\"data\":{\"certificateId\":\"" + certificate + "\",\"platformPayoutId\":\"" + payout + "\",\"simulation\":true}}", MediaType.APPLICATION_JSON));
+        assertThat(client.findCertificateByPlatformPayout(payout).certificateId()).isEqualTo(certificate); server.verify();
+    }
+
+    @Test void onlyCertificateNotFoundErrorProvesAbsence() {
+        var client = client(); var server = server(client); UUID payout = UUID.randomUUID();
+        server.expect(requestTo("http://misa.test/api/v1/withholding-certificates/by-platform-payout/" + payout))
+                .andRespond(org.springframework.test.web.client.response.MockRestResponseCreators.withStatus(org.springframework.http.HttpStatus.NOT_FOUND)
+                        .contentType(MediaType.APPLICATION_JSON).body("{\"status\":3004}"));
+        assertThat(client.findCertificateByPlatformPayout(payout)).isNull(); server.verify();
+    }
+
+    @Test void unknownRoute404IsNotCertificateAbsence() {
+        var client = client(); var server = server(client); UUID payout = UUID.randomUUID();
+        server.expect(requestTo("http://misa.test/api/v1/withholding-certificates/by-platform-payout/" + payout))
+                .andRespond(org.springframework.test.web.client.response.MockRestResponseCreators.withStatus(org.springframework.http.HttpStatus.NOT_FOUND)
+                        .contentType(MediaType.APPLICATION_JSON).body("{\"status\":404}"));
+        assertThatThrownBy(() -> client.findCertificateByPlatformPayout(payout)).isInstanceOf(org.springframework.web.client.HttpClientErrorException.NotFound.class); server.verify();
+    }
+
+    @Test void malformedSuccessIsUnresolved() {
+        var client = client(); var server = server(client); UUID payout = UUID.randomUUID();
+        server.expect(requestTo("http://misa.test/api/v1/withholding-certificates/by-platform-payout/" + payout))
+                .andRespond(withSuccess("{\"code\":200,\"data\":null}", MediaType.APPLICATION_JSON));
+        assertThatThrownBy(() -> client.findCertificateByPlatformPayout(payout)).isInstanceOf(org.springframework.web.client.RestClientException.class); server.verify();
+    }
+
     @Test
     void extractsPayoutIdFromWrappedResponse() {
         MisaBackendClient client = client();

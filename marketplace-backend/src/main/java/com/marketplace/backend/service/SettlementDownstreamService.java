@@ -24,10 +24,16 @@ public class SettlementDownstreamService {
     private final ClientPaymentService clientPayment;
     private final OnChainOffRampService withdrawal;
     private final VndPayoutService vndPayout;
-    private final TaxCertificateRecordRepository taxRecords;
+    private final SettlementTaxService tax;
     private final TransactionTemplate transactionTemplate;
 
     public void process(UUID settlementId) {
+        locked(settlementId, s -> {
+            if (s.getTaxStatus() == SettlementStageStatus.FAILED
+                    && "TAX_DOWNSTREAM_CONTRACT_BLOCKED".equals(s.getTaxError())) {
+                s.setTaxStatus(SettlementStageStatus.NOT_STARTED); s.setTaxError(null);
+            }
+        });
         try {
             locked(settlementId, s -> {
                 if (!s.getOnChainStatus().canAdvance() || s.getPayoutRecordId() != null) return;
@@ -49,7 +55,18 @@ public class SettlementDownstreamService {
         // Separate commits: immutable quote survives a remote success followed by local rollback.
         locked(settlementId, this::advanceOnChain);
         locked(settlementId, this::advanceOffRamp);
-        locked(settlementId, this::inspectTaxContract);
+        try {
+            locked(settlementId, s -> { if (taxRunnable(s)) tax.prepare(s); });
+        } catch (RuntimeException ex) {
+            locked(settlementId, s -> {
+                if (taxRunnable(s)) {
+                    s.setTaxStatus(SettlementStageStatus.FAILED_RETRYABLE);
+                    s.setTaxError("TAX_PREPARATION_UNAVAILABLE");
+                }
+            });
+            return;
+        }
+        locked(settlementId, s -> { if (taxRunnable(s)) tax.advance(s); });
     }
 
     private void advanceOnChain(ContractSettlement s) {
@@ -142,21 +159,8 @@ public class SettlementDownstreamService {
         }
     }
 
-    private void inspectTaxContract(ContractSettlement s) {
-        if (!s.getTaxStatus().canAdvance()) return;
-        TaxCertificateRecord record = taxRecords.findByJobId(s.getJobId()).orElse(null);
-        if (record != null && record.getMisaCertificateId() != null) {
-            s.setTaxReference("certificate:" + record.getMisaCertificateId());
-            if (record.getStatus() == TaxCertificateStatus.ACCEPTED) {
-                s.setTaxStatus(SettlementStageStatus.SUCCEEDED);
-                s.setTaxError(null);
-                return;
-            }
-        }
-        // MISA create returns conflict for an existing payout, but exposes no payout->certificate lookup.
-        // A local guard cannot recover remote success + lost local commit; do not create unsafely.
-        s.setTaxStatus(SettlementStageStatus.FAILED);
-        s.setTaxError("TAX_DOWNSTREAM_CONTRACT_BLOCKED");
+    private boolean taxRunnable(ContractSettlement s) {
+        return s.getOffRampStatus() == SettlementStageStatus.SUCCEEDED && s.getTaxStatus().canAdvance();
     }
 
     private void locked(UUID id, Consumer<ContractSettlement> work) {
@@ -168,7 +172,7 @@ public class SettlementDownstreamService {
             work.accept(s);
             boolean onChainRunnable = s.getOnChainStatus().canAdvance();
             boolean offRampRunnable = s.getOnChainStatus() == SettlementStageStatus.SUCCEEDED && s.getOffRampStatus().canAdvance();
-            s.setRetryable(onChainRunnable || offRampRunnable || s.getTaxStatus().canAdvance());
+            s.setRetryable(onChainRunnable || offRampRunnable || taxRunnable(s));
             s.setNextAttemptAt(Instant.now().plusSeconds(30));
             settlements.saveAndFlush(s);
         });

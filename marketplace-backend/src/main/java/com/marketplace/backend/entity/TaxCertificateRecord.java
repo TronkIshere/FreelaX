@@ -61,6 +61,9 @@ public class TaxCertificateRecord extends AbstractEntity<UUID> {
     @Column(unique = true)
     private UUID misaCertificateId;
 
+    @Column(length = 100)
+    private String certificateCreateKey;
+
     @Column(length = 64)
     private String certificateNumber;
 

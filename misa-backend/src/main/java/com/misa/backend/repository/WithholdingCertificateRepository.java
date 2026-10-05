@@ -12,6 +12,10 @@ public interface WithholdingCertificateRepository extends JpaRepository<Withhold
 
     Optional<WithholdingCertificate> findByPayoutTransactionId(UUID payoutTransactionId);
 
+    Optional<WithholdingCertificate> findByIdempotencyKey(String key);
+
+    Optional<WithholdingCertificate> findByPayoutTransactionPlatformPayoutId(String platformPayoutId);
+
     boolean existsByPayoutTransactionId(UUID payoutTransactionId);
 
     long countByCertificateNumberIsNotNull();

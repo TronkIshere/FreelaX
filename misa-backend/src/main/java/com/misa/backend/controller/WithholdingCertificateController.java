@@ -11,6 +11,7 @@ import com.misa.backend.dto.response.misa.CertificateLookupResponse;
 import com.misa.backend.dto.response.misa.CertificateStatusResponse;
 import com.misa.backend.dto.response.misa.CertificateSubmitResponse;
 import com.misa.backend.dto.response.misa.WithholdingCertificateResponse;
+import com.misa.backend.dto.response.misa.CertificateRecoveryResponse;
 import com.misa.backend.service.WithholdingCertificateService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,9 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
+import org.springframework.dao.DataIntegrityViolationException;
+import com.misa.backend.exception.ApplicationException;
+import com.misa.backend.exception.ErrorCode;
 
 @RestController
 @RequestMapping("/api/v1/withholding-certificates")
@@ -32,13 +36,25 @@ public class WithholdingCertificateController {
 
     private final WithholdingCertificateService withholdingCertificateService;
 
+    // Deliberately outside the existing public /lookup/** route; retains service JWT auth.
+    @GetMapping("/by-platform-payout/{platformPayoutId}")
+    public ResponseAPI<CertificateRecoveryResponse> recovery(@PathVariable String platformPayoutId) {
+        return ResponseAPI.<CertificateRecoveryResponse>builder().code(200)
+                .data(withholdingCertificateService.findByPlatformPayout(platformPayoutId)).build();
+    }
+
     @PostMapping
     public ResponseAPI<WithholdingCertificateResponse> create(@Valid @RequestBody CreateWithholdingCertificateRequest request) {
-        return ResponseAPI.<WithholdingCertificateResponse>builder()
+        try {
+            return ResponseAPI.<WithholdingCertificateResponse>builder()
                 .code(200)
                 .message("Tạo chứng từ khấu trừ thành công")
                 .data(withholdingCertificateService.create(request))
                 .build();
+        } catch (DataIntegrityViolationException ex) {
+            // Different payout locks racing on a global key lose at the unique DB constraint.
+            throw new ApplicationException(ErrorCode.CERTIFICATE_KEY_CONFLICT);
+        }
     }
 
     @PostMapping("/{id}/issue")
