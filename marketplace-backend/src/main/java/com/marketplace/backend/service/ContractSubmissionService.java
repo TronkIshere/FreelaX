@@ -42,6 +42,7 @@ public class ContractSubmissionService {
     private final AcceptanceCriterionRepository criteria;
     private final FundingTransactionRepository funding;
     private final ContractDisputeRepository disputes;
+    private final DisputeAuditRepository disputeAudit;
     private final NotificationService notifications;
     private final ObjectMapper objectMapper;
 
@@ -192,12 +193,23 @@ public class ContractSubmissionService {
             }
             ContractDispute dispute = new ContractDispute();
             dispute.setContractId(contractId);
+            dispute.setJobId(job.getId());
+            dispute.setMilestoneId(milestone.getId());
             dispute.setSubmissionId(submissionId);
             dispute.setOpenedBy(clientId);
             dispute.setReasonCode(request.getReasonCode().trim());
             dispute.setDescription(request.getDescription().trim());
+            dispute.setOpenedAt(Instant.now());
             dispute.setStatus(DisputeStatus.OPEN);
             disputes.save(dispute);
+            DisputeAudit opened = new DisputeAudit();
+            opened.setDisputeId(dispute.getId());
+            opened.setActorId(clientId);
+            opened.setAction("OPENED");
+            opened.setAfterStatus(DisputeStatus.OPEN.name());
+            opened.setReason(dispute.getDescription());
+            opened.setRequestId(UUID.randomUUID().toString());
+            disputeAudit.save(opened);
             submission.setStatus(JobSubmissionStatus.DISPUTED);
             contract.setStatus(ContractStatus.DISPUTED);
             milestone.setStatus(MilestoneStatus.DISPUTED);

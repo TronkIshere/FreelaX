@@ -11,11 +11,15 @@ public record CancellationResponse(UUID cancellationId, UUID contractId, UUID mi
         Instant requestedAt, Instant decidedAt, Instant updatedAt, boolean retryable, String lastError,
         List<String> allowedActions) {
     public static CancellationResponse from(ContractCancellation c, UUID actor) {
+        return from(c, actor, true);
+    }
+    public static CancellationResponse from(ContractCancellation c, UUID actor, boolean allowDecision) {
         return new CancellationResponse(c.getId(), c.getContractId(), c.getMilestoneId(), c.getStatus().name(),
                 c.getRefundStatus() == null ? null : c.getRefundStatus().name(), c.getRefundReference(), c.isSimulation(),
                 c.getRequestedBy(), c.getDecidedBy(), c.getReasonCode(), c.getReason(), c.getAmount(), c.getCurrency(),
                 c.getCreatedAt().toInstant(ZoneOffset.UTC), c.getDecidedAt(), c.getUpdatedAt().toInstant(ZoneOffset.UTC),
-                c.isRetryable(), c.getLastError(), c.getStatus() == CancellationStatus.REQUESTED && !actor.equals(c.getRequestedBy())
+                c.isRetryable(), c.getLastError(), allowDecision
+                    && c.getStatus() == CancellationStatus.REQUESTED && !actor.equals(c.getRequestedBy())
                     ? List.of("ACCEPT", "REJECT") : List.of());
     }
 }

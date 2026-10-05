@@ -54,7 +54,8 @@ class ContractSubmissionServiceTest {
         disputes = mock(ContractDisputeRepository.class);
         savedEvidence = new ArrayList<>();
         service = new ContractSubmissionService(contracts, milestones, jobs, submissions, evidence,
-                requirements, criteria, funding, disputes, mock(NotificationService.class), new ObjectMapper());
+                requirements, criteria, funding, disputes, mock(DisputeAuditRepository.class),
+                mock(NotificationService.class), new ObjectMapper());
 
         contract = new WorkContract();
         contract.setId(UUID.randomUUID());

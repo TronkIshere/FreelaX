@@ -52,7 +52,8 @@ public class ContractCancellationService {
             ContractCancellation prior = cancellations.findByContractId(contractId).orElse(null);
             if (prior != null) {
                 if (!hash.equals(prior.getIntentHash())) throw new ApplicationException(ErrorCode.CANCELLATION_CONFLICT);
-                return CancellationResponse.from(prior, actor);
+                return CancellationResponse.from(prior, actor,
+                        disputes.findByContractId(contractId).isEmpty());
             }
             Job job = jobs.findById(c.getJobId()).orElseThrow(this::notFound);
             boolean preFunding = c.getStatus() == ContractStatus.PENDING_FUNDING && m.getStatus() == MilestoneStatus.PENDING_FUNDING;
@@ -119,7 +120,10 @@ public class ContractCancellationService {
 
     public CancellationResponse get(UUID actor, UUID contractId) {
         return committed(() -> { participant(actor, contractId);
-            return cancellations.findByContractId(contractId).map(r -> CancellationResponse.from(r, actor)).orElse(null); });
+            return cancellations.findByContractId(contractId)
+                    .map(r -> CancellationResponse.from(r, actor,
+                            disputes.findByContractId(contractId).isEmpty()))
+                    .orElse(null); });
     }
 
     public void process(UUID id) {
@@ -150,26 +154,12 @@ public class ContractCancellationService {
                     || disputes.existsByContractIdAndStatusIn(c.getId(), EnumSet.of(DisputeStatus.OPEN, DisputeStatus.UNDER_REVIEW))) {
                 error(row, SettlementMoneyStatus.FAILED, "REFUND_WORKFLOW_CONFLICT", false); return null;
             }
-            PaymentRefundResult result;
-            try { result = payment.findRefund(row.getRefundKey()); }
-            catch (RestClientException ex) { error(row, SettlementMoneyStatus.UNKNOWN, "REFUND_LOOKUP_UNRESOLVED", true); return null; }
-            if (result == null) {
-                try { result = payment.createRefund(new CreateRefundRequest(row.getCheckoutOrderId(),
-                        new CreateRefundRequest.ExpectedAmount(row.getAmount().toPlainString(), row.getCurrency()), row.getRefundKey())); }
-                catch (HttpStatusCodeException ex) {
-                    int status = ex.getStatusCode().value();
-                    boolean uncertain = status >= 500 || status == 408;
-                    error(row, uncertain ? SettlementMoneyStatus.UNKNOWN : status == 429 ? SettlementMoneyStatus.FAILED_RETRYABLE : SettlementMoneyStatus.FAILED,
-                            uncertain ? "REFUND_CREATE_UNRESOLVED" : "REFUND_CREATE_REJECTED", uncertain || status == 429); return null;
-                } catch (RestClientException ex) { error(row, SettlementMoneyStatus.UNKNOWN, "REFUND_CREATE_UNRESOLVED", true); return null; }
+            RefundAttempt attempt = refundAttempt(row.getRefundKey(), row.getCheckoutOrderId(), row.getAmount(),
+                    row.getCurrency(), c.getClientUserId());
+            if (attempt.status() != SettlementMoneyStatus.SUCCEEDED) {
+                error(row, attempt.status(), attempt.error(), attempt.retry()); return null;
             }
-            if (!matches(row, c, result)) { error(row, SettlementMoneyStatus.UNKNOWN, "REFUND_RESPONSE_MISMATCH", true); return null; }
-            if (!"SUCCEEDED".equals(result.status())) {
-                error(row, "FAILED".equals(result.status())
-                                ? result.retryable() ? SettlementMoneyStatus.FAILED_RETRYABLE : SettlementMoneyStatus.FAILED
-                                : SettlementMoneyStatus.UNKNOWN,
-                        "REFUND_AWAITING_RECONCILIATION", !"FAILED".equals(result.status()) || result.retryable()); return null;
-            }
+            PaymentRefundResult result = attempt.result();
             row.setRefundStatus(SettlementMoneyStatus.SUCCEEDED); row.setPaymentRefundId(result.refundId());
             row.setRefundReference(result.refundReference()); row.setStatus(CancellationStatus.CANCELLED);
             row.setRetryable(false); row.setLastError(null); row.setNextAttemptAt(null);
@@ -186,6 +176,60 @@ public class ContractCancellationService {
         for (UUID id : cancellations.findDueIds(Instant.now(), PageRequest.of(0, 50))) {
             try { process(id); } catch (RuntimeException ex) { log.warn("Refund reconciliation requires another attempt: {}", id); }
         }
+        for (UUID id : disputes.findDueRefundIds(Instant.now(), PageRequest.of(0, 50))) {
+            try { processDisputeRefund(id); } catch (RuntimeException ex) { log.warn("Dispute refund reconciliation requires another attempt: {}", id); }
+        }
+    }
+    /** Admin dispute refund uses the same Step 5 Payment lookup, create and validation path. */
+    public void processDisputeRefund(UUID id) {
+        UUID mid = disputes.findById(id).map(ContractDispute::getMilestoneId).orElseThrow(this::notFound);
+        committed(() -> {
+            Milestone m = milestones.findWithLockById(mid).orElseThrow(this::notFound);
+            ContractDispute d = disputes.findById(id).orElseThrow(this::notFound);
+            if (d.getStatus() != DisputeStatus.DECISION_PENDING_REFUND || !d.isRetryable()
+                    || d.getRefundStatus() == SettlementMoneyStatus.SUCCEEDED) return null;
+            WorkContract c = contracts.findById(d.getContractId()).orElseThrow(this::notFound);
+            Job job = jobs.findById(c.getJobId()).orElseThrow(this::notFound);
+            FundingTransaction paid = funding.findById(d.getFundingTransactionId()).orElseThrow(this::ineligible);
+            if (m.getStatus() != MilestoneStatus.REFUND_PENDING || c.getStatus() != ContractStatus.DISPUTED
+                    || (job.getStatus() != JobStatus.IN_PROGRESS
+                        && job.getStatus() != JobStatus.REVISION_REQUESTED
+                        && job.getStatus() != JobStatus.SUBMITTED_FOR_REVIEW)
+                    || paid.getStatus() != FundingStatus.SUCCEEDED
+                    || d.getDecisionAt() == null || d.getResolvedBy() == null
+                    || !StringUtils.hasText(d.getResolutionKey()) || !StringUtils.hasText(d.getRefundKey())
+                    || !d.getRefundKey().equals("marketplace-refund-" + m.getId())
+                    || !Objects.equals(m.getContractId(), c.getId()) || !Objects.equals(d.getMilestoneId(), m.getId())
+                    || !Objects.equals(d.getJobId(), job.getId()) || !Objects.equals(c.getJobId(), job.getId())
+                    || !Objects.equals(job.getClientUserId(), c.getClientUserId())
+                    || !Objects.equals(job.getFreelancerId(), c.getFreelancerId())
+                    || !Objects.equals(paid.getContractId(), c.getId()) || !Objects.equals(paid.getMilestoneId(), m.getId())
+                    || !Objects.equals(paid.getClientUserId(), c.getClientUserId())
+                    || !Objects.equals(d.getCheckoutOrderId(), paid.getCheckoutOrderId())
+                    || !Objects.equals(d.getCheckoutOrderId(), job.getCheckoutOrderId())
+                    || !same(d.getAmount(), m.getAmount()) || !same(d.getAmount(), c.getBudgetUsd())
+                    || !same(d.getAmount(), job.getBudgetUsd()) || !same(d.getAmount(), paid.getAmount())
+                    || !Objects.equals(d.getCurrency(), m.getCurrency())
+                    || !Objects.equals(d.getCurrency(), paid.getCurrency())
+                    || settlements.findByMilestoneId(m.getId()).isPresent()) {
+                disputeError(d, SettlementMoneyStatus.FAILED, "REFUND_WORKFLOW_CONFLICT", false); return null;
+            }
+            RefundAttempt attempt = refundAttempt(d.getRefundKey(), d.getCheckoutOrderId(), d.getAmount(),
+                    d.getCurrency(), c.getClientUserId());
+            if (attempt.status() != SettlementMoneyStatus.SUCCEEDED) {
+                disputeError(d, attempt.status(), attempt.error(), attempt.retry()); return null;
+            }
+            d.setRefundStatus(SettlementMoneyStatus.SUCCEEDED);
+            d.setPaymentRefundId(attempt.result().refundId());
+            d.setRefundReference(attempt.result().refundReference());
+            d.setStatus(DisputeStatus.RESOLVED_REFUND); d.setResolvedAt(Instant.now());
+            d.setRetryable(false); d.setNextAttemptAt(null); d.setLastError(null);
+            m.setStatus(MilestoneStatus.REFUNDED); c.setStatus(ContractStatus.CANCELLED); job.setStatus(JobStatus.CANCELLED);
+            disputes.saveAndFlush(d);
+            notifyBoth(c, NotificationType.REFUND_CONFIRMED, "Đã hoàn tiền ledger mô phỏng",
+                    "Tranh chấp đã xử lý; số tiền được khôi phục vào ledger mô phỏng của Client. Đây không phải chuyển tiền ngân hàng.");
+            return null;
+        });
     }
     private void commonEligibility(WorkContract c, Milestone m, Job job) {
         if (!Objects.equals(c.getJobId(), job.getId()) || !Objects.equals(c.getClientUserId(), job.getClientUserId())
@@ -203,11 +247,45 @@ public class ContractCancellationService {
                 || !p.getCheckoutOrderId().equals(job.getCheckoutOrderId()) || !same(p.getAmount(), m.getAmount())
                 || !p.getCurrency().equals(m.getCurrency())) throw ineligible();
     }
-    private boolean matches(ContractCancellation r, WorkContract c, PaymentRefundResult p) {
+    private boolean matches(String key, UUID checkout, BigDecimal amount, String currency, UUID payer, PaymentRefundResult p) {
         return p != null && p.refundId() != null && p.status() != null && Boolean.TRUE.equals(p.simulation())
-                && ("sim-refund-" + p.refundId()).equals(p.refundReference()) && r.getRefundKey().equals(p.refundKey())
-                && r.getCheckoutOrderId().equals(p.checkoutOrderId()) && c.getClientUserId().equals(p.payerUserId())
-                && r.getCurrency().equals(p.currency()) && same(r.getAmount(), p.amount());
+                && ("sim-refund-" + p.refundId()).equals(p.refundReference()) && key.equals(p.refundKey())
+                && checkout.equals(p.checkoutOrderId()) && payer.equals(p.payerUserId())
+                && currency.equals(p.currency()) && same(amount, p.amount());
+    }
+    private RefundAttempt refundAttempt(String key, UUID checkout, BigDecimal amount, String currency, UUID payer) {
+        PaymentRefundResult result;
+        try { result = payment.findRefund(key); }
+        catch (RestClientException ex) { return new RefundAttempt(null, SettlementMoneyStatus.UNKNOWN, "REFUND_LOOKUP_UNRESOLVED", true); }
+        if (result == null) {
+            try { result = payment.createRefund(new CreateRefundRequest(checkout,
+                    new CreateRefundRequest.ExpectedAmount(amount.toPlainString(), currency), key)); }
+            catch (HttpStatusCodeException ex) {
+                int status = ex.getStatusCode().value();
+                boolean uncertain = status >= 500 || status == 408;
+                return new RefundAttempt(null, uncertain ? SettlementMoneyStatus.UNKNOWN
+                        : status == 429 ? SettlementMoneyStatus.FAILED_RETRYABLE : SettlementMoneyStatus.FAILED,
+                        uncertain ? "REFUND_CREATE_UNRESOLVED" : "REFUND_CREATE_REJECTED", uncertain || status == 429);
+            } catch (RestClientException ex) {
+                return new RefundAttempt(null, SettlementMoneyStatus.UNKNOWN, "REFUND_CREATE_UNRESOLVED", true);
+            }
+        }
+        if (!matches(key, checkout, amount, currency, payer, result))
+            return new RefundAttempt(null, SettlementMoneyStatus.UNKNOWN, "REFUND_RESPONSE_MISMATCH", true);
+        if (!"SUCCEEDED".equals(result.status())) {
+            SettlementMoneyStatus state = "FAILED".equals(result.status())
+                    ? result.retryable() ? SettlementMoneyStatus.FAILED_RETRYABLE : SettlementMoneyStatus.FAILED
+                    : SettlementMoneyStatus.UNKNOWN;
+            return new RefundAttempt(null, state, "REFUND_AWAITING_RECONCILIATION",
+                    !"FAILED".equals(result.status()) || result.retryable());
+        }
+        return new RefundAttempt(result, SettlementMoneyStatus.SUCCEEDED, null, false);
+    }
+    private record RefundAttempt(PaymentRefundResult result, SettlementMoneyStatus status, String error, boolean retry) {}
+    private void disputeError(ContractDispute d, SettlementMoneyStatus status, String code, boolean retry) {
+        d.setRefundStatus(status); d.setLastError(code); d.setRetryable(retry);
+        d.setNextAttemptAt(Instant.now().plusSeconds(30));
+        disputes.saveAndFlush(d);
     }
     private void error(ContractCancellation r, SettlementMoneyStatus status, String code, boolean retry) {
         r.setRefundStatus(status); r.setLastError(code); r.setRetryable(retry); r.setNextAttemptAt(Instant.now().plusSeconds(30));

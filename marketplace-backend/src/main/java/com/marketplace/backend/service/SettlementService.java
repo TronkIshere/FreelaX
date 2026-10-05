@@ -121,6 +121,13 @@ public class SettlementService {
                     milestone.setStatus(MilestoneStatus.RELEASED);
                     eligible.contract().setStatus(ContractStatus.COMPLETED);
                     eligible.job().setStatus(JobStatus.COMPLETED);
+                    disputes.findByContractId(s.getContractId())
+                            .filter(d -> d.getStatus() == DisputeStatus.DECISION_PENDING_RELEASE
+                                    && Objects.equals(d.getMilestoneId(), milestone.getId()))
+                            .ifPresent(d -> {
+                                d.setStatus(DisputeStatus.RESOLVED_RELEASE);
+                                d.setResolvedAt(Instant.now());
+                            });
                     milestones.save(milestone);
                     contracts.save(eligible.contract());
                     jobs.save(eligible.job());
@@ -155,21 +162,38 @@ public class SettlementService {
     private Eligibility eligible(Milestone milestone) {
         WorkContract contract = contracts.findById(milestone.getContractId()).orElseThrow(this::ineligible);
         Job job = jobs.findById(contract.getJobId()).orElseThrow(this::ineligible);
-        JobSubmission approved = submissions.findFirstByContractIdOrderByVersionDesc(contract.getId())
-                .orElseThrow(this::ineligible);
+        JobSubmission approved = submissions.findFirstByContractIdOrderByVersionDesc(contract.getId()).orElse(null);
+        ContractDispute adminDecision = disputes.findByContractId(contract.getId())
+                .filter(d -> d.getStatus() == DisputeStatus.DECISION_PENDING_RELEASE
+                        && Objects.equals(d.getMilestoneId(), milestone.getId())).orElse(null);
+        boolean adminRelease = adminDecision != null;
+        boolean normalRelease = contract.getStatus() == ContractStatus.UNDER_REVIEW
+                && job.getStatus() == JobStatus.SUBMITTED_FOR_REVIEW
+                && approved != null && approved.getStatus() == JobSubmissionStatus.APPROVED
+                && approved.getReviewedAt() != null;
+        boolean validAdminSubmission = approved == null
+                ? adminDecision != null && adminDecision.getSubmissionId() == null
+                : adminDecision != null && Objects.equals(adminDecision.getSubmissionId(), approved.getId())
+                    && (approved.getStatus() == JobSubmissionStatus.DISPUTED
+                        || approved.getStatus() == JobSubmissionStatus.REVISION_REQUESTED);
+        boolean disputedRelease = adminRelease && contract.getStatus() == ContractStatus.DISPUTED
+                && adminDecision.getDecisionAt() != null && adminDecision.getResolvedBy() != null
+                && adminDecision.getResolutionKey() != null
+                && Objects.equals(adminDecision.getJobId(), job.getId())
+                && (job.getStatus() == JobStatus.IN_PROGRESS
+                    || job.getStatus() == JobStatus.REVISION_REQUESTED
+                    || job.getStatus() == JobStatus.SUBMITTED_FOR_REVIEW)
+                && validAdminSubmission;
         FundingTransaction paid = funding.findFirstByMilestoneIdOrderByCreatedAtDesc(milestone.getId())
                 .orElseThrow(this::ineligible);
         if (milestone.getStatus() != MilestoneStatus.RELEASE_PENDING
-                || contract.getStatus() != ContractStatus.UNDER_REVIEW
-                || job.getStatus() != JobStatus.SUBMITTED_FOR_REVIEW
+                || (!normalRelease && !disputedRelease)
                 || !Objects.equals(contract.getClientUserId(), job.getClientUserId())
                 || !Objects.equals(contract.getFreelancerId(), job.getFreelancerId())
                 || Objects.equals(contract.getFreelancerId(), contract.getClientUserId())
-                || approved.getStatus() != JobSubmissionStatus.APPROVED
-                || approved.getReviewedAt() == null
-                || !Objects.equals(approved.getJobId(), job.getId())
-                || !Objects.equals(approved.getMilestoneId(), milestone.getId())
-                || !Objects.equals(approved.getFreelancerId(), contract.getFreelancerId())
+                || (approved != null && (!Objects.equals(approved.getJobId(), job.getId())
+                    || !Objects.equals(approved.getMilestoneId(), milestone.getId())
+                    || !Objects.equals(approved.getFreelancerId(), contract.getFreelancerId())))
                 || paid.getStatus() != FundingStatus.SUCCEEDED
                 || !Objects.equals(paid.getContractId(), contract.getId())
                 || !Objects.equals(paid.getClientUserId(), contract.getClientUserId())
