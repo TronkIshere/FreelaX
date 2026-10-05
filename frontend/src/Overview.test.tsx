@@ -103,6 +103,20 @@ async function render(user: User) {
 }
 
 describe('P06.3 operational overview', () => {
+  it.each([
+    [freelancer, 'Tìm công việc đầu tiên phù hợp với bạn.', 'Hiện chưa có công việc được giao.', 'Khám phá công việc'],
+    [client, 'Bắt đầu công việc đầu tiên.', 'Bạn chưa có công việc trong tài khoản.', 'Xem công việc'],
+  ] as const)('gives an empty $userType Overview a next action while retaining server truth', async (user, heading, truth, action) => {
+    await render(user);
+    const next = host.querySelector('.overview-clear')!;
+    expect(next.querySelector('h3')?.textContent).toBe(heading);
+    expect(next.querySelector('p')?.textContent).toBe(truth);
+    expect(next.querySelector('.button')?.textContent).toContain(action);
+    expect(next.querySelector('.button')?.getAttribute('href')).toBe('/work');
+    expect(host.querySelector('.overview-total')?.textContent).toBe('0 công việc trong tài khoản');
+    expect(host.querySelectorAll('.overview-attention-row')).toHaveLength(0);
+  });
+
   it('puts Client reviews, recruiting and pending payment before a separate recent ledger', async () => {
     vi.mocked(api.myJobs).mockResolvedValue(page([
       job('active', 'IN_PROGRESS'), job('open', 'OPEN'), job('funding', 'AWAITING_PAYMENT'),
@@ -141,6 +155,7 @@ describe('P06.3 operational overview', () => {
   it('uses a pending application destination when no work needs attention', async () => {
     vi.mocked(api.myApplications).mockResolvedValue(page([application('PENDING')]));
     await render(freelancer);
+    expect(host.querySelector('.overview-clear h3')?.textContent).toBe('Theo dõi những cơ hội bạn đã ứng tuyển.');
     expect(host.querySelector('.overview-clear .button')?.getAttribute('href')).toBe('/work/applications');
     expect(host.querySelector('.overview-clear .button')?.textContent).toContain('Theo dõi ứng tuyển');
   });

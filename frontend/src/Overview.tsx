@@ -104,17 +104,26 @@ export function Overview({ user }: { user: User }) {
       body="Marketplace đang trả trạng thái công việc và ứng tuyển của bạn." />}
     {!loading && error && <StatePanel kind="error" title="Không thể tải tổng quan" body={error}
       action={{ label: 'Thử lại', onClick: () => setAttempt(value => value + 1) }} />}
-    {!loading && !error && jobs && <>
+    {!loading && !error && jobs && <div className={'overview-composition' + (attention.length ? '' : ' overview-composition-clear')}>
       <section className="overview-attention" aria-labelledby="overview-attention-title">
-        <SectionHeading id="overview-attention-title" title="Cần xử lý"
+        <SectionHeading id="overview-attention-title" title={attention.length ? 'Cần xử lý' : jobs.totalElements ? 'Bước tiếp theo' : 'Bắt đầu'}
           aside={jobs.totalElements > jobs.data.length ? 'Trong ' + jobs.data.length + ' công việc gần nhất' : undefined} />
         {attention.length ? <div className="overview-attention-rows">{attention.map(({ job, label, href }, index) =>
           <article className="overview-attention-row" key={job.id + ':' + href}>
             <div><h3><Link to={'/work/' + job.id}>{job.title}</Link></h3>
-              <span className="metadata">{href.startsWith('/finance') ? contractFinanceLabel(job, financial[job.id]) : jobLabel(job.status)} · {money(job.budgetUsd)}</span></div>
+              <div className="overview-job-facts">
+                <span className="overview-status" data-state={href.startsWith('/finance') ? 'FINANCIAL' : job.status}>
+                  {href.startsWith('/finance') ? contractFinanceLabel(job, financial[job.id]) : jobLabel(job.status)}</span>
+                <span className="overview-budget">{money(job.budgetUsd)}</span>
+              </div></div>
             <ActionGroup><Link className={'button' + (index ? ' button-secondary' : '')} to={href}>{label} →</Link></ActionGroup>
-          </article>)}</div> : <div className="overview-clear">
-          <p>{jobs.totalElements ? 'Chưa có bước cần xử lý trong các hồ sơ gần nhất.' : 'Chưa có công việc trong tài khoản.'}</p>
+        </article>)}</div> : <div className="overview-clear">
+          <h3>{client
+            ? jobs.totalElements ? 'Xem lại tiến độ công việc của bạn.' : 'Bắt đầu công việc đầu tiên.'
+            : pendingApplications ? 'Theo dõi những cơ hội bạn đã ứng tuyển.'
+              : jobs.totalElements ? 'Tìm công việc tiếp theo phù hợp với bạn.' : 'Tìm công việc đầu tiên phù hợp với bạn.'}</h3>
+          <p>{jobs.totalElements ? 'Chưa có bước cần xử lý trong các hồ sơ gần nhất.'
+            : client ? 'Bạn chưa có công việc trong tài khoản.' : 'Hiện chưa có công việc được giao.'}</p>
           <ActionGroup><Link className="button" to={!client && pendingApplications ? '/work/applications' : '/work'}>
             {client ? 'Xem công việc' : pendingApplications ? 'Theo dõi ứng tuyển' : 'Khám phá công việc'} →</Link></ActionGroup>
         </div>}
@@ -124,13 +133,18 @@ export function Overview({ user }: { user: User }) {
           <SectionHeading id="overview-recent-title" title="Công việc gần đây"
             aside={<Link to="/work">Xem tất cả →</Link>} />
           {recent.length === 0 ? <p className="overview-empty-line">{attention.length
-            ? 'Các hồ sơ gần nhất đang ở mục Cần xử lý.' : 'Chưa có hồ sơ gần đây.'}</p> :
+            ? 'Các hồ sơ gần nhất đang ở mục Cần xử lý.'
+            : client ? 'Hồ sơ và tiến độ sẽ xuất hiện tại đây khi bạn có công việc.'
+              : 'Khi được giao việc, bạn có thể theo dõi hồ sơ và tiến độ tại đây.'}</p> :
             <div className="overview-rows">{recent.map(job => <article className="overview-row" key={job.id}>
               <div><h3><Link to={'/work/' + job.id}>{job.title}</Link></h3>
-                <span className="metadata">{jobLabel(job.status)} · {money(job.budgetUsd)} · {date(job.createdAt)}</span></div>
+                <div className="overview-job-facts">
+                  <span className="overview-status" data-state={job.status}>{jobLabel(job.status)}</span>
+                  <span className="metadata">{money(job.budgetUsd)} · {date(job.createdAt)}</span>
+                </div></div>
               <Link className="overview-row-arrow" to={'/work/' + job.id} aria-label={'Mở ' + job.title}>↗</Link>
             </article>)}</div>}
-          <p className="metadata overview-total">{jobs.totalElements} công việc trong tài khoản</p>
+          <p className="overview-total"><strong>{jobs.totalElements}</strong> công việc trong tài khoản</p>
         </section>
         {!client && <section className="overview-applications" aria-labelledby="overview-applications-title">
           <SectionHeading id="overview-applications-title" title="Ứng tuyển gần đây"
@@ -138,12 +152,12 @@ export function Overview({ user }: { user: User }) {
           {applicationsError && <StatePanel kind="error" title="Chưa đọc được ứng tuyển" body={applicationsError}
             action={{ label: 'Thử lại', onClick: () => setAttempt(value => value + 1) }} />}
           {!applicationsError && applications && (applications.data.length === 0
-            ? <p className="overview-empty-line">Bạn chưa có ứng tuyển nào.</p>
+            ? <p className="overview-empty-line">Sau khi ứng tuyển, bạn có thể theo dõi phản hồi tại đây.</p>
             : <div className="overview-application-rows">{applications.data.slice(0, 3).map(item =>
               <article key={item.id}><Link to={'/work/' + item.job.id}>{item.job.title}</Link>
-                <strong>{applicationLabel(item.status)}</strong></article>)}</div>)}
+                <strong className="overview-status" data-state={item.status}>{applicationLabel(item.status)}</strong></article>)}</div>)}
         </section>}
       </div>
-    </>}
+    </div>}
   </div>;
 }

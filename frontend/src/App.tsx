@@ -52,7 +52,7 @@ function RoleShell({ user }: { user: User }) {
   return <div className="app-shell">
     <a className="skip-link" href="#main">Đi tới nội dung</a>
     <header className="masthead">
-      <Brand />
+      <div className="shell-brand"><Brand /><span className="shell-signature">Work / People / Payment</span></div>
       <div className="identity"><span>{role === 'CLIENT' ? 'Client' : 'Freelancer'}</span><strong>{user.displayName}</strong></div>
       <ActionGroup label="Phiên làm việc">
         {hasAuthority(user, 'ROLE_ADMIN') && <NavLink className="text-link admin-entry" to="/admin/disputes">Quản trị</NavLink>}
