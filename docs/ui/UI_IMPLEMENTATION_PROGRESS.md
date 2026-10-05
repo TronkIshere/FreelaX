@@ -420,3 +420,29 @@ Validation:
 
 P1/P2 remain pending: Finance list/evidence migration for pending release/refund records, Overview attention routing, Step 4/5 Activity labels/destinations, broader financial polish and documentation cleanup. Steps 6/8/9 and full Admin/dispute remain out of scope.
 Git: 13 intended frontend/progress paths; uncommitted; no push/merge/branch switch. Stop after P0 review.
+
+### 2026-10-05 — UI Steps 1–5 P1 integration
+
+Status: implementation/test/build gates `PASS`; final P1 runtime gate `ENVIRONMENT BLOCKED` (desktop smoke unavailable).
+Input gate: `feat/mvp-ui-step1-5-20261005`, clean HEAD `0e790a8d65f65831d751eed14f4110ef15753bf2` (accepted P0 commit). Backend controllers, response allowlists, notification types and contract/milestone transitions verified read-only.
+
+Implemented:
+
+- Finance includes contract-backed records before Job COMPLETED, including pending release/refund and unknown/retryable reconciliation. The existing API has no batch financial projection; parallel per-contract reads are bounded to a 20-job server page. Legacy completed-job evidence remains supported.
+- Contract Finance distinguishes funding, primary release, cancellation outcome and refund. REQUESTED/REJECTED remain continuing work; REFUND_PENDING is not final. Neither CAPTURED checkout nor funding success is used as release/refund proof. Pre-funding cancellation has no funding mutation on the Finance page; existing workflow remains the action destination.
+- Independent downstream on-chain/VND/tax states, available USDC/VND amounts and masked bank destination. Technical references/errors remain collapsed. Simulation wording does not claim external bank settlement; tax-stage success does not imply certificate ACCEPTED. Actual certificates link into the existing authenticated tax/download UI without duplicating its logic.
+- Contract evidence reconciles with current job state every 30 seconds while non-terminal, pauses automatic reads when hidden, resumes when visible, ignores obsolete responses and removes timers/listeners on unmount. Confirmed primary money survives later read/downstream errors. Unfunded Finance does not call legacy payment/tax APIs.
+- Overview verifies contract/milestone plus settlement/cancellation before recommending review/submission. Pending money routes to Finance; confirmed/final records remove incompatible work actions. REQUESTED/REJECTED preserve eligible work. Financial read errors fail closed; focus/notification refreshes ignore stale responses.
+- Activity uses the five verified Step 4/5 notification types. Release/refund events link to the existing role-shared Finance route; cancellation proposals/rejections link to workflow. Unknown events retain escaped text and a safe fallback.
+
+Validation:
+
+- Added 37 P1 regressions across Finance, Overview, Activity and financial mapping, including pending list visibility, stale ownership, refund/release truth, recovery/visibility polling, obsolete responses and actual App destinations for both trusted roles.
+- Final affected gate: 7 files, `139/139 PASS`; existing P0 financial/cancellation and contract lifecycle regressions included.
+- Full frontend suite run once: 13 files, `230/230 PASS`. Existing React Router future-flag warnings only.
+- Production build: `tsc -b` + Vite build `PASS`, using the existing Node executable/local packages (same tools as npm scripts); no installation or dependency change.
+- 1440px and 1024px authenticated runtime smoke: `ENVIRONMENT BLOCKED`. Both sandboxed and external read-only probes to localhost:3000, localhost:8080 and localhost:9191/api/v1/auth/me returned HTTP 000 / connection refused. No service restart, backend workaround or mocked runtime PASS.
+- Mobile remains deferred; no mobile implementation/validation. Backend, API/type contracts, shell, workflow production code, runtime/env and dependencies unchanged. Browser remains within Marketplace `/api/v1`.
+
+Remaining: resume the real desktop Finance/Overview/Activity/workflow smoke when the existing runtime is available. P2 broader financial polish/documentation cleanup remains pending; Steps 6/8/9 and full Admin/dispute remain out of scope.
+Git: 9 intended frontend/progress files, uncommitted; no push/merge/branch switch. Stop after P1 report.

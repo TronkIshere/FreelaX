@@ -5,6 +5,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Account } from './Account';
 import { Activity } from './Activity';
+import { App } from './App';
 import { AuthEntry } from './Auth';
 import { api, ApiError } from './api';
 import { Overview } from './Overview';
@@ -38,6 +39,49 @@ function click(label: string) {
   expect(button).toBeTruthy();
   return button!;
 }
+
+describe('P1 Step 4/5 Marketplace activity', () => {
+  it.each([
+    [client, 'RELEASE_CONFIRMED', 'Thanh toán'], [freelancer, 'REFUND_PENDING', 'Thu nhập'],
+    [client, 'CANCELLATION_REQUESTED', 'Công việc'], [freelancer, 'CANCELLATION_REJECTED', 'Công việc'],
+  ].map(([user, type, activeNav]) => ({ user: user as User, type: type as string, activeNav: activeNav as string })))
+  ('opens the real App destination for $user.userType / $type', async ({ user, type, activeNav }) => {
+    vi.spyOn(api, 'restore').mockResolvedValue(user);
+    vi.spyOn(api, 'notifications').mockResolvedValue({ currentPage: 0, pageSize: 10, totalPages: 1, totalElements: 1,
+      data: [{ id: 'event', type, title: 'Server title', message: 'Server message', jobId: job.id,
+        read: true, createdAt: null, amount: null }] });
+    const jobRead = vi.spyOn(api, 'job').mockImplementation(() => new Promise(() => {}));
+    await render(<SessionProvider><App /></SessionProvider>, '/activity');
+    await act(async () => (host.querySelector('.activity-row-content a') as HTMLAnchorElement).click());
+    expect(host.querySelector('.primary-nav [aria-current="page"]')?.textContent).toBe(activeNav);
+    expect(jobRead).toHaveBeenCalledExactlyOnceWith(job.id);
+    expect(host.querySelector('.activity-list')).toBeNull();
+  });
+  it.each([
+    ['RELEASE_CONFIRMED', 'Bản ghi release đã xác nhận', '/finance?jobId=job-1'],
+    ['CANCELLATION_REQUESTED', 'Đề nghị hủy — công việc tiếp tục', '/work/job-1'],
+    ['CANCELLATION_REJECTED', 'Đề nghị hủy bị từ chối — công việc tiếp tục', '/work/job-1'],
+    ['REFUND_PENDING', 'Hoàn tiền đang đối soát', '/finance?jobId=job-1'],
+    ['REFUND_CONFIRMED', 'Bản ghi hoàn tiền đã xác nhận', '/finance?jobId=job-1'],
+  ])('renders %s and links to its existing role-shared destination', async (type, label, destination) => {
+    vi.spyOn(api, 'notifications').mockResolvedValue({ currentPage: 0, pageSize: 10, totalPages: 1, totalElements: 1,
+      data: [{ id: 'event', type, title: 'Server title', message: 'Server message', jobId: job.id,
+        read: true, createdAt: null, amount: null }] });
+    await render(<Activity />, '/activity');
+    expect(host.querySelector('.activity-row-meta')?.textContent).toContain(label);
+    expect(host.querySelector('.activity-row-content a')?.getAttribute('href')).toBe(destination);
+    expect(host.textContent).not.toContain('ngân hàng đã hoàn tiền');
+  });
+  it('keeps unknown events safe and does not invent a job destination', async () => {
+    vi.spyOn(api, 'notifications').mockResolvedValue({ currentPage: 0, pageSize: 10, totalPages: 1, totalElements: 1,
+      data: [{ id: 'event', type: 'FUTURE_EVENT', title: '<script>unsafe</script>', message: 'Server message',
+        jobId: null, read: true, createdAt: null, amount: null }] });
+    await render(<Activity />, '/activity');
+    expect(host.textContent).toContain('Cập nhật từ Marketplace');
+    expect(host.querySelector('script')).toBeNull();
+    expect(host.querySelector('.activity-row-content a')).toBeNull();
+  });
+});
 
 describe('P05.5 final UI', () => {
   it('shows a real login form with password visibility and no dead OAuth actions', async () => {

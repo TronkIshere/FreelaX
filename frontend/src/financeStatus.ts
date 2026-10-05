@@ -1,4 +1,38 @@
-import type { ContractSettlement, DecimalValue, JobPaymentStatus, TaxRecord } from './types';
+import type { ContractCancellationRecord, ContractSettlement, DecimalValue, Job, JobPaymentStatus, TaxRecord } from './types';
+import { cancellationLabel, refundLabel } from './status';
+
+export type ContractFinance = { settlement: ContractSettlement | null; cancellation: ContractCancellationRecord | null; error: string };
+export const financePath = (jobId: string) => '/finance?jobId=' + encodeURIComponent(jobId);
+export const releaseOwned = (job: Job) => job.contract?.milestoneStatus === 'RELEASE_PENDING' ||
+  job.contract?.milestoneStatus === 'RELEASED' || job.contract?.status === 'COMPLETED' || job.status === 'COMPLETED';
+export const cancelledContract = (job: Job) => job.contract?.status === 'CANCELLED' ||
+  job.contract?.milestoneStatus === 'REFUNDED' || job.status === 'CANCELLED';
+export const refundOwned = (job: Job) => job.contract?.milestoneStatus === 'REFUND_PENDING';
+
+export function contractFinanceLabel(job: Job, value?: ContractFinance): string {
+  const cancellation = value?.cancellation;
+  if (cancellation?.refundStatus === 'SUCCEEDED') return 'Hoàn tiền đã xác nhận';
+  if (cancellation?.cancellationStatus === 'REFUND_PENDING') return refundLabel(cancellation.refundStatus);
+  if (refundOwned(job)) return 'Chưa có xác nhận hoàn tiền';
+  if (cancelledContract(job) || cancellation?.cancellationStatus === 'CANCELLED') return 'Hợp đồng đã hủy';
+  if (value?.settlement) return settlementMoneyLabel(value.settlement.moneyStatus);
+  if (releaseOwned(job)) return 'Chưa có bản ghi release';
+  if (cancellation) return cancellationLabel(cancellation.cancellationStatus);
+  if (value?.error) return 'Chưa xác minh hồ sơ tài chính';
+  return job.status === 'AWAITING_PAYMENT' ? 'Chờ funding' : 'Funding và hồ sơ hợp đồng';
+}
+
+export function contractFinanceNeedsRefresh(job: Job, value: ContractFinance): boolean {
+  if (value.error) return true;
+  const cancellation = value.cancellation;
+  if (cancellation?.refundStatus === 'SUCCEEDED') return false;
+  if (cancellation?.cancellationStatus === 'REFUND_PENDING') return cancellation.refundStatus !== 'FAILED' || cancellation.retryable;
+  if (refundOwned(job)) return true;
+  if (cancelledContract(job) || cancellation?.cancellationStatus === 'CANCELLED') return false;
+  if (value.settlement || releaseOwned(job)) return settlementNeedsRefresh(value.settlement);
+  // Active contracts may receive a proposal or review decision while this page is open.
+  return true;
+}
 
 export const settlementMoneyLabel = (status: string) => ({
   PENDING: 'Chờ xác nhận release', PROCESSING: 'Đang xử lý release', UNKNOWN: 'Đang đối soát release',

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from './api';
 import { PageHeading, StatePanel } from './components';
+import { financePath } from './financeStatus';
 import type { Notification as MarketplaceNotification, Page } from './types';
 
 const labels: Record<string, string> = {
@@ -11,6 +12,11 @@ const labels: Record<string, string> = {
   REVISION_REQUESTED: 'Yêu cầu chỉnh sửa',
   WORK_APPROVED: 'Bàn giao được duyệt',
   FUNDING_CONFIRMED: 'Funding đã xác nhận',
+  RELEASE_CONFIRMED: 'Bản ghi release đã xác nhận',
+  CANCELLATION_REQUESTED: 'Đề nghị hủy — công việc tiếp tục',
+  CANCELLATION_REJECTED: 'Đề nghị hủy bị từ chối — công việc tiếp tục',
+  REFUND_PENDING: 'Hoàn tiền đang đối soát',
+  REFUND_CONFIRMED: 'Bản ghi hoàn tiền đã xác nhận',
   REVIEW_GRACE_STARTED: 'Gia hạn review',
   REVIEW_AUTO_APPROVED: 'Máy chủ tự duyệt',
   DISPUTE_OPENED: 'Đã mở tranh chấp',
@@ -20,6 +26,7 @@ const labels: Record<string, string> = {
   PAYOUT_FAILED: 'Chi trả cần xử lý',
 };
 const stamp = (value: string | null) => value ? value.slice(0, 16).replace('T', ' · ') : 'Chưa có thời gian';
+const financialEvents = new Set(['RELEASE_CONFIRMED', 'REFUND_PENDING', 'REFUND_CONFIRMED']);
 
 export function Activity() {
   const [page, setPage] = useState(0);
@@ -83,7 +90,8 @@ export function Activity() {
           <div className="activity-row-content"><div className="activity-row-meta">
             <span>{labels[item.type] || 'Cập nhật từ Marketplace'}</span><time>{stamp(item.createdAt)}</time></div>
             <h2>{item.title}</h2><p>{item.message}</p>
-            {item.jobId && <Link to={'/work/' + encodeURIComponent(item.jobId)}>Xem công việc →</Link>}
+            {item.jobId && <Link to={financialEvents.has(item.type) ? financePath(item.jobId) : '/work/' + encodeURIComponent(item.jobId)}>
+              {financialEvents.has(item.type) ? 'Xem bằng chứng tài chính →' : 'Xem công việc →'}</Link>}
           </div>
           <div className="activity-row-action">{item.read ? <span>Đã đọc</span> :
             <button className="text-button" type="button" disabled={!!pendingId}

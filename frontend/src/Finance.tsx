@@ -1,20 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { ApiError, api } from './api';
-import { FundingPanel } from './Funding';
-import { PageHeading, StatePanel } from './components';
+import { ActionGroup, EvidenceDisclosure, FactGrid, PageHeading, SectionHeading, StatePanel } from './components';
 import { Pagination } from './Jobs';
 import { checkoutLabel, clientPaymentLabel, decimal, exportLabel, maskedBank, offRampLabel,
-  paymentStages, paymentTerminal, rateSource, safeExplorerUrl, syncableTaxStatuses, usdc, vnd } from './financeStatus';
-import { date, money } from './status';
-import type { EvidenceStage } from './financeStatus';
-import type { Job, JobPaymentStatus, Page, TaxRecord, User } from './types';
+  paymentStages, paymentTerminal, rateSource, safeExplorerUrl, syncableTaxStatuses, usdc, vnd,
+  financePath, contractFinanceLabel, contractFinanceNeedsRefresh, settlementMoneyLabel, settlementStageLabel, releaseOwned } from './financeStatus';
+import { cancellationLabel, date, fundingLabel, money, refundLabel } from './status';
+import type { ContractFinance, EvidenceStage } from './financeStatus';
+import type { FundingResponse, Job, JobPaymentStatus, Page, TaxRecord, User } from './types';
 
 const POLL_MS = 15000;
 const message = (cause: unknown) => cause instanceof Error ? cause.message : 'Không thể tải dữ liệu từ Marketplace.';
 const missingTax = (cause: unknown) => cause instanceof ApiError && (cause.status === 404 || cause.code === 4010);
 const stamp = (value: string | null | undefined) => value ? value.slice(0, 16).replace('T', ' · ') : '—';
-const financePath = (jobId: string) => '/finance?jobId=' + encodeURIComponent(jobId);
 
 function FinanceNav() {
   return <nav className="finance-nav" aria-label="Khu vực tài chính">
@@ -23,7 +22,17 @@ function FinanceNav() {
   </nav>;
 }
 
-type PaymentEntry = { data: JobPaymentStatus | null; error: string };
+type PaymentEntry = { data: JobPaymentStatus | null; error: string; contract?: ContractFinance };
+
+// The current API has no batch settlement/refund projection. Reads are bounded to the returned page.
+async function readContractFinance(job: Job): Promise<ContractFinance> {
+  const [settlement, cancellation] = await Promise.allSettled([
+    api.settlement(job.contract!.id), api.cancellation(job.contract!.id),
+  ]);
+  return { settlement: settlement.status === 'fulfilled' ? settlement.value : null,
+    cancellation: cancellation.status === 'fulfilled' ? cancellation.value : null,
+    error: [settlement, cancellation].flatMap(item => item.status === 'rejected' ? [message(item.reason)] : []).join(' · ') };
+}
 
 function FinanceList({ user }: { user: User }) {
   const [page, setPage] = useState(0);
@@ -37,12 +46,18 @@ function FinanceList({ user }: { user: User }) {
     setLoading(true);
     setError('');
     setPayments({});
-    api.myJobs(page, 100).then(async data => {
+    api.myJobs(page, 20).then(async data => {
       if (!active) return;
       setResult(data);
-      const completed = data.data.filter(job => job.status === 'COMPLETED');
-      const entries = await Promise.all(completed.map(async job => {
-        if (job.contract && !job.checkoutOrderId) return [job.id, { data: null, error: 'Xem funding trong hồ sơ công việc' }] as const;
+      const financial = data.data.filter(job => job.contract || job.status === 'COMPLETED');
+      const entries = await Promise.all(financial.map(async job => {
+        if (job.contract) {
+          const contract = await readContractFinance(job);
+          const downstream = job.checkoutOrderId && contract.settlement?.moneyStatus === 'SUCCEEDED'
+            ? await api.paymentStatus(job.id).then(data => ({ data, error: '' }), cause => ({ data: null, error: message(cause) }))
+            : { data: null, error: '' };
+          return [job.id, { ...downstream, contract }] as const;
+        }
         try {
           return [job.id, { data: await api.paymentStatus(job.id), error: '' }] as const;
         } catch (cause) {
@@ -58,40 +73,42 @@ function FinanceList({ user }: { user: User }) {
   }, [page, attempt]);
 
   const freelancer = user.userType === 'FREELANCER';
-  const completed = result?.data.filter(job => job.status === 'COMPLETED') ?? [];
+  const financial = result?.data.filter(job => job.contract || job.status === 'COMPLETED') ?? [];
   return <>
     <PageHeading eyebrow={freelancer ? 'Freelancer / Thu nhập' : 'Client / Thanh toán'}
       title={freelancer ? 'Thu nhập theo từng công việc.' : 'Thanh toán theo từng công việc.'}
-      description="Mỗi bản ghi gắn với một job. Số VND là ước tính và trạng thái chi trả lấy trực tiếp từ Marketplace."
+      description="Funding, release, hoàn tiền và chứng từ theo công việc; mỗi chặng có bằng chứng riêng từ Marketplace."
       aside="Không hiển thị số dư ví hoặc lệnh chuyển tiền" />
     <FinanceNav />
     {loading && <StatePanel kind="loading" title="Đang tải hồ sơ tài chính" body="Đang đối chiếu công việc và trạng thái thanh toán." />}
     {!loading && error && <StatePanel kind="error" title="Không thể tải công việc" body={error}
       action={{ label: 'Thử lại', onClick: () => setAttempt(value => value + 1) }} />}
     {!loading && !error && result && <>
-      <div className="finance-list-intro"><strong>{completed.length} công việc hoàn thành trên trang này</strong>
+      <div className="finance-list-intro"><strong>{financial.length} hồ sơ tài chính trên trang này</strong>
         <span>Danh sách công việc được phân trang bởi Marketplace.</span></div>
-      {completed.length === 0 ? <StatePanel kind="empty" title="Chưa có công việc hoàn thành trên trang này"
-        body="Chuyển trang để xem các công việc khác hoặc quay lại khi một bản bàn giao đã được duyệt." /> :
-        <div className="finance-job-list">{completed.map(job => {
+      {financial.length === 0 ? <StatePanel kind="empty" title="Chưa có hồ sơ tài chính trên trang này"
+        body="Chuyển trang để xem các công việc khác. Hồ sơ hợp đồng đang xử lý tiền cũng xuất hiện tại đây." /> :
+        <div className="finance-job-list">{financial.map(job => {
           const entry = payments[job.id];
           const status = entry?.data;
           return <article className="finance-job-row" key={job.id}>
-            <div><span className="finance-category">Công việc hoàn thành</span>
+            <div><span className="finance-category">{job.contract ? 'Hồ sơ hợp đồng' : 'Công việc hoàn thành'}</span>
               <h2><Link to={financePath(job.id)}>{job.title}</Link></h2>
-              <p>Giá trị công việc: {money(job.budgetUsd)} · Hoàn thành theo Marketplace</p></div>
-            <div><span className="cell-label">Thanh toán Client</span>
-              <strong>{status ? checkoutLabel(status.checkoutOrderStatus) : entry?.error || 'Đang tải…'}</strong></div>
+              <p>Giá trị công việc: {money(job.budgetUsd)}</p></div>
+            <div><span className="cell-label">{job.contract ? 'Release / hoàn tiền' : 'Thanh toán Client'}</span>
+              <strong>{job.contract ? contractFinanceLabel(job, entry?.contract) : status ? checkoutLabel(status.checkoutOrderStatus) : entry?.error || 'Đang tải…'}</strong>
+              {entry?.contract?.error && <span role="alert">{entry.contract.error}</span>}</div>
             <div><span className="cell-label">USDC / VND</span>
               <strong>{status?.amountUsdcReceived == null ? 'Chưa có số USDC' : usdc(status.amountUsdcReceived)}</strong>
               <span>{status?.estimatedAmountVnd == null ? 'Chưa có VND dự kiến' : vnd(status.estimatedAmountVnd) + ' dự kiến'}</span></div>
             <div><span className="cell-label">Chi trả</span>
-              <strong>{status ? offRampLabel(status.offRampStatus) : 'Chưa có dữ liệu'}</strong>
-              {status?.simulation === true && <b className="simulation-mark">Mô phỏng</b>}
+              <strong>{entry?.contract?.settlement ? settlementStageLabel(entry.contract.settlement.offRampStatus) : status ? offRampLabel(status.offRampStatus) : 'Chưa có dữ liệu chi trả'}</strong>
+              {(status?.simulation || entry?.contract?.settlement?.simulation || entry?.contract?.cancellation?.simulation) && <b className="simulation-mark">Mô phỏng</b>}
               <Link className="finance-row-link" to={financePath(job.id)}>Xem bằng chứng →</Link></div>
           </article>;
         })}</div>}
       <Pagination page={result} onPage={setPage} />
+      <button className="text-button finance-refresh" type="button" onClick={() => setAttempt(value => value + 1)}>Làm mới từ Marketplace</button>
     </>}
   </>;
 }
@@ -141,6 +158,125 @@ function TechnicalEvidence({ payment, tax }: { payment: JobPaymentStatus; tax: T
   </details>;
 }
 
+function ContractEvidence({ initialJob }: { initialJob: Job }) {
+  const [job, setJob] = useState(initialJob);
+  const [record, setRecord] = useState<ContractFinance>({ settlement: null, cancellation: null, error: '' });
+  const [funding, setFunding] = useState<FundingResponse | null>(null);
+  const [fundingError, setFundingError] = useState('');
+  const [tax, setTax] = useState<TaxRecord | null>(null);
+  const [taxError, setTaxError] = useState('');
+  const [payment, setPayment] = useState<JobPaymentStatus | null>(null);
+  const [paymentError, setPaymentError] = useState('');
+  const [ready, setReady] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    let active = true;
+    setBusy(true);
+    async function read() {
+      const current = attempt || tick ? await api.job(initialJob.id) : initialJob;
+      const contract = current.contract!;
+      const financial = await readContractFinance(current);
+      const [nextFunding, nextTax] = await Promise.all([
+        contract.milestoneId ? api.funding(contract.id, contract.milestoneId)
+          .then(data => ({ data, error: '' }), cause => ({ data: null, error: message(cause) }))
+          : Promise.resolve({ data: null, error: '' }),
+        financial.settlement || releaseOwned(current) ? api.taxRecordForJob(current.id).then(data => ({ data, error: '' }), cause => ({ data: null,
+          error: missingTax(cause) ? '' : message(cause) })) : Promise.resolve({ data: null, error: '' }),
+      ]);
+      // The legacy projection supplies downstream amounts/bank evidence, never release/refund proof.
+      const nextPayment = current.checkoutOrderId && (financial.settlement || releaseOwned(current))
+        ? await api.paymentStatus(current.id).then(data => ({ data, error: '' }), cause => ({ data: null, error: message(cause) }))
+        : { data: null, error: '' };
+      if (!active) return;
+      setJob(current);
+      setRecord(previous => ({ ...financial,
+        settlement: financial.settlement ?? (financial.error ? previous.settlement : null),
+        cancellation: financial.cancellation ?? (financial.error ? previous.cancellation : null) }));
+      setFunding(previous => nextFunding.error ? previous : nextFunding.data); setFundingError(nextFunding.error);
+      setTax(previous => nextTax.error ? previous : nextTax.data); setTaxError(nextTax.error);
+      setPayment(previous => nextPayment.error ? previous : nextPayment.data); setPaymentError(nextPayment.error);
+    }
+    read().catch(cause => { if (active) setRecord(previous => ({ ...previous, error: message(cause) })); })
+      .finally(() => { if (active) { setReady(true); setBusy(false); } });
+    return () => { active = false; };
+  }, [initialJob, attempt, tick]);
+  useEffect(() => {
+    if (!ready || busy || !contractFinanceNeedsRefresh(job, record)) return;
+    const refreshVisible = () => { if (document.visibilityState !== 'hidden') setTick(value => value + 1); };
+    const timer = window.setTimeout(refreshVisible, 30000);
+    document.addEventListener('visibilitychange', refreshVisible);
+    return () => { window.clearTimeout(timer); document.removeEventListener('visibilitychange', refreshVisible); };
+  }, [ready, busy, job, record, tick, attempt]);
+  const { settlement, cancellation } = record;
+  const refreshed = () => setAttempt(value => value + 1);
+  return <>
+    {!ready && <StatePanel kind="loading" title="Đang đối chiếu hồ sơ hợp đồng" body="Đọc funding, release và đề nghị hủy từ Marketplace." />}
+    {ready && <>
+      <section className="finance-statement" aria-label="Tiền chính của hợp đồng">
+        <SectionHeading title={contractFinanceLabel(job, record)} aside={settlement?.simulation || cancellation?.simulation || funding?.simulation ? 'Mô phỏng' : undefined} />
+        <p>Funding, release và hoàn tiền là ba bản ghi riêng. Bản ghi release/hoàn tiền mô phỏng không xác nhận chuyển khoản ngân hàng thật.</p>
+        <FactGrid facts={[
+          { label: 'Giá trị hợp đồng', value: decimal(job.contract!.amount) + ' ' + job.contract!.currency },
+          { label: 'Funding', value: funding ? fundingLabel(funding.fundingStatus) : fundingError ? 'Chưa đọc được funding' : 'Chưa có bản ghi funding' },
+          { label: 'Release', value: settlement ? settlementMoneyLabel(settlement.moneyStatus) : 'Chưa có bản ghi release' },
+          { label: 'Hoàn tiền', value: refundLabel(cancellation?.refundStatus ?? null) },
+        ]} />
+      </section>
+      {record.error && <StatePanel kind="error" title="Chưa thể đối chiếu đầy đủ" body={record.error} action={{ label: 'Thử lại', onClick: refreshed }} />}
+      {fundingError && <p role="alert">Không thể cập nhật funding: {fundingError}</p>}
+      {cancellation && <section className="cancellation-document" aria-label="Đề nghị hủy và hoàn tiền">
+        <SectionHeading title={cancellationLabel(cancellation.cancellationStatus)} />
+        <p>{cancellation.cancellationStatus === 'REQUESTED' ? 'Đề nghị đang chờ quyết định; công việc tiếp tục, chưa có hủy cuối cùng.' :
+          cancellation.cancellationStatus === 'REJECTED' ? 'Đề nghị bị từ chối; công việc tiếp tục, không có hoàn tiền từ đề nghị này.' :
+          cancellation.refundStatus === 'SUCCEEDED' ? 'Đã xác nhận bản ghi hoàn tiền. Không xác nhận tiền đã về ngân hàng thật.' :
+          cancellation.cancellationStatus === 'REFUND_PENDING' ? 'Hoàn tiền chưa được xác nhận; chưa phải hủy và hoàn tiền cuối cùng.' : 'Hợp đồng đã hủy; không suy ra hoàn tiền nếu chưa có bản ghi.'}</p>
+        <FactGrid facts={[
+          { label: 'Lý do', value: cancellation.reason || 'Chưa có lý do' },
+          { label: 'Hoàn tiền', value: refundLabel(cancellation.refundStatus) },
+          { label: 'Giá trị đề nghị', value: decimal(cancellation.amount) + ' ' + cancellation.currency },
+          { label: 'Cập nhật', value: stamp(cancellation.updatedAt) },
+        ]} />
+      </section>}
+      {settlement && <section className="settlement-document" aria-label="Xử lý sau release">
+        <SectionHeading title="Bằng chứng sau release" description="Lỗi ở chặng sau không đảo ngược release đã xác nhận." />
+        <FactGrid facts={[
+          { label: 'On-chain', value: settlementStageLabel(settlement.onChainStatus) },
+          { label: 'Chi trả VND', value: settlementStageLabel(settlement.offRampStatus) },
+          { label: 'Lập / khôi phục chứng từ', value: settlementStageLabel(settlement.taxStatus) },
+          { label: 'USDC theo bản ghi chi trả', value: payment?.amountUsdcReceived == null ? 'Chưa có dữ liệu' : usdc(payment.amountUsdcReceived) },
+          { label: 'VND dự kiến', value: payment?.estimatedAmountVnd == null ? 'Chưa có ước tính' : vnd(payment.estimatedAmountVnd) },
+          { label: 'Ngân hàng', value: (payment?.payoutBankCode || 'Chưa có ngân hàng') + ' · ' + maskedBank(payment?.payoutBankAccountNumber) },
+        ]} />
+        <p>Chặng thuế đã xác nhận chỉ chứng minh lập/khôi phục chứng từ; trạng thái cơ quan thuế lấy từ chứng từ thực tế bên dưới.</p>
+      </section>}
+      <section className="finance-tax-callout" aria-label="Chứng từ thực tế">
+        <div><h2>{tax ? tax.statusLabel || tax.status : 'Chưa có chứng từ'}</h2>
+          {taxError && <p role="alert">Chưa thể đọc chứng từ: {taxError}</p>}</div>
+        <Link className="button button-secondary" to={tax ? '/finance/tax-records/' + encodeURIComponent(tax.id) : '/finance/tax-records'}>Xem chứng từ</Link>
+      </section>
+      <EvidenceDisclosure summary="Tham chiếu và lỗi kỹ thuật">
+        <FactGrid facts={[
+          { label: 'Release reference', value: settlement?.releaseReference || '—' },
+          { label: 'Refund reference', value: cancellation?.refundReference || '—' },
+          { label: 'On-chain reference', value: settlement?.onChainReference || '—' },
+          { label: 'Off-ramp reference', value: settlement?.offRampReference || '—' },
+          { label: 'Tax reference', value: settlement?.taxReference || '—' },
+          { label: 'Lỗi release', value: settlement?.lastError || '—' },
+          { label: 'Lỗi on-chain', value: settlement?.onChainError || '—' },
+          { label: 'Lỗi VND', value: settlement?.offRampError || '—' },
+          { label: 'Lỗi thuế', value: settlement?.taxError || '—' },
+          { label: 'Lỗi hoàn tiền', value: cancellation?.lastError || '—' },
+          { label: 'Lỗi bản ghi chi trả', value: paymentError || '—' },
+        ]} />
+      </EvidenceDisclosure>
+      <ActionGroup><Link className="button button-secondary" to={'/work/' + encodeURIComponent(job.id)}>Xem hồ sơ công việc</Link>
+        <button className="text-button" type="button" disabled={busy} onClick={refreshed}>{busy ? 'Đang đối chiếu…' : 'Làm mới từ Marketplace'}</button></ActionGroup>
+    </>}
+  </>;
+}
+
 function JobEvidence({ jobId, user }: { jobId: string; user: User }) {
   const [job, setJob] = useState<Job | null>(null);
   const [payment, setPayment] = useState<JobPaymentStatus | null>(null);
@@ -160,7 +296,7 @@ function JobEvidence({ jobId, user }: { jobId: string; user: User }) {
     api.job(jobId).then(async currentJob => {
       if (!active) return;
       setJob(currentJob);
-      if (currentJob.contract && (currentJob.status === 'AWAITING_PAYMENT' || !currentJob.checkoutOrderId)) {
+      if (currentJob.contract) {
         setPayment(null); setTax(null); setLoading(false); return;
       }
       const results = await Promise.allSettled([Promise.resolve(currentJob), api.paymentStatus(jobId), api.taxRecordForJob(jobId)]);
@@ -212,9 +348,8 @@ function JobEvidence({ jobId, user }: { jobId: string; user: User }) {
       aside={'Giá trị công việc ' + money(job.budgetUsd)} />
     <FinanceNav />
     <div className="finance-back"><Link to="/finance">← Danh sách công việc</Link><Link to={'/work/' + job.id}>Hồ sơ công việc</Link></div>
-    {job.contract && (job.status === 'AWAITING_PAYMENT' || !job.checkoutOrderId) && <FundingPanel key={job.contract.id} job={job} user={user} onJobUpdated={next => { setJob(next); retry(); }} />}
-    {job.contract?.milestoneStatus === 'RELEASE_PENDING' && <p role="status">Đã có quyết định — đang xử lý tiền. Chưa có xác nhận giải ngân.</p>}
-    {!payment && !(job.contract && (job.status === 'AWAITING_PAYMENT' || !job.checkoutOrderId)) && <StatePanel kind="error" title="Chưa thể đọc trạng thái thanh toán"
+    {job.contract && <ContractEvidence initialJob={job} />}
+    {!payment && !job.contract && <StatePanel kind="error" title="Chưa thể đọc trạng thái thanh toán"
       body={paymentError || 'Marketplace chưa trả dữ liệu.'} action={{ label: 'Tải lại', onClick: retry }} />}
     {payment && <>
       <section className="finance-statement" aria-label="Tóm tắt tài chính">
