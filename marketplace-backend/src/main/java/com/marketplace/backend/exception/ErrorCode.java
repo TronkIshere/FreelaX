@@ -62,6 +62,8 @@ public enum ErrorCode {
     CONCURRENT_WORKFLOW_CHANGE(4030, "Trạng thái đã thay đổi; vui lòng tải lại", HttpStatus.CONFLICT),
     DISPUTE_ALREADY_OPEN(4031, "Hợp đồng đã có dispute đang mở", HttpStatus.CONFLICT),
     DISPUTE_REASON_REQUIRED(4032, "Dispute cần reasonCode và description", HttpStatus.UNPROCESSABLE_ENTITY),
+    SETTLEMENT_NOT_FOUND(4033, "Không tìm thấy hợp đồng hoặc settlement", HttpStatus.NOT_FOUND),
+    SETTLEMENT_INELIGIBLE(4034, "Hợp đồng chưa đủ điều kiện release", HttpStatus.CONFLICT),
 
     MISA_BACKEND_CALL_FAILED(5000, "Gọi misa-backend thất bại: %s", HttpStatus.BAD_GATEWAY),
 

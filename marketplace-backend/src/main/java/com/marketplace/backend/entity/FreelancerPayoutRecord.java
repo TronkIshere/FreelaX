@@ -22,6 +22,10 @@ import java.util.UUID;
 @Table(name = "freelancer_payout_records")
 public class FreelancerPayoutRecord extends AbstractEntity<UUID> {
 
+    // Contract records are driven exclusively by SettlementDownstreamService.
+    @Column(unique = true)
+    private UUID contractSettlementId;
+
     @Column(nullable = false, unique = true)
     private UUID jobId;
 

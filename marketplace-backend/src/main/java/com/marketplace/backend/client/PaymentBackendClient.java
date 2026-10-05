@@ -3,6 +3,8 @@ package com.marketplace.backend.client;
 import com.marketplace.backend.configuration.PaymentBackendProperties;
 import com.marketplace.backend.dto.response.common.ResponseAPI;
 import com.marketplace.backend.dto.response.bofa.CheckoutOrderResult;
+import com.marketplace.backend.dto.response.bofa.PaymentReleaseResult;
+import com.marketplace.backend.dto.request.bofa.CreateReleaseRequest;
 import com.marketplace.backend.exception.ApplicationException;
 import com.marketplace.backend.exception.ErrorCode;
 import lombok.AccessLevel;
@@ -104,6 +106,35 @@ public class PaymentBackendClient {
                 properties.getBaseUrl() + path, method, new HttpEntity<>(body, headers),
                 new ParameterizedTypeReference<ResponseAPI<CheckoutOrderResult>>() {});
         return response.getBody() != null ? response.getBody().getData() : null;
+    }
+
+    public PaymentReleaseResult createRelease(CreateReleaseRequest request) {
+        return releaseExchange("/internal/BofA/payout/releases", HttpMethod.POST, request);
+    }
+
+    public PaymentReleaseResult findRelease(String releaseKey) {
+        String path = UriComponentsBuilder.fromPath("/internal/BofA/payout/releases/by-key")
+                .queryParam("releaseKey", releaseKey).build().encode().toUriString();
+        try {
+            return releaseExchange(path, HttpMethod.GET, null);
+        } catch (HttpClientErrorException.NotFound ex) {
+            return null;
+        }
+    }
+
+    private PaymentReleaseResult releaseExchange(String path, HttpMethod method, Object body) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("X-Internal-Api-Key", properties.getInternalApiKey());
+        ResponseEntity<ResponseAPI<PaymentReleaseResult>> response = restTemplate.exchange(
+                properties.getBaseUrl() + path, method, new HttpEntity<>(body, headers),
+                new ParameterizedTypeReference<ResponseAPI<PaymentReleaseResult>>() {});
+        if (response.getBody() == null || !java.util.Objects.equals(response.getBody().getCode(), 200)
+                || response.getBody().getData() == null) {
+            // A malformed 2xx response is ambiguous, not proof of failure/non-existence.
+            throw new RestClientException("Invalid release response");
+        }
+        return response.getBody().getData();
     }
 
     private <T> T exchange(String path, HttpMethod method, Object body,
