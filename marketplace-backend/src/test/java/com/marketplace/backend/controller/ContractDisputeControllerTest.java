@@ -42,4 +42,22 @@ class ContractDisputeControllerTest {
         mvc.perform(get(path()).with(user(principal()))).andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(4038));
     }
+    @Test void acceptsTwoThousandCharacterDescription() throws Exception {
+        String description = "d".repeat(2000);
+        mvc.perform(post(path()).with(user(principal())).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"reasonCode\":\"QUALITY\",\"description\":\"" + description + "\"}"))
+                .andExpect(status().isOk());
+        verify(service).open(eq(actor), eq(contract), argThat(request -> description.equals(request.description())));
+    }
+    @Test void rejectsOversizedAndBlankDescriptionBeforeCallingService() throws Exception {
+        for (String description : List.of("d".repeat(2001), "", "   ")) {
+            mvc.perform(post(path()).with(user(principal())).contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"reasonCode\":\"QUALITY\",\"description\":\"" + description + "\"}"))
+                    .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_DATA"));
+        }
+        mvc.perform(post(path()).with(user(principal())).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"reasonCode\":\"QUALITY\"}"))
+                .andExpect(status().isBadRequest());
+        verifyNoInteractions(service);
+    }
 }

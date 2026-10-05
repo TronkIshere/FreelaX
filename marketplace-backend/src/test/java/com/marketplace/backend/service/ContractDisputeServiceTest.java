@@ -7,6 +7,7 @@ import com.marketplace.backend.dto.request.cancellation.CancellationDecisionRequ
 import com.marketplace.backend.dto.response.bofa.*;
 import com.marketplace.backend.entity.*;
 import com.marketplace.backend.exception.ApplicationException;
+import com.marketplace.backend.exception.ErrorCode;
 import com.marketplace.backend.repository.*;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -117,6 +118,35 @@ class ContractDisputeServiceTest {
         assertThatThrownBy(() -> service.open(UUID.randomUUID(), contract.getId(), reason)).isInstanceOf(ApplicationException.class);
         assertThatThrownBy(() -> service.open(client(), contract.getId(), reason)).isInstanceOf(ApplicationException.class);
         assertThat(contracts.findById(contract.getId()).orElseThrow().getStatus()).isEqualTo(ContractStatus.DISPUTED);
+    }
+    @Test void twoThousandCharacterDescriptionPersistsDisputeAndOpeningAudit() {
+        String description = "d".repeat(2000);
+        var result = service.open(freelancer(), contract.getId(),
+                new OpenDisputeRequest("QUALITY", description, List.of()));
+
+        assertThat(result.description()).isEqualTo(description);
+        assertThat(disputes.findById(result.disputeId()).orElseThrow().getDescription()).isEqualTo(description);
+        assertThat(audit.findByDisputeIdOrderByCreatedAtAsc(result.disputeId())).singleElement()
+                .satisfies(row -> {
+                    assertThat(row.getAction()).isEqualTo("OPENED");
+                    assertThat(row.getActorId()).isEqualTo(freelancer());
+                    assertThat(row.getAfterStatus()).isEqualTo("OPEN");
+                    assertThat(row.getReason()).isEqualTo(description);
+                });
+    }
+    @Test void oversizedDescriptionIsRejectedBeforeDisputeOrAuditPersistence() {
+        assertThatThrownBy(() -> service.open(client(), contract.getId(),
+                new OpenDisputeRequest("QUALITY", "d".repeat(2001), List.of())))
+                .isInstanceOf(ApplicationException.class)
+                .extracting(ex -> ((ApplicationException) ex).getErrorCode())
+                .isEqualTo(ErrorCode.DISPUTE_REASON_REQUIRED);
+
+        assertThat(disputes.count()).isZero();
+        assertThat(audit.count()).isZero();
+        assertThat(evidence.count()).isZero();
+        assertThat(contracts.findById(contract.getId()).orElseThrow().getStatus()).isEqualTo(ContractStatus.ACTIVE);
+        assertThat(milestones.findById(milestone.getId()).orElseThrow().getStatus()).isEqualTo(MilestoneStatus.FUNDED);
+        verifyNoInteractions(notifications);
     }
     @Test void invalidStateAndUnsafeEvidenceCannotOpen() {
         tx.executeWithoutResult(s -> milestones.findById(milestone.getId()).orElseThrow().setStatus(MilestoneStatus.RELEASE_PENDING));

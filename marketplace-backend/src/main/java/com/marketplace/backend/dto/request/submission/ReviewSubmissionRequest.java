@@ -27,6 +27,6 @@ public class ReviewSubmissionRequest {
     @Size(max = 60)
     private String reasonCode;
 
-    @Size(max = 10000)
+    @Size(max = 2000)
     private String description;
 }

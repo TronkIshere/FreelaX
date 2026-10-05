@@ -184,7 +184,8 @@ public class ContractSubmissionService {
             notifications.notify(contract.getFreelancerId(), NotificationType.REVISION_REQUESTED,
                     "Client yêu cầu chỉnh sửa", "Bản bàn giao #" + submission.getVersion() + " cần chỉnh sửa.", job.getId());
         } else if (request.getDecision() == ReviewSubmissionRequest.Decision.OPEN_DISPUTE) {
-            if (!StringUtils.hasText(request.getReasonCode()) || !StringUtils.hasText(request.getDescription())) {
+            if (!StringUtils.hasText(request.getReasonCode()) || !StringUtils.hasText(request.getDescription())
+                    || request.getDescription().length() > 2000) {
                 throw new ApplicationException(ErrorCode.DISPUTE_REASON_REQUIRED);
             }
             if (disputes.existsByContractIdAndStatusIn(contractId,

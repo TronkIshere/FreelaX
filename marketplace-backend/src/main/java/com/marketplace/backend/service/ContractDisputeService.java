@@ -246,7 +246,7 @@ public class ContractDisputeService {
 
     private void validateReason(OpenDisputeRequest r) {
         if (r == null || !StringUtils.hasText(r.reasonCode()) || r.reasonCode().length() > 60
-                || !StringUtils.hasText(r.description()) || r.description().length() > 10000)
+                || !StringUtils.hasText(r.description()) || r.description().length() > 2000)
             throw new ApplicationException(ErrorCode.DISPUTE_REASON_REQUIRED);
     }
 

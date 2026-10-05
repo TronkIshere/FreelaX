@@ -32,6 +32,7 @@ class ContractSubmissionServiceTest {
     private AcceptanceCriterionRepository criteria;
     private FundingTransactionRepository funding;
     private ContractDisputeRepository disputes;
+    private DisputeAuditRepository disputeAudit;
     private ContractSubmissionService service;
     private WorkContract contract;
     private Milestone milestone;
@@ -52,9 +53,10 @@ class ContractSubmissionServiceTest {
         criteria = mock(AcceptanceCriterionRepository.class);
         funding = mock(FundingTransactionRepository.class);
         disputes = mock(ContractDisputeRepository.class);
+        disputeAudit = mock(DisputeAuditRepository.class);
         savedEvidence = new ArrayList<>();
         service = new ContractSubmissionService(contracts, milestones, jobs, submissions, evidence,
-                requirements, criteria, funding, disputes, mock(DisputeAuditRepository.class),
+                requirements, criteria, funding, disputes, disputeAudit,
                 mock(NotificationService.class), new ObjectMapper());
 
         contract = new WorkContract();
@@ -257,7 +259,8 @@ class ContractSubmissionServiceTest {
         ReviewSubmissionRequest disputeRequest = new ReviewSubmissionRequest();
         disputeRequest.setDecision(ReviewSubmissionRequest.Decision.OPEN_DISPUTE);
         disputeRequest.setReasonCode("QUALITY");
-        disputeRequest.setDescription("Acceptance criteria were not met");
+        String description = "d".repeat(2000);
+        disputeRequest.setDescription(description);
         ContractDispute dispute = new ContractDispute();
         dispute.setId(UUID.randomUUID());
         dispute.setSubmissionId(saved.getId());
@@ -271,8 +274,33 @@ class ContractSubmissionServiceTest {
         assertThat(result.getDisputeId()).isEqualTo(dispute.getId());
         assertThat(milestone.getStatus()).isEqualTo(MilestoneStatus.DISPUTED);
         assertThat(contract.getStatus()).isEqualTo(ContractStatus.DISPUTED);
+        verify(disputes).save(argThat(row -> description.equals(row.getDescription())));
+        verify(disputeAudit).save(argThat(row -> description.equals(row.getReason())
+                && "OPENED".equals(row.getAction()) && "OPEN".equals(row.getAfterStatus())
+                && contract.getClientUserId().equals(row.getActorId())));
         assertThat(service.autoReview(saved.getId(), saved.getReviewDueAt().plusSeconds(1)))
                 .isEqualTo(ContractSubmissionService.AutoReviewOutcome.SKIPPED);
+    }
+
+    @Test
+    void oversizedMinimalDisputeDescriptionIsRejectedBeforePersistence() {
+        service.submit(contract.getFreelancerId(), contract.getId(), "submit-1", request());
+        clearInvocations(submissions);
+        ReviewSubmissionRequest decision = new ReviewSubmissionRequest();
+        decision.setDecision(ReviewSubmissionRequest.Decision.OPEN_DISPUTE);
+        decision.setReasonCode("QUALITY");
+        decision.setDescription("d".repeat(2001));
+
+        assertThatThrownBy(() -> service.decide(contract.getClientUserId(), contract.getId(), saved.getId(), decision))
+                .isInstanceOf(ApplicationException.class)
+                .extracting(ex -> ((ApplicationException) ex).getErrorCode())
+                .isEqualTo(ErrorCode.DISPUTE_REASON_REQUIRED);
+        verify(disputes, never()).save(any());
+        verifyNoInteractions(disputeAudit);
+        verify(submissions, never()).save(any());
+        assertThat(saved.getStatus()).isEqualTo(JobSubmissionStatus.SUBMITTED);
+        assertThat(contract.getStatus()).isEqualTo(ContractStatus.UNDER_REVIEW);
+        assertThat(milestone.getStatus()).isEqualTo(MilestoneStatus.SUBMITTED);
     }
 
     @Test
