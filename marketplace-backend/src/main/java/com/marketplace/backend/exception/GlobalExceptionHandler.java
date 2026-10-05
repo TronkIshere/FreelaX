@@ -12,12 +12,25 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.PessimisticLockingFailureException;
+import org.springframework.security.access.AccessDeniedException;
 
 import java.util.Date;
 
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAccessDenied(
+            AccessDeniedException ex, HttpServletRequest request) {
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .timestamp(new Date())
+                .status(ErrorCode.ACCESS_DENIED.getCode())
+                .error(ErrorCode.ACCESS_DENIED.getMessage())
+                .path(request.getRequestURI())
+                .build();
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);
+    }
 
     @ExceptionHandler({ObjectOptimisticLockingFailureException.class,
             PessimisticLockingFailureException.class, DataIntegrityViolationException.class})

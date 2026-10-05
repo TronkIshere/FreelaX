@@ -65,6 +65,10 @@ public class DataInitializer {
                 ));
                 log.info("Initial roles inserted");
             }
+            // Existing databases may have ROLE_USER but predate the Admin role.
+            if (roleRepository.findByName("ROLE_ADMIN").isEmpty()) {
+                roleRepository.save(createRole("ROLE_ADMIN"));
+            }
 
             Role userRole = roleRepository.findByName("ROLE_USER")
                     .orElseThrow(() -> new IllegalStateException("ROLE_USER not found after seeding"));

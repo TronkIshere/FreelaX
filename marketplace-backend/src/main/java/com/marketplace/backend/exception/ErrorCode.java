@@ -67,6 +67,10 @@ public enum ErrorCode {
     CANCELLATION_NOT_FOUND(4035, "Không tìm thấy hợp đồng hoặc yêu cầu hủy", HttpStatus.NOT_FOUND),
     CANCELLATION_INELIGIBLE(4036, "Trạng thái không cho phép hủy thông thường", HttpStatus.CONFLICT),
     CANCELLATION_CONFLICT(4037, "Yêu cầu hủy đã tồn tại hoặc quyết định không còn hợp lệ", HttpStatus.CONFLICT),
+    DISPUTE_NOT_FOUND(4038, "Không tìm thấy tranh chấp", HttpStatus.NOT_FOUND),
+    DISPUTE_INELIGIBLE(4039, "Trạng thái không cho phép mở hoặc xử lý tranh chấp", HttpStatus.CONFLICT),
+    DISPUTE_CONFLICT(4040, "Tranh chấp đã được xử lý hoặc yêu cầu không khớp", HttpStatus.CONFLICT),
+    DISPUTE_EVIDENCE_INVALID(4041, "Bằng chứng tranh chấp không hợp lệ", HttpStatus.UNPROCESSABLE_ENTITY),
 
     MISA_BACKEND_CALL_FAILED(5000, "Gọi misa-backend thất bại: %s", HttpStatus.BAD_GATEWAY),
 
