@@ -1138,3 +1138,88 @@ a { color: inherit; }
 @media (prefers-reduced-motion: reduce) {
   .job-category-plate, .job-identity-cluster::before, .job-identity-cluster::after { transform: none; }
 }
+
+/* Client Work C2 only: editorial work order. Frozen lists/toolkit remain unchanged. */
+.job-editor { min-width: 0; }
+.job-editor .page-head { border: 0; padding: 36px 0 32px; }
+.job-editor .page-head .eyebrow { display: none; }
+.job-editor .page-head h1 { font-size: 56px; line-height: 1.15; letter-spacing: -.035em; max-width: none; margin: 0 0 18px; }
+.job-editor .job-editor-supporting-copy { font-size: 18px; line-height: 1.5; font-weight: 500; max-width: 75ch; }
+.job-editor-title-start, .job-editor-title-emphasis { position: relative; display: inline-block; }
+.job-editor-title-emphasis { color: var(--vermilion); }
+.job-editor-title-emphasis > .ku-rough:not(.job-editor-rays) { position: absolute; width: 88%; height: 12px; bottom: -9px; left: 4%; }
+.job-editor .job-editor-rays { position: absolute; max-width: none; }
+.job-editor-rays--left { left: -20px; top: 10px; transform: rotate(-45deg); }
+.job-editor-rays--right { right: -34px; top: -14px; transform: rotate(75deg); }
+.job-editor form { margin-top: 10px; max-width: none; }
+.job-editor-layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); align-items: start; gap: 36px 40px; }
+.job-editor-identity { grid-column: 1; grid-row: 1; }
+.job-editor-obligations { grid-column: 1; grid-row: 2; }
+.job-editor fieldset { gap: 36px; margin: 0; }
+.job-editor-section { display: grid; gap: 20px; min-width: 0; }
+.job-editor-section-heading { display: flex; align-items: center; gap: 16px; padding-top: 22px; border-top: 2px solid var(--ink); }
+.job-editor-section-heading h2 { font-size: 26px; line-height: 1.3; font-weight: 800; letter-spacing: -.02em; margin: 0; }
+.job-editor-section-number { display: inline-grid; place-items: center; width: 46px; height: 42px; flex-shrink: 0; background: var(--acid); border: 2px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); font-size: 22px; line-height: 1; font-weight: 850; transform: rotate(-1deg); }
+.job-editor-section--conditions .job-editor-section-number { background: var(--cobalt); color: var(--cream); }
+.job-editor-section--deliverables .job-editor-section-number { background: var(--vermilion); color: var(--cream); }
+.job-editor-section--acceptance .job-editor-section-number { background: var(--mint); }
+.job-editor :is(input, select, textarea) { font-size: 16px; line-height: 1.5; padding: 12px 14px; }
+.job-editor label { font-size: 16px; line-height: 1.4; font-weight: 650; }
+.job-editor .job-editor-title-field input { font-size: 18px; font-weight: 550; min-height: 56px; }
+.job-editor .job-editor-writing { min-height: 155px; }
+.job-editor :is(input, select, textarea):focus-visible { outline: 3px solid var(--cobalt); outline-offset: 3px; }
+.job-editor .job-editor-help, .job-editor .job-editor-section-help, .job-editor #job-skills-help { font-size: 14px; line-height: 1.5; font-weight: 450; color: var(--soft-ink); margin: 0; }
+.job-editor-section-help { max-width: 65ch; }
+.job-editor-skills { display: grid; gap: 10px; }
+.job-editor-skill-tokens, .job-editor-preview-skills { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; padding: 0; margin: 0; }
+.job-editor-skill-tokens li, .job-editor-preview-skills li { display: inline-flex; align-items: center; gap: 8px; padding: 4px 8px; border: 1.5px solid var(--ink); background: var(--cream); font-size: 14px; line-height: 1.4; font-weight: 600; overflow-wrap: anywhere; max-width: 100%; }
+.job-editor-skill-tokens button { display: inline-grid; place-items: center; padding: 3px; border: 0; color: var(--ink); background: transparent; flex-shrink: 0; }
+.job-editor-fields { gap: 20px 24px; align-items: start; }
+.job-editor .job-editor-requirement { grid-template-columns: 38px minmax(0, 1fr); gap: 16px; padding: 20px 0 0; border-top: 1.5px solid var(--ink); }
+.job-editor-item-number { display: inline-grid; place-items: center; background: var(--acid); color: var(--ink); border: 1.5px solid var(--ink); width: 38px; height: 34px; font-size: 16px; font-weight: 800; transform: rotate(-1deg); }
+.job-editor-section--acceptance .job-editor-item-number { background: var(--cobalt); color: var(--cream); }
+.job-editor-item-fields { display: grid; gap: 16px; min-width: 0; }
+.job-editor .job-editor-remove { justify-self: start; color: var(--ink); padding: 0; font-size: 15px; text-decoration: underline; text-decoration-color: var(--vermilion); text-underline-offset: 4px; }
+.job-editor .job-editor-add { justify-self: start; display: inline-flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 650; padding: 10px 14px; }
+.job-editor-preview { min-width: 0; grid-column: 2; grid-row: 1; position: sticky; top: 24px; padding: 0 6px 6px 0; }
+.job-editor--create .job-editor-preview { grid-row: 1 / span 2; }
+.job-editor .job-editor-preview-paper { padding: 24px; display: grid; gap: 20px; }
+.job-editor-preview-paper > .ku-tape { justify-self: start; }
+.job-editor-preview-identity { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; min-width: 0; }
+.job-editor-preview-identity .job-family-art { width: 118px; height: auto; aspect-ratio: 1; flex-shrink: 0; }
+.job-editor-preview-identity .job-category-plate { margin: 0; }
+.job-editor-preview-neutral { font-size: 14px; font-weight: 700; padding: 4px 8px; border: 1.5px solid var(--ink); }
+.job-editor-preview-paper h2 { font-size: 24px; line-height: 1.3; font-weight: 800; letter-spacing: -.02em; overflow-wrap: anywhere; margin: 0; }
+.job-editor-preview-placeholder { font-weight: 500 !important; color: var(--soft-ink) !important; }
+.job-editor-preview-paper .job-progress-marker { justify-self: start; font-size: 14px; }
+.job-editor-preview-paper dl { display: grid; gap: 16px; padding-top: 20px; margin: 0; border-top: 1.5px solid var(--ink); }
+.job-editor-preview-paper dl > div { display: grid; gap: 4px; }
+.job-editor-preview-paper dt { font-size: 14px; line-height: 1.4; font-weight: 500; }
+.job-editor-preview-paper dd { font-size: 18px; line-height: 1.4; font-weight: 700; margin: 0; overflow-wrap: anywhere; }
+.job-editor-preview-paper .job-editor-draft-summary dt { font-weight: 650; }
+.job-editor-preview-paper .job-editor-draft-summary dd { font-size: 16px; font-weight: 600; }
+.job-editor-preview-paper .job-editor-draft-summary .job-editor-summary-title { font-size: 14px; font-weight: 450; color: var(--soft-ink); }
+.job-editor .job-editor-error { margin: 28px 0 0; padding: 16px 20px; border: 2px solid var(--ink); background: var(--cream); box-shadow: -5px 0 0 var(--vermilion); font-size: 16px; line-height: 1.5; }
+.job-editor-closing { margin-top: 36px; padding: 24px; background: var(--ink); color: var(--cream); border: 2px solid var(--ink); }
+.job-editor-closing .action-group { margin: 0; gap: 24px; }
+.job-editor .job-editor-submit { display: inline-flex; align-items: center; gap: 12px; background: var(--acid); color: var(--ink); border: 2px solid var(--cream); font-size: 16px; font-weight: 750; padding: 12px 18px; }
+.job-editor-closing .text-link { color: var(--cream); font-size: 16px; font-weight: 600; }
+.job-editor-closing :is(button, a):focus-visible { outline-color: var(--acid); }
+@media (max-width: 1100px) {
+  .job-editor .page-head h1 { font-size: 48px; }
+  .job-editor .job-editor-supporting-copy { font-size: 17px; }
+  .job-editor-layout { grid-template-columns: minmax(0, 1fr); gap: 32px; }
+  .job-editor-preview, .job-editor--create .job-editor-preview { position: static; grid-column: 1; grid-row: 2; }
+  .job-editor-obligations { grid-row: 3; }
+  .job-editor .job-editor-preview-paper { grid-template-columns: 140px minmax(0, 1fr) minmax(180px, .8fr); gap: 12px 24px; padding: 20px; }
+  .job-editor-preview-paper > .ku-tape { grid-column: 1 / -1; }
+  .job-editor-preview-identity { grid-column: 1; grid-row: 2 / 6; align-content: start; gap: 12px; }
+  .job-editor-preview-paper h2, .job-editor-preview-paper > .job-progress-marker, .job-editor-preview-skills { grid-column: 2; }
+  .job-editor-preview-paper dl { grid-column: 3; grid-row: 2 / 5; align-self: start; border-top: 0; border-left: 1.5px solid var(--ink); padding: 0 0 0 20px; }
+  .job-editor-preview-paper .job-editor-draft-summary { grid-column: 2 / -1; grid-row: 5; grid-template-columns: repeat(2, minmax(0, 1fr)); border-left: 0; border-top: 1.5px solid var(--ink); padding: 16px 0 0; }
+  .job-editor-preview-paper > .job-editor-help { grid-column: 2 / -1; }
+  .job-editor-section-heading h2 { font-size: 24px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .job-editor-section-number, .job-editor-item-number { transform: none; }
+}
