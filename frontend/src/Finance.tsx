@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom';
+import { WalletCards, Coins, LockKeyhole, Clock3, RotateCcw, CircleCheck, CalendarDays, ArrowRight, BriefcaseBusiness, FileText } from 'lucide-react';
+import { JobCategoryPlate, JobIdentityCluster } from './ui/JobRowIdentity';
+import { RoughBurst, RoughUnderline } from './ui/kinetic';
 import { ApiError, api } from './api';
 import { ActionGroup, EvidenceDisclosure, FactGrid, PageHeading, SectionHeading, StatePanel } from './components';
 import { Pagination } from './Jobs';
@@ -17,9 +20,19 @@ const missingTax = (cause: unknown) => cause instanceof ApiError && (cause.statu
 const stamp = (value: string | null | undefined) => value ? value.slice(0, 16).replace('T', ' · ') : '—';
 
 function FinanceNav() {
+  const { pathname } = useLocation();
+  const taxActive = pathname === '/finance/tax-records' || pathname.startsWith('/finance/tax-records/');
   return <nav className="finance-nav" aria-label="Khu vực tài chính">
-    <Link to="/finance">Theo công việc</Link>
-    <Link to="/finance/tax-records">Chứng từ thuế</Link>
+    <Link className={'finance-folder-tab' + (!taxActive ? ' finance-folder-tab--active' : '')}
+      aria-current={!taxActive ? 'page' : undefined} to="/finance">
+      <span className="finance-tab-index" aria-hidden="true">01</span>
+      <BriefcaseBusiness size={20} aria-hidden="true" /><span>Theo công việc</span>
+    </Link>
+    <Link className={'finance-folder-tab' + (taxActive ? ' finance-folder-tab--active' : '')}
+      aria-current={taxActive ? 'page' : undefined} to="/finance/tax-records">
+      <span className="finance-tab-index" aria-hidden="true">02</span>
+      <FileText size={20} aria-hidden="true" /><span>Chứng từ thuế</span>
+    </Link>
   </nav>;
 }
 
@@ -75,43 +88,115 @@ function FinanceList({ user }: { user: User }) {
 
   const freelancer = user.userType === 'FREELANCER';
   const financial = result?.data.filter(job => job.contract || job.status === 'COMPLETED') ?? [];
-  return <>
+  return <section className={'finance-list-page' + (freelancer ? ' finance-list-page--income' : '')}>
     <PageHeading eyebrow={freelancer ? 'Freelancer / Thu nhập' : 'Client / Thanh toán'}
-      title={freelancer ? 'Thu nhập theo từng công việc.' : 'Thanh toán theo từng công việc.'}
-      description="Funding, release, hoàn tiền và chứng từ theo công việc; mỗi chặng có bằng chứng riêng từ Marketplace."
-      aside="Không hiển thị số dư ví hoặc lệnh chuyển tiền" />
+      title={<><span className="finance-title-start">{freelancer ? 'Thu nhập theo ' : 'Thanh toán theo '}
+        <RoughBurst seedKey="finance:left" accent="vermilion" size={38} className="finance-rays finance-rays--left" /></span>
+        <span className="finance-title-emphasis">công việc.<RoughUnderline seedKey="finance:underline" size={260} />
+          <RoughBurst seedKey="finance:right" accent="ink" size={38} className="finance-rays finance-rays--right" /></span></>}
+      description={freelancer ? 'Theo dõi release, chi trả và chứng từ theo từng công việc.'
+        : 'Theo dõi thanh toán, release và hoàn tiền theo từng công việc.'} />
     <FinanceNav />
     {loading && <StatePanel kind="loading" title="Đang tải hồ sơ tài chính" body="Đang đối chiếu công việc và trạng thái thanh toán." />}
     {!loading && error && <StatePanel kind="error" title="Không thể tải công việc" body={error}
       action={{ label: 'Thử lại', onClick: () => setAttempt(value => value + 1) }} />}
     {!loading && !error && result && <>
-      <div className="finance-list-intro"><strong>{financial.length} hồ sơ tài chính trên trang này</strong>
-        <span>Danh sách công việc được phân trang bởi Marketplace.</span></div>
+      <FinanceSummary count={financial.length} freelancer={freelancer} />
+      <header className="finance-ledger-heading"><h2>{freelancer ? 'Lịch sử thu nhập' : 'Danh sách thanh toán'}</h2>
+        <span>{financial.length} hồ sơ tài chính trên trang này</span></header>
       {financial.length === 0 ? <StatePanel kind="empty" title="Chưa có hồ sơ tài chính trên trang này"
         body="Chuyển trang để xem các công việc khác. Hồ sơ hợp đồng đang xử lý tiền cũng xuất hiện tại đây." /> :
-        <div className="finance-job-list">{financial.map(job => {
-          const entry = payments[job.id];
-          const status = entry?.data;
-          return <article className="finance-job-row" key={job.id}>
-            <div><span className="finance-category">{job.contract ? 'Hồ sơ hợp đồng' : 'Công việc hoàn thành'}</span>
-              <h2><Link to={financePath(job.id)}>{job.title}</Link></h2>
-              <p>Giá trị công việc: {money(job.budgetUsd)}</p></div>
-            <div className={job.contract ? 'finance-row-state finance-row-state-' + contractFinanceTone(job, entry?.contract) : undefined}><span className="cell-label">{job.contract ? 'Release / hoàn tiền' : 'Thanh toán Client'}</span>
-              <strong>{job.contract ? contractFinanceLabel(job, entry?.contract) : status ? checkoutLabel(status.checkoutOrderStatus) : entry?.error || 'Đang tải…'}</strong>
-              {entry?.contract?.error && <span role="alert">{entry.contract.error}</span>}</div>
-            <div><span className="cell-label">USDC / VND</span>
-              <strong>{status?.amountUsdcReceived == null ? 'Chưa có số USDC' : usdc(status.amountUsdcReceived)}</strong>
-              <span>{status?.estimatedAmountVnd == null ? 'Chưa có VND dự kiến' : vnd(status.estimatedAmountVnd) + ' dự kiến'}</span></div>
-            <div><span className="cell-label">Chi trả</span>
-              <strong>{entry?.contract?.settlement ? settlementStageLabel(entry.contract.settlement.offRampStatus) : status ? offRampLabel(status.offRampStatus) : 'Chưa có dữ liệu chi trả'}</strong>
-              {(status?.simulation || entry?.contract?.settlement?.simulation || entry?.contract?.cancellation?.simulation) && <b className="simulation-mark">Mô phỏng</b>}
-              <Link className="finance-row-link" to={financePath(job.id)}>Xem bằng chứng →</Link></div>
-          </article>;
-        })}</div>}
-      <Pagination page={result} onPage={setPage} />
-      <button className="text-button finance-refresh" type="button" onClick={() => setAttempt(value => value + 1)}>Làm mới từ Marketplace</button>
+        <div className="finance-ledger">
+          <div className="finance-ledger-header" aria-hidden="true"><span>Công việc</span><span>Giá trị</span>
+            <span>Trạng thái</span><span>Ngày cập nhật</span><span>Thao tác</span></div>
+          <div className="finance-ledger-rows">{financial.map(job => <FinanceLedgerRow key={job.id} job={job} entry={payments[job.id]} />)}</div>
+        </div>}
+      <div className="finance-list-tools"><Pagination page={result} onPage={setPage} />
+        <button className="text-button finance-refresh" type="button" onClick={() => setAttempt(value => value + 1)}>Làm mới từ Marketplace</button></div>
+      <FinanceProcess freelancer={freelancer} />
     </>}
-  </>;
+  </section>;
+}
+
+// No monetary aggregates are exposed by the current API. The three process tiles
+// are a reading key, not invented totals or interactive filters.
+function FinanceSummary({ count, freelancer }: { count: number; freelancer: boolean }) {
+  const steps = [
+    { key: 'funding', label: 'Thanh toán Client', title: 'Funding', note: 'Xác nhận theo từng hồ sơ', Icon: LockKeyhole, tone: 'active' },
+    { key: 'release', label: freelancer ? 'Giải ngân cho Freelancer' : 'Release cho Freelancer', title: 'Release',
+      note: 'Xác nhận theo từng hồ sơ', Icon: CircleCheck, tone: 'done' },
+    { key: 'refund', label: 'Hoàn tiền cho Client', title: 'Hoàn tiền', note: 'Xác nhận theo từng hồ sơ', Icon: RotateCcw, tone: 'refund' },
+  ];
+  if (!freelancer) [steps[1], steps[2]] = [steps[2], steps[1]];
+  const TotalIcon = freelancer ? Coins : WalletCards;
+  return <section className="finance-summary" aria-label="Hồ sơ và các chặng tài chính">
+    <article className="finance-summary-card finance-color-pending">
+      <TotalIcon aria-hidden="true" className="finance-summary-icon" strokeWidth={1.8} />
+      <div><h2>Hồ sơ trên trang</h2><strong className="finance-summary-count">{count}</strong><p>hồ sơ tài chính</p></div>
+    </article>
+    {steps.map(({ key, label, title, note, Icon, tone }) => <article key={key} className={'finance-summary-card finance-color-' + tone}>
+      <Icon aria-hidden="true" className="finance-summary-icon" strokeWidth={1.8} />
+      <div><h2>{label}</h2><strong className="finance-summary-stage">{title}</strong><p>{note}</p></div>
+    </article>)}
+  </section>;
+}
+
+function financeRowTone(job: Job, entry?: PaymentEntry) {
+  if (entry?.contract?.cancellation?.refundStatus === 'SUCCEEDED') return 'refund';
+  // Cancellation without a successful refund must not look like received money.
+  if (job.contract?.status === 'CANCELLED' || entry?.contract?.cancellation?.cancellationStatus === 'CANCELLED') return 'neutral';
+  if (job.contract) return contractFinanceTone(job, entry?.contract);
+  if (entry?.error) return 'error';
+  if (entry?.data?.checkoutOrderStatus === 'CAPTURED') return 'done';
+  return entry?.data?.checkoutOrderStatus === 'FAILED' ? 'error' : 'pending';
+}
+
+function financeUpdatedAt(entry?: PaymentEntry) {
+  const data = entry?.data;
+  return [entry?.contract?.settlement?.updatedAt, entry?.contract?.cancellation?.updatedAt,
+    data?.clientPaymentSubmittedAt, data?.clientPaymentConfirmedAt, data?.withdrawalSubmittedAt,
+    data?.withdrawalConfirmedAt, data?.simulatedPayoutAt, data?.offRampCompletionSubmittedAt, data?.offRampCompletedAt]
+    .filter((value): value is string => !!value && Number.isFinite(Date.parse(value)))
+    .sort((a, b) => Date.parse(b) - Date.parse(a))[0];
+}
+
+function FinanceLedgerRow({ job, entry }: { job: Job; entry?: PaymentEntry }) {
+  const status = entry?.data;
+  const tone = financeRowTone(job, entry);
+  const Icon = tone === 'refund' ? RotateCcw : tone === 'done' ? CircleCheck : tone === 'active' ? Clock3 : LockKeyhole;
+  const updatedAt = financeUpdatedAt(entry);
+  return <article className={'finance-ledger-row finance-color-' + tone} aria-label={job.title}>
+    <div className="finance-ledger-job"><JobIdentityCluster job={job} /><div>
+      <h3><Link to={financePath(job.id)}>{job.title}</Link></h3><JobCategoryPlate job={job} />
+      {!!job.skills?.length && <ul className="finance-job-skills" aria-label="Kỹ năng công việc">{job.skills.map(skill => <li key={skill}>{skill}</li>)}</ul>}
+    </div></div>
+    <div className="finance-ledger-value"><span className="finance-mobile-label">Giá trị công việc</span><strong>{money(job.budgetUsd)}</strong>
+      {status?.amountUsdcReceived != null && <span>{usdc(status.amountUsdcReceived)}</span>}
+      {status?.estimatedAmountVnd != null && <span>{vnd(status.estimatedAmountVnd)} dự kiến</span>}</div>
+    <div className="finance-ledger-state"><span className="finance-status-badge"><Icon size={19} aria-hidden="true" />
+      {job.contract ? contractFinanceLabel(job, entry?.contract) : status ? checkoutLabel(status.checkoutOrderStatus) : entry?.error || 'Chưa có dữ liệu'}</span>
+      <span className="finance-payout-label">{entry?.contract?.settlement ? 'Chi trả: ' + settlementStageLabel(entry.contract.settlement.offRampStatus)
+        : status ? offRampLabel(status.offRampStatus) : 'Chưa có dữ liệu chi trả'}</span>
+      {(status?.simulation || entry?.contract?.settlement?.simulation || entry?.contract?.cancellation?.simulation) && <b className="simulation-mark">Mô phỏng</b>}
+      {(entry?.error || entry?.contract?.error) && <span className="finance-row-error" role="alert">{entry.error || entry.contract?.error}</span>}
+    </div>
+    <div className="finance-ledger-date"><span className="finance-mobile-label">Ngày cập nhật</span>
+      <CalendarDays size={17} aria-hidden="true" />{updatedAt ? <time dateTime={updatedAt}>{stamp(updatedAt)}</time> : <span>Chưa có cập nhật</span>}</div>
+    <Link className="finance-detail-link" to={financePath(job.id)} aria-label={'Xem chi tiết: ' + job.title}>Xem chi tiết <ArrowRight size={22} aria-hidden="true" /></Link>
+  </article>;
+}
+
+function FinanceProcess({ freelancer }: { freelancer: boolean }) {
+  const Icon = freelancer ? Coins : WalletCards;
+  return <section className="finance-process" aria-labelledby="finance-process-title">
+    <Icon className="finance-process-icon" aria-hidden="true" strokeWidth={1.8} />
+    <div><h2 id="finance-process-title">{freelancer ? 'Quy trình nhận tiền' : 'Quy trình thanh toán'}</h2>
+      <p>{freelancer ? 'Đối chiếu release, chi trả và chứng từ trong hồ sơ của từng công việc.'
+        : 'Đối chiếu funding, release và hoàn tiền trong hồ sơ của từng công việc.'}</p>
+      <details><summary>Tìm hiểu thêm <ArrowRight size={20} aria-hidden="true" /></summary>
+        <p>{financialCopy.fundingVsRelease} {financialCopy.releaseSimulation} {financialCopy.taxVsCertificate}</p></details>
+    </div>
+  </section>;
 }
 
 function StageRail({ stages }: { stages: EvidenceStage[] }) {

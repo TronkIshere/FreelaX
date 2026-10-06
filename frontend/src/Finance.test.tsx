@@ -51,7 +51,7 @@ describe('P05.4 financial screens', () => {
       totalElements: 2, data: [job, { ...job, id: 'working-job', title: 'Unfinished work', status: 'IN_PROGRESS' }] });
     vi.spyOn(api, 'paymentStatus').mockResolvedValue(payment);
     await render(<FinanceHome user={freelancer} />);
-    expect(host.textContent).toContain('Thu nhập theo từng công việc');
+    expect(host.textContent).toContain('Thu nhập theo công việc');
     expect(host.textContent).toContain('Editorial work');
     expect(host.textContent).not.toContain('Unfinished work');
     expect(host.textContent).toContain('Mock USDC');
@@ -90,6 +90,7 @@ describe('P05.4 financial screens', () => {
     await render(<Routes><Route path="/finance/tax-records/:taxRecordId" element={<TaxRecordDetail />} /></Routes>,
       '/finance/tax-records/tax-1');
     expect(taxRead).toHaveBeenCalledExactlyOnceWith('tax-1');
+    expect(host.querySelector('.finance-nav a[aria-current="page"]')?.getAttribute('href')).toBe('/finance/tax-records');
     expect(button('Tải PDF')).toBeTruthy();
     expect(button('Tải XML')).toBeTruthy();
     expect(button('Đồng bộ trạng thái')).toBeUndefined();
@@ -337,4 +338,89 @@ describe('P1 contract financial evidence', () => {
     expect(host.textContent).toContain('Other contract');
     expect(host.querySelector('.finance-statement')?.textContent).not.toContain('Release đã xác nhận');
   });
+});
+
+
+describe('P06.5A source-backed finance ledger', () => {
+  const list = (jobs: Job[]) => vi.spyOn(api, 'myJobs').mockResolvedValue({ currentPage: 0,
+    pageSize: 20, totalPages: 1, totalElements: 98, data: jobs });
+
+  it.each([client, freelancer])('renders the role heading and four honest modules for $userType', async user => {
+    list([job]);
+    vi.spyOn(api, 'paymentStatus').mockResolvedValue(payment);
+    await render(<FinanceHome user={user} />);
+    expect(host.querySelector('h1')?.textContent).toBe(user.userType === 'CLIENT'
+      ? 'Thanh toán theo công việc.' : 'Thu nhập theo công việc.');
+    expect(host.querySelectorAll('.finance-summary-card')).toHaveLength(4);
+    expect(host.querySelector('.finance-summary-count')?.textContent).toBe('1');
+    expect(host.querySelector('.finance-summary')?.textContent).not.toContain('$');
+    expect(host.querySelector('.finance-summary')?.textContent).not.toContain('98');
+    expect(host.querySelector('.finance-ledger-heading h2')?.textContent).toBe(user.userType === 'CLIENT'
+      ? 'Danh sách thanh toán' : 'Lịch sử thu nhập');
+    expect(host.querySelector('.finance-ledger-header')?.textContent).toContain('Ngày cập nhật');
+    expect(host.querySelectorAll('.finance-process')).toHaveLength(1);
+    expect(host.querySelector('.finance-process details')?.hasAttribute('open')).toBe(false);
+    expect(host.querySelectorAll('select')).toHaveLength(0);
+  });
+
+  it('reuses real category/skills, detail navigation, simulation and latest financial timestamp', async () => {
+    list([{ ...job, category: 'BACKEND_API', skills: ['Java', 'REST API'] }]);
+    vi.spyOn(api, 'paymentStatus').mockResolvedValue({ ...payment,
+      withdrawalConfirmedAt: '2026-10-04T12:00:00Z', offRampCompletedAt: '2026-10-05T12:00:00Z' });
+    await render(<FinanceHome user={client} />);
+    expect(host.querySelector('.job-family-art')?.getAttribute('data-family')).toBe('backend');
+    expect(host.querySelector('.finance-job-skills')?.textContent).toContain('REST API');
+    expect(host.querySelector('time')?.getAttribute('datetime')).toBe('2026-10-05T12:00:00Z');
+    expect(host.querySelector('.finance-detail-link')?.getAttribute('href')).toBe('/finance?jobId=job-1');
+    expect(host.querySelector('.finance-detail-link')?.textContent).toContain('Xem chi tiết');
+    expect(host.querySelector('.finance-detail-link')?.classList.contains('button-primary')).toBe(false);
+    expect(host.textContent).not.toContain(payment.payoutBankAccountNumber);
+  });
+
+  it('uses a refund rail only for confirmed refunds and keeps cancelled-without-refund neutral', async () => {
+    const cancelled = { ...contractJob, contract: { ...contractJob.contract!, status: 'CANCELLED' as const } };
+    list([cancelled]);
+    vi.spyOn(api, 'settlement').mockResolvedValue(null);
+    const read = vi.spyOn(api, 'cancellation').mockResolvedValue({ ...cancellation,
+      cancellationStatus: 'CANCELLED', refundStatus: null });
+    const downstream = vi.spyOn(api, 'paymentStatus');
+    await render(<FinanceHome user={client} />);
+    expect(host.querySelector('.finance-ledger-row')?.classList.contains('finance-color-neutral')).toBe(true);
+    expect(host.querySelector('.finance-status-badge')?.textContent).toContain('Hợp đồng đã hủy');
+    read.mockResolvedValue({ ...cancellation, cancellationStatus: 'CANCELLED', refundStatus: 'SUCCEEDED' });
+    await act(async () => { button('Làm mới từ Marketplace')!.click(); });
+    expect(host.querySelector('.finance-ledger-row')?.classList.contains('finance-color-refund')).toBe(true);
+    expect(host.querySelector('.finance-status-badge')?.textContent).toContain('Hoàn tiền đã xác nhận');
+    expect(downstream).not.toHaveBeenCalled();
+  });
+
+  it('preserves read errors, absent timestamps and the role shell without claiming release success', async () => {
+    list([contractJob]);
+    vi.spyOn(api, 'settlement').mockRejectedValue(new Error('Release unavailable'));
+    vi.spyOn(api, 'cancellation').mockResolvedValue(null);
+    await render(<FinanceHome user={freelancer} />);
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain('Release unavailable');
+    expect(host.querySelector('.finance-status-badge')?.textContent).toContain('Chưa xác minh');
+    expect(host.querySelector('.finance-ledger-date')?.textContent).toContain('Chưa có cập nhật');
+    expect(host.querySelector('time')).toBeNull();
+    expect(host.querySelector('.finance-process')).not.toBeNull();
+  });
+});
+
+
+it('keeps exactly two folder destinations and changes current-page semantics on tax navigation', async () => {
+  vi.spyOn(api, 'myJobs').mockResolvedValue({ currentPage: 0, pageSize: 20, totalPages: 1, totalElements: 0, data: [] });
+  vi.spyOn(api, 'taxRecords').mockResolvedValue({ currentPage: 0, pageSize: 10, totalPages: 1, totalElements: 0, data: [] });
+  await render(<Routes>
+    <Route path="/finance" element={<FinanceHome user={client} />} />
+    <Route path="/finance/tax-records" element={<TaxRecordsPage />} />
+  </Routes>);
+  const nav = () => host.querySelector('nav[aria-label="Khu vực tài chính"]')!;
+  expect(nav().querySelectorAll('a')).toHaveLength(2);
+  expect(nav().querySelector('a[aria-current="page"]')?.getAttribute('href')).toBe('/finance');
+  expect([...nav().querySelectorAll('.finance-tab-index')].map(index => index.textContent)).toEqual(['01', '02']);
+  await act(async () => { nav().querySelector<HTMLAnchorElement>('a[href="/finance/tax-records"]')!.click(); });
+  expect(nav().querySelector('a[aria-current="page"]')?.getAttribute('href')).toBe('/finance/tax-records');
+  expect(nav().querySelectorAll('a[aria-current="page"]')).toHaveLength(1);
+  expect(nav().querySelector('a[href="/finance"]')?.hasAttribute('aria-current')).toBe(false);
 });
