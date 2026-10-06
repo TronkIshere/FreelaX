@@ -1,13 +1,14 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronDown, RotateCcw, Search, SlidersHorizontal, X } from 'lucide-react';
+import { Ban, BriefcaseBusiness, CalendarDays, ChevronDown, CircleCheck, Clock3, Hourglass, PencilLine, Plus, RotateCcw, Search, SlidersHorizontal, UserRound, X } from 'lucide-react';
 import { api } from './api';
 import { applicationLabel, date, jobLabel, money } from './status';
-import { ActionGroup, FactGrid, PageHeading, SectionHeading, StatePanel } from './components';
+import { ActionGroup, FactGrid, PageHeading, StatePanel } from './components';
 import type { DiscoverJob, DiscoveryFilters, Job, Page } from './types';
-import { KineticActionArrow, KineticLedgerRow, RoughBurst, RoughUnderline, TapeSticker } from './ui/kinetic';
+import { KineticActionArrow, KineticCard, KineticLedgerRow, RoughBurst, RoughUnderline, TapeSticker } from './ui/kinetic';
 import { JobThumbnail } from './ui/job-thumbnails/JobThumbnail';
 import { jobCategories, parseJobSkills } from './jobDiscovery';
+import { JobCategoryPlate, JobIdentityCluster, jobStateTone } from './ui/JobRowIdentity';
 
 function statusClass(status: string) {
   if (status === 'COMPLETED' || status === 'IN_PROGRESS') return 'mint';
@@ -59,16 +60,16 @@ function JobRow({ job, kind }: { job: Job | DiscoverJob; kind: 'client' | 'disco
   </article>;
 }
 
-function ExploreJobRow({ job }: { job: DiscoverJob }) {
+function ExploreJobRow({ job, primary }: { job: DiscoverJob; primary: boolean }) {
   const application = job.applicationStatus ? applicationLabel(job.applicationStatus)
     : job.hasApplied ? 'Đã ứng tuyển' : 'Chưa ứng tuyển';
-  return <KineticLedgerRow className="job-row explore-job-row" aria-labelledby={'job-' + job.id}
-    thumbnail={<JobThumbnail job={job} />}
-    title={<><h3 id={'job-' + job.id}><Link to={'/work/' + job.id} state={{ job }}>{job.title}</Link></h3>
+  return <KineticLedgerRow className={'job-row explore-job-row' + (primary ? '' : ' job-identity-row ' + jobStateTone(job.status))} aria-labelledby={'job-' + job.id}
+    thumbnail={primary ? <JobThumbnail job={job} /> : <JobIdentityCluster job={job} />}
+    title={<>{!primary && <JobCategoryPlate job={job} />}<h3 id={'job-' + job.id}><Link to={'/work/' + job.id} state={{ job }}>{job.title}</Link></h3>
       {job.description && <p className="explore-excerpt">{job.description}</p>}
       {!!job.skills?.length && <div className="explore-job-skills" aria-label="Kỹ năng công việc">
         {job.skills.map(skill => <span className="skill-tag" key={skill}>{skill}</span>)}</div>}</>}
-    status={<span className={'state-mark ' + statusClass(job.status)}>{jobLabel(job.status)}</span>}
+    status={<span className={'state-mark job-progress-marker ' + jobStateTone(job.status)}>{jobLabel(job.status)}</span>}
     metadata={<><span>{job.createdAt ? <>Đăng {date(job.createdAt)}</> : 'Ngày đăng chưa có'}</span>
       <span className="explore-client">{job.client?.displayName || 'Khách hàng'} · Ứng tuyển: {application}</span></>}
     action={<span className="job-row-next">
@@ -113,12 +114,68 @@ function JobResults<T extends Job | DiscoverJob>({ result, loading, error, retry
   }
   return <>
     {kind === 'discover' ? <ul className="explore-ledger">
-      {result.data.map(job => <ExploreJobRow key={job.id} job={job as DiscoverJob} />)}
+      {result.data.map((job, index) => <ExploreJobRow key={job.id} job={job as DiscoverJob} primary={index === 0} />)}
     </ul> : <div className="job-table">
       {result.data.map(job => <JobRow key={job.id} job={job} kind={kind} />)}
     </div>}
     <Pagination page={result} onPage={onPage} />
   </>;
+}
+
+// Client list presentation only. All actions open existing screens; no work/money mutations.
+const clientJobStates = {
+  OPEN: { surface: 'vermilion', icon: BriefcaseBusiness, action: 'Xem ứng viên', copy: 'Mở danh sách ứng viên để xem và chọn người thực hiện.' },
+  AWAITING_PAYMENT: { surface: 'cream', icon: Hourglass, action: 'Xem funding', copy: 'Công việc đang chờ funding trước khi Freelancer bắt đầu.' },
+  IN_PROGRESS: { surface: 'cobalt', icon: PencilLine, action: 'Theo dõi công việc', copy: 'Đang chờ Freelancer bàn giao.' },
+  SUBMITTED_FOR_REVIEW: { surface: 'acid', icon: Clock3, action: 'Duyệt bàn giao', copy: 'Cần bạn xem và phản hồi bàn giao.' },
+  REVISION_REQUESTED: { surface: 'vermilion', icon: RotateCcw, action: 'Xem tiến độ chỉnh sửa', copy: 'Đang chờ Freelancer gửi bản sửa.' },
+  COMPLETED: { surface: 'mint', icon: CircleCheck, action: 'Xem hồ sơ', copy: 'Phần công việc đã hoàn tất. Trạng thái thanh toán được ghi nhận riêng.' },
+  CANCELLED: { surface: 'cream', icon: Ban, action: 'Xem hồ sơ', copy: 'Công việc đã được hủy. Xem hồ sơ để theo dõi trạng thái liên quan.' },
+} as const;
+
+function ClientJobRecord({ job, primary }: { job: Job; primary: boolean }) {
+  const state = clientJobStates[job.status as keyof typeof clientJobStates]
+    ?? { surface: 'cream' as const, icon: Hourglass, action: 'Xem trạng thái', copy: 'Mở hồ sơ để xem trạng thái công việc.' };
+  const contract = job.contract;
+  const disputed = contract?.status === 'DISPUTED' || contract?.milestoneStatus === 'DISPUTED';
+  const processing = contract?.milestoneStatus === 'RELEASE_PENDING' ? 'Đã duyệt · đang xử lý tiền'
+    : contract?.milestoneStatus === 'REFUND_PENDING' ? 'Đang đối soát hoàn tiền' : null;
+  const actionText = disputed ? 'Xem tranh chấp' : processing ? 'Xem trạng thái'
+    : job.status === 'AWAITING_PAYMENT' && !contract?.milestoneId ? 'Xem trạng thái' : state.action;
+  const href = '/work/' + job.id + (job.status === 'OPEN' && !disputed && !processing ? '/applications' : '');
+  const due = contract?.deliveryDueAt ?? job.deliveryDueAt;
+  const revisionTerms = contract && Number.isInteger(contract.revisionsUsed) && contract.revisionsUsed >= 0
+    && Number.isInteger(contract.maxRevisions) && contract.maxRevisions >= 0;
+  const Icon = state.icon;
+  const titleId = 'client-job-' + job.id;
+  const status = <span className={'client-job-status job-progress-marker ' + jobStateTone(job.status)}><Icon size={20} aria-hidden="true" />{jobLabel(job.status)}</span>;
+  const facts = <div className="client-job-facts">
+    <span><UserRound size={18} aria-hidden="true" />{job.freelancerId ? 'Đã giao Freelancer' : 'Chưa giao Freelancer'}</span>
+    {due && <span><CalendarDays size={18} aria-hidden="true" />Hạn bàn giao <time dateTime={due}>{date(due)}</time></span>}
+    {revisionTerms && <span><RotateCcw size={18} aria-hidden="true" />Chỉnh sửa <strong>{contract.revisionsUsed}/{contract.maxRevisions} lần</strong></span>}
+  </div>;
+  const content = <>{!primary && <JobCategoryPlate job={job} />}<h3 id={titleId}>{job.title}</h3>
+    {job.description && <p className="client-job-description">{job.description}</p>}
+    {!!job.skills?.length && <ul className="client-job-skills" aria-label="Kỹ năng công việc">
+      {job.skills.map(skill => <li key={skill}>{skill}</li>)}</ul>}
+  </>;
+  const context = <p className="client-job-context">{disputed ? 'Hợp đồng đang tranh chấp.' : processing || state.copy}</p>;
+  const action = <div className="client-job-next">
+    <span className="client-job-budget">Ngân sách <strong>{money(job.budgetUsd)}</strong></span>
+    <Link className={primary ? 'button' : 'client-job-link'} to={href} state={{ job }}
+      aria-label={actionText + ': ' + job.title}>{actionText}<KineticActionArrow /></Link>
+  </div>;
+  if (primary) return <li className="client-job-primary">
+    <KineticCard variant={disputed ? 'vermilion' : processing ? 'cream' : state.surface}
+      aria-labelledby={titleId} className="client-job-primary-record">
+      <div className="client-job-thumbnail"><JobThumbnail job={job} /></div>
+      <div className="client-job-copy"><TapeSticker variant={state.surface === 'vermilion' ? 'acid' : 'cream'} rotation={1}>{status}</TapeSticker>
+        {content}{facts}{context}</div>{action}
+    </KineticCard>
+  </li>;
+  return <KineticLedgerRow className={'client-job-ledger-row job-identity-row ' + jobStateTone(job.status)} aria-labelledby={titleId}
+    thumbnail={<JobIdentityCluster job={job} />} title={content} status={status}
+    metadata={<>{facts}{context}</>} action={action} />;
 }
 
 export function ClientJobs() {
@@ -139,12 +196,30 @@ export function ClientJobs() {
     return () => { active = false; };
   }, [page, attempt]);
 
-  return <div className="jobs-page">
-    <PageHeading eyebrow="Công việc" title="Công việc bạn tham gia" description="Quản lý ứng tuyển và theo dõi bàn giao." />
-    <section className="list-section" aria-label="Danh sách công việc">
-      <SectionHeading title="Danh sách công việc" aside={<Link className="button" to="/work/new">Đăng công việc</Link>} />
-      <JobResults result={result} loading={loading} error={error} retry={() => setAttempt(value => value + 1)}
-        kind="client" requestedPage={page} onPage={setPage} />
+  return <div className="client-work-page">
+    <PageHeading eyebrow="" descriptionClassName="client-work-supporting-copy"
+      title={<><span className="client-work-title-start">Quản lý công việc
+        <RoughBurst seedKey="client-work-heading:left" accent="vermilion" size={34} className="client-work-rays client-work-rays--left" />
+      </span>{' '}<span className="client-work-title-emphasis">của bạn.
+        <RoughUnderline seedKey="client-work-heading:underline" size={230} />
+        <RoughBurst seedKey="client-work-heading:right" accent="ink" size={44} className="client-work-rays client-work-rays--right" />
+      </span></>}
+      description="Theo dõi tuyển dụng, bàn giao và trạng thái thực tế của các công việc bạn đã đăng." />
+    <section className="client-work-results" aria-label="Danh sách công việc" aria-busy={loading}>
+      <header className="client-work-results-heading"><div><h2>Công việc đã đăng</h2>
+        {!loading && !error && result && <p aria-live="polite"><strong>{result.totalElements}</strong> công việc</p>}</div>
+        <Link className="button client-work-create" to="/work/new"><Plus size={22} aria-hidden="true" />Đăng công việc<KineticActionArrow /></Link>
+      </header>
+      {loading ? <StatePanel kind="loading" title="Đang tải công việc" body="Danh sách đang được lấy từ Marketplace." />
+        : error ? <StatePanel kind="error" title="Không thể tải công việc" body={error}
+          action={{ label: 'Thử lại', onClick: () => setAttempt(value => value + 1) }} />
+        : !result || result.data.length === 0 ? result && result.totalElements > 0 && page > 0
+          ? <StatePanel kind="empty" title="Trang này không còn công việc" body="Danh sách có thể đã thay đổi."
+            action={{ label: 'Về trang đầu', onClick: () => setPage(0) }} />
+          : <StatePanel kind="empty" title="Bạn chưa có công việc nào" body="Đăng công việc để bắt đầu tuyển Freelancer và theo dõi bàn giao." />
+        : <><ul className="client-work-ledger" aria-label="Hồ sơ công việc của Client">
+          {result.data.map((job, index) => <ClientJobRecord key={job.id} job={job} primary={index === 0} />)}
+        </ul><Pagination page={result} onPage={setPage} /></>}
     </section>
   </div>;
 }

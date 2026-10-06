@@ -7,6 +7,7 @@ import { ClientJobs, FreelancerDiscovery, Pagination } from './Jobs';
 import { api } from './api';
 import { StatePanel } from './components';
 import type { DiscoverJob, Job, Page } from './types';
+import { jobVisualIdentity } from './ui/job-thumbnails/jobFamily';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -60,25 +61,25 @@ describe('P06.3 Jobs and Discovery', () => {
         reviewWindowHours: 48, maxRevisions: 0, revisionsUsed: 0, deliverables: [], acceptanceCriteria: [] },
     }]));
     await render(<ClientJobs />);
-    const row = host.querySelector('.job-row')!;
-    expect(row.querySelector('h3 a')?.getAttribute('href')).toBe('/work/job-test');
-    expect(row.querySelector('.amount')?.textContent).toBe('$525.00');
-    expect(row.querySelectorAll('.state-mark')).toHaveLength(1);
+    const row = host.querySelector('.client-job-primary-record')!;
+    expect(row.querySelector('h3')?.textContent).toBe(job.title);
+    expect(row.querySelector('.client-job-budget strong')?.textContent).toBe('$525.00');
+    expect(row.querySelectorAll('.client-job-status')).toHaveLength(1);
     expect(row.textContent?.match(/Đang tuyển/g)).toHaveLength(1);
-    expect(row.querySelector('.job-terms')?.textContent).toContain('2026-10-18');
-    expect(row.querySelector('.job-terms')?.textContent).toContain('0/0 lần');
+    expect(row.querySelector('.client-job-facts')?.textContent).toContain('2026-10-18');
+    expect(row.querySelector('.client-job-facts')?.textContent).toContain('0/0 lần');
     expect(row.querySelector('.button')?.getAttribute('href')).toBe('/work/job-test/applications');
   });
 
   it.each([
-    ['SUBMITTED_FOR_REVIEW', 'Duyệt bàn giao'], ['AWAITING_PAYMENT', 'Xem công việc'],
-    ['COMPLETED', 'Xem công việc'],
+    ['SUBMITTED_FOR_REVIEW', 'Duyệt bàn giao'], ['AWAITING_PAYMENT', 'Xem trạng thái'],
+    ['COMPLETED', 'Xem hồ sơ'],
   ])('keeps the existing detail destination for Client %s', async (status, label) => {
     vi.spyOn(api, 'clientJobs').mockResolvedValue(page([{ ...job, status }]));
     await render(<ClientJobs />);
-    expect(host.querySelector('.job-row .button')?.textContent).toContain(label);
-    expect(host.querySelector('.job-row .button')?.getAttribute('href')).toBe('/work/job-test');
-    expect(host.querySelector('.job-terms')).toBeNull();
+    expect(host.querySelector('.client-job-primary-record .button')?.textContent).toContain(label);
+    expect(host.querySelector('.client-job-primary-record .button')?.getAttribute('href')).toBe('/work/job-test');
+    expect(host.querySelector('time')).toBeNull();
   });
 
   it.each([
@@ -137,6 +138,142 @@ describe('P06.3 Jobs and Discovery', () => {
     expect(host.querySelector('[role="alert"]')?.textContent).toContain('Marketplace unavailable');
     await act(async () => (host.querySelector('[role="alert"] button') as HTMLButtonElement).click());
     expect(host.querySelector('.job-row')).not.toBeNull();
+  });
+});
+
+describe('Client Work C1 control board', () => {
+  const contract = { id: 'contract-1', status: 'ACTIVE', milestoneId: 'milestone-1',
+    milestoneStatus: 'IN_PROGRESS', amount: 525, currency: 'USD', deliveryDueAt: '2026-10-20',
+    reviewWindowHours: 48, maxRevisions: 2, revisionsUsed: 1, deliverables: [], acceptanceCriteria: [] };
+
+  it('keeps server order, exact page reads, real total and existing pagination without fake controls/counts', async () => {
+    const load = vi.spyOn(api, 'clientJobs').mockImplementation(async requested => page([
+      { ...job, id: 'server-first', status: 'COMPLETED', title: 'First returned record' },
+      { ...job, id: 'server-second', title: 'Second returned record' },
+    ], requested));
+    await render(<ClientJobs />);
+    expect(load).toHaveBeenCalledExactlyOnceWith(0);
+    expect(host.querySelector('.client-work-results-heading p')?.textContent).toBe('12 công việc');
+    expect([...host.querySelectorAll('.client-work-ledger h3')].map(node => node.textContent))
+      .toEqual(['First returned record', 'Second returned record']);
+    expect(host.querySelector('.client-job-primary-record')?.classList.contains('ku-surface--mint')).toBe(true);
+    expect(host.querySelectorAll('input, select, form')).toHaveLength(0);
+    expect(host.textContent).not.toMatch(/\d+ ứng viên|ưu tiên|Recommended|Featured|Hot|khẩn cấp/i);
+    await act(async () => (host.querySelectorAll('.pagination button')[1] as HTMLButtonElement).click());
+    expect(load).toHaveBeenLastCalledWith(1);
+    expect(load).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([
+    ['OPEN', 'vermilion', 'Xem ứng viên', '/applications'],
+    ['AWAITING_PAYMENT', 'cream', 'Xem funding', ''],
+    ['IN_PROGRESS', 'cobalt', 'Theo dõi công việc', ''],
+    ['SUBMITTED_FOR_REVIEW', 'acid', 'Duyệt bàn giao', ''],
+    ['REVISION_REQUESTED', 'vermilion', 'Xem tiến độ chỉnh sửa', ''],
+    ['COMPLETED', 'mint', 'Xem hồ sơ', ''],
+    ['CANCELLED', 'cream', 'Xem hồ sơ', ''],
+  ])('maps real %s to %s and the existing Client destination', async (status, surface, action, suffix) => {
+    vi.spyOn(api, 'clientJobs').mockResolvedValue(page([{ ...job, status, contract }]));
+    await render(<ClientJobs />);
+    const record = host.querySelector('.client-job-primary-record')!;
+    expect(record.classList.contains('ku-surface--' + surface)).toBe(true);
+    expect(record.querySelector('a')?.textContent).toBe(action);
+    expect(record.querySelector('a')?.getAttribute('href')).toBe('/work/job-test' + suffix);
+    expect(record.querySelectorAll('button, form')).toHaveLength(0);
+    expect(record.querySelector('.client-job-budget')?.textContent).toBe('Ngân sách $525.00');
+    expect(record.textContent).not.toMatch(/Đã thanh toán|Đã chi|Đã release|Tiền đã về/);
+  });
+
+  it('reuses the exact stable thumbnail identity and real skills, omitting empty tags', async () => {
+    const rich = { ...job, category: 'WEB_FRONTEND' as const, skills: ['HTML', 'CSS'], title: 'Misleading backend title' };
+    vi.spyOn(api, 'clientJobs').mockResolvedValue(page([rich, { ...job, id: 'legacy', category: 'OTHER', title: 'SEO audit', skills: [] }]));
+    await render(<ClientJobs />);
+    const identity = jobVisualIdentity(rich);
+    const thumb = host.querySelector('.job-family-art')!;
+    expect(thumb.getAttribute('data-family')).toBe('web');
+    expect(thumb.getAttribute('data-visual-key')).toBe(identity.visualKey);
+    expect(thumb.getAttribute('data-rough-key')).toBe(identity.roughKey);
+    expect([...host.querySelectorAll('.client-job-skills li')].map(node => node.textContent)).toEqual(['HTML', 'CSS']);
+    expect(host.querySelector('.client-job-ledger-row .client-job-skills')).toBeNull();
+    expect(host.querySelector('.client-job-ledger-row .job-family-art')?.getAttribute('data-family')).toBe('seo');
+  });
+
+  it('shows real assignment and snapshot deadline/revision usage without fabricated names or terms', async () => {
+    vi.spyOn(api, 'clientJobs').mockResolvedValue(page([{ ...job, freelancerId: 'private-id', contract, deliveryDueAt: '2026-10-10' },
+      { ...job, id: 'legacy', maxRevisions: 2 }]));
+    await render(<ClientJobs />);
+    expect(host.querySelector('.client-job-primary-record')?.textContent).toContain('Đã giao Freelancer');
+    expect(host.querySelector('time')?.getAttribute('dateTime')).toBe(contract.deliveryDueAt);
+    expect(host.querySelector('.client-job-facts')?.textContent).toContain('Chỉnh sửa 1/2 lần');
+    expect(host.querySelector('.client-job-ledger-row')?.textContent).toContain('Chưa giao Freelancer');
+    expect(host.querySelector('.client-job-ledger-row time')).toBeNull();
+    expect(host.querySelector('.client-job-ledger-row .client-job-facts')?.textContent).not.toContain('Chỉnh sửa');
+    expect(host.textContent).not.toMatch(/private-id|contract-1|milestone-1|còn \d|trễ hạn|Mã công việc/);
+  });
+
+  it('uses a real legacy deadline when no snapshot exists', async () => {
+    vi.spyOn(api, 'clientJobs').mockResolvedValue(page([{ ...job, deliveryDueAt: '2026-10-15' }]));
+    await render(<ClientJobs />);
+    expect(host.querySelector('time')?.textContent).toBe('2026-10-15');
+    expect(host.textContent).not.toContain('Chỉnh sửa');
+  });
+
+  it.each([
+    ['RELEASE_PENDING', 'Đã duyệt · đang xử lý tiền', 'Xem trạng thái'],
+    ['REFUND_PENDING', 'Đang đối soát hoàn tiền', 'Xem trạng thái'],
+    ['DISPUTED', 'Hợp đồng đang tranh chấp.', 'Xem tranh chấp'],
+  ])('keeps %s money/contract truth separate from the job state', async (milestoneStatus, context, action) => {
+    vi.spyOn(api, 'clientJobs').mockResolvedValue(page([{ ...job, status: 'COMPLETED', contract: { ...contract, milestoneStatus } }]));
+    await render(<ClientJobs />);
+    expect(host.querySelector('.client-job-context')?.textContent).toBe(context);
+    expect(host.querySelector('.client-job-primary-record a')?.textContent).toBe(action);
+    expect(host.textContent).not.toMatch(/Đã thanh toán|Đã hoàn tiền|Đã chi|Đã release/);
+  });
+
+  it('keeps a real create destination in the empty state', async () => {
+    vi.spyOn(api, 'clientJobs').mockResolvedValue({ ...page([]), totalElements: 0, totalPages: 0 });
+    await render(<ClientJobs />);
+    expect(host.textContent).toContain('Bạn chưa có công việc nào');
+    expect(host.querySelector('a[href="/work/new"]')?.textContent).toContain('Đăng công việc');
+    expect(host.querySelector('.client-work-ledger')).toBeNull();
+    expect(host.querySelector('.client-work-results-heading p')?.textContent).toBe('0 công việc');
+  });
+
+  it('preserves the hero/create action through loading/error and retries the same read', async () => {
+    let reject!: (cause: Error) => void;
+    const load = vi.spyOn(api, 'clientJobs').mockImplementationOnce(() => new Promise((_resolve, fail) => { reject = fail; }))
+      .mockResolvedValueOnce(page([job]));
+    await render(<ClientJobs />);
+    expect(host.querySelector('[role="status"]')?.textContent).toContain('Đang tải công việc');
+    expect(host.querySelector('.client-work-results')?.getAttribute('aria-busy')).toBe('true');
+    await act(async () => reject(new Error('Marketplace tạm thời chưa phản hồi')));
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain('Marketplace tạm thời chưa phản hồi');
+    expect(host.querySelector('h1')?.textContent).toBe('Quản lý công việc của bạn.');
+    expect(host.querySelector('a[href="/work/new"]')).not.toBeNull();
+    expect(host.querySelector('.client-work-results-heading p')).toBeNull();
+    await act(async () => (host.querySelector('[role="alert"] button') as HTMLButtonElement).click());
+    expect(load).toHaveBeenCalledTimes(2);
+    expect(load).toHaveBeenLastCalledWith(0);
+    expect(host.querySelector('.client-job-primary-record')).not.toBeNull();
+  });
+
+  it('retains page recovery when a later server page becomes empty', async () => {
+    const load = vi.spyOn(api, 'clientJobs').mockImplementation(async requested => page(requested === 0 ? [job] : [], requested));
+    await render(<ClientJobs />);
+    await act(async () => (host.querySelectorAll('.pagination button')[1] as HTMLButtonElement).click());
+    expect(host.textContent).toContain('Trang này không còn công việc');
+    await act(async () => (host.querySelector('[role="status"] button') as HTMLButtonElement).click());
+    expect(load).toHaveBeenLastCalledWith(0);
+    expect(host.querySelector('.client-job-primary-record')).not.toBeNull();
+  });
+
+  it('honors reduced-motion on record, ledger and arrow elements', async () => {
+    vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() })));
+    vi.spyOn(api, 'clientJobs').mockResolvedValue(page([job, { ...job, id: 'second' }]));
+    await render(<ClientJobs />);
+    expect(host.querySelector('.client-job-primary-record')?.getAttribute('data-motion')).toBe('off');
+    expect(host.querySelector('.client-job-ledger-row')?.getAttribute('data-motion')).toBe('off');
+    expect([...host.querySelectorAll('.client-work-page [data-motion]')].every(node => node.getAttribute('data-motion') === 'off')).toBe(true);
   });
 });
 

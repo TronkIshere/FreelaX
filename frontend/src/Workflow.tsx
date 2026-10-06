@@ -10,6 +10,7 @@ import { jobCategories } from './jobDiscovery';
 import { applicationLabel, jobLabel, money, shortId } from './status';
 import { KineticActionArrow, KineticCard, KineticLedgerRow, RoughBurst, RoughUnderline, TapeSticker } from './ui/kinetic';
 import { JobThumbnail } from './ui/job-thumbnails/JobThumbnail';
+import { JobCategoryPlate, JobIdentityCluster, applicationStateTone } from './ui/JobRowIdentity';
 import type { DiscoverJob, Job, JobApplication, MyApplication, Page, Requirement, User } from './types';
 
 type Detail = Job | DiscoverJob;
@@ -248,9 +249,10 @@ function ApplicationRecord({ application, primary }: { application: MyApplicatio
   const canOpen = application.status === 'ACCEPTED' || job.status === 'OPEN';
   const Icon = applicationIcons[application.status];
   const titleId = 'application-' + application.id;
-  const status = <span className={'applications-status applications-status--' + application.status}>
+  const status = <span className={'applications-status applications-status--' + application.status + ' job-progress-marker ' + applicationStateTone(application.status)}>
     <Icon size={20} aria-hidden="true" /><span>{applicationLabel(application.status)}</span></span>;
   const copy = <>
+    {!primary && <JobCategoryPlate job={job} />}
     <h3 id={titleId}>{job.title}</h3>
     {job.description && <p className="applications-description">{job.description}</p>}
     {!!job.skills?.length && <ul className="applications-skills" aria-label="Kỹ năng công việc">
@@ -273,18 +275,18 @@ function ApplicationRecord({ application, primary }: { application: MyApplicatio
       Xem chi tiết <KineticActionArrow /></Link>}
   </div>;
   if (primary) {
-    const attention = application.status === 'PENDING' || application.status === 'ACCEPTED';
+    const surface = { PENDING: 'acid', ACCEPTED: 'mint', REJECTED: 'vermilion', CANCELLED: 'cream' } as const;
     return <li className="applications-primary">
-      <KineticCard variant={attention ? 'vermilion' : 'cream'} aria-labelledby={titleId}
-        className={'applications-primary-record' + (attention ? ' applications-primary-record--attention' : '')}>
+      <KineticCard variant={surface[application.status]} aria-labelledby={titleId}
+        className={'applications-primary-record ' + applicationStateTone(application.status)}>
         <div className="applications-primary-thumbnail" aria-hidden="true"><JobThumbnail job={job} /></div>
         <div className="applications-record-copy">{copy}{facts}</div>
         {action}
       </KineticCard>
     </li>;
   }
-  return <KineticLedgerRow aria-labelledby={titleId} className="applications-ledger-row"
-    thumbnail={<JobThumbnail job={job} />} title={copy} metadata={facts} action={action} />;
+  return <KineticLedgerRow aria-labelledby={titleId} className={'applications-ledger-row job-identity-row ' + applicationStateTone(application.status)}
+    thumbnail={<JobIdentityCluster job={job} />} title={copy} metadata={facts} action={action} />;
 }
 
 export function MyApplications() {

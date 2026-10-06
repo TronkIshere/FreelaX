@@ -8,6 +8,7 @@ import { Pagination } from './Jobs';
 import { date, jobLabel, money, submissionLabel } from './status';
 import { KineticActionArrow, KineticCard, KineticLedgerRow, RoughBurst, RoughUnderline, TapeSticker } from './ui/kinetic';
 import { JobThumbnail } from './ui/job-thumbnails/JobThumbnail';
+import { JobCategoryPlate, JobIdentityCluster, jobStateTone } from './ui/JobRowIdentity';
 import type { Job, JobSubmission, Page, User } from './types';
 
 const MAX_TEXT = 10000;
@@ -370,13 +371,13 @@ function MyWorkRecord({ job, primary }: { job: Job; primary: boolean }) {
   const revisionTerms = contract && Number.isInteger(contract.revisionsUsed) && contract.revisionsUsed >= 0
     && Number.isInteger(contract.maxRevisions) && contract.maxRevisions >= 0;
   const titleId = 'my-work-' + job.id;
-  const status = <span className={'my-work-status my-work-status--' + state.surface}>
+  const status = <span className={'my-work-status my-work-status--' + state.surface + ' job-progress-marker ' + jobStateTone(job.status)}>
     <Icon size={20} aria-hidden="true" /><span>{jobLabel(job.status)}</span></span>;
   const facts = <div className="my-work-facts">
     {due && <span><CalendarDays size={18} aria-hidden="true" />Hạn bàn giao <time dateTime={due}>{date(due)}</time></span>}
     {revisionTerms && <span><RotateCcw size={17} aria-hidden="true" />Chỉnh sửa <strong>{contract.revisionsUsed} / {contract.maxRevisions}</strong></span>}
   </div>;
-  const copy = <><h3 id={titleId}>{job.title}</h3>
+  const copy = <>{!primary && <JobCategoryPlate job={job} />}<h3 id={titleId}>{job.title}</h3>
     {job.description && <p className="my-work-description">{job.description}</p>}
     {!!job.skills?.length && <ul className="my-work-skills" aria-label="Kỹ năng công việc">
       {job.skills.map(skill => <li key={skill}>{skill}</li>)}
@@ -398,8 +399,8 @@ function MyWorkRecord({ job, primary }: { job: Job; primary: boolean }) {
       {action}
     </KineticCard>
   </li>;
-  return <KineticLedgerRow className="my-work-ledger-row" aria-labelledby={titleId}
-    thumbnail={<JobThumbnail job={job} />} title={copy} status={status}
+  return <KineticLedgerRow className={'my-work-ledger-row job-identity-row ' + jobStateTone(job.status)} aria-labelledby={titleId}
+    thumbnail={<JobIdentityCluster job={job} />} title={copy} status={status}
     metadata={<>{facts}{context}</>} action={action} />;
 }
 
