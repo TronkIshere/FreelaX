@@ -124,7 +124,25 @@ Create-only deliverables/criteria retain separate numbered rows, Cream fields, I
 
 Accepted final C2 validation: **50/50 JobEditor tests PASS**, production build/diff check PASS, **Create 1440 PASS / Create 1024 PASS / Edit 1440 PASS**, no horizontal overflow/sticky overlap, console **0**, keyboard focus/reduced motion PASS. Backend/API/frozen surfaces unchanged; browser visual-QA draft **NOT SUBMITTED**. No tests/build or runtime smoke rerun during freeze. Source security check found no secrets, credentials, .env values, screenshots or machine-local absolute paths added.
 
-Next: **CLIENT WORK C3 → APPLICANTS**, `/work/:jobId/applications`, **NOT_STARTED**. Inspect ClientApplicants in Workflow.tsx, Applicant DTO/API, assignment authorization, profile access and current tests before implementation. C3 was not started during this freeze.
+At this C2 checkpoint, next was **CLIENT WORK C3 → APPLICANTS**, `/work/:jobId/applications`, **NOT_STARTED**. C3 was not started during that freeze. The approved corrected C3 freeze below supersedes this checkpoint.
+
+## 13. Client Work C3 final corrected approval and freeze — 2026-10-07
+
+Human decision: **CLIENT APPLICANTS C3 = APPROVED / PASS / FROZEN**, `/work/:jobId/applications`; **CANDIDATE DECISION DESK / EDITORIAL CANDIDATE DOSSIER**. The first plain Cream + lines visual was rejected; the final corrected dominant banner/dossier is now locked. Overview, all Freelancer work surfaces, Client C1/C2 and shared Stable Job Identity/Row Identity/State Rail/Progress Colors/Category Plates remain frozen.
+
+Source `45c54c5a753c1cd4438dd3c968fe7ccec20a0491` — `feat(frontend): finalize kinetic client applicants`, normally pushed. Exactly `frontend/src/Workflow.tsx`, `frontend/src/Workflow.test.tsx`, `frontend/src/styles.css`. No further source edits, amend, merge or force push during freeze.
+
+Approved Job context: dominant state-aware banner, Ink 2px border/zero-blur shadow, enlarged shared semantic thumbnail/category plate and real Job title/skills/budget/deadline/status. OPEN Acid; AWAITING_PAYMENT/review Acid + Ink; IN_PROGRESS Cobalt; revision Vermilion/Cream; COMPLETED Mint + Strong Green marker; CANCELLED Ink/Cream. Runtime OPEN Acid is approved; no universal Acid or Cream-strip regression.
+
+Approved candidate: equal Cream editorial dossier with hard Ink border/restrained hard shadow, application state rail, display-order index, enlarged deterministic initials tile/tape/rays, public evidence and separated status/date/action area. Server order unchanged; no recommendation/ranking/featured first applicant. PENDING Acid, ACCEPTED Strong Green, REJECTED Vermilion, CANCELLED Ink; 6px/5px rails and visible text. State is not candidate quality.
+
+Application API owns status/date/eligibility; matched FREELANCER public profiles supply supplemental real evidence through unique parallel isolated reads after ownership. One failed profile preserves Application/status/date/fallback ID/link. No private email, portfolio/review-list fan-out, Job-inferred candidate skills or null-to-zero reputation. Maximum three useful actual reputation facts. Runtime has one sparse PENDING applicant without headline/skills. **Visual density must NOT be achieved by fabricated product data**; use structure, spacing, typography, borders, color, cut-paper identity and kinetic details. No fake city/bio/experience/response speed/rating/counts, filters, match percentage or AI ranking.
+
+Selection is CLIENT + owner + OPEN + PENDING. First click opens local Ink “Xác nhận lựa chọn” only; “Xác nhận chọn” / “Quay lại”, pending “Đang phân công…”, duplicate lock preserved. Copy explains selected acceptance after success, remaining pending applications closing/rejecting, funding before work starts. Assignment refresh/reconciles server truth; no premature ACCEPTED/REJECTED. Non-OPEN read-only with Job destination. Funding/wallet/payout/stablecoin controls stay outside C3.
+
+Accepted corrected evidence: **66/66 focused tests PASS**, production build/diff PASS, **Client Applicants 1440 PASS / 1024 PASS / Confirmation 1440 PASS**, no overflow/clipped controls, console **0 errors**, focus-visible PASS, reduced motion preserved. Rich profiles/multiple applicants/assignment outcomes covered by tests where absent from runtime. Backend/API unchanged; screenshot assignment **NOT EXECUTED**. Freeze reused accepted evidence without tests/build rerun or new runtime mutation. Source security check found no added secrets/credentials/.env values/screenshots/machine-local paths.
+
+Next: **P06.5 — FINANCE / TAX / ACTIVITY**, **NOT_STARTED**. Inspect real Client Thanh toán, Freelancer Thu nhập and Hoạt động contracts/source first. Create and obtain human approval for visual concept and target screenshots before implementation; do not invent the UI independently. P06.5 was not started during this freeze.
 
 ## QA discipline retained
 

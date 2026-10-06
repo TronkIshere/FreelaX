@@ -3,7 +3,7 @@
 ## Current authority — 2026-10-07
 
 Repository: `TronkIshere/FreelaX`. Branch: `feat/ui-visual-polish-20261006`.
-Frozen source implementation: `846142d8a3fb5f8a3f59204158c29e534ab7ea56` (Client Job Authoring C2; includes the earlier frozen C1/global baseline `dc440ec`).
+Frozen source implementation: `45c54c5a753c1cd4438dd3c968fe7ccec20a0491` (Client Applicants C3 final corrected visual; includes earlier frozen C1/C2/global baselines).
 A later docs-only commit may be branch HEAD; it does not change this source baseline.
 
 - Overview = FROZEN / APPROVED (both Client and Freelancer).
@@ -13,7 +13,8 @@ A later docs-only commit may be branch HEAD; it does not change this source base
 - Strong Success Green `#39B96E` = approved functional success/completion color; Fresh Mint remains a light success surface.
 - Stable Job Visual Identity = LOCKED.
 - Client Work C2 — Job Authoring (`/work/new`, `/work/:jobId/edit`) = PASS / FROZEN.
-- Client Work C3 — Applicants (`/work/:jobId/applications`) = NEXT / NOT_STARTED.
+- Client Work C3 — Applicants (`/work/:jobId/applications`) = PASS / FROZEN.
+- P06.5 — Finance / Tax / Activity = NEXT / NOT_STARTED; visual concept/target screenshots require approval before implementation.
 
 Read in this exact order (paths are repository-relative):
 
@@ -25,9 +26,13 @@ Read in this exact order (paths are repository-relative):
 6. `docs/ui/WORKPACK_P06_UI_POLISH.md`
 7. `marketplace-backend/docs/JOB_DISCOVERY_CONTRACT.md`
 8. `docs/mvp-functional-spec.md`
-9. Current source: inspect `ClientApplicants` in `frontend/src/Workflow.tsx`, the Applicant DTO/API, assignment authorization, profile access and current tests before C3; reuse the shared kinetic toolkit and locked row identity.
+9. Current source: inspect Client Thanh toán, Freelancer Thu nhập and Hoạt động screens, finance/tax/activity contracts and focused tests before P06.5 concept definition; reuse the shared kinetic toolkit.
 
-Use KINETIC EDITORIAL BRUTALISM and the approved toolkit. Frozen Overview/Explore/Applications/My Work/Client Work C1/C2 demonstrate visual grammar, not generic page templates. Do not reopen for general polish; require a concrete regression. Exact next visual area: CLIENT WORK C3 — Applicants, `/work/:jobId/applications`, NOT_STARTED. Inspect its real contracts/permissions first; do not begin during this freeze task.
+Use KINETIC EDITORIAL BRUTALISM and the approved toolkit. Frozen Overview/Explore/Applications/My Work/Client Work C1/C2/C3 demonstrate visual grammar, not generic page templates. Do not reopen for general polish; require a concrete regression. Exact next visual area: P06.5 — FINANCE / TAX / ACTIVITY, NOT_STARTED. Inspect real contracts/source, then create and obtain human approval for the visual concept and target screenshots before implementation. Do not begin during this freeze task.
+
+Client Applicants C3 is the approved CANDIDATE DECISION DESK / EDITORIAL CANDIDATE DOSSIER. Dominant state-aware Job banner (OPEN Acid; waiting/review Acid + Ink; IN_PROGRESS Cobalt; revision Vermilion; COMPLETED Mint + Strong Green; CANCELLED Ink/Cream), enlarged shared semantic artwork/plate, equal Cream applicant dossiers, deterministic identity tiles, 6px/5px application rails and separate status/date/action zones. Application API owns status/date/eligibility; matched FREELANCER public profiles supply supplemental evidence through unique parallel isolated reads. No private email, ranking, inferred candidate skills or fake fields. Sparse profiles stay sparse: structure and kinetic details supply density, not fabricated data; real zero counts remain, null evidence is omitted.
+
+C3 selection requires trusted CLIENT + owner + OPEN + PENDING. First click opens only local Ink “Xác nhận lựa chọn”; copy explains remaining pending applications close, funding precedes work. Duplicate lock/server refresh remain; no optimistic ACCEPTED/REJECTED. Funding/wallet/payout controls remain outside C3. Accepted corrected gate: 66/66 focused tests, build/diff PASS; 1440/1024 and Confirmation 1440 PASS, console 0, focus PASS, reduced motion preserved. Backend/API unchanged; assignment during screenshot QA NOT EXECUTED. No tests/build rerun during freeze.
 
 Client Work C2 is an approved one-page EDITORIAL WORK ORDER / BRIEF BUILDER. **CREATE** sends `title`, `description`, `category`, `skills`, `budgetUsd`, `deliveryDueAt`, `reviewWindowHours`, `maxRevisions`, `deliverables`, `acceptanceCriteria`, with existing validation unchanged. **EDIT** is metadata-only: `title`, `description`, `category`, `skills`; trusted CLIENT + owner + OPEN only. No immutable-field controls. Four authoring sections: 01 Nội dung công việc (Acid), 02 Điều kiện thực hiện (Cobalt), 03 Sản phẩm bàn giao (Vermilion), 04 Điều kiện nghiệm thu (Mint). These are section markers, not workflow colors.
 

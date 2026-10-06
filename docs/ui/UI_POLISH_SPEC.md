@@ -2,8 +2,8 @@
 
 ## LOCKED VISUAL SYSTEM V2 — 2026-10-07
 
-Authority: `UI_VISUAL_POLISH_HANDOFF_20261006.md`; branch `feat/ui-visual-polish-20261006`; frozen source `846142d8a3fb5f8a3f59204158c29e534ab7ea56` (C2; earlier C1/global locks remain authoritative).
-Client/Freelancer Overview remains FROZEN; Client Work C1 and C2 are PASS / FROZEN. Freelancer Explore/Applications/My Work are RE-FROZEN after the approved narrow row-identity override. Stable Job Visual Identity and Global Row Identity / State Rail / Category Plate are LOCKED. Next C3 Applicants (`/work/:jobId/applications`) is NOT_STARTED; inspect ClientApplicants, Applicant DTO/API, assignment authorization, profile access and current tests before implementation. Historical guidance below remains useful; conflicting visual/baseline notes are superseded here.
+Authority: `UI_VISUAL_POLISH_HANDOFF_20261006.md`; branch `feat/ui-visual-polish-20261006`; frozen source `45c54c5a753c1cd4438dd3c968fe7ccec20a0491` (C3 final corrected visual; earlier C1/C2/global locks remain authoritative).
+Client/Freelancer Overview remains FROZEN; Client Work C1/C2/C3 are PASS / FROZEN. Freelancer Explore/Applications/My Work are RE-FROZEN after the approved narrow row-identity override. Stable Job Visual Identity and Global Row Identity / State Rail / Category Plate are LOCKED. Next P06.5 FINANCE / TAX / ACTIVITY is NOT_STARTED; inspect Client Thanh toán, Freelancer Thu nhập and Hoạt động real contracts/source, then obtain human approval for visual concept and target screenshots before implementation. Do not start in this freeze. Historical guidance below remains useful; conflicting visual/baseline notes are superseded here.
 
 **KINETIC EDITORIAL BRUTALISM**: Cream `#FFF7E8`, Ink `#17212B`, Vermilion `#F15A3D`, Acid `#F5D12F`, Fresh Mint `#B8DFC4`, Cobalt `#3567E8`.
 
@@ -32,7 +32,7 @@ Authority: meaningful stored category → legacy skills → legacy title → Gen
 
 Stable identity: `variant = stableHash(job.id) % 3`, `visualKey = family + ':' + variant`; missing ID uses variant 0. WEB_FRONTEND + job A/B may choose different browser variants 0/1/2, but both remain Web/Frontend. Rough decoration uses stable family + job identity; no random/time/order dependence, stable rerender/remount. Reuse the same JobThumbnail for Explore, Applications, My Work and future Client Work. No page-specific thumbnails, database thumbnail ID or upload.
 
-Frozen Overview + Explore + Applications + My Work + Client Work C1/C2 are references for visual grammar, **not reusable page templates**. Screenshot first, human approval before commit; no fake reference-image data. Desktop 1440/1024 is the current gate; mobile is deferred.
+Frozen Overview + Explore + Applications + My Work + Client Work C1/C2/C3 are references for visual grammar, **not reusable page templates**. Screenshot first, human approval before commit; no fake reference-image data. Desktop 1440/1024 is the current gate; mobile is deferred.
 
 ### Global row visual grammar — LOCKED
 
@@ -112,7 +112,23 @@ Preview is **UNSAVED local draft truth**, with disclaimer, not server state or J
 
 Authoring category is explicit, never title-inferred. Neutral before selection; selected-category semantic family and Category Plate afterward. A new Job has no ID: deterministic default variant 0, no random identity. Real saved ID later selects its stable variant; preview is not guaranteed the persisted exact variant. Category-only preview does not alter persisted legacy OTHER skills/title fallback. Skills keep comma parsing, trimming and bounds; removable tokens are presentation, API remains string[], no new taxonomy/autocomplete.
 
-Accepted C2 evidence: **50/50 JobEditor tests PASS**, production build/diff check PASS, **Create 1440 PASS / Create 1024 PASS / Edit 1440 PASS**, no overflow/sticky overlap, console **0**, keyboard focus/reduced motion PASS. Backend/API/frozen surfaces unchanged; browser visual-QA draft **NOT SUBMITTED**. Freeze reuses accepted evidence without tests/build rerun. Next **CLIENT WORK C3 → APPLICANTS**, `/work/:jobId/applications`, **NOT_STARTED**; inspect its real source/contracts/permissions/tests first. Do not start during freeze.
+Accepted C2 evidence: **50/50 JobEditor tests PASS**, production build/diff check PASS, **Create 1440 PASS / Create 1024 PASS / Edit 1440 PASS**, no overflow/sticky overlap, console **0**, keyboard focus/reduced motion PASS. Backend/API/frozen surfaces unchanged; browser visual-QA draft **NOT SUBMITTED**. Freeze reuses accepted evidence without tests/build rerun. Its then-next C3 checkpoint is superseded by the approved C3 freeze below.
+
+### Client Work C3 — PASS / FROZEN (2026-10-07)
+
+Source `45c54c5a753c1cd4438dd3c968fe7ccec20a0491`; route `/work/:jobId/applications`. **CANDIDATE DECISION DESK / EDITORIAL CANDIDATE DOSSIER**. The final corrected visual replaces rejected plain Cream + lines.
+
+Job context is a dominant colored editorial banner: 2px Ink border, zero-blur hard shadow, enlarged shared semantic thumbnail/Category Plate, real job title/skills/budget/deadline/status. State mapping: OPEN Acid; AWAITING_PAYMENT Acid + Ink; IN_PROGRESS Cobalt; SUBMITTED_FOR_REVIEW Acid/Ink; REVISION_REQUESTED Vermilion/Cream; COMPLETED Fresh Mint + Strong Green marker; CANCELLED Ink/Cream. Do not hardcode Acid across states or revert to a Cream strip.
+
+Candidate dossiers remain equal Cream panels: hard Ink border/restrained hard shadow, state rail, display-order index, larger deterministic public-name initials tile with cut-paper/tape/rays, readable evidence and distinct status/date/action zone. Preserve server order; no featured/recommended first applicant or ranking. Application rails/visible labels: PENDING Acid `#F5D12F`, ACCEPTED Strong Green `#39B96E`, REJECTED Vermilion `#F15A3D`, CANCELLED Ink `#17212B`; 6px at 1440 and 5px at 1024. Application state does not encode Freelancer quality.
+
+Application API owns status/date/eligibility. Public Profile is supplemental: ownership first, unique parallel isolated reads, userId match + FREELANCER. Failed profile leaves Application/status/date/fallback ID/link visible; no portfolio/review-list fan-out. Real returned identity/headline/country/availability/profile.skills and at most three compact reputation facts only; never private email or Job-derived candidate skills. Null is omitted, not converted to rating/on-time zero; explicit zero counts remain. No fake ranking/search/sort/filter/counts.
+
+**Sparse profile rule:** visual density must NOT be achieved by fabricated product data. Use structure, spacing, typography, borders, color, cut-paper identity and kinetic details. Omit absent headline/skills/reputation/bio/city/experience/response speed; no expertise or rating invention. Runtime one PENDING applicant is sparse; reference-image richness does not authorize fabricated fields.
+
+Selection only trusted CLIENT + Job owner + OPEN + PENDING. First click opens local Ink **Xác nhận lựa chọn**, never assigns/marks ACCEPTED. Confirm/cancel and pending duplicate lock preserved. Real copy explains acceptance after server success, remaining pending applications closing/rejecting, funding before Freelancer starts. After assign, server refresh/reconciliation; no manufactured ACCEPTED/REJECTED. Non-OPEN roster read-only with Job destination. Funding/wallet/payout/stablecoin controls stay outside C3.
+
+1440: dominant full-width Job banner and horizontal dossier. 1024: intentional internal stacking with readable identity/evidence/status/date/actions. Small connected marks and micro-motion only; reduced motion and visible focus preserved. Corrected accepted gate: **66/66 focused tests PASS**, build/diff PASS; **1440 PASS / 1024 PASS / Confirmation 1440 PASS**, no overflow/clipping, console **0 errors**, focus-visible PASS. Backend/API unchanged; assignment during screenshot QA **NOT EXECUTED**. No tests/build rerun or further source edits during freeze. Next **P06.5 — FINANCE / TAX / ACTIVITY**, NOT_STARTED; real-contract inspection and human concept/target screenshot approval before implementation.
 
 ### Locked My Work composition
 

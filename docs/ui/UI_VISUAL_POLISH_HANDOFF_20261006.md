@@ -5,7 +5,7 @@
 - Repository: `TronkIshere/FreelaX`.
 - Active branch: `feat/ui-visual-polish-20261006`.
 - Integrated MVP ancestor: `35ba34e9b68be67b9405d3407159a2fde010911c`.
-- Frozen last product/source implementation commit: `846142d8a3fb5f8a3f59204158c29e534ab7ea56` (Client Job Authoring C2, approved 2026-10-07).
+- Frozen last product/source implementation commit: `45c54c5a753c1cd4438dd3c968fe7ccec20a0491` (Client Applicants C3 final corrected visual, approved 2026-10-07).
 
 Accepted source chain, oldest first:
 
@@ -19,8 +19,9 @@ Accepted source chain, oldest first:
 | `ca8b93d` | Final kinetic Freelancer My Work + stable Job visual identity |
 | `dc440ec` | Client Work C1 + global row identity / state rails / category plates |
 | `846142d` | Client Job Authoring C2: approved create/edit work order |
+| `45c54c5` | Client Applicants C3: final corrected candidate decision desk |
 
-A later documentation commit may be branch HEAD. It does not replace `846142d` as the frozen source implementation baseline. Read the current HEAD with Git; do not mistake a docs-only HEAD for new product implementation. Current source wins over older conflicting documentation. Explicit Product Owner instructions remain authoritative.
+A later documentation commit may be branch HEAD. It does not replace `45c54c5` as the frozen source implementation baseline. Read the current HEAD with Git; do not mistake a docs-only HEAD for new product implementation. Current source wins over older conflicting documentation. Explicit Product Owner instructions remain authoritative.
 
 ## Current UI progress matrix
 
@@ -40,9 +41,8 @@ Statuses below refer to this visual stream, not to absence of existing functiona
 | Client Work C1 (`/work`) | PASS / FROZEN |
 | Global Row Identity / State Rail / Category Plate | LOCKED |
 | Client Work C2 — Job Authoring (`/work/new`, `/work/:jobId/edit`) | PASS / FROZEN |
-| Client Work C3 — Applicants (`/work/:jobId/applications`) | NEXT / NOT_STARTED |
-| Finance / Income / Payment | Later |
-| Activity | Later |
+| Client Work C3 — Applicants (`/work/:jobId/applications`) | PASS / FROZEN |
+| P06.5 Finance / Tax / Activity | NEXT / NOT_STARTED; visual concept approval before implementation |
 | Account / Profile | Later unless explicitly reprioritized |
 
 ## Locked visual direction
@@ -70,7 +70,7 @@ Non-negotiable grammar:
 
 Rejected: generic SaaS, pastel SaaS cards, soft shadows, glass, blur, glow, gradient dashboard surfaces, pill-heavy UI, bento dashboard language, generic crypto dashboards, random sticker scatter, random job-ID-only semantic thumbnails, and stock imagery as product identity.
 
-Frozen Overview, Explore, Applications, My Work, Client C1 and C2 are references for visual grammar, **not reusable page templates**. New page composition must follow its own real task/data. Do not reopen frozen surfaces for general polish; only a concrete regression justifies a fix.
+Frozen Overview, Explore, Applications, My Work, Client C1/C2/C3 are references for visual grammar, **not reusable page templates**. New page composition must follow its own real task/data. Do not reopen frozen surfaces for general polish; only a concrete regression justifies a fix.
 
 ## Current toolkit
 
@@ -421,20 +421,22 @@ Accepted final C2 gate: **50/50 JobEditor focused tests PASS**, production build
 
 Freeze reuses this accepted evidence: no tests/build or runtime smoke rerun, no new validation claims. Security inspection found no added secrets, credentials, .env values, screenshots or machine-local absolute paths.
 
+## Client Work C3 — APPROVED / PASS / FROZEN (2026-10-07)
+
+Route `/work/:jobId/applications`; concept **CANDIDATE DECISION DESK / EDITORIAL CANDIDATE DOSSIER**. Source `45c54c5a753c1cd4438dd3c968fe7ccec20a0491` — `feat(frontend): finalize kinetic client applicants`, normally pushed. Files: `frontend/src/Workflow.tsx`, `frontend/src/Workflow.test.tsx`, `frontend/src/styles.css`. The final corrected visual replaces the rejected plain Cream + lines treatment. Previous frozen surfaces and shared identity/progress/category systems remain locked.
+
+**Job Context Banner:** dominant state-aware colored editorial surface, Ink 2px border/zero-blur hard shadow, enlarged shared semantic thumbnail/Category Plate, real title/job.skills/budget/deadline/status. OPEN → Acid; AWAITING_PAYMENT → Acid + Ink; IN_PROGRESS → Cobalt; SUBMITTED_FOR_REVIEW → Acid/Ink; REVISION_REQUESTED → Vermilion/Cream; COMPLETED → Fresh Mint surface + Strong Green marker; CANCELLED → Ink/Cream. Do not revert to a Cream strip or hardcode Acid for every state.
+
+**Candidate dossier:** equal Cream panels with hard Ink border/restrained zero-blur shadow, application-state rail, display-order index, enlarged deterministic initials tile with cut-paper/tape/rays, public evidence and separated status/date/action zone. Server order stays unchanged; no featured first applicant, ranking or recommendation. PENDING → Acid `#F5D12F`; ACCEPTED → Strong Green `#39B96E`; REJECTED → Vermilion `#F15A3D`; CANCELLED → Ink `#17212B`. Rails 6px at 1440 / 5px at 1024, visible status text. Application state is not candidate quality.
+
+**Public evidence:** Application API owns status/date/eligibility; Public Profile is supplemental. Unique Freelancer IDs, parallel isolated reads, matching profile.userId and FREELANCER required. A failed profile preserves its Application, fallback ID/status/date and public profile link. No portfolio/review-list fan-out. Names/headline/country/availability/skills and at most three reputation facts come only from returned fields. Job skills never become candidate skills; private email never renders. Null rating/on-time rate never becomes zero; actual returned zero counts are truthful.
+
+**Sparse-data rule:** visual density must NOT be achieved by fabricated product data. Use structure, spacing, typography, borders, color, cut-paper identity and kinetic details. Runtime had one PENDING applicant without headline/skills; omit absent fields rather than invent city, experience, bio, response speed, expertise, rating or match score. No search/sort/filter, fake counts or AI ranking controls.
+
+**Selection:** trusted CLIENT + owner + OPEN Job + PENDING Application only. First click opens local Ink confirmation titled “Xác nhận lựa chọn”; never assigns or marks ACCEPTED. “Xác nhận chọn” / “Quay lại”, pending “Đang phân công…”, duplicate lock retained. Copy explains selected acceptance after success, remaining pending applications closing/rejecting, Job proceeding to funding and work starting only after required funding. After api.assign, refresh/reconcile server truth; no manufactured statuses. Non-OPEN roster is read-only with next Job destination. Funding/wallet/payout/stablecoin mutations remain outside C3.
+
+Accepted corrected gate: **66/66 focused tests PASS**, production build/diff check PASS; **1440 PASS / 1024 PASS / Confirmation 1440 PASS**, no overflow/clipped controls, console **0 errors**, focus-visible PASS, reduced motion preserved. Backend/API contracts unchanged; assignment during screenshot QA **NOT EXECUTED**. Rich profiles, multiple applicants and assignment outcomes were tested where absent from runtime. No tests/build rerun during freeze; no further source changes. Security inspection found no added secrets, credentials, .env content, screenshots or machine-local paths.
+
 ## Exact next task — NOT_STARTED
 
-**CLIENT WORK C3 → APPLICANTS**, route `/work/:jobId/applications`, status **NOT_STARTED**. Before implementation inspect current ClientApplicants source, Applicant DTO/API, assignment authorization, profile access and current tests. Reuse the approved kinetic toolkit and locked semantic identity under a separately authorized workpack.
-
-### Files to inspect first in the next session
-
-1. `frontend/src/App.tsx` — trusted Client role routes/navigation.
-2. `frontend/src/Workflow.tsx`, `frontend/src/Workflow.test.tsx` — current ClientApplicants, eligibility/actions and focused tests.
-3. `frontend/src/api.ts` and `frontend/src/api.test.ts` — Applicant reads, assignment API, response adaptation and contracts.
-4. `frontend/src/types.ts` and `frontend/src/status.ts` — current Applicant DTO/application/job/contract fields and labels.
-5. Current frontend profile source/tests — actual Applicant profile access and supported public fields; inspect before changing UI.
-6. `frontend/src/WorkLifecycle.tsx`, `frontend/src/ContractLifecycle.tsx` — existing detailed work destinations; frozen My Work is visual grammar only.
-7. `frontend/src/ui/kinetic/` and `frontend/src/ui/job-thumbnails/` — approved reusable visual grammar.
-8. `marketplace-backend/docs/JOB_DISCOVERY_CONTRACT.md` — real category/skills authority.
-9. `marketplace-backend/src/main/java/com/marketplace/backend/controller/JobController.java` — read-only verification of existing job routes if needed.
-
-Read documentation first in the order in `START_HERE_UI.md`. Do not begin C3 during this freeze/documentation task. Client C1/C2 and Freelancer surfaces remain frozen.
+**P06.5 — FINANCE / TAX / ACTIVITY**. First inspect current real contracts/source for Client Thanh toán, Freelancer Thu nhập and Hoạt động. Read existing API/types/status, finance/tax/activity screens and their focused tests; reuse the approved toolkit. Create and obtain human approval for the visual concept and target screenshots **before implementation**; do not invent the UI independently. Do not start P06.5 during this freeze. Client C1/C2/C3 and Freelancer surfaces remain frozen.
