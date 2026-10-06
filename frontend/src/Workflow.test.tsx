@@ -138,6 +138,140 @@ describe('P05.2 job detail and workflow', () => {
     expect(button('Thử lại')).toBeTruthy();
   });
 
+  it('renders all four server statuses without invented states or per-status page counts', async () => {
+    const statuses = ['PENDING', 'ACCEPTED', 'REJECTED', 'CANCELLED'] as const;
+    vi.spyOn(api, 'myApplications').mockResolvedValue({ currentPage: 0, pageSize: 10, totalPages: 10,
+      totalElements: 97, data: statuses.map((status, index) => ({ ...myApplication, id: 'app-' + index,
+        status, job: { ...myApplication.job, id: 'job-' + index, title: 'Job ' + index } })) });
+    await render(<MyApplications />, '/work/applications');
+    expect([...host.querySelectorAll('.applications-status')].map(node => node.textContent))
+      .toEqual(['Đang chờ', 'Đã được chọn', 'Không được chọn', 'Đã hủy']);
+    expect(host.querySelector('.applications-results-heading p')?.textContent).toBe('97 ứng tuyển');
+    expect([...host.querySelectorAll('.applications-status-rail button')].map(node => node.textContent))
+      .toEqual(['Tất cả', 'Đang chờ', 'Đã được chọn', 'Không được chọn', 'Đã hủy']);
+    expect(host.textContent).not.toMatch(/Cần phản hồi|Client đã xem|phỏng vấn|Featured|Recommended|Priority/);
+    expect(host.querySelectorAll('input, select')).toHaveLength(0);
+  });
+
+  it('keeps the active filter in the rail without repeating it in the result heading', async () => {
+    vi.spyOn(api, 'myApplications').mockResolvedValue({ currentPage: 0, pageSize: 10,
+      totalPages: 1, totalElements: 1, data: [myApplication] });
+    await render(<MyApplications />, '/work/applications');
+    const heading = host.querySelector('.applications-results-heading')!;
+    expect(heading.textContent).toBe('Ứng tuyển gần đây1 ứng tuyển');
+    expect(heading.querySelector('.ku-label')).toBeNull();
+    expect(button('Tất cả')?.getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('groups the first application budget with its status and action, preserving lower-row facts', async () => {
+    vi.spyOn(api, 'myApplications').mockResolvedValue({ currentPage: 0, pageSize: 10,
+      totalPages: 1, totalElements: 2, data: [myApplication, { ...myApplication, id: 'app-2' }] });
+    await render(<MyApplications />, '/work/applications');
+    const primary = host.querySelector('.applications-primary-record')!;
+    const action = primary.querySelector('.applications-record-action')!;
+    expect(action.querySelector('.applications-status')?.textContent).toBe('Đang chờ');
+    expect(action.querySelector('.applications-budget')?.textContent).toContain('$120.00');
+    expect(action.querySelector('a')?.getAttribute('href')).toBe('/work/job-1');
+    expect(primary.querySelector('.applications-record-copy .applications-budget')).toBeNull();
+    expect(host.querySelector('.applications-ledger-row .applications-facts .applications-budget')?.textContent)
+      .toContain('$120.00');
+    expect(host.querySelectorAll('.applications-budget')).toHaveLength(2);
+  });
+
+  it.each(['PENDING', 'ACCEPTED', 'REJECTED', 'CANCELLED'] as const)('filters %s through the unchanged server call', async status => {
+    const load = vi.spyOn(api, 'myApplications').mockResolvedValue({ currentPage: 0, pageSize: 10,
+      totalPages: 0, totalElements: 0, data: [] });
+    await render(<MyApplications />, '/work/applications');
+    const label = { PENDING: 'Đang chờ', ACCEPTED: 'Đã được chọn', REJECTED: 'Không được chọn', CANCELLED: 'Đã hủy' }[status];
+    await click(label);
+    expect(load).toHaveBeenLastCalledWith(0, status);
+    expect(button(label)?.getAttribute('aria-pressed')).toBe('true');
+    expect(host.querySelector('.applications-results-heading p')?.textContent).toBe('0 ứng tuyển trong bộ lọc này');
+  });
+
+  it('reuses category-first semantic thumbnails and renders only actual job skills', async () => {
+    vi.spyOn(api, 'myApplications').mockResolvedValue({ currentPage: 0, pageSize: 10, totalPages: 1,
+      totalElements: 2, data: [
+        { ...myApplication, job: { ...myApplication.job, category: 'WEB_FRONTEND', skills: ['HTML', 'CSS'] } },
+        { ...myApplication, id: 'app-2', job: { ...myApplication.job, title: 'React landing page', category: 'OTHER', skills: [] } },
+      ] });
+    await render(<MyApplications />, '/work/applications');
+    expect([...host.querySelectorAll('.job-family-art')].map(node => node.getAttribute('data-family')))
+      .toEqual(['web', 'development']);
+    expect([...host.querySelectorAll('.applications-skills li')].map(node => node.textContent)).toEqual(['HTML', 'CSS']);
+    expect(host.querySelectorAll('.applications-skills')).toHaveLength(1);
+    expect(host.querySelectorAll('.applications-ledger > li')).toHaveLength(2);
+  });
+
+  it.each([
+    ['ACCEPTED', 'IN_PROGRESS', true], ['PENDING', 'OPEN', true], ['REJECTED', 'OPEN', true],
+    ['PENDING', 'COMPLETED', false], ['REJECTED', 'IN_PROGRESS', false], ['CANCELLED', 'CANCELLED', false],
+  ] as const)('preserves existing access for %s application / %s job', async (status, jobStatus, accessible) => {
+    vi.spyOn(api, 'myApplications').mockResolvedValue({ currentPage: 0, pageSize: 10, totalPages: 1,
+      totalElements: 1, data: [{ ...myApplication, status, job: { ...myApplication.job, status: jobStatus } }] });
+    await render(<MyApplications />, '/work/applications');
+    expect(!!host.querySelector('a[href="/work/job-1"]')).toBe(accessible);
+    expect(host.querySelectorAll('a[href="/work/job-1"]')).toHaveLength(accessible ? 1 : 0);
+    expect(host.textContent).not.toMatch(/Rút ứng tuyển|Sửa ứng tuyển|Ứng tuyển lại|Nhắn tin/);
+    if (status === 'REJECTED' || status === 'CANCELLED') {
+      expect(host.querySelector('.applications-primary-record--attention')).toBeNull();
+    }
+  });
+
+  it('uses only actual submitted/updated timestamps and omits unchanged updates', async () => {
+    vi.spyOn(api, 'myApplications').mockResolvedValue({ currentPage: 0, pageSize: 10, totalPages: 1,
+      totalElements: 2, data: [myApplication, { ...myApplication, id: 'app-2',
+        updatedAt: '2026-10-06T08:15:00' }] });
+    await render(<MyApplications />, '/work/applications');
+    expect(host.textContent).toContain('Nộp 2026-09-29 11:00');
+    expect(host.textContent).toContain('Cập nhật 2026-10-06 08:15');
+    expect(host.querySelector('.applications-primary')?.textContent).not.toContain('Cập nhật');
+  });
+
+  it('preserves server pagination and resets it when the status changes', async () => {
+    const load = vi.spyOn(api, 'myApplications').mockResolvedValue({ currentPage: 0, pageSize: 10,
+      totalPages: 2, totalElements: 11, data: [myApplication] });
+    await render(<MyApplications />, '/work/applications');
+    await click('Trang sau');
+    expect(load).toHaveBeenLastCalledWith(1, 'ALL');
+    await click('Đang chờ');
+    expect(load).toHaveBeenLastCalledWith(0, 'PENDING');
+  });
+
+  it('keeps the tracker shell during loading and recovers from an API error', async () => {
+    let reject!: (cause: Error) => void;
+    const load = vi.spyOn(api, 'myApplications').mockImplementationOnce(() => new Promise((_resolve, failure) => { reject = failure; }))
+      .mockResolvedValueOnce({ currentPage: 0, pageSize: 10, totalPages: 1, totalElements: 1, data: [myApplication] });
+    await render(<MyApplications />, '/work/applications');
+    expect(host.querySelector('[role="status"]')?.textContent).toContain('Đang tải ứng tuyển');
+    expect(host.querySelector('.applications-status-rail')).not.toBeNull();
+    expect(host.querySelector('.applications-results')?.getAttribute('aria-busy')).toBe('true');
+    await act(async () => reject(new Error('Máy chủ tạm thời chưa phản hồi')));
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain('Máy chủ tạm thời chưa phản hồi');
+    await click('Thử lại');
+    expect(load).toHaveBeenCalledTimes(2);
+    expect(host.querySelector('.applications-primary')?.textContent).toContain('Editorial brief');
+  });
+
+  it('renders the truthful empty state and real Explore destination without recommendations', async () => {
+    vi.spyOn(api, 'myApplications').mockResolvedValue({ currentPage: 0, pageSize: 10, totalPages: 0,
+      totalElements: 0, data: [] });
+    await render(<MyApplications />, '/work/applications');
+    expect(host.textContent).toContain('Chưa có ứng tuyển trong bộ lọc này');
+    expect(host.querySelector('a[href="/work"]')?.textContent).toContain('Khám phá công việc');
+    expect(host.querySelector('.applications-ledger')).toBeNull();
+  });
+
+  it('inherits reduced-motion handling for the tracker primitives', async () => {
+    vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() })));
+    vi.spyOn(api, 'myApplications').mockResolvedValue({ currentPage: 0, pageSize: 10, totalPages: 1,
+      totalElements: 2, data: [myApplication, { ...myApplication, id: 'app-2' }] });
+    await render(<MyApplications />, '/work/applications');
+    expect(host.querySelector('.applications-primary-record')?.getAttribute('data-motion')).toBe('off');
+    expect(host.querySelector('.applications-ledger-row')?.getAttribute('data-motion')).toBe('off');
+    expect([...host.querySelectorAll('.applications-page [data-motion]')].every(node => node.getAttribute('data-motion') === 'off')).toBe(true);
+  });
+
   it('renders real applicant UUID and confirmation without fake profile data', async () => {
     vi.spyOn(api, 'job').mockResolvedValue(job);
     vi.spyOn(api, 'applicants').mockResolvedValue([pending]);

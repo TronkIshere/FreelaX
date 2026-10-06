@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
+import { Ban, CalendarDays, CircleCheck, CircleX, Hourglass, ListFilter, SlidersHorizontal, UserRound } from 'lucide-react';
 import { ApiError, api } from './api';
 import { WorkLifecycle } from './WorkLifecycle';
 import { contractAmount, localInstant } from './workflowContracts';
 import { ActionGroup, EvidenceDisclosure, FactGrid, PageHeading, SectionHeading, StatePanel } from './components';
 import { Pagination } from './Jobs';
 import { jobCategories } from './jobDiscovery';
-import { applicationLabel, date, jobLabel, money, shortId } from './status';
+import { applicationLabel, jobLabel, money, shortId } from './status';
+import { KineticActionArrow, KineticCard, KineticLedgerRow, RoughBurst, RoughUnderline, TapeSticker } from './ui/kinetic';
+import { JobThumbnail } from './ui/job-thumbnails/JobThumbnail';
 import type { DiscoverJob, Job, JobApplication, MyApplication, Page, Requirement, User } from './types';
 
 type Detail = Job | DiscoverJob;
@@ -236,6 +239,54 @@ const filterOptions = [
   ['REJECTED', 'Không được chọn'], ['CANCELLED', 'Đã hủy'],
 ] as const;
 
+const applicationIcons = { ALL: ListFilter, PENDING: Hourglass, ACCEPTED: CircleCheck,
+  REJECTED: CircleX, CANCELLED: Ban };
+
+function ApplicationRecord({ application, primary }: { application: MyApplication; primary: boolean }) {
+  const { job } = application;
+  // Preserve the existing MyApplications access condition; presentation grants no permissions.
+  const canOpen = application.status === 'ACCEPTED' || job.status === 'OPEN';
+  const Icon = applicationIcons[application.status];
+  const titleId = 'application-' + application.id;
+  const status = <span className={'applications-status applications-status--' + application.status}>
+    <Icon size={20} aria-hidden="true" /><span>{applicationLabel(application.status)}</span></span>;
+  const copy = <>
+    <h3 id={titleId}>{job.title}</h3>
+    {job.description && <p className="applications-description">{job.description}</p>}
+    {!!job.skills?.length && <ul className="applications-skills" aria-label="Kỹ năng công việc">
+      {job.skills.map(skill => <li key={skill}>{skill}</li>)}
+    </ul>}
+  </>;
+  const budget = <span className="applications-budget">Ngân sách <strong>{money(job.budgetUsd)}</strong></span>;
+  const facts = <div className="applications-facts">
+    {job.clientDisplayName && <span><UserRound size={17} aria-hidden="true" />{job.clientDisplayName}</span>}
+    <span><CalendarDays size={17} aria-hidden="true" />Nộp {timestamp(application.createdAt)}</span>
+    {application.updatedAt && timestamp(application.updatedAt) !== timestamp(application.createdAt) &&
+      <span>Cập nhật {timestamp(application.updatedAt)}</span>}
+    <span>Công việc: {jobLabel(job.status)}</span>
+    {!primary && budget}
+  </div>;
+  const action = <div className="applications-record-action">{status}
+    {primary && budget}
+    {canOpen && <Link className={primary ? 'button' : 'applications-detail-link'}
+      to={'/work/' + job.id} aria-label={'Xem chi tiết: ' + job.title}>
+      Xem chi tiết <KineticActionArrow /></Link>}
+  </div>;
+  if (primary) {
+    const attention = application.status === 'PENDING' || application.status === 'ACCEPTED';
+    return <li className="applications-primary">
+      <KineticCard variant={attention ? 'vermilion' : 'cream'} aria-labelledby={titleId}
+        className={'applications-primary-record' + (attention ? ' applications-primary-record--attention' : '')}>
+        <div className="applications-primary-thumbnail" aria-hidden="true"><JobThumbnail job={job} /></div>
+        <div className="applications-record-copy">{copy}{facts}</div>
+        {action}
+      </KineticCard>
+    </li>;
+  }
+  return <KineticLedgerRow aria-labelledby={titleId} className="applications-ledger-row"
+    thumbnail={<JobThumbnail job={job} />} title={copy} metadata={facts} action={action} />;
+}
+
 export function MyApplications() {
   const [status, setStatus] = useState<string>('ALL');
   const [page, setPage] = useState(0);
@@ -252,34 +303,49 @@ export function MyApplications() {
     );
     return () => { active = false; };
   }, [page, status, attempt]);
-  return <>
-    <PageHeading eyebrow="Freelancer / Công việc / Ứng tuyển" title="Ứng tuyển của bạn"
-      description="Theo dõi quyết định của Client và trạng thái công việc từ Marketplace."
-      aside="Ứng tuyển → công việc → quyết định" />
-    <div className="filter-tabs" role="group" aria-label="Lọc trạng thái ứng tuyển">
-      {filterOptions.map(([value, label]) => <button key={value} className={status === value ? 'active' : ''}
-        type="button" aria-pressed={status === value}
-        onClick={() => { setStatus(value); setPage(0); }}>{label}</button>)}
-    </div>
-    {loading ? <StatePanel kind="loading" title="Đang tải ứng tuyển" body="Đang lấy lịch sử ứng tuyển của tài khoản." />
+  return <div className="applications-page">
+    <PageHeading eyebrow="" descriptionClassName="applications-supporting-copy" title={<><span className="applications-title-start">Theo dõi
+      <RoughBurst seedKey="applications-heading:left" accent="vermilion" size={45} className="applications-title-rays applications-title-rays--left" />
+      </span>{' '}<span className="applications-title-emphasis">ứng tuyển của bạn.
+        <RoughUnderline seedKey="applications-heading:underline" size={330} />
+        <RoughBurst seedKey="applications-heading:right" accent="ink" size={45} className="applications-title-rays applications-title-rays--right" />
+      </span></>}
+      description="Theo dõi quyết định của Client và trạng thái các công việc bạn đã ứng tuyển." />
+    <div className="applications-tracker">
+      <aside className="applications-filter" aria-labelledby="applications-filter-title">
+        <h2 id="applications-filter-title"><TapeSticker rotation={-1}>
+          <SlidersHorizontal size={22} aria-hidden="true" /> Trạng thái</TapeSticker></h2>
+        <div className="applications-status-rail" role="group" aria-label="Lọc trạng thái ứng tuyển">
+          {filterOptions.map(([value, label]) => {
+            const Icon = applicationIcons[value];
+            return <button key={value} className={status === value ? 'active' : ''}
+              type="button" aria-pressed={status === value}
+              onClick={() => { setStatus(value); setPage(0); }}>
+              <Icon size={21} aria-hidden="true" /><span>{label}</span><KineticActionArrow active={status === value} />
+            </button>;
+          })}
+        </div>
+      </aside>
+      <section className="applications-results" aria-labelledby="applications-results-title" aria-busy={loading}>
+        <header className="applications-results-heading">
+          <h2 id="applications-results-title">Ứng tuyển gần đây</h2>
+          {!loading && !error && result && <p aria-live="polite"><strong>{result.totalElements}</strong>{' '}
+            {status === 'ALL' ? 'ứng tuyển' : 'ứng tuyển trong bộ lọc này'}</p>}
+        </header>
+        {loading ? <StatePanel kind="loading" title="Đang tải ứng tuyển" body="Đang lấy lịch sử ứng tuyển của tài khoản." />
       : error ? <StatePanel kind="error" title="Không thể tải ứng tuyển" body={error}
         action={{ label: 'Thử lại', onClick: () => setAttempt(value => value + 1) }} />
-      : !result || result.data.length === 0 ? <StatePanel kind="empty" title="Chưa có ứng tuyển trong bộ lọc này"
-        body="Ứng tuyển thực tế sẽ xuất hiện ở đây sau khi máy chủ ghi nhận." />
-      : <><div className="application-list" aria-label="Danh sách ứng tuyển">
-        {result.data.map(application => <article className="application-row" key={application.id}>
-          <div className="application-main">
-            <span className="eyebrow">Công việc / {date(application.job.createdAt)}</span>
-            <h2>{application.status === 'ACCEPTED' || application.job.status === 'OPEN'
-              ? <Link to={'/work/' + application.job.id}>{application.job.title}</Link> : application.job.title}</h2>
-            <p>{application.job.clientDisplayName || 'Khách hàng'} · {money(application.job.budgetUsd)}</p>
-          </div>
-          <div><span className="cell-label">Công việc</span><strong>{jobLabel(application.job.status)}</strong></div>
-          <div><span className="cell-label">Ứng tuyển</span><strong>{applicationLabel(application.status)}</strong></div>
-          <div><span className="cell-label">Thời gian</span><span>Nộp {timestamp(application.createdAt)}<br />Cập nhật {timestamp(application.updatedAt)}</span></div>
-        </article>)}
-      </div><Pagination page={result} onPage={setPage} /></>}
-  </>;
+      : !result || result.data.length === 0 ? <div className="applications-empty">
+        <StatePanel kind="empty" title="Chưa có ứng tuyển trong bộ lọc này"
+          body="Ứng tuyển thực tế sẽ xuất hiện ở đây sau khi máy chủ ghi nhận." />
+        <Link className="text-link" to="/work">Khám phá công việc <KineticActionArrow /></Link>
+      </div>
+      : <><ul className="applications-ledger" aria-label="Danh sách ứng tuyển">
+        {result.data.map((application, index) => <ApplicationRecord key={application.id} application={application} primary={index === 0} />)}
+      </ul><Pagination page={result} onPage={setPage} /></>}
+      </section>
+    </div>
+  </div>;
 }
 
 export function ClientApplicants({ user }: { user: User }) {

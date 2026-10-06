@@ -887,3 +887,86 @@ a { color: inherit; }
   .explore-results-heading h2 { font-size: 24px; }
   .explore-page .explore-results-heading label { min-width: 180px; }
 }
+/* VP.4: application status tracker only; frozen Overview/Explore styles stay intact. */
+.app-shell:has(.applications-page) > .subnav { gap: 8px; border-bottom: 2px solid var(--ink); margin-top: 16px; }
+.app-shell:has(.applications-page) > .subnav a { padding: 12px 24px; font-size: 16px; font-weight: 650; color: var(--ink); }
+.app-shell:has(.applications-page) > .subnav a.active { background: var(--acid); border-bottom-color: var(--vermilion); border-bottom-width: 4px; }
+.applications-page { min-width: 0; }
+.applications-page .page-head { border: 0; padding: 24px 0 28px; }
+.applications-page .page-head h1 { font-size: 56px; line-height: 1.15; letter-spacing: -.035em; max-width: none; margin: 0 0 16px; }
+.applications-page .applications-supporting-copy { font-size: 18px; line-height: 1.5; font-weight: 500; max-width: 75ch; }
+.applications-title-start, .applications-title-emphasis { position: relative; display: inline-block; }
+.applications-title-emphasis { color: var(--vermilion); }
+.applications-title-emphasis > .ku-rough:not(.applications-title-rays) { position: absolute; width: 70%; height: 12px; right: 0; bottom: -10px; }
+.applications-page .applications-title-rays { position: absolute; max-width: none; }
+.applications-title-rays--left { top: -13px; left: -26px; transform: rotate(-24deg); }
+.applications-title-rays--right { right: -28px; top: -15px; transform: rotate(65deg); }
+.applications-tracker { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 28px; align-items: start; }
+.applications-filter { border: 2px solid var(--ink); box-shadow: 4px 4px 0 var(--ink); padding: 20px 14px 14px; }
+.applications-filter h2 { margin: 0 0 22px; font-size: 22px; }
+.applications-filter .ku-label { display: flex; align-items: center; gap: 8px; font-size: 21px; padding: 7px 9px; }
+.applications-status-rail { display: grid; gap: 4px; }
+.applications-status-rail button { display: grid; grid-template-columns: 21px minmax(0, 1fr) 20px; align-items: center; gap: 9px; width: 100%; min-height: 53px; padding: 10px 8px; border: 0; border-bottom: 1px solid var(--line); background: transparent; color: var(--ink); text-align: left; font-size: 15px; line-height: 1.35; font-weight: 650; }
+.applications-status-rail button.active { background: var(--acid); border-bottom-color: var(--ink); }
+.applications-status-rail button:hover { background: var(--pale-acid); }
+.applications-status-rail button.active:hover { background: var(--acid); }
+.applications-status-rail .ku-action-arrow svg { width: 20px; height: 20px; }
+.applications-results { min-width: 0; }
+.applications-results-heading { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 5px 16px; margin: 0 0 20px; }
+.applications-results-heading h2 { font-size: 27px; line-height: 1.25; margin: 0; letter-spacing: -.025em; }
+.applications-results-heading p { grid-column: 1; font-size: 15px; line-height: 1.4; margin: 0; color: var(--soft-ink); }
+.applications-ledger { list-style: none; padding: 0; margin: 0; }
+.applications-primary { margin-bottom: 14px; padding: 0 6px 6px 0; }
+.applications-primary-record { display: grid; grid-template-columns: 132px minmax(0, 1fr) 175px; gap: 20px; align-items: center; padding: 24px 20px; }
+.applications-primary-thumbnail { min-width: 0; }
+.applications-page .job-family-art { width: 100%; height: auto; aspect-ratio: 1; }
+.applications-record-copy { min-width: 0; }
+.applications-page h3 { margin: 0 0 9px; font-size: 20px; line-height: 1.3; letter-spacing: -.02em; font-weight: 800; overflow-wrap: anywhere; }
+.applications-primary-record h3 { font-size: 26px; }
+.applications-description { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin: 0; font-size: 16px; line-height: 1.5; font-weight: 400; color: var(--soft-ink); }
+.applications-primary-record--attention .applications-description { color: var(--cream); }
+.applications-skills { display: flex; flex-wrap: wrap; gap: 6px; list-style: none; margin: 12px 0 0; padding: 0; }
+.applications-skills li { padding: 3px 7px; font-size: 14px; line-height: 1.4; font-weight: 550; color: var(--ink); background: var(--cream); border: 1px solid var(--ink); overflow-wrap: anywhere; }
+.applications-facts { display: flex; flex-wrap: wrap; gap: 7px 16px; font-size: 14px; line-height: 1.5; font-weight: 450; color: var(--soft-ink); }
+.applications-facts > span { display: inline-flex; gap: 6px; align-items: center; min-width: 0; overflow-wrap: anywhere; }
+.applications-facts svg { flex-shrink: 0; }
+.applications-primary-record .applications-facts { margin-top: 16px; }
+.applications-primary-record--attention .applications-facts { color: var(--cream); }
+.applications-budget strong { font-size: 16px; font-weight: 750; color: var(--ink); }
+.applications-primary-record .applications-budget strong { font-size: 20px; color: inherit; }
+.applications-record-action { display: grid; gap: 18px; justify-items: end; }
+.applications-primary-record .applications-record-action { gap: 12px; align-content: center; width: 100%; }
+.applications-primary-record .applications-record-action > .applications-budget { display: grid; gap: 2px; font-size: 14px; line-height: 1.4; text-align: right; }
+.applications-primary-record--attention .applications-record-action > .applications-budget { color: var(--cream); }
+.applications-status { display: inline-flex; align-items: center; gap: 7px; padding: 6px 9px; border: 1.5px solid var(--ink); font-size: 14px; line-height: 1.4; font-weight: 750; white-space: nowrap; color: var(--ink); }
+.applications-status--PENDING { background: var(--acid); }
+.applications-status--ACCEPTED { background: var(--mint); }
+.applications-status--REJECTED { background: var(--vermilion); color: var(--cream); }
+.applications-status--CANCELLED { background: var(--cream); }
+.applications-record-action .button { display: inline-flex; gap: 9px; align-items: center; justify-content: center; font-size: 16px; padding: 12px 14px; text-decoration: none; width: 100%; }
+.applications-record-action .button .ku-action-arrow { color: var(--acid); }
+.applications-detail-link { display: inline-flex; align-items: center; gap: 9px; font-size: 15px; font-weight: 650; text-underline-offset: 4px; }
+.applications-record-action .ku-action-arrow svg { width: 24px; height: 24px; }
+.applications-ledger-row { grid-template-columns: 82px minmax(0, 1fr) 175px; gap: 18px; padding: 18px 0; }
+.applications-ledger-row .ku-ledger-facts { margin-top: 10px; }
+.applications-ledger-row .ku-ledger-metadata { width: 100%; }
+.applications-ledger-row .applications-description { font-size: 16px; line-height: 1.5; }
+.applications-ledger-row .applications-facts { font-size: 15px; line-height: 1.5; }
+.applications-ledger-row .applications-budget strong { font-size: 15px; }
+.applications-ledger-row .applications-status { font-size: 15px; }
+.applications-ledger-row .applications-detail-link { font-size: 16px; }
+.applications-empty .text-link { display: inline-flex; align-items: center; gap: 8px; font-size: 16px; }
+@media (max-width: 1100px) {
+  .applications-page .page-head h1 { font-size: 48px; }
+  .applications-tracker { grid-template-columns: 195px minmax(0, 1fr); gap: 22px; }
+  .applications-filter { padding-inline: 10px; }
+  .applications-status-rail button { font-size: 14px; gap: 6px; }
+  .applications-primary-record { grid-template-columns: 100px minmax(0, 1fr); gap: 16px; padding: 20px; }
+  .applications-primary-record .applications-record-action { grid-column: 2; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; max-width: 280px; justify-self: end; }
+  .applications-primary-record .applications-record-action > .applications-status { justify-self: start; }
+  .applications-primary-record .applications-record-action .button { grid-column: 1 / -1; justify-self: end; }
+  .applications-primary-record .applications-record-action .button { width: 100%; }
+  .applications-primary-record h3 { font-size: 24px; }
+  .applications-ledger-row { grid-template-columns: 70px minmax(0, 1fr) 150px; gap: 14px; }
+  .applications-ledger-row h3 { font-size: 18px; }
+}
