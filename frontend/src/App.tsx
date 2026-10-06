@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { motion } from 'motion/react';
+import { Bell, BriefcaseBusiness, ChartNoAxesColumnIncreasing, House, UserRound } from 'lucide-react';
 import { Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { ApiError, hasAuthority } from './api';
 import { AdminDisputes, AdminDisputeDetail } from './AdminDisputes';
@@ -15,9 +17,30 @@ import { useSession } from './session';
 import { ClientApplicants, JobDetail, MyApplications } from './Workflow';
 import { MyWork } from './WorkLifecycle';
 import type { User, UserType } from './types';
+import { kineticVariants, useKineticMotion } from './ui/kinetic';
 
 function Brand() {
   return <div className="brand" aria-label="FreelaX">Freela<span>X</span></div>;
+}
+
+function PrimaryNavigationItem({ path, label, end }: { path: string; label: string; end: boolean }) {
+  const icons: Record<string, typeof House> = { '/': House, '/work': BriefcaseBusiness,
+    '/finance': ChartNoAxesColumnIncreasing, '/activity': Bell, '/account': UserRound };
+  const Icon = icons[path];
+  const { enabled, transition } = useKineticMotion();
+  const [focused, setFocused] = useState(false);
+  return <NavLink to={path} end={end} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
+    className={({ isActive }) => 'nav-link' + (isActive ? ' active' : '')}>
+    {({ isActive }) => <>
+      <motion.span className="nav-content" data-motion={enabled ? 'on' : 'off'} initial={false}
+        variants={kineticVariants('ledger', enabled)} animate={enabled && focused ? 'active' : 'rest'}
+        whileHover={enabled ? 'active' : undefined} transition={transition}>
+        <Icon className="nav-mark" size={24} strokeWidth={1.8} aria-hidden="true" focusable="false" /><span>{label}</span>
+      </motion.span>
+      {isActive && <motion.span className="nav-accent" aria-hidden="true"
+        initial={enabled ? { scaleX: 0.65 } : false} animate={{ scaleX: 1 }} transition={transition} />}
+    </>}
+  </NavLink>;
 }
 
 function RoleShell({ user }: { user: User }) {
@@ -53,18 +76,19 @@ function RoleShell({ user }: { user: User }) {
     <a className="skip-link" href="#main">Đi tới nội dung</a>
     <header className="masthead">
       <div className="shell-brand"><Brand /><span className="shell-signature">Work / People / Payment</span></div>
-      <div className="identity"><span>{role === 'CLIENT' ? 'Client' : 'Freelancer'}</span><strong>{user.displayName}</strong></div>
-      <ActionGroup label="Phiên làm việc">
-        {hasAuthority(user, 'ROLE_ADMIN') && <NavLink className="text-link admin-entry" to="/admin/disputes">Quản trị</NavLink>}
-        <button className="text-button sign-out" type="button" onClick={() => void logout()} disabled={loggingOut}>
-          {loggingOut ? 'Đang đăng xuất…' : 'Đăng xuất'}</button>
-      </ActionGroup>
+      <nav className="primary-nav" aria-label="Điều hướng chính">
+        {nav.map(item => <PrimaryNavigationItem key={item.path} path={item.path} label={item.label} end={item.end} />)}
+      </nav>
+      <div className="shell-account">
+        <div className="identity"><span>{role === 'CLIENT' ? 'Client' : 'Freelancer'}</span><strong>{user.displayName}</strong></div>
+        <ActionGroup label="Phiên làm việc">
+          {hasAuthority(user, 'ROLE_ADMIN') && <NavLink className="text-link admin-entry" to="/admin/disputes">Quản trị</NavLink>}
+          <button className="text-button sign-out" type="button" onClick={() => void logout()} disabled={loggingOut}>
+            {loggingOut ? 'Đang đăng xuất…' : 'Đăng xuất'}</button>
+        </ActionGroup>
+      </div>
     </header>
     {logoutError && <p className="form-error logout-error" role="alert">{logoutError}</p>}
-    <nav className="primary-nav" aria-label="Điều hướng chính">
-      {nav.map(item => <NavLink key={item.path} to={item.path} end={item.end}
-        className={({ isActive }) => 'nav-link' + (isActive ? ' active' : '')}>{item.label}</NavLink>)}
-    </nav>
     {role === 'FREELANCER' && location.pathname.startsWith('/work') && <nav className="subnav" aria-label="Khu vực công việc Freelancer">
       <NavLink to="/work" end>Khám phá</NavLink>
       <NavLink to="/work/applications">Ứng tuyển</NavLink>
@@ -94,7 +118,7 @@ function RoleShell({ user }: { user: User }) {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </main>
-    <footer className="page-footer"><span>FreelaX / Marketplace</span></footer>
+    <footer className="page-footer"><span className="app-footer-brand">FreelaX / Marketplace</span></footer>
   </div>;
 }
 

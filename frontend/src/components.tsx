@@ -1,13 +1,13 @@
 import type { ReactNode } from 'react';
 
-export function PageHeading({ eyebrow, title, description, aside }: {
-  eyebrow: string; title: string; description: string; aside?: string;
+export function PageHeading({ eyebrow, title, description, descriptionClassName, aside }: {
+  eyebrow: string; title: ReactNode; description: string; descriptionClassName?: string; aside?: string;
 }) {
   return <header className={'page-head' + (aside ? ' page-head-with-aside' : '')}>
     <div className="page-head-copy">
       <span className="eyebrow">{eyebrow}</span>
       <h1>{title}</h1>
-      <p>{description}</p>
+      <p className={descriptionClassName}>{description}</p>
     </div>
     {aside && <div className="page-aside">{aside}</div>}
   </header>;
