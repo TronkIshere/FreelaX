@@ -3,15 +3,16 @@
 ## Current authority — 2026-10-06
 
 Repository: `TronkIshere/FreelaX`. Branch: `feat/ui-visual-polish-20261006`.
-Frozen source implementation: `ca8b93d45a42249f779c13f0348f945ac275d7e0` (My Work + stable Job visual identity source commit).
+Frozen source implementation: `dc440ec96e4c960ac0ea285c07b42e0d823bc221` (Client Work C1 + global row identity source commit).
 A later docs-only commit may be branch HEAD; it does not change this source baseline.
 
 - Overview = FROZEN / APPROVED (both Client and Freelancer).
-- Freelancer Explore = FROZEN / APPROVED.
-- Freelancer Applications = PASS / FROZEN.
-- Freelancer My Work = PASS / FROZEN.
+- Freelancer Explore / Applications / My Work = PASS / RE-FROZEN after the narrow cross-surface row-identity override.
+- Client Work C1 (`/work`) = PASS / FROZEN.
+- Global Row Identity / Global State Rail / Global Category Plate = LOCKED.
+- Strong Success Green `#39B96E` = approved functional success/completion color; Fresh Mint remains a light success surface.
 - Stable Job Visual Identity = LOCKED.
-- Client Work surfaces = NEXT / NOT_STARTED.
+- Client Work C2 — Job Authoring (`/work/new`, `/work/:jobId/edit`) = NEXT / NOT_STARTED.
 
 Read in this exact order (paths are repository-relative):
 
@@ -23,9 +24,11 @@ Read in this exact order (paths are repository-relative):
 6. `docs/ui/WORKPACK_P06_UI_POLISH.md`
 7. `marketplace-backend/docs/JOB_DISCOVERY_CONTRACT.md`
 8. `docs/mvp-functional-spec.md`
-9. Current source: Client Jobs, applicant and job-detail workflows in `frontend/src/Jobs.tsx` and `frontend/src/Workflow.tsx`, plus their tests/API/types/status mappings and the handoff's source inspection list.
+9. Current source: inspect `frontend/src/JobEditor.tsx` fully, its tests and existing routes/API/types/status mappings before C2; reuse the shared kinetic toolkit and locked row identity where relevant.
 
-Use KINETIC EDITORIAL BRUTALISM and the approved toolkit. Frozen Overview/Explore/Applications/My Work demonstrate visual grammar, not generic page templates. Do not reopen them for general polish; require a concrete regression. Exact next visual area: CLIENT WORK SURFACES, NOT_STARTED. Inspect current Client Jobs / applicant / job detail workflows before implementation; do not begin during this freeze task.
+Use KINETIC EDITORIAL BRUTALISM and the approved toolkit. Frozen Overview/Explore/Applications/My Work/Client Work C1 demonstrate visual grammar, not generic page templates. Do not reopen for general polish; require a concrete regression. Exact next visual area: CLIENT WORK C2 — Job Authoring, NOT_STARTED. Inspect JobEditor fully before implementation; do not begin during this freeze task.
+
+Final C1/global accepted gate: 180/180 focused tests PASS; production build and diff check PASS; 1440/1024 PASS without overflow; console errors 0; keyboard focus PASS; reduced motion preserved. No tests/build rerun during freeze. Backend/API/business/filter behavior unchanged. Secondary rows stay Cream with saturated 6px/5px state rails. Thumbnail = semantic Job type; plate = explicit resolved visual family; rail/status = progress. All three channels remain independent. Thumbnail and plate share `jobFamily`; OTHER may resolve decoratively from skills/title without changing stored category. PENDING primary Applications is Acid/Ink, never default Vermilion. See the visual spec for exact colors and labels.
 
 My Work accepted validation: 62/62 focused tests PASS, build/diff PASS, 1440/1024 PASS, console errors 0. Stable thumbnail correction: 131/131 focused tests PASS, thumbnail recheck 36/36 PASS, build/diff PASS, cross-screen identity PASS. Runtime observed 4 My Work jobs with IN_PROGRESS/COMPLETED; legacy category/skills remain sparse. These are observations, not guaranteed seed data. No tests/build were rerun during freeze.
 

@@ -2,8 +2,8 @@
 
 ## LOCKED VISUAL SYSTEM V2 — 2026-10-06
 
-Authority: `UI_VISUAL_POLISH_HANDOFF_20261006.md`; branch `feat/ui-visual-polish-20261006`; frozen source `ca8b93d45a42249f779c13f0348f945ac275d7e0`.
-Client/Freelancer Overview and Freelancer Explore/Applications/My Work are FROZEN. Stable Job Visual Identity is LOCKED. Next CLIENT WORK SURFACES is NOT_STARTED; inspect current Client Jobs / applicant / job detail workflows before implementation. Historical hierarchy guidance below remains useful; conflicting visual/baseline notes are superseded here.
+Authority: `UI_VISUAL_POLISH_HANDOFF_20261006.md`; branch `feat/ui-visual-polish-20261006`; frozen source `dc440ec96e4c960ac0ea285c07b42e0d823bc221`.
+Client/Freelancer Overview remains FROZEN; Client Work C1 is PASS / FROZEN. Freelancer Explore/Applications/My Work are RE-FROZEN after the approved narrow row-identity override. Stable Job Visual Identity and Global Row Identity / State Rail / Category Plate are LOCKED. Next C2 Job Authoring (`/work/new`, `/work/:jobId/edit`) is NOT_STARTED; inspect JobEditor fully before implementation. Historical guidance below remains useful; conflicting visual/baseline notes are superseded here.
 
 **KINETIC EDITORIAL BRUTALISM**: Cream `#FFF7E8`, Ink `#17212B`, Vermilion `#F15A3D`, Acid `#F5D12F`, Fresh Mint `#B8DFC4`, Cobalt `#3567E8`.
 
@@ -32,7 +32,62 @@ Authority: meaningful stored category → legacy skills → legacy title → Gen
 
 Stable identity: `variant = stableHash(job.id) % 3`, `visualKey = family + ':' + variant`; missing ID uses variant 0. WEB_FRONTEND + job A/B may choose different browser variants 0/1/2, but both remain Web/Frontend. Rough decoration uses stable family + job identity; no random/time/order dependence, stable rerender/remount. Reuse the same JobThumbnail for Explore, Applications, My Work and future Client Work. No page-specific thumbnails, database thumbnail ID or upload.
 
-Frozen Overview + Explore + Applications + My Work are references for visual grammar, **not reusable page templates**. Screenshot first, human approval before commit; no fake reference-image data. Desktop 1440/1024 is the current gate; mobile is deferred.
+Frozen Overview + Explore + Applications + My Work + Client Work C1 are references for visual grammar, **not reusable page templates**. Screenshot first, human approval before commit; no fake reference-image data. Desktop 1440/1024 is the current gate; mobile is deferred.
+
+### Global row visual grammar — LOCKED
+
+Three independent information channels:
+
+1. **Semantic thumbnail** → what type of Job.
+2. **Category plate** → explicit resolved visual semantic family.
+3. **State rail + textual status marker** → workflow/application progress.
+
+Never conflate category identity with progress. Secondary rows stay primarily Cream editorial ledger rows, not a colored card wall. Preserve approved geometry, typography, spacing, thumbnail scale, skills, category/status shapes, CTA positions, dividers and motion.
+
+State rail: **6px at 1440; 5px at 1024**, solid saturated color at the left edge of meaningful row content. No gradient, blur, glow or color animation. Status text stays visible for accessibility.
+
+| Job state | Rail / progress marker |
+| --- | --- |
+| OPEN | Acid `#F5D12F` |
+| AWAITING_PAYMENT | Acid `#F5D12F` + Ink structure |
+| IN_PROGRESS | Cobalt `#3567E8` |
+| SUBMITTED_FOR_REVIEW | Acid `#F5D12F` + Ink |
+| REVISION_REQUESTED | Vermilion `#F15A3D` |
+| COMPLETED | Strong Success Green `#39B96E` |
+| CANCELLED | Ink `#17212B` |
+
+Strong Success Green is the approved functional success/completion accent. Fresh Mint `#B8DFC4` remains a LIGHT successful primary-card surface; approved Client/My Work COMPLETED primaries retain Mint + Strong Green.
+
+| Application state | Rail / marker | Primary surface and text |
+| --- | --- | --- |
+| PENDING | Acid `#F5D12F` | Acid + Ink; Ink/Cream CTA |
+| ACCEPTED | Strong Success Green `#39B96E` | Fresh Mint + Ink; Strong Green marker |
+| REJECTED | Vermilion `#F15A3D` | Vermilion + Cream primary text |
+| CANCELLED | Ink `#17212B` | Restrained Ink/Cream inactive treatment |
+
+Application state, not Job state, determines Application progress colors. Do not revert PENDING primary Applications to default Vermilion. On Acid, title/description/facts/budget use Ink; skills remain high-contrast Cream/Ink rectangles.
+
+| Resolved visual family | Category plate |
+| --- | --- |
+| WEB_FRONTEND | WEB / FRONTEND |
+| BACKEND_API | BACKEND / API |
+| SEO_CONTENT | SEO / NỘI DUNG |
+| MOBILE_APP | MOBILE APP |
+| UI_UX_DESIGN | UI / UX |
+| ECOMMERCE | E-COMMERCE |
+| DATA_ANALYTICS | DATA / ANALYTICS |
+| BRANDING_GRAPHIC | BRANDING / GRAPHIC |
+| Generic Development | KHÁC |
+
+Plate: rectangular editorial label, hard Ink border, saturated locked palette, small hard offset allowed; no rounded SaaS pill or translucent/pastel treatment. Plate and thumbnail backing reuse `jobFamily` from `frontend/src/ui/job-thumbnails/jobFamily.ts`, the same resolver used by JobThumbnail. No duplicated keyword classifier.
+
+Authority: meaningful stored category → legacy skills → legacy title → Generic Development. Stored OTHER is STILL OTHER in API/database/editor/filter; inference is decorative only. REST API legacy jobs resolve BACKEND / API; legacy SEO resolves SEO / NỘI DUNG; unresolved legacy jobs remain KHÁC. Never write inferred category back to backend. Same Job has the same family, plate, stable within-family ID variant and Rough identity across Explore, Applications, My Work, Client Work and future Client surfaces.
+
+### Client Work C1 — PASS / FROZEN
+
+Client `/work` = **CLIENT WORK CONTROL BOARD**: masthead/active nav, editorial hero, real create CTA, truthful totalElements, first server record emphasized, state-aware primary, stable semantic thumbnail, real status/budget/deadline/context, secondary ledger, rails/plates, existing state-derived destinations and server pagination. No fake search/filter/sort, applicant/per-state counts or urgency.
+
+Final accepted C1/global gate: **180/180 focused tests PASS**, production build/diff check PASS, 1440/1024 PASS without overflow, console errors 0, keyboard focus PASS, reduced motion preserved. Backend/API/business/filter behavior unchanged. Tests/build were not rerun for freeze. Next C2 remains NOT_STARTED.
 
 ### Locked My Work composition
 

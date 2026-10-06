@@ -3,7 +3,7 @@
 ## VISUAL POLISH STREAM — 2026-10-06
 
 Current branch: `feat/ui-visual-polish-20261006`.
-Frozen source implementation baseline: `ca8b93d45a42249f779c13f0348f945ac275d7e0`.
+Frozen source implementation baseline: `dc440ec96e4c960ac0ea285c07b42e0d823bc221`.
 Documentation commits may advance HEAD without changing this source baseline.
 
 | Stage | Status | Accepted source/evidence |
@@ -11,15 +11,21 @@ Documentation commits may advance HEAD without changing this source baseline.
 | VP.0 Visual branch/direction lock | PASS | Integrated MVP `35ba34e`, initial foundation `a47c865` |
 | VP.1 Kinetic toolkit + Overview | PASS / FROZEN | `01c7e55`; 61/61 focused tests, build/diff PASS, console 0, 1440/1024 PASS |
 | VP.2 Job discovery data foundation | PASS / FROZEN | `302ae06`; real category/skills authoring/filtering, Marketplace package PASS |
-| VP.3 Freelancer Explore | PASS / FROZEN | `f42e44a`; 54/54 final correction tests, build/diff PASS, 1440/1024 no overflow |
-| VP.4 Freelancer Applications | PASS / FROZEN | `2f5f0e4`; 35/35 focused tests, production build/diff PASS, 1440/1024 PASS, console 0 |
-| VP.5 Freelancer My Work | PASS / FROZEN | `ca8b93d`; 62/62 focused tests, build/diff PASS, 1440/1024 PASS, console 0 |
+| VP.3 Freelancer Explore | PASS / RE-FROZEN | `f42e44a` original; `dc440ec` narrow identity override; layout/filter/search frozen |
+| VP.4 Freelancer Applications | PASS / RE-FROZEN | `2f5f0e4` original; `dc440ec` rails/plates and state-aware primary; 180/180 final global gate |
+| VP.5 Freelancer My Work | PASS / RE-FROZEN | `ca8b93d` original; `dc440ec` rails/plates/progress accents; primary/layout preserved |
 | Stable Job Visual Identity | LOCKED | `ca8b93d`; 131/131 focused tests, 36/36 thumbnail recheck, build/diff and cross-screen identity PASS |
-| Client Work surfaces | NOT_STARTED / NEXT | Inspect current Client Jobs / applicant / job detail workflows before implementation |
+| Client Work C1 | PASS / FROZEN | `dc440ec`; CLIENT WORK CONTROL BOARD, real server order/count/pagination/actions |
+| Global Row Identity / State Rail / Category Plate | LOCKED | `dc440ec`; 180/180 focused tests, build/diff PASS, 1440/1024 PASS, console 0 |
+| Client Work C2 — Job Authoring | NOT_STARTED / NEXT | `/work/new`, `/work/:jobId/edit`; inspect JobEditor fully before implementation |
 
 Explore live category/skill/combined/exclusion/Clear PASS is newer scoped runtime evidence. Earlier 115/115 focused frontend gate also passed. Local “Landing page redesign” category/skills edit is runtime evidence, not seed/source data. The approved narrow backend exception `302ae06` is complete; no unrelated backend expansion is authorized.
 
-Client/Freelancer Overview, Freelancer Explore, Applications and My Work are FROZEN. Do not reopen for general polish. Applications uses only real PENDING, ACCEPTED, REJECTED and CANCELLED statuses and `totalElements` for truthful query totals; no fake timeline/status/counts or API/backend changes. Accepted desktop QA has no horizontal overflow. Tests/build were not rerun during this freeze task. See the handoff/session log for source manifests and accepted QA history. Next CLIENT WORK SURFACES remains NOT_STARTED; do not begin during this task.
+Client/Freelancer Overview remains FROZEN. Client Work C1 is PASS / FROZEN. Freelancer Explore, Applications and My Work are RE-FROZEN after the approved narrow cross-surface identity override; no general polish reopening. Applications retains only real PENDING, ACCEPTED, REJECTED and CANCELLED statuses and truthful `totalElements` totals; no fake timeline/status/counts. Next C2 Job Authoring is NOT_STARTED; do not begin during this task.
+
+Final accepted C1/global evidence: 180/180 focused tests PASS; production build/diff check PASS; 1440/1024 no overflow; console errors 0; keyboard focus PASS; reduced motion preserved. Backend/API/business/filter behavior unchanged. Tests/build were not rerun for freeze. C1 runtime: 5 real jobs, page 1/1, OPEN/IN_PROGRESS/COMPLETED observed; Applicants, Job Detail and `/work/new` navigation PASS. Runtime lacks REJECTED/CANCELLED Applications; focused tests cover those states without data mutation.
+
+Global grammar LOCKED: semantic thumbnail = Job type; category plate = explicit resolved visual family; state rail/status marker = progress. Secondary rows stay Cream, with saturated 6px rails at 1440 and 5px at 1024. Strong Success Green `#39B96E` marks COMPLETED/ACCEPTED; Fresh Mint is a light primary success background. Thumbnail/plate/backing share existing `jobFamily`, with meaningful category → legacy skills → title → Generic Development; stored OTHER remains OTHER. ID selects only stable within-family variant/Rough identity. Primary Applications: PENDING Acid/Ink, ACCEPTED Mint/Green, REJECTED Vermilion/Cream, CANCELLED restrained Ink/Cream. Exact colors/labels are locked in the visual spec.
 
 My Work `/work/mine` is an ACTIVE WORK / DELIVERY TRACKER: first server record emphasized, state-aware treatment, semantic thumbnail, real budget/optional deadline/revision context, state-derived next destination, flat ledger and server pagination. No invented search/filter/sort. Runtime observed 4 jobs, IN_PROGRESS and COMPLETED; sparse legacy category/skills are runtime observations, not guaranteed seed data. Budget is job value; COMPLETED is not payout confirmation. AWAITING_PAYMENT is read-only for Freelancer; RELEASE_PENDING/REFUND_PENDING do not claim payment/refund completion.
 

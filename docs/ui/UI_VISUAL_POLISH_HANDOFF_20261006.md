@@ -5,7 +5,7 @@
 - Repository: `TronkIshere/FreelaX`.
 - Active branch: `feat/ui-visual-polish-20261006`.
 - Integrated MVP ancestor: `35ba34e9b68be67b9405d3407159a2fde010911c`.
-- Frozen last product/source implementation commit: `ca8b93d45a42249f779c13f0348f945ac275d7e0`.
+- Frozen last product/source implementation commit: `dc440ec96e4c960ac0ea285c07b42e0d823bc221`.
 
 Accepted source chain, oldest first:
 
@@ -17,8 +17,9 @@ Accepted source chain, oldest first:
 | `f42e44a` | Final kinetic Freelancer Explore |
 | `2f5f0e4` | Final kinetic Freelancer Applications |
 | `ca8b93d` | Final kinetic Freelancer My Work + stable Job visual identity |
+| `dc440ec` | Client Work C1 + global row identity / state rails / category plates |
 
-A later documentation commit may be branch HEAD. It does not replace `ca8b93d` as the frozen source implementation baseline. Read the current HEAD with Git; do not mistake a docs-only HEAD for new product implementation. Current source wins over older conflicting documentation. Explicit Product Owner instructions remain authoritative.
+A later documentation commit may be branch HEAD. It does not replace `dc440ec` as the frozen source implementation baseline. Read the current HEAD with Git; do not mistake a docs-only HEAD for new product implementation. Current source wins over older conflicting documentation. Explicit Product Owner instructions remain authoritative.
 
 ## Current UI progress matrix
 
@@ -30,12 +31,14 @@ Statuses below refer to this visual stream, not to absence of existing functiona
 | Global shell / navigation | APPROVED |
 | Client Overview | FROZEN / APPROVED |
 | Freelancer Overview | FROZEN / APPROVED |
-| Freelancer → Công việc → Khám phá | FROZEN / APPROVED |
+| Freelancer → Công việc → Khám phá | PASS / RE-FROZEN after narrow row-identity override |
 | Job discovery data foundation | FROZEN / IMPLEMENTED |
-| Freelancer → Công việc → Ứng tuyển | PASS / FROZEN |
-| Freelancer → Công việc → Công việc của tôi | PASS / FROZEN |
+| Freelancer → Công việc → Ứng tuyển | PASS / RE-FROZEN after narrow row-identity override |
+| Freelancer → Công việc → Công việc của tôi | PASS / RE-FROZEN after narrow row-identity override |
 | Stable Job Visual Identity | LOCKED |
-| Client Work surfaces | NEXT / NOT_STARTED |
+| Client Work C1 (`/work`) | PASS / FROZEN |
+| Global Row Identity / State Rail / Category Plate | LOCKED |
+| Client Work C2 — Job Authoring | NEXT / NOT_STARTED |
 | Finance / Income / Payment | Later |
 | Activity | Later |
 | Account / Profile | Later unless explicitly reprioritized |
@@ -52,6 +55,7 @@ Statuses below refer to this visual stream, not to absence of existing functiona
 | Acid | `#F5D12F` | Active navigation and compact labels |
 | Fresh Mint | `#B8DFC4` | Positive/confirmed accents |
 | Cobalt | `#3567E8` | Hard secondary accent and visible focus |
+| Strong Success Green | `#39B96E` | Approved functional COMPLETED/ACCEPTED progress accent |
 
 Non-negotiable grammar:
 
@@ -269,7 +273,7 @@ A marketplace-backend/docs/JOB_DISCOVERY_CONTRACT.md
 
 Source commit: `2f5f0e4b0667cf9fefbc3f7897fe63a904fa12bc` — `feat(frontend): finalize kinetic freelancer applications`.
 
-Approved APPLICATION STATUS / EDITORIAL TRACKER: left status rail, kinetic heading with underline/rays, first Vermilion application record, compact editorial ledger and real pagination. Final micro-polish removes the redundant result-header filter label, locks lower-row descriptions/actions at 16px and facts/status/budget at 15px, and groups first-card status/budget/action without moving thumbnail/main copy. Overview and Explore remain unchanged and FROZEN.
+Approved APPLICATION STATUS / EDITORIAL TRACKER: left status rail, kinetic heading with underline/rays, state-aware primary application record, compact editorial ledger and real pagination. The later `dc440ec` override replaces original fixed Vermilion emphasis: PENDING Acid/Ink, ACCEPTED Mint/Strong Green, REJECTED Vermilion/Cream, CANCELLED restrained Ink/Cream. Final micro-polish removes the redundant result-header filter label, locks lower-row descriptions/actions at 16px and facts/status/budget at 15px, and groups first-card status/budget/action without moving thumbnail/main copy. Overview remains FROZEN; Explore/Applications/My Work are RE-FROZEN after narrow approved row updates.
 
 Final accepted validation: 35/35 focused tests PASS; production build PASS; `git diff --check` PASS; 1440 PASS; 1024 PASS; no horizontal overflow; console errors 0. These are prior accepted gates, not rerun during the freeze/commit task. No API/backend changes.
 
@@ -314,14 +318,38 @@ Accepted My Work validation: **62/62 focused tests PASS**, build PASS, `git diff
 
 Runtime observation: **4 My Work jobs**, encountered statuses **IN_PROGRESS / COMPLETED**. Legacy category/skills remain sparse; OTHER skills/title fallback was observed for SEO/API work. This is current runtime evidence, not guaranteed seed data or proof that every state exists in the local database.
 
+## Client Work C1 + global row system — APPROVED / FROZEN / LOCKED
+
+Source: `dc440ec96e4c960ac0ea285c07b42e0d823bc221` — `feat(frontend): finalize client work and global row identity`. Seven source files:
+
+```text
+frontend/src/Jobs.tsx
+frontend/src/Jobs.test.tsx
+frontend/src/WorkLifecycle.tsx
+frontend/src/Workflow.tsx
+frontend/src/styles.css
+frontend/src/ui/JobRowIdentity.tsx
+frontend/src/ui/JobRowIdentity.test.tsx
+```
+
+Client `/work` is the approved **CLIENT WORK CONTROL BOARD**: editorial hero/create CTA; truthful totalElements/server order/pagination; first server record emphasized; state-aware primary; stable thumbnail; real status/budget/deadline/context; secondary ledger with rails/plates and existing state-derived actions. No fake search/filter/sort, applicant/per-status counts or urgency. Overview unchanged.
+
+Global grammar LOCKED: thumbnail = semantic Job type; plate = explicit visual family; rail/status = workflow/application progress. Independent channels; secondary rows remain Cream, not a colored card wall. Rail solid/saturated 6px at 1440 and 5px at 1024, no gradient/blur/glow/color animation, visible status text retained. Job progress: OPEN/AWAITING_PAYMENT/SUBMITTED_FOR_REVIEW Acid, IN_PROGRESS Cobalt, REVISION_REQUESTED Vermilion, COMPLETED Strong Green, CANCELLED Ink. Application progress: PENDING Acid, ACCEPTED Strong Green, REJECTED Vermilion, CANCELLED Ink. Strong Success Green `#39B96E` is approved; Fresh Mint remains a light primary success surface. See UI_POLISH_SPEC for exact colors/plates/primary contrast rules.
+
+`JobRowIdentity` plate/backing use existing `jobFamily`, also used by JobThumbnail. Meaningful stored category → skills → title → Generic Development. OTHER stays OTHER in API/database/editor/filter; inferred family is decoration only. Legacy REST API → BACKEND / API, SEO → SEO / NỘI DUNG, no signal → KHÁC. ID only selects stable within-family variant; same Job retains family/variant/Rough/plate across all four surfaces and future Client surfaces. No classifier duplication.
+
+Explore / Applications / My Work = **RE-FROZEN** after narrow approved row updates. Layout/filter/search remain frozen. Applications PENDING primary is Acid/Ink, not default Vermilion; Client/My Work COMPLETED primary Mint/Strong Green is preserved.
+
+Final accepted evidence: **180/180 focused tests PASS**, production build/diff check PASS, **1440/1024 PASS**, no overflow/clipping, console **0**, keyboard focus PASS, reduced motion preserved. Backend/API/business/filter behavior unchanged. Runtime Client: **5 real jobs, page 1/1**, OPEN/IN_PROGRESS/COMPLETED; Applicants, Job Detail and `/work/new` navigation PASS. Runtime lacks REJECTED/CANCELLED Applications; focused tests verify them without status mutation. Freeze did not rerun tests/build or mutate runtime. Security check found no added secrets, credentials, local screenshots or machine-local paths.
+
 ## Exact next task — NOT_STARTED
 
-**CLIENT WORK SURFACES**. Status: **NOT_STARTED** in this visual stream. Inspect current Client Jobs / applicant / job detail workflows first, then reuse the approved kinetic toolkit and shared stable JobThumbnail under a separately authorized workpack.
+**CLIENT WORK C2 — Job Authoring**. Routes `/work/new`, `/work/:jobId/edit`. Status: **NOT_STARTED**. Inspect current `frontend/src/JobEditor.tsx` fully before implementation, then reuse the approved kinetic toolkit and locked semantic identity under a separately authorized workpack.
 
 ### Files to inspect first in the next session
 
 1. `frontend/src/App.tsx` — trusted Client role routes/navigation.
-2. `frontend/src/Jobs.tsx`, `frontend/src/Jobs.test.tsx` — existing Client Jobs list and real pagination/actions.
+2. `frontend/src/JobEditor.tsx`, `frontend/src/JobEditor.test.tsx` — inspect current create/edit form and all eligibility/validation behavior fully before C2.
 3. `frontend/src/Workflow.tsx`, `frontend/src/Workflow.test.tsx` — Client applicant and shared job-detail workflows.
 4. `frontend/src/api.ts` and `frontend/src/api.test.ts` — existing Client reads/actions, response adaptation and contracts.
 5. `frontend/src/types.ts` and `frontend/src/status.ts` — current application/job/contract fields and labels.
@@ -330,4 +358,4 @@ Runtime observation: **4 My Work jobs**, encountered statuses **IN_PROGRESS / CO
 8. `marketplace-backend/docs/JOB_DISCOVERY_CONTRACT.md` — real category/skills authority.
 9. `marketplace-backend/src/main/java/com/marketplace/backend/controller/JobController.java` — read-only verification of existing job routes if needed.
 
-Read documentation first in the order in `START_HERE_UI.md`. Do not begin Client Work during this freeze/documentation task.
+Read documentation first in the order in `START_HERE_UI.md`. Do not begin C2 during this freeze/documentation task. Client Work C1 and Freelancer surfaces remain frozen.

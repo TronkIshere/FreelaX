@@ -88,7 +88,23 @@ Accepted My Work gate: **62/62 focused tests PASS**, build/diff PASS, **1440/102
 
 Current runtime observation: **4 My Work jobs**, encountered **IN_PROGRESS / COMPLETED**; legacy category/skills may remain sparse. These are observations, not guaranteed seed content. No runtime data mutation was performed in this freeze.
 
-Next visual area: **CLIENT WORK SURFACES — NOT_STARTED**. Inspect current Client Jobs / applicant / job detail workflows before implementation. Do not start in this task.
+At this checkpoint, next was **CLIENT WORK SURFACES — NOT_STARTED**. The approved C1/global freeze below supersedes that checkpoint.
+
+## 11. Client Work C1 + global row identity approval and freeze
+
+Human decision: **Client Work C1 = APPROVED / PASS / FROZEN**. **Global Row Identity / Global State Rail / Global Category Plate / Strong Progress Color System = LOCKED**. Stable Job Visual Identity remains LOCKED. Overview remains FROZEN. Freelancer Explore, Applications and My Work were reopened only for the narrow approved row-identity override and are now **RE-FROZEN**; no general taste-polish reopening.
+
+Source: `dc440ec96e4c960ac0ea285c07b42e0d823bc221` — `feat(frontend): finalize client work and global row identity`, normally pushed to the existing visual branch. Exactly seven source files: `frontend/src/Jobs.tsx`, `frontend/src/Jobs.test.tsx`, `frontend/src/WorkLifecycle.tsx`, `frontend/src/Workflow.tsx`, `frontend/src/styles.css`, `frontend/src/ui/JobRowIdentity.tsx`, `frontend/src/ui/JobRowIdentity.test.tsx`. This source commit contains C1 and the approved shared identity/color correction together.
+
+Client `/work` = **CLIENT WORK CONTROL BOARD**: masthead/active nav, editorial hero and create CTA, truthful totalElements, server order/pagination, first record emphasized, state-aware primary, stable semantic thumbnail, real budget/status/deadline/context, secondary editorial ledger and existing state-derived destinations. No fake search/filter/sort, applicant counts, per-status totals or urgency.
+
+Three separate channels are authoritative: semantic thumbnail = Job type; category plate = explicit visual semantic family; rail/status marker = workflow/application progress. Secondary rows stay Cream, not a colored card wall. Solid saturated rails: **6px at 1440 / 5px at 1024**, no gradient/blur/glow/color animation, textual status retained. Strong Success Green **#39B96E** is approved for COMPLETED/ACCEPTED; Fresh Mint **#B8DFC4** is a light successful primary background. Job progress: OPEN/AWAITING_PAYMENT/SUBMITTED_FOR_REVIEW Acid, IN_PROGRESS Cobalt, REVISION_REQUESTED Vermilion, COMPLETED Strong Green, CANCELLED Ink. Application progress: PENDING Acid, ACCEPTED Strong Green, REJECTED Vermilion, CANCELLED Ink. Primary Applications: PENDING Acid/Ink, ACCEPTED Mint/Green, REJECTED Vermilion/Cream, CANCELLED restrained Ink/Cream inactive. Original fixed Vermilion PENDING treatment is superseded; Client/My Work current Mint/Green COMPLETED primaries are preserved.
+
+Category plate/thumbnail backing and JobThumbnail share existing `jobFamily`: meaningful stored category → legacy skills → legacy title → Generic Development. Stored OTHER remains OTHER in business/API/database/editor/filter; inference is decorative only. Legacy REST API → BACKEND / API; SEO → SEO / NỘI DUNG; unresolved → KHÁC. ID chooses only stable within-family variant; family/variant/Rough identity/plate remain consistent across Explore, Applications, My Work, Client Work and future Client surfaces. Exact labels/style rules are locked in UI_POLISH_SPEC.
+
+Final accepted global evidence: **180/180 focused tests PASS**, production build PASS, diff check PASS, **1440/1024 PASS**, no overflow/clipping, console **0**, keyboard focus PASS, reduced motion preserved. Backend/API/business/filter behavior unchanged. Client runtime: **5 real jobs, page 1/1**, OPEN/IN_PROGRESS/COMPLETED observed; Applicants/Job Detail/create navigation PASS. REJECTED/CANCELLED Applications are tested where absent from runtime; statuses were not mutated. Freeze reuses accepted evidence; no tests/build or runtime smoke rerun. Security inspection found no added secrets, credentials, local screenshots or machine-local absolute paths.
+
+Next: **CLIENT WORK C2 — Job Authoring**, `/work/new`, `/work/:jobId/edit`, **NOT_STARTED**. Inspect JobEditor fully before implementation. C2 was not started during this freeze.
 
 ## QA discipline retained
 
