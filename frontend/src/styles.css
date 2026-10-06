@@ -1223,3 +1223,111 @@ a { color: inherit; }
 @media (prefers-reduced-motion: reduce) {
   .job-editor-section-number, .job-editor-item-number { transform: none; }
 }
+/* Client C3: equal-weight applicant roster; no changes to frozen work surfaces. */
+.client-applicants-page { min-width: 0; }
+.client-applicants-page .page-head { border: 0; padding: 36px 0 24px; }
+.client-applicants-page .page-head h1 { max-width: none; margin: 0 0 18px; font-size: 56px; line-height: 1.15; letter-spacing: -.035em; }
+.client-applicants-page .candidates-supporting-copy { font-size: 18px; line-height: 1.5; font-weight: 500; }
+.candidates-title-start, .candidates-title-emphasis { position: relative; display: inline-block; }
+.candidates-title-emphasis { color: var(--vermilion); }
+.candidates-title-emphasis > .ku-rough:not(.candidates-rays) { position: absolute; width: 90%; height: 12px; left: 4%; bottom: -9px; }
+.client-applicants-page .candidates-rays { position: absolute; max-width: none; }
+.candidates-rays--left { left: -22px; top: -12px; transform: rotate(-30deg); }
+.candidates-rays--right { right: -35px; bottom: 7px; transform: rotate(100deg); }
+.candidates-topline { padding-bottom: 18px; }
+.candidates-topline a { font-size: 15px; font-weight: 650; text-underline-offset: 4px; }
+.candidates-job-context { --context-surface: var(--cream); --context-text: var(--ink); position: relative; display: grid; grid-template-columns: 150px minmax(0, 1fr) 340px; gap: 32px; padding: 30px 32px; border: 2px solid var(--ink); background: var(--context-surface); color: var(--context-text); box-shadow: 6px 6px 0 var(--ink); align-items: center; transition: transform .16s ease-out, box-shadow .16s ease-out; }
+.candidates-job-context:is(:hover, :focus-within) { transform: translate(-1px, -1px); box-shadow: 7px 7px 0 var(--ink); }
+.candidates-job-context:is(.state-open, .state-awaiting-payment, .state-review) { --context-surface: var(--acid); }
+.candidates-job-context.state-in-progress { --context-surface: var(--cobalt); --context-text: var(--cream); }
+.candidates-job-context.state-revision { --context-surface: var(--vermilion); --context-text: var(--cream); }
+.candidates-job-context.state-completed { --context-surface: var(--mint); }
+.candidates-job-context.state-cancelled { --context-surface: var(--ink); --context-text: var(--cream); }
+.candidates-job-context::before, .candidates-job-context::after { content: ''; position: absolute; width: 42px; height: 12px; background: var(--cream); border: 1px solid var(--ink); pointer-events: none; }
+.candidates-job-context::before { left: -5px; bottom: 7px; transform: rotate(40deg); }
+.candidates-job-context::after { right: -5px; bottom: 7px; transform: rotate(-40deg); }
+.candidates-job-identity { padding: 4px; }
+.candidates-job-copy, .candidates-job-facts { min-width: 0; }
+.candidates-job-copy h2 { position: relative; width: fit-content; max-width: 100%; font-size: 36px; line-height: 1.2; letter-spacing: -.025em; font-weight: 800; margin: 2px 0 0; padding-right: 22px; overflow-wrap: anywhere; }
+.candidates-job-title-mark { position: absolute; right: -9px; top: -12px; transform: rotate(90deg); color: inherit !important; }
+.candidates-job-copy .job-category-plate { margin-bottom: 10px; font-size: 15px; padding: 4px 10px; box-shadow: 3px 3px 0 var(--ink); }
+.candidates-job-facts { display: grid; gap: 14px; padding-left: 32px; border-left: 1px solid currentColor; font-size: 16px; line-height: 1.5; }
+.candidates-budget { font-size: 40px; line-height: 1.15; font-weight: 850; font-variant-numeric: tabular-nums; }
+.client-applicants-page .candidates-job-status { justify-self: start; font-size: 16px; border: 1.5px solid var(--ink); padding: 4px 12px; }
+.candidates-deadline { display: flex; gap: 10px; align-items: start; }
+.candidates-deadline svg { flex-shrink: 0; margin-top: 1px; }
+.candidates-job-context.state-revision .candidates-deadline { font-weight: 700; }
+.candidates-job-skills, .candidate-skills { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 0; padding: 0; list-style: none; }
+.candidates-job-skills li, .candidate-skills li { font-size: 14px; line-height: 1.4; font-weight: 550; border: 1px solid var(--ink); padding: 3px 8px; overflow-wrap: anywhere; }
+.candidates-job-skills li { background: var(--cream); color: var(--ink); font-size: 15px; padding: 4px 10px; }
+.candidates-results-heading { display: flex; align-items: baseline; flex-wrap: wrap; justify-content: space-between; gap: 12px 24px; padding: 38px 0 18px; }
+.candidates-results-heading h2 { font-size: 28px; line-height: 1.3; letter-spacing: -.025em; margin: 0; }
+.candidates-results-heading p { font-size: 16px; line-height: 1.4; font-weight: 500; margin: 0; color: var(--soft-ink); }
+.candidates-results-heading p strong { color: var(--ink); font-size: 24px; }
+.candidates-roster { list-style: none; padding: 20px 0 0; margin: 0; border-top: 2px solid var(--ink); display: grid; gap: 22px; }
+.client-applicants-page .candidate-row { position: relative; padding: 28px 26px 28px 28px; border: 2px solid var(--ink); background: var(--cream); box-shadow: 4px 4px 0 var(--ink); }
+.client-applicants-page .candidate-row::before { top: 0; bottom: 0; border-top: 0; border-bottom: 0; }
+.candidate-row article { display: grid; grid-template-columns: 32px minmax(0, 1fr) 278px; gap: 24px; align-items: start; min-width: 0; }
+.candidate-index { color: var(--soft-ink); font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; padding-top: 5px; }
+.candidate-evidence, .candidate-identity > div { min-width: 0; }
+.candidate-evidence { display: grid; grid-template-columns: 94px minmax(0, 1fr); gap: 16px 24px; }
+.candidate-identity { display: contents; }
+.candidate-identity > div { grid-column: 2; }
+.candidate-identity-tile { position: relative; grid-column: 1; grid-row: 1 / span 2; display: flex; align-items: center; justify-content: center; width: 92px; height: 96px; margin-top: 6px; background: var(--cobalt); color: var(--cream); font-size: 36px; line-height: 1; font-weight: 850; border: 2px solid var(--ink); box-shadow: 5px 5px 0 var(--ink); transform: rotate(-1deg); }
+.candidate-identity-tile::before { content: ''; position: absolute; width: 40px; height: 10px; background: var(--acid); top: -7px; left: 19px; transform: rotate(3deg); }
+.candidate-identity-mark { position: absolute; right: -26px; top: -20px; transform: rotate(95deg); }
+.candidate-identity h3 { font-size: 24px; line-height: 1.25; font-weight: 800; letter-spacing: -.02em; margin: 0 0 6px; overflow-wrap: anywhere; }
+.candidate-headline { margin: 0; font-size: 16px; line-height: 1.5; font-weight: 500; max-width: 65ch; overflow-wrap: anywhere; }
+.candidate-profile-context { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 8px 0 0; color: var(--soft-ink); font-size: 15px; line-height: 1.4; }
+.candidate-skills, .candidate-reputation { grid-column: 2; margin: 0; }
+.candidate-reputation { display: flex; flex-wrap: wrap; gap: 10px 0; list-style: none; padding: 12px 0; border-top: 1px solid var(--ink); border-bottom: 1px solid var(--ink); color: var(--soft-ink); font-size: 15px; line-height: 1.5; }
+.candidate-reputation li { display: flex; align-items: center; gap: 10px; padding-right: 18px; }
+.candidate-reputation li + li { border-left: 1px solid var(--ink); padding-left: 18px; }
+.candidate-reputation svg { color: var(--ink); flex-shrink: 0; }
+.candidate-reputation strong { color: var(--ink); font-size: 18px; font-weight: 800; }
+.candidate-profile-note { margin: 0 0 8px; font-size: 15px; line-height: 1.5; color: var(--soft-ink); }
+.candidate-reference { font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; color: var(--soft-ink); }
+.candidate-reference .copy-id { display: inline-flex; flex-wrap: wrap; }
+.candidate-reference .text-button { font-size: 14px; }
+.candidate-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 18px; min-width: 0; padding-left: 24px; border-left: 1px solid var(--ink); }
+.candidate-status { font-size: 15px; line-height: 1.4; }
+.candidate-status svg, .candidate-date svg { flex-shrink: 0; }
+.candidate-date { display: inline-flex; align-items: center; gap: 6px; font-size: 15px; line-height: 1.4; color: var(--soft-ink); }
+.candidate-select { font-size: 16px; gap: 14px; width: 100%; min-width: 0; justify-content: space-between; padding-block: 17px; }
+.candidate-select .ku-action-arrow { color: var(--acid); }
+.candidate-profile-link { display: inline-flex; align-items: center; gap: 12px; font-size: 16px; line-height: 1.4; font-weight: 650; text-underline-offset: 4px; }
+.candidate-actions .ku-action-arrow { transition: transform .16s ease-out; }
+.candidate-actions :is(a, button):is(:hover, :focus-visible) .ku-action-arrow { transform: translateX(4px); }
+.candidate-row--confirming { outline: 2px solid var(--cobalt); outline-offset: 2px; }
+.candidate-confirmation { grid-column: 2 / -1; display: grid; grid-template-columns: minmax(0, 1fr) 220px; gap: 22px; background: var(--ink); color: var(--cream); padding: 24px; margin-top: 2px; box-shadow: 4px 4px 0 var(--cobalt); animation: candidate-confirm-reveal .16s ease-out; }
+@keyframes candidate-confirm-reveal { from { transform: translateY(3px); } to { transform: translateY(0); } }
+.candidate-confirmation h4 { margin: 0 0 10px; font-size: 20px; line-height: 1.35; }
+.candidate-confirmation p { margin: 0; max-width: 65ch; font-size: 16px; line-height: 1.55; }
+.candidate-confirmation .action-group { align-content: start; align-items: stretch; flex-direction: column; gap: 10px; }
+.candidate-confirmation .button { font-size: 16px; background: var(--acid); color: var(--ink); border-color: var(--acid); }
+.candidate-confirmation .button-secondary { background: transparent; color: var(--cream); border-color: var(--cream); }
+.candidate-confirmation :is(a, button):focus-visible { outline-color: var(--acid); }
+.candidates-read-only { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 0; border-top: 1px solid var(--ink); }
+.candidates-read-only p { margin: 0; font-size: 16px; line-height: 1.5; }
+.candidates-read-only .text-link { display: inline-flex; align-items: center; gap: 10px; font-size: 16px; }
+@media (max-width: 1100px) {
+  .client-applicants-page .page-head h1 { font-size: 48px; }
+  .client-applicants-page .candidates-supporting-copy { font-size: 17px; }
+  .candidates-job-context { grid-template-columns: 120px minmax(0, 1fr) 240px; gap: 24px; padding: 26px; }
+  .candidates-job-copy h2 { font-size: 30px; }
+  .candidates-job-facts { padding-left: 22px; }
+  .candidates-budget { font-size: 34px; }
+  .candidate-row article { grid-template-columns: 30px minmax(0, 1fr); gap: 18px; }
+  .candidate-identity h3 { font-size: 22px; }
+  .candidate-actions { grid-column: 2; flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 16px 22px; padding: 20px 0 0 118px; border-left: 0; border-top: 1px solid var(--ink); }
+  .candidate-select { width: auto; min-width: 218px; }
+  .candidate-confirmation { grid-column: 2; grid-template-columns: minmax(0, 1fr); }
+  .candidate-confirmation .action-group { flex-direction: row; flex-wrap: wrap; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .candidate-identity-tile, .candidate-identity-tile::before { transform: none; }
+  .candidates-job-context:is(:hover, :focus-within) { transform: none; box-shadow: 6px 6px 0 var(--ink); }
+  .candidates-job-context { transition: none; }
+  .candidate-confirmation { animation: none; }
+  .candidate-actions .ku-action-arrow { transform: none !important; transition: none; }
+}

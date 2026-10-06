@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
-import { Ban, CalendarDays, CircleCheck, CircleX, Hourglass, ListFilter, SlidersHorizontal, UserRound } from 'lucide-react';
+import { Ban, BriefcaseBusiness, CalendarDays, CircleCheck, CircleX, Clock3, Hourglass, ListFilter, MessageSquare, SlidersHorizontal, Star, UserRound } from 'lucide-react';
 import { ApiError, api } from './api';
 import { WorkLifecycle } from './WorkLifecycle';
 import { contractAmount, localInstant } from './workflowContracts';
@@ -10,8 +10,8 @@ import { jobCategories } from './jobDiscovery';
 import { applicationLabel, jobLabel, money, shortId } from './status';
 import { KineticActionArrow, KineticCard, KineticLedgerRow, RoughBurst, RoughUnderline, TapeSticker } from './ui/kinetic';
 import { JobThumbnail } from './ui/job-thumbnails/JobThumbnail';
-import { JobCategoryPlate, JobIdentityCluster, applicationStateTone } from './ui/JobRowIdentity';
-import type { DiscoverJob, Job, JobApplication, MyApplication, Page, Requirement, User } from './types';
+import { JobCategoryPlate, JobIdentityCluster, applicationStateTone, jobStateTone } from './ui/JobRowIdentity';
+import type { DiscoverJob, Job, JobApplication, MyApplication, Page, Profile, Requirement, User } from './types';
 
 type Detail = Job | DiscoverJob;
 const isDiscover = (job: Detail): job is DiscoverJob => 'hasApplied' in job;
@@ -350,6 +350,40 @@ export function MyApplications() {
   </div>;
 }
 
+type ApplicantProfile = { state: 'loading' | 'unavailable' } | { state: 'ready'; profile: Profile };
+
+function CandidateEvidence({ entry, freelancerId }: { entry?: ApplicantProfile; freelancerId: string }) {
+  const profile = entry?.state === 'ready' ? entry.profile : null;
+  const name = profile?.displayName.trim();
+  const initials = name ? name.split(/\s+/).map(word => Array.from(word)[0]).filter(Boolean).slice(-2).join('').toUpperCase() : null;
+  const reputation = profile?.reputation;
+  return <>
+    <div className="candidate-identity">
+      <span className="candidate-identity-tile" aria-hidden="true">{initials || <UserRound size={38} />}
+        <RoughBurst seedKey={'candidate:' + freelancerId} size={32} accent="ink" className="candidate-identity-mark" /></span>
+      <div><h3>{name || 'Hồ sơ Freelancer'}</h3>
+        {profile?.headline && <p className="candidate-headline">{profile.headline}</p>}
+        {profile && (profile.countryCode || profile.availability) && <p className="candidate-profile-context">
+          {profile.countryCode && <span>{profile.countryCode}</span>}
+          {profile.availability && <span>{profile.availability}</span>}
+        </p>}
+        {!profile && <><p className="candidate-profile-note" role="status">{entry?.state === 'unavailable'
+          ? 'Không đọc được tóm tắt hồ sơ' : 'Đang đọc hồ sơ công khai…'}</p>
+          <div className="candidate-reference"><span>Freelancer ID</span> <CopyId value={freelancerId} label="Freelancer" /></div></>}
+      </div>
+    </div>
+    {!!profile?.skills?.length && <ul className="candidate-skills" aria-label="Kỹ năng từ hồ sơ công khai">
+      {profile.skills.map(skill => <li key={skill}>{skill}</li>)}
+    </ul>}
+    {reputation && <ul className="candidate-reputation" aria-label="Uy tín công khai từ Marketplace">
+      {reputation.completedContracts != null && <li><BriefcaseBusiness size={21} aria-hidden="true" /><span><strong>{reputation.completedContracts}</strong> hợp đồng hoàn thành</span></li>}
+      {reputation.averageRating != null ? <li><Star size={21} aria-hidden="true" /><span><strong>{String(reputation.averageRating)} / 5</strong> · {reputation.reviewCount} đánh giá</span></li>
+        : reputation.reviewCount != null && <li><MessageSquare size={21} aria-hidden="true" /><span><strong>{reputation.reviewCount}</strong> đánh giá công bố</span></li>}
+      {reputation.onTimeRate != null && <li><Clock3 size={21} aria-hidden="true" /><span>Tỷ lệ đúng hạn: <strong>{String(reputation.onTimeRate)}</strong></span></li>}
+    </ul>}
+  </>;
+}
+
 export function ClientApplicants({ user }: { user: User }) {
   const { jobId = '' } = useParams();
   const [job, setJob] = useState<Job | null>(null);
@@ -360,16 +394,18 @@ export function ClientApplicants({ user }: { user: User }) {
   const [selected, setSelected] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const [profiles, setProfiles] = useState<Record<string, ApplicantProfile>>({});
   const busyRef = useRef(false);
   const refresh = useCallback(async () => {
+    if (user.userType !== 'CLIENT') throw new Error('Chỉ Client sở hữu công việc mới được xem ứng viên.');
     const current = await api.job(jobId);
     if (current.clientUserId !== user.id) throw new Error('Bạn không sở hữu công việc này.');
     const list = await api.applicants(jobId);
     setJob(current); setApplications(list);
-  }, [jobId, user.id]);
+  }, [jobId, user.id, user.userType]);
   useEffect(() => {
     let active = true;
-    setLoading(true); setError('');
+    setLoading(true); setError(''); setSelected(null); setMutationError('');
     (async () => {
       if (user.userType !== 'CLIENT') throw new Error('Chỉ Client sở hữu công việc mới được xem ứng viên.');
       const current = await api.job(jobId);
@@ -380,8 +416,27 @@ export function ClientApplicants({ user }: { user: User }) {
     return () => { active = false; };
   }, [jobId, user.id, user.userType, attempt]);
 
+  const owned = !loading && !error && user.userType === 'CLIENT' && job?.id === jobId && job.clientUserId === user.id;
+  const profileIds = JSON.stringify(owned ? [...new Set(applications.map(application => application.freelancerId))] : []);
+  useEffect(() => {
+    let active = true;
+    const ids: string[] = JSON.parse(profileIds);
+    setProfiles(Object.fromEntries(ids.map(id => [id, { state: 'loading' }])));
+    // Application records render immediately. Each independent public read settles separately.
+    void Promise.allSettled(ids.map(async id => {
+      let entry: ApplicantProfile;
+      try {
+        const profile = await api.profile(id);
+        entry = profile.userId === id && profile.userType === 'FREELANCER'
+          ? { state: 'ready', profile } : { state: 'unavailable' };
+      } catch { entry = { state: 'unavailable' }; }
+      if (active) setProfiles(current => ({ ...current, [id]: entry }));
+    }));
+    return () => { active = false; };
+  }, [profileIds, jobId, user.id, user.userType]);
+
   async function assign(freelancerId: string) {
-    if (busyRef.current || !job || job.status !== 'OPEN' || user.userType !== 'CLIENT') return;
+    if (busyRef.current || !owned || !job || job.status !== 'OPEN' || user.userType !== 'CLIENT') return;
     const applicant = applications.find(item => item.freelancerId === freelancerId && item.status === 'PENDING');
     if (!applicant) return;
     busyRef.current = true; setBusy(true); setMutationError('');
@@ -398,38 +453,67 @@ export function ClientApplicants({ user }: { user: User }) {
     }
   }
 
-  return <>
-    <PageHeading eyebrow="Client / Công việc / Ứng viên" title={job?.title || 'Ứng viên công việc'}
-      description="Danh sách ứng tuyển và quyết định phân công từ Marketplace."
-      aside={job ? jobLabel(job.status) : 'Đang đối chiếu công việc'} />
-    <div className="detail-topline"><Link to={'/work/' + jobId}>← Hồ sơ công việc</Link></div>
+  return <div className="client-applicants-page">
+    <PageHeading eyebrow="" descriptionClassName="candidates-supporting-copy"
+      title={<><span className="candidates-title-start">Chọn người<RoughBurst seedKey="candidates:left" size={40}
+        accent="vermilion" className="candidates-rays candidates-rays--left" /></span>{' '}
+        <span className="candidates-title-emphasis">phù hợp.<RoughUnderline seedKey="candidates:underline" size={230} />
+          <RoughBurst seedKey="candidates:right" size={45} accent="ink" className="candidates-rays candidates-rays--right" /></span></>}
+      description="Đối chiếu hồ sơ công khai và xác nhận Freelancer cho công việc này." />
+    <div className="candidates-topline"><Link to={'/work/' + encodeURIComponent(jobId)}>← Hồ sơ công việc</Link></div>
+    {owned && job && <section className={'candidates-job-context ' + jobStateTone(job.status)} aria-label="Công việc đang đối chiếu">
+      <div className="candidates-job-identity"><JobIdentityCluster job={job} /></div>
+      <div className="candidates-job-copy"><JobCategoryPlate job={job} /><h2>{job.title}<RoughBurst seedKey={'candidate-job:' + job.id}
+        size={35} accent="ink" className="candidates-job-title-mark" /></h2>
+        {!!job.skills?.length && <ul className="candidates-job-skills" aria-label="Kỹ năng công việc">{job.skills.map(skill => <li key={skill}>{skill}</li>)}</ul>}
+      </div>
+      <div className="candidates-job-facts"><strong className="candidates-budget">{money(job.budgetUsd)}</strong>
+        <span className={'candidates-job-status job-progress-marker ' + jobStateTone(job.status)}>{jobLabel(job.status)}</span>
+        {job.deliveryDueAt && <span className="candidates-deadline"><CalendarDays size={22} aria-hidden="true" /><span>Hạn bàn giao · {localInstant(job.deliveryDueAt)}</span></span>}
+      </div>
+    </section>}
     {loading ? <StatePanel kind="loading" title="Đang tải ứng viên" body="Đang lấy hồ sơ ứng tuyển và trạng thái công việc." />
       : error ? <StatePanel kind="error" title="Không thể tải ứng viên" body={error}
         action={{ label: 'Thử lại', onClick: () => setAttempt(value => value + 1) }} />
-      : applications.length === 0 ? <StatePanel kind="empty" title="Chưa có ứng viên"
+      : !owned ? null : applications.length === 0 ? <StatePanel kind="empty" title="Chưa có ứng viên"
         body="Ứng tuyển sẽ xuất hiện ở đây khi Freelancer nộp qua Marketplace." />
-      : <section className="applicant-list" aria-label="Danh sách ứng viên">
-        <div className="section-heading"><h2>Người ứng tuyển</h2><span>{applications.length} ỨNG TUYỂN</span></div>
-        {applications.map((application, index) => <article className="applicant-row" key={application.id}>
-          <span className="row-index">{String(index + 1).padStart(2, '0')}</span>
-          <div><span className="cell-label">Freelancer ID</span><CopyId value={application.freelancerId} label="Freelancer" /></div>
-          <div><span className="cell-label">Trạng thái</span><strong>{applicationLabel(application.status)}</strong></div>
-          <div><span className="cell-label">Nộp lúc</span><span>{timestamp(application.createdAt)}</span></div>
-          <div className="applicant-action">
-            {job?.status === 'OPEN' && application.status === 'PENDING' && <button className="button" type="button"
-              disabled={busy} onClick={() => setSelected(application.id)}>Chọn Freelancer</button>}
-            {selected === application.id && job?.status === 'OPEN' && <div className="confirm-band" role="group"
-              aria-label="Xác nhận chọn Freelancer">
-              <strong>Giao công việc cho Freelancer này?</strong>
-              <p>Hợp đồng sẽ được chốt sau khi phân công. Freelancer chỉ bắt đầu sau khi milestone được funding.</p>
-              <button className="button" type="button" disabled={busy} onClick={() => assign(application.freelancerId)}>
-                {busy ? 'Đang phân công…' : 'Xác nhận chọn'}</button>
-              <button className="button button-secondary" type="button" disabled={busy} onClick={() => setSelected(null)}>Quay lại</button>
-            </div>}
-          </div>
-        </article>)}
+      : <section className="candidates-results" aria-labelledby="candidates-results-title">
+        <header className="candidates-results-heading"><h2 id="candidates-results-title">Người ứng tuyển</h2>
+          <p><strong>{applications.length}</strong> ứng tuyển</p></header>
+        {job?.status !== 'OPEN' && <div className="candidates-read-only"><p>{job && jobLabel(job.status)} · Danh sách chỉ đọc; không còn thao tác phân công.</p>
+          <Link className="text-link" to={'/work/' + encodeURIComponent(jobId)}>Tiếp tục tới công việc <KineticActionArrow /></Link></div>}
+        <ol className="candidates-roster" aria-label="Danh sách ứng viên">
+          {applications.map((application, index) => {
+            const canSelect = owned && job?.status === 'OPEN' && application.status === 'PENDING';
+            const confirming = canSelect && selected === application.id;
+            const Icon = applicationIcons[application.status];
+            return <li className={'candidate-row job-identity-row ' + applicationStateTone(application.status) + (confirming ? ' candidate-row--confirming' : '')}
+              key={application.id}>
+              <article aria-label={'Ứng viên ' + (index + 1)}>
+                <span className="candidate-index" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+                <div className="candidate-evidence"><CandidateEvidence entry={profiles[application.freelancerId]} freelancerId={application.freelancerId} /></div>
+                <div className="candidate-actions">
+                  <span className="candidate-status job-progress-marker"><Icon size={19} aria-hidden="true" />{applicationLabel(application.status)}</span>
+                  <span className="candidate-date"><CalendarDays size={17} aria-hidden="true" />Nộp {timestamp(application.createdAt)}</span>
+                  {canSelect && <button className="button candidate-select" type="button" disabled={busy}
+                    aria-expanded={confirming} aria-controls={'candidate-confirm-' + application.id}
+                    onClick={() => setSelected(application.id)}>Chọn Freelancer <KineticActionArrow /></button>}
+                  <Link className="candidate-profile-link" to={'/profiles/' + encodeURIComponent(application.freelancerId)}>Xem hồ sơ <KineticActionArrow /></Link>
+                </div>
+                {confirming && <div className="candidate-confirmation" id={'candidate-confirm-' + application.id} role="group" aria-label="Xác nhận chọn Freelancer">
+                  <div><h4>Xác nhận lựa chọn</h4>
+                    <p>Khi xác nhận, hồ sơ này sẽ được chấp nhận và các hồ sơ đang chờ còn lại sẽ được đóng (không được chọn).
+                      Công việc chuyển sang bước funding. Freelancer chỉ bắt đầu sau khi milestone được funding.</p></div>
+                  <ActionGroup><button className="button" type="button" disabled={busy} onClick={() => assign(application.freelancerId)}>
+                    {busy ? 'Đang phân công…' : 'Xác nhận chọn'}</button>
+                    <button className="button button-secondary" type="button" disabled={busy} onClick={() => setSelected(null)}>Quay lại</button></ActionGroup>
+                </div>}
+              </article>
+            </li>;
+          })}
+        </ol>
         {mutationError && <p className="form-error" role="alert">{mutationError} <button className="text-button"
           onClick={() => setAttempt(value => value + 1)}>Tải lại</button></p>}
       </section>}
-  </>;
+  </div>;
 }
