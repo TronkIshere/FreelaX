@@ -3,7 +3,7 @@
 ## Current authority — 2026-10-07
 
 Repository: `TronkIshere/FreelaX`. Branch: `feat/ui-visual-polish-20261006`.
-Frozen source implementation: `45c54c5a753c1cd4438dd3c968fe7ccec20a0491` (Client Applicants C3 final corrected visual; includes earlier frozen C1/C2/global baselines).
+Frozen source implementation: `96cafbe985c68c4fdcc0e53a52141375335ca387` (P06.5A Finance list + folder tabs; all earlier frozen surfaces preserved).
 A later docs-only commit may be branch HEAD; it does not change this source baseline.
 
 - Overview = FROZEN / APPROVED (both Client and Freelancer).
@@ -14,7 +14,9 @@ A later docs-only commit may be branch HEAD; it does not change this source base
 - Stable Job Visual Identity = LOCKED.
 - Client Work C2 — Job Authoring (`/work/new`, `/work/:jobId/edit`) = PASS / FROZEN.
 - Client Work C3 — Applicants (`/work/:jobId/applications`) = PASS / FROZEN.
-- P06.5 — Finance / Tax / Activity = NEXT / NOT_STARTED; visual concept/target screenshots require approval before implementation.
+- P06.5A Finance list + editorial folder tabs = PASS / FROZEN.
+- Next: P06.5B — FINANCE DETAIL / MONEY EVIDENCE SPINE (`/finance?jobId=...`), NOT_STARTED. Inspect the exact detail contract → define evidence hierarchy → create visual concept → generate target screenshots → obtain human visual approval → only then write the implementation prompt. Do not implement or invent P06.5B during this freeze.
+- Remaining Tax / Activity visual polish = NOT_STARTED.
 
 Read in this exact order (paths are repository-relative):
 
@@ -26,9 +28,11 @@ Read in this exact order (paths are repository-relative):
 6. `docs/ui/WORKPACK_P06_UI_POLISH.md`
 7. `marketplace-backend/docs/JOB_DISCOVERY_CONTRACT.md`
 8. `docs/mvp-functional-spec.md`
-9. Current source: inspect Client Thanh toán, Freelancer Thu nhập and Hoạt động screens, finance/tax/activity contracts and focused tests before P06.5 concept definition; reuse the shared kinetic toolkit.
+9. Current source: inspect Finance detail (`/finance?jobId=...`) and its exact API/types/status/tests for the P06.5B concept; reuse the shared kinetic toolkit and frozen Finance list grammar.
 
-Use KINETIC EDITORIAL BRUTALISM and the approved toolkit. Frozen Overview/Explore/Applications/My Work/Client Work C1/C2/C3 demonstrate visual grammar, not generic page templates. Do not reopen for general polish; require a concrete regression. Exact next visual area: P06.5 — FINANCE / TAX / ACTIVITY, NOT_STARTED. Inspect real contracts/source, then create and obtain human approval for the visual concept and target screenshots before implementation. Do not begin during this freeze task.
+Use KINETIC EDITORIAL BRUTALISM and the approved toolkit. Frozen Overview/Explore/Applications/My Work/Client Work C1/C2/C3 demonstrate visual grammar, not generic page templates. Do not reopen for general polish; require a concrete regression. Exact next visual area: P06.5B — FINANCE DETAIL / MONEY EVIDENCE SPINE (`/finance?jobId=...`), NOT_STARTED. Inspect the exact detail contract → define evidence hierarchy → create visual concept → generate target screenshots → obtain human visual approval → only then write the implementation prompt. Do not implement or invent P06.5B during this freeze.
+
+P06.5A lock: Client “Thanh toán theo công việc.” / Freelancer “Thu nhập theo công việc.” at `/finance`; four colored blocks, Cream ledger/header tint, shared stable Job identity, semantic state markers, light Xem chi tiết, Acid active folder tabs and one process panel. Hồ sơ trên trang is only the real page count; Funding/Release/Hoàn tiền are workflow guidance, never invented money totals. Show returned simulation markers. 1024 blocks stack, rows reflow and tabs stay horizontal. Full locks and accepted validation are in the handoff/spec.
 
 Client Applicants C3 is the approved CANDIDATE DECISION DESK / EDITORIAL CANDIDATE DOSSIER. Dominant state-aware Job banner (OPEN Acid; waiting/review Acid + Ink; IN_PROGRESS Cobalt; revision Vermilion; COMPLETED Mint + Strong Green; CANCELLED Ink/Cream), enlarged shared semantic artwork/plate, equal Cream applicant dossiers, deterministic identity tiles, 6px/5px application rails and separate status/date/action zones. Application API owns status/date/eligibility; matched FREELANCER public profiles supply supplemental evidence through unique parallel isolated reads. No private email, ranking, inferred candidate skills or fake fields. Sparse profiles stay sparse: structure and kinetic details supply density, not fabricated data; real zero counts remain, null evidence is omitted.
 

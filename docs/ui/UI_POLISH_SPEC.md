@@ -2,8 +2,8 @@
 
 ## LOCKED VISUAL SYSTEM V2 — 2026-10-07
 
-Authority: `UI_VISUAL_POLISH_HANDOFF_20261006.md`; branch `feat/ui-visual-polish-20261006`; frozen source `45c54c5a753c1cd4438dd3c968fe7ccec20a0491` (C3 final corrected visual; earlier C1/C2/global locks remain authoritative).
-Client/Freelancer Overview remains FROZEN; Client Work C1/C2/C3 are PASS / FROZEN. Freelancer Explore/Applications/My Work are RE-FROZEN after the approved narrow row-identity override. Stable Job Visual Identity and Global Row Identity / State Rail / Category Plate are LOCKED. Next P06.5 FINANCE / TAX / ACTIVITY is NOT_STARTED; inspect Client Thanh toán, Freelancer Thu nhập and Hoạt động real contracts/source, then obtain human approval for visual concept and target screenshots before implementation. Do not start in this freeze. Historical guidance below remains useful; conflicting visual/baseline notes are superseded here.
+Authority: `UI_VISUAL_POLISH_HANDOFF_20261006.md`; branch `feat/ui-visual-polish-20261006`; frozen source `96cafbe985c68c4fdcc0e53a52141375335ca387` (P06.5A Finance list + folder tabs; earlier frozen locks remain authoritative).
+Client/Freelancer Overview remains FROZEN; Client Work C1/C2/C3 are PASS / FROZEN. Freelancer Explore/Applications/My Work are RE-FROZEN after the approved narrow row-identity override. Stable Job Visual Identity and Global Row Identity / State Rail / Category Plate are LOCKED. P06.5A Finance list is PASS / FROZEN. Next: P06.5B — FINANCE DETAIL / MONEY EVIDENCE SPINE (`/finance?jobId=...`), NOT_STARTED. Inspect the exact detail contract → define evidence hierarchy → create visual concept → generate target screenshots → obtain human visual approval → only then write the implementation prompt. Do not implement or invent P06.5B during this freeze. Remaining Tax / Activity visual polish stays NOT_STARTED. Historical guidance below remains useful; conflicting visual/baseline notes are superseded here.
 
 **KINETIC EDITORIAL BRUTALISM**: Cream `#FFF7E8`, Ink `#17212B`, Vermilion `#F15A3D`, Acid `#F5D12F`, Fresh Mint `#B8DFC4`, Cobalt `#3567E8`.
 
@@ -137,6 +137,25 @@ Selection only trusted CLIENT + Job owner + OPEN + PENDING. First click opens lo
 AWAITING_PAYMENT → waiting/read-only; IN_PROGRESS → Cobalt; SUBMITTED_FOR_REVIEW → Acid; REVISION_REQUESTED → Vermilion; COMPLETED → Fresh Mint; CANCELLED → restrained Ink/Cream. State truth always outranks color. Budget is job value, not payout confirmation; COMPLETED is not paid, RELEASE_PENDING is not paid, REFUND_PENDING is not refunded. No Freelancer funding action; deadline/revision usage only when real.
 
 Accepted My Work validation: 62/62 focused tests, build/diff PASS, 1440/1024 PASS, console errors 0. Stable thumbnail validation: 131/131 focused tests, 36/36 recheck, build/diff and cross-screen identity PASS. Runtime observed 4 My Work jobs with IN_PROGRESS/COMPLETED and sparse legacy category/skills; this is not guaranteed seed content.
+
+## P06.5A Finance list — PASS / APPROVED / FROZEN (2026-10-07)
+
+Source: `96cafbe985c68c4fdcc0e53a52141375335ca387` — `feat(frontend): finalize kinetic finance overview`. Approved files: `frontend/src/Finance.tsx`, `frontend/src/Finance.test.tsx`, `frontend/src/styles.css`. Normal push to `origin/feat/ui-visual-polish-20261006` completed. No additional source changes or tests/build reruns during freeze.
+
+- Client `/finance`: **Thanh toán theo công việc.** Track payment/funding/release/refund truth per Job.
+- Freelancer `/finance`: **Thu nhập theo công việc.** Track release/payment/tax evidence per assigned Job; same structure with role-aware language.
+- Four approved colored summary/workflow blocks: **Hồ sơ trên trang** uses only the real current-page Finance count. **Funding / Release / Hoàn tiền are workflow guidance**, not monetary KPIs unless an existing API explicitly returns numerical aggregate truth. No fabricated totals for funding, escrow/wallet balances, pending release or platform earnings.
+- Ledger stays predominantly Cream: lightly tinted structured header; shared stable Job thumbnail/resolved Category Plate; real Job value, state, financial update date/evidence and returned USDC/VND only. Missing fields are omitted or identified as unavailable; no invented filters, values, dates or progress. Same Job keeps its existing visual identity across work and Finance surfaces.
+- Row CTA **Xem chi tiết** stays light/Cream with Ink text, clear border, directional arrow and visible focus; never a large Ink/black-filled action.
+- Finance subnav is **EDITORIAL FOLDER TABS**: 01 Theo công việc; 02 Chứng từ thuế. Both are horizontal on one Ink baseline, with square corners, Lucide icons and numeric index. Active always Acid/Ink with 2px Ink border and zero-blur 3–4px hard shadow; inactive Cream/Ink with restrained Cobalt index. `/finance` selects 01; `/finance/tax-records` and its detail routes select 02. No third tab, pills, dropdown or permanent per-tab active colors.
+- At 1024 desktop, top blocks stack vertically, rows reflow, tabs stay horizontal, controls remain readable and actions unclipped with no horizontal overflow. Desktop/laptop 1440/1024 is the gate; mobile optimization remains deferred.
+- Exactly one bottom panel: Client **Quy trình thanh toán**, Freelancer **Quy trình nhận tiền**. No extra explanatory/color cards, graphs, wallet/crypto balance dashboard, glass, blur or gradients. Major colors are confined to the four top blocks, header tint, semantic badges/rails, active tab and the one process panel.
+- Preserve server-driven **Mô phỏng** markers. Simulation is not production settlement finality; funding/CAPTURED is not release/refund proof; release is not proof of completed bank payout. Existing Finance API, pagination, settlement/tax/release/refund/simulation semantics are unchanged.
+- Overview, Freelancer Explore/Applications/My Work, Client C1/C2/C3 and Stable Job Visual Identity / Global Row Identity / Global State Rail / Progress Color / Category Plate systems remain frozen. No general-polish reopening without a concrete regression. Backend/API unchanged; no credentials, secrets, environment values, screenshots or machine-local paths added.
+
+Accepted implementation validation (tests/build not rerun during freeze): Finance focused tests **30/30 PASS** after folder tabs; earlier Finance visual gate **36/36 PASS**; type-check PASS; accepted production build PASS; `git diff --check` PASS; Client 1440 PASS, Freelancer 1440 PASS, Client 1024 PASS; console errors **0**; keyboard focus PASS; reduced motion preserved.
+
+Next: P06.5B — FINANCE DETAIL / MONEY EVIDENCE SPINE (`/finance?jobId=...`), NOT_STARTED. Inspect the exact detail contract → define evidence hierarchy → create visual concept → generate target screenshots → obtain human visual approval → only then write the implementation prompt. Do not implement or invent P06.5B during this freeze.
 
 ## Historical P06 hierarchy guidance
 
