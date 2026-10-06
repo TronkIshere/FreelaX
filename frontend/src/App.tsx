@@ -16,6 +16,7 @@ import { Overview } from './Overview';
 import { useSession } from './session';
 import { ClientApplicants, JobDetail, MyApplications } from './Workflow';
 import { MyWork } from './WorkLifecycle';
+import { JobEditor } from './JobEditor';
 import type { User, UserType } from './types';
 import { kineticVariants, useKineticMotion } from './ui/kinetic';
 
@@ -99,6 +100,10 @@ function RoleShell({ user }: { user: User }) {
       <Routes>
         <Route path="/" element={<Overview user={user} />} />
         <Route path="/work" element={role === 'CLIENT' ? <ClientJobs /> : <FreelancerDiscovery />} />
+        {role === 'CLIENT' && <>
+          <Route path="/work/new" element={<JobEditor user={user} />} />
+          <Route path="/work/:jobId/edit" element={<JobEditor user={user} />} />
+        </>}
         {role === 'FREELANCER' && <>
           <Route path="/work/applications" element={<MyApplications />} />
           <Route path="/work/mine" element={<MyWork />} />

@@ -5,6 +5,7 @@ import { WorkLifecycle } from './WorkLifecycle';
 import { contractAmount, localInstant } from './workflowContracts';
 import { ActionGroup, EvidenceDisclosure, FactGrid, PageHeading, SectionHeading, StatePanel } from './components';
 import { Pagination } from './Jobs';
+import { jobCategories } from './jobDiscovery';
 import { applicationLabel, date, jobLabel, money, shortId } from './status';
 import type { DiscoverJob, Job, JobApplication, MyApplication, Page, Requirement, User } from './types';
 
@@ -52,6 +53,8 @@ function JobDocument({ job }: { job: Detail }) {
   return <section className="work-document" aria-labelledby="work-document-title">
     <SectionHeading id="work-document-title" title="Nội dung công việc" />
     <p className="work-description">{job.description}</p>
+    {job.category && <p>Danh mục: {jobCategories[job.category] ?? 'Khác'}</p>}
+    {!!job.skills?.length && <p>Kỹ năng: {job.skills.join(', ')}</p>}
     <ActionGroup label="Hồ sơ các bên"><Link className="text-link" to={'/profiles/' + encodeURIComponent(isDiscover(job) ? job.client.id : job.clientUserId)}>Hồ sơ Client</Link>{!isDiscover(job) && job.freelancerId && <Link className="text-link" to={'/profiles/' + encodeURIComponent(job.freelancerId)}>Hồ sơ Freelancer</Link>}</ActionGroup>
     <div className="job-scope-grid">
       <ScopeList title="Sản phẩm bàn giao" items={contract?.deliverables ?? job.deliverables} />
@@ -214,7 +217,8 @@ export function JobDetail({ user }: { user: User }) {
         </>}
         {owner && <><h2>{job.status === 'OPEN' ? 'Xem người ứng tuyển' : job.status === 'AWAITING_PAYMENT' ? 'Cần bạn funding hợp đồng' : 'Không có bước cần xử lý'}</h2>
           {job.status === 'AWAITING_PAYMENT' && <p>Hợp đồng đã chốt; Freelancer chưa thể bắt đầu công việc.</p>}
-          {job.status === 'OPEN' && <ActionGroup><Link className="button" to={'/work/' + jobId + '/applications'}>Xem ứng viên</Link></ActionGroup>}</>}
+          {job.status === 'OPEN' && <ActionGroup><Link className="button" to={'/work/' + jobId + '/applications'}>Xem ứng viên</Link>
+            <Link className="button button-secondary" to={'/work/' + jobId + '/edit'}>Sửa công việc</Link></ActionGroup>}</>}
         {owner && participant?.contract?.milestoneId && job.status === 'AWAITING_PAYMENT' && <ActionGroup><a className="text-link" href="#funding">Kiểm tra ngân hàng / Funding mô phỏng ↓</a></ActionGroup>}
         {participant && !owner && user.userType === 'FREELANCER' && <>
           <h2>{assignedFreelancer && job.status === 'AWAITING_PAYMENT' ? 'Đang chờ Client hoàn tất funding' : 'Không có thao tác công việc khả dụng'}</h2>

@@ -774,3 +774,116 @@ a { color: inherit; }
 .portfolio-record, .review-record { padding-block: 1.5rem; border-bottom: 1px solid #17212B; overflow-wrap: anywhere; }
 .review-report { margin-block: 1rem 2rem; }
 .profile-document .submission-summary, .portfolio-record .submission-summary, .review-record .submission-summary { white-space: pre-wrap; overflow-wrap: anywhere; }
+/* B1: Freelancer Explore only. Approved Overview and shared masthead stay frozen. */
+.explore-job-skills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.explore-job-skills .skill-tag { border: 1px solid var(--ink); padding: 3px 7px; font-size: 14px; line-height: 1.4; font-weight: 550; color: var(--ink); background: var(--cream); }
+.explore-filter-help { margin: 0; font-size: 14px; line-height: 1.45; color: var(--soft-ink); }
+.job-editor form { margin-top: 24px; max-width: 900px; }
+.job-editor fieldset { display: grid; gap: 20px; border: 0; min-width: 0; margin: 0 0 24px; padding: 0; }
+.job-editor label { display: grid; gap: 8px; font-size: 16px; font-weight: 600; }
+.job-editor :is(input, select, textarea) { width: 100%; min-width: 0; padding: 10px 12px; border: 2px solid var(--ink); background: var(--cream); color: var(--ink); font-size: 16px; }
+.job-editor textarea { resize: vertical; }
+.job-editor-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.job-editor-requirement { display: grid; gap: 12px; border-top: 1px solid var(--line); padding: 16px 0; }
+.job-editor #job-skills-help { font-size: 14px; margin: -12px 0 0; color: var(--soft-ink); }
+.app-shell:has(.explore-page) > .subnav { gap: 8px; border-bottom: 2px solid var(--ink); margin-top: 16px; }
+.app-shell:has(.explore-page) > .subnav a { padding: 12px 24px; font-size: 16px; font-weight: 650; color: var(--ink); }
+.app-shell:has(.explore-page) > .subnav a.active { background: var(--acid); border-bottom-color: var(--vermilion); border-bottom-width: 4px; }
+.explore-page .page-head { border: 0; padding: 20px 0; }
+.explore-page .page-head h1 { font-size: 56px; line-height: 1.12; max-width: none; text-wrap: initial; margin: 0 0 16px; }
+.explore-title-emphasis { position: relative; display: inline-block; color: var(--vermilion); }
+.explore-title-start { position: relative; display: inline-block; }
+.explore-title-emphasis > .ku-rough:not(.explore-title-rays) { position: absolute; bottom: -17px; right: 0; width: 90%; }
+.explore-page .explore-title-rays { position: absolute; max-width: none; }
+.explore-title-rays-left { left: -24px; top: -13px; transform: rotate(-27deg); }
+.explore-title-rays-right { right: -36px; top: -10px; transform: rotate(65deg); }
+.explore-title-rays path { stroke-width: 2.4px; }
+.explore-title-rays-right path:nth-child(2) { stroke: var(--acid); }
+.explore-page .page-head .eyebrow { display: none; }
+.explore-page .page-head .explore-supporting-copy { font-size: 18px; line-height: 1.5; font-weight: 500; }
+.explore-page .filter-panel { grid-template-columns: 280px minmax(0, 1fr); grid-template-areas: 'search search' 'filters results'; align-items: start; gap: 20px 32px; margin: 0; padding: 0; border: 0; }
+.explore-search { grid-area: search; display: flex; align-items: end; gap: 16px; padding-bottom: 16px; border-bottom: 2px solid var(--ink); }
+.explore-page .explore-search > label { flex: 1; font-size: 15px; }
+.explore-search-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.explore-search-field { display: flex; align-items: center; gap: 14px; border: 2px solid var(--ink); padding: 0 18px; background: var(--cream); }
+.explore-page .explore-search-field input { border: 0; min-height: 60px; font-size: 18px; padding: 12px 0; }
+.explore-search-field:focus-within { box-shadow: 4px 4px 0 var(--acid); }
+.explore-page .explore-search-field input:focus-visible { outline-offset: 0; }
+.explore-page .explore-search-button { min-height: 64px; gap: 12px; font-size: 17px; padding: 14px 24px; }
+.explore-search-button .ku-action-arrow { color: var(--acid); }
+.explore-filters { grid-area: filters; display: grid; gap: 14px; border: 2px solid var(--ink); padding: 18px; background: var(--cream); box-shadow: 4px 4px 0 var(--ink); }
+.explore-filters h2 { margin: -7px 0 0; font-size: 21px; }
+.explore-filters .ku-label { display: inline-flex; align-items: center; gap: 8px; font-size: 19px; padding: 7px 11px; }
+.explore-filters fieldset { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; min-width: 0; padding: 0; margin: 0; border: 0; }
+.explore-filters legend { padding: 0; margin-bottom: 10px; font-size: 16px; font-weight: 750; }
+.explore-page .explore-filters label { font-size: 16px; font-weight: 650; gap: 8px; }
+.explore-page .explore-filters fieldset label { font-size: 15px; }
+.explore-page .explore-filters :is(input, select), .explore-page .explore-results-heading select { font-size: 16px; min-height: 46px; border: 2px solid var(--ink); background: var(--cream); color: var(--ink); padding: 9px 10px; width: 100%; min-width: 0; }
+.explore-select { position: relative; display: block; min-width: 0; }
+.explore-page .explore-select select { appearance: none; padding-right: 32px; text-overflow: ellipsis; }
+.explore-select > svg { position: absolute; top: 50%; right: 10px; transform: translateY(-50%); pointer-events: none; }
+.explore-skill-control { display: grid; gap: 8px; min-width: 0; }
+.explore-skill-entry { border: 2px solid var(--ink); padding: 8px; min-width: 0; background: var(--cream); }
+.explore-skill-entry:focus-within { outline: 3px solid var(--cobalt); outline-offset: 3px; }
+.explore-page .explore-skill-entry input { border: 0; padding: 4px 2px; min-height: 32px; outline: none; }
+.explore-skill-tokens { display: flex; flex-wrap: wrap; gap: 6px; list-style: none; padding: 0; margin: 0 0 6px; }
+.explore-skill-tokens li { display: flex; align-items: center; max-width: 100%; border: 1px solid var(--ink); padding: 2px 3px 2px 7px; background: var(--pale-acid); font-size: 14px; line-height: 1.4; font-weight: 600; }
+.explore-skill-tokens li > span { min-width: 0; overflow-wrap: anywhere; }
+.explore-skill-tokens button { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; padding: 4px; margin-left: 4px; border: 0; color: var(--ink); background: transparent; }
+.explore-skill-tokens button:hover { background: var(--acid); }
+.explore-filter-actions { display: grid; justify-items: start; gap: 12px; padding-top: 4px; }
+.explore-filter-actions .button { width: 100%; font-size: 16px; gap: 6px; padding: 11px 10px; }
+.explore-filter-actions .ku-action-arrow { color: var(--acid); }
+.explore-clear { display: inline-flex; align-items: center; gap: 8px; justify-self: start; padding: 0; border: 0; font-size: 15px; font-weight: 650; color: var(--ink); background: transparent; text-decoration: underline; text-underline-offset: 4px; }
+.explore-filters .filter-error { margin: 0; font-size: 15px; line-height: 1.5; }
+.explore-page .list-section { grid-area: results; min-width: 0; margin: 0; }
+.explore-results-heading { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding-bottom: 20px; border-bottom: 3px solid var(--ink); }
+.explore-results-heading h2 { font-size: 27px; line-height: 1.15; letter-spacing: -.035em; margin: 0 0 8px; }
+.explore-results-heading p { font-size: 15px; line-height: 1.4; margin: 0; color: var(--soft-ink); }
+.explore-page .explore-results-heading label { font-size: 14px; min-width: 210px; }
+.explore-results-heading select { font-size: 15px; }
+.explore-ledger { margin: 0; padding: 0; }
+.explore-page .explore-job-row { grid-template-columns: 148px minmax(0, 1fr) 192px; gap: 22px; padding: 24px 0; align-items: center; border-bottom: 2px solid var(--ink); }
+.explore-job-row h3 { font-size: 22px; line-height: 1.25; margin: 0 0 12px; font-weight: 800; letter-spacing: -.025em; }
+.explore-job-row h3 a { text-decoration: none; }
+.explore-job-row h3 a:hover { text-decoration: underline; text-underline-offset: 4px; }
+.explore-job-row .explore-excerpt { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; font-size: 16px; line-height: 1.5; font-weight: 400; color: var(--soft-ink); margin: 0; }
+.explore-job-row .ku-ledger-facts { gap: 10px 14px; font-size: 14px; margin-top: 14px; }
+.explore-job-row .state-mark { font-size: 14px; padding: 4px 7px; }
+.explore-job-row .job-row-next { display: flex; align-items: flex-start; gap: 14px; font-size: 14px; }
+.explore-budget { display: flex; flex-direction: column; gap: 3px; }
+.explore-budget > span { font-size: 14px; color: var(--soft-ink); }
+.explore-budget strong { font-size: 26px; line-height: 1.1; letter-spacing: -.035em; }
+.explore-client { font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; color: var(--soft-ink); }
+.explore-job-row .ku-ledger-metadata { display: flex; flex-wrap: wrap; gap: 8px 14px; }
+.explore-page .explore-job-row:first-child { background: var(--vermilion); color: var(--cream); padding: 20px 16px; border: 2px solid var(--ink); margin-top: 16px; }
+.explore-job-row:first-child :is(.explore-excerpt, .explore-client, .explore-budget > span, .ku-ledger-metadata) { color: var(--cream); }
+.explore-job-row:first-child :is(.explore-excerpt, .explore-client, .explore-budget > span, .ku-ledger-metadata) { opacity: .92; }
+.explore-job-row:first-child .state-mark { background: var(--acid); color: var(--ink); }
+.explore-page .explore-job-action { font-size: 16px; gap: 8px; padding: 10px 12px; min-height: 46px; justify-content: space-between; width: 100%; text-align: left; }
+.explore-job-action .ku-action-arrow { color: var(--acid); }
+.explore-job-action .ku-action-arrow svg { width: 24px; height: 24px; }
+.explore-page .pagination { margin-top: 24px; font-size: 14px; gap: 16px; flex-wrap: wrap; }
+.explore-page .pagination .button { font-size: 14px; min-height: 42px; padding: 8px 12px; }
+.job-family-art { position: relative; display: block; width: 148px; height: 148px; }
+.job-family-art .job-family-paper { position: absolute; left: 7%; top: 18%; width: 82%; height: 75%; }
+.job-family-art .job-family-paper-back { left: 14%; top: 12%; width: 68%; height: 82%; }
+.job-family-art .job-family-tape { position: absolute; top: 6%; left: 32%; width: 40%; height: 12%; z-index: 2; }
+.job-family-drawing { position: relative; display: block; width: 100%; height: 100%; z-index: 1; }
+.job-family-art .job-family-burst { position: absolute; top: 7%; left: 0; z-index: 2; }
+@media (min-width: 761px) and (max-width: 1120px) {
+  .explore-page .filter-panel { grid-template-columns: 244px minmax(0, 1fr); gap: 24px; }
+  .explore-page .page-head h1 { font-size: 48px; }
+  .explore-title-rays-left { left: -16px; }
+  .explore-filters { padding: 16px; }
+  .explore-filters fieldset { grid-template-columns: 1fr; }
+  .explore-page .explore-job-row { grid-template-columns: 112px minmax(0, 1fr); gap: 18px; align-items: start; }
+  .explore-job-row .ku-ledger-action { grid-column: 2; justify-self: stretch; }
+  .explore-job-row .job-row-next { display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 12px 24px; }
+  .explore-job-row .explore-job-action { width: fit-content; min-width: 180px; }
+  .explore-job-row h3 { font-size: 20px; }
+  .job-family-art { width: 112px; height: 124px; }
+  .explore-results-heading { gap: 12px; }
+  .explore-results-heading h2 { font-size: 24px; }
+  .explore-page .explore-results-heading label { min-width: 180px; }
+}
