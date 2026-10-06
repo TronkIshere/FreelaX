@@ -1,9 +1,9 @@
 # FREELAX P06 UI POLISH SPEC
 
-## LOCKED VISUAL SYSTEM V2 — 2026-10-06
+## LOCKED VISUAL SYSTEM V2 — 2026-10-07
 
-Authority: `UI_VISUAL_POLISH_HANDOFF_20261006.md`; branch `feat/ui-visual-polish-20261006`; frozen source `dc440ec96e4c960ac0ea285c07b42e0d823bc221`.
-Client/Freelancer Overview remains FROZEN; Client Work C1 is PASS / FROZEN. Freelancer Explore/Applications/My Work are RE-FROZEN after the approved narrow row-identity override. Stable Job Visual Identity and Global Row Identity / State Rail / Category Plate are LOCKED. Next C2 Job Authoring (`/work/new`, `/work/:jobId/edit`) is NOT_STARTED; inspect JobEditor fully before implementation. Historical guidance below remains useful; conflicting visual/baseline notes are superseded here.
+Authority: `UI_VISUAL_POLISH_HANDOFF_20261006.md`; branch `feat/ui-visual-polish-20261006`; frozen source `846142d8a3fb5f8a3f59204158c29e534ab7ea56` (C2; earlier C1/global locks remain authoritative).
+Client/Freelancer Overview remains FROZEN; Client Work C1 and C2 are PASS / FROZEN. Freelancer Explore/Applications/My Work are RE-FROZEN after the approved narrow row-identity override. Stable Job Visual Identity and Global Row Identity / State Rail / Category Plate are LOCKED. Next C3 Applicants (`/work/:jobId/applications`) is NOT_STARTED; inspect ClientApplicants, Applicant DTO/API, assignment authorization, profile access and current tests before implementation. Historical guidance below remains useful; conflicting visual/baseline notes are superseded here.
 
 **KINETIC EDITORIAL BRUTALISM**: Cream `#FFF7E8`, Ink `#17212B`, Vermilion `#F15A3D`, Acid `#F5D12F`, Fresh Mint `#B8DFC4`, Cobalt `#3567E8`.
 
@@ -32,7 +32,7 @@ Authority: meaningful stored category → legacy skills → legacy title → Gen
 
 Stable identity: `variant = stableHash(job.id) % 3`, `visualKey = family + ':' + variant`; missing ID uses variant 0. WEB_FRONTEND + job A/B may choose different browser variants 0/1/2, but both remain Web/Frontend. Rough decoration uses stable family + job identity; no random/time/order dependence, stable rerender/remount. Reuse the same JobThumbnail for Explore, Applications, My Work and future Client Work. No page-specific thumbnails, database thumbnail ID or upload.
 
-Frozen Overview + Explore + Applications + My Work + Client Work C1 are references for visual grammar, **not reusable page templates**. Screenshot first, human approval before commit; no fake reference-image data. Desktop 1440/1024 is the current gate; mobile is deferred.
+Frozen Overview + Explore + Applications + My Work + Client Work C1/C2 are references for visual grammar, **not reusable page templates**. Screenshot first, human approval before commit; no fake reference-image data. Desktop 1440/1024 is the current gate; mobile is deferred.
 
 ### Global row visual grammar — LOCKED
 
@@ -87,7 +87,32 @@ Authority: meaningful stored category → legacy skills → legacy title → Gen
 
 Client `/work` = **CLIENT WORK CONTROL BOARD**: masthead/active nav, editorial hero, real create CTA, truthful totalElements, first server record emphasized, state-aware primary, stable semantic thumbnail, real status/budget/deadline/context, secondary ledger, rails/plates, existing state-derived destinations and server pagination. No fake search/filter/sort, applicant/per-state counts or urgency.
 
-Final accepted C1/global gate: **180/180 focused tests PASS**, production build/diff check PASS, 1440/1024 PASS without overflow, console errors 0, keyboard focus PASS, reduced motion preserved. Backend/API/business/filter behavior unchanged. Tests/build were not rerun for freeze. Next C2 remains NOT_STARTED.
+Final accepted C1/global gate: **180/180 focused tests PASS**, production build/diff check PASS, 1440/1024 PASS without overflow, console errors 0, keyboard focus PASS, reduced motion preserved. Backend/API/business/filter behavior unchanged. Tests/build were not rerun for freeze. C2 approval below supersedes the earlier next-task checkpoint.
+
+### Client Work C2 — PASS / FROZEN (2026-10-07)
+
+Source: `846142d8a3fb5f8a3f59204158c29e534ab7ea56`. `/work/new` and `/work/:jobId/edit` are approved EDITORIAL WORK ORDER / BRIEF BUILDER surfaces. Keep one page; no wizard without a new product decision. Previous frozen surfaces remain unchanged.
+
+**CREATE contract:** `title`, `description`, `category`, `skills`, `budgetUsd`, `deliveryDueAt`, `reviewWindowHours`, `maxRevisions`, `deliverables`, `acceptanceCriteria`. Existing business validation stays unchanged: explicit valid category/title required, skills max 10 trimmed 2–40 characters/no case-insensitive duplicates, budget > 0, delivery ≥24 hours ahead, review integer 24–168 hours, revisions integer 0–2, deliverables 1–10 with title/description required, acceptance criteria 1–20 with description required. Both lists preserve required=true.
+
+**EDIT contract:** only `title`, `description`, `category`, `skills`, for trusted CLIENT + owner + OPEN. No controls for budget, deadline, review window, revisions, deliverables or acceptance criteria. Server thumbnail/category/status/skills/budget/deadline are read-only context; updateJob remains metadata-only.
+
+| Authoring section | Marker |
+| --- | --- |
+| 01 Nội dung công việc | Acid |
+| 02 Điều kiện thực hiện | Cobalt |
+| 03 Sản phẩm bàn giao | Vermilion |
+| 04 Điều kiện nghiệm thu | Mint |
+
+These identify authoring sections, not Job workflow status. Cream controls/Ink borders, readable labels and strong focus; editorial numbered rows/Ink rules, add/remove and separate create-only deliverables/criteria. Structural zero-blur hard shadows only, never every input. Reuse existing motion/reduced-motion. Final Ink action band + Acid CTA: Đăng công việc / Lưu thay đổi, secondary Quay lại, pending Đang lưu…; duplicate protection unchanged.
+
+1440: editor left, sticky **Live Draft Summary** right. 1024: **Hero → 01 → Preview → 02 → 03 → 04 → Actions**; no sticky desktop sidebar forced into this width.
+
+Preview is **UNSAVED local draft truth**, with disclaimer, not server state or Job Detail. Allowed: selected category, draft title/parsed skills/budget/deadline, counts of non-empty deliverables/criteria and at most one actual deliverable title. Empty rows do not count; empty summary says “Chưa có nội dung”. No fake OPEN, applicant/Freelancer/payment state, ranking/score, completion percentage or saved/ready/completed claim.
+
+Authoring category is explicit, never title-inferred. Neutral before selection; selected-category semantic family and Category Plate afterward. A new Job has no ID: deterministic default variant 0, no random identity. Real saved ID later selects its stable variant; preview is not guaranteed the persisted exact variant. Category-only preview does not alter persisted legacy OTHER skills/title fallback. Skills keep comma parsing, trimming and bounds; removable tokens are presentation, API remains string[], no new taxonomy/autocomplete.
+
+Accepted C2 evidence: **50/50 JobEditor tests PASS**, production build/diff check PASS, **Create 1440 PASS / Create 1024 PASS / Edit 1440 PASS**, no overflow/sticky overlap, console **0**, keyboard focus/reduced motion PASS. Backend/API/frozen surfaces unchanged; browser visual-QA draft **NOT SUBMITTED**. Freeze reuses accepted evidence without tests/build rerun. Next **CLIENT WORK C3 → APPLICANTS**, `/work/:jobId/applications`, **NOT_STARTED**; inspect its real source/contracts/permissions/tests first. Do not start during freeze.
 
 ### Locked My Work composition
 

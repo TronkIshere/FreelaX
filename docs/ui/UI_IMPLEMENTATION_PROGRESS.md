@@ -1,9 +1,9 @@
 # FREELAX UI IMPLEMENTATION PROGRESS
 
-## VISUAL POLISH STREAM — 2026-10-06
+## VISUAL POLISH STREAM — 2026-10-07
 
 Current branch: `feat/ui-visual-polish-20261006`.
-Frozen source implementation baseline: `dc440ec96e4c960ac0ea285c07b42e0d823bc221`.
+Frozen source implementation baseline: `846142d8a3fb5f8a3f59204158c29e534ab7ea56` (C2; earlier C1/global baseline remains frozen).
 Documentation commits may advance HEAD without changing this source baseline.
 
 | Stage | Status | Accepted source/evidence |
@@ -17,11 +17,18 @@ Documentation commits may advance HEAD without changing this source baseline.
 | Stable Job Visual Identity | LOCKED | `ca8b93d`; 131/131 focused tests, 36/36 thumbnail recheck, build/diff and cross-screen identity PASS |
 | Client Work C1 | PASS / FROZEN | `dc440ec`; CLIENT WORK CONTROL BOARD, real server order/count/pagination/actions |
 | Global Row Identity / State Rail / Category Plate | LOCKED | `dc440ec`; 180/180 focused tests, build/diff PASS, 1440/1024 PASS, console 0 |
-| Client Work C2 — Job Authoring | NOT_STARTED / NEXT | `/work/new`, `/work/:jobId/edit`; inspect JobEditor fully before implementation |
+| Client Work C2 — Job Authoring | PASS / FROZEN | `846142d`; `/work/new`, `/work/:jobId/edit`; 50/50 JobEditor tests, build/diff PASS, accepted desktop QA |
+| Client Work C3 — Applicants | NOT_STARTED / NEXT | `/work/:jobId/applications`; inspect ClientApplicants, Applicant DTO/API, assignment authorization, profile access and tests first |
 
 Explore live category/skill/combined/exclusion/Clear PASS is newer scoped runtime evidence. Earlier 115/115 focused frontend gate also passed. Local “Landing page redesign” category/skills edit is runtime evidence, not seed/source data. The approved narrow backend exception `302ae06` is complete; no unrelated backend expansion is authorized.
 
-Client/Freelancer Overview remains FROZEN. Client Work C1 is PASS / FROZEN. Freelancer Explore, Applications and My Work are RE-FROZEN after the approved narrow cross-surface identity override; no general polish reopening. Applications retains only real PENDING, ACCEPTED, REJECTED and CANCELLED statuses and truthful `totalElements` totals; no fake timeline/status/counts. Next C2 Job Authoring is NOT_STARTED; do not begin during this task.
+Client/Freelancer Overview remains FROZEN. Client Work C1 and C2 are PASS / FROZEN. Freelancer Explore, Applications and My Work are RE-FROZEN after the approved narrow cross-surface identity override; no general polish reopening. Applications retains only real PENDING, ACCEPTED, REJECTED and CANCELLED statuses and truthful `totalElements` totals; no fake timeline/status/counts. Next C3 Applicants is NOT_STARTED; do not begin during this task.
+
+C2 accepted one-page work order: 01 Nội dung công việc (Acid), 02 Điều kiện thực hiện (Cobalt), 03 Sản phẩm bàn giao (Vermilion), 04 Điều kiện nghiệm thu (Mint); section colors are not workflow states. CREATE retains the full `title/description/category/skills/budgetUsd/deliveryDueAt/reviewWindowHours/maxRevisions/deliverables/acceptanceCriteria` contract and existing limits. EDIT remains `title/description/category/skills` only for trusted CLIENT + owner + OPEN; other server facts are read-only context.
+
+1440 editor left/sticky Live Draft Summary right; 1024 Hero → 01 → Preview → 02 → 03 → 04 → Actions. Preview is UNSAVED local draft truth only, non-empty deliverable/criteria counts, at most one actual deliverable title and a disclaimer; no fake workflow/payment/progress claims. Explicit category selection, neutral before selection, selected-family default variant 0 before saving; real job ID later selects a stable variant. Skills retain comma parsing/normalization; create-only deliverables/criteria retain numbered rows, add/remove, bounds and required=true.
+
+Final accepted C2 gate: **50/50 JobEditor tests PASS**, production build/diff check PASS, **Create 1440 PASS / Create 1024 PASS / Edit 1440 PASS**, no horizontal overflow/sticky overlap, console **0**, keyboard focus and reduced motion PASS. Backend/API/frozen surfaces unchanged. Browser visual-QA draft **NOT SUBMITTED**. No tests/build or runtime smoke rerun during freeze.
 
 Final accepted C1/global evidence: 180/180 focused tests PASS; production build/diff check PASS; 1440/1024 no overflow; console errors 0; keyboard focus PASS; reduced motion preserved. Backend/API/business/filter behavior unchanged. Tests/build were not rerun for freeze. C1 runtime: 5 real jobs, page 1/1, OPEN/IN_PROGRESS/COMPLETED observed; Applicants, Job Detail and `/work/new` navigation PASS. Runtime lacks REJECTED/CANCELLED Applications; focused tests cover those states without data mutation.
 

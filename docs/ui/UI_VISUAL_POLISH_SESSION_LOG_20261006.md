@@ -104,7 +104,27 @@ Category plate/thumbnail backing and JobThumbnail share existing `jobFamily`: me
 
 Final accepted global evidence: **180/180 focused tests PASS**, production build PASS, diff check PASS, **1440/1024 PASS**, no overflow/clipping, console **0**, keyboard focus PASS, reduced motion preserved. Backend/API/business/filter behavior unchanged. Client runtime: **5 real jobs, page 1/1**, OPEN/IN_PROGRESS/COMPLETED observed; Applicants/Job Detail/create navigation PASS. REJECTED/CANCELLED Applications are tested where absent from runtime; statuses were not mutated. Freeze reuses accepted evidence; no tests/build or runtime smoke rerun. Security inspection found no added secrets, credentials, local screenshots or machine-local absolute paths.
 
-Next: **CLIENT WORK C2 — Job Authoring**, `/work/new`, `/work/:jobId/edit`, **NOT_STARTED**. Inspect JobEditor fully before implementation. C2 was not started during this freeze.
+At this checkpoint, next was **CLIENT WORK C2 — Job Authoring**, `/work/new`, `/work/:jobId/edit`, **NOT_STARTED**. C2 was not started during that C1 freeze. The approved C2 freeze below supersedes this checkpoint.
+
+## 12. Client Work C2 approval and freeze — 2026-10-07
+
+Human decision: **CLIENT WORK C2 / EDITORIAL WORK ORDER = APPROVED / PASS / FROZEN**, routes `/work/new` and `/work/:jobId/edit`. Overview, Freelancer Explore/Applications/My Work, Client C1, Global Row Identity/State Rail/Progress Color/Category Plate and Stable Job Visual Identity remain frozen/locked.
+
+Source: `846142d8a3fb5f8a3f59204158c29e534ab7ea56` — `feat(frontend): finalize kinetic client job authoring`, normally pushed. Exactly three files: `frontend/src/JobEditor.tsx`, `frontend/src/JobEditor.test.tsx`, `frontend/src/styles.css`. No further source edits during freeze; no amend/merge or force push.
+
+**CREATE** remains full work-order payload: `title`, `description`, `category`, `skills`, `budgetUsd`, `deliveryDueAt`, `reviewWindowHours`, `maxRevisions`, `deliverables`, `acceptanceCriteria`. Existing validation stays unchanged: explicit category/title required, skills max 10/trimmed 2–40/comma parser/no case-insensitive duplicates, budget > 0, deadline ≥24 hours ahead, review integer 24–168, revisions integer 0–2, deliverables 1–10 with title/description required, criteria 1–20 with description required; required=true preserved.
+
+**EDIT** remains metadata-only: `title/description/category/skills`, trusted CLIENT + owner + OPEN. Immutable budget/deadline/review/revisions/deliverables/criteria controls remain absent; real server identity/budget/deadline may display read-only context.
+
+Approved one-page sections: 01 Nội dung công việc (Acid), 02 Điều kiện thực hiện (Cobalt), 03 Sản phẩm bàn giao (Vermilion), 04 Điều kiện nghiệm thu (Mint). Section colors are not workflow statuses. 1440 editor left/sticky Live Draft Summary right. 1024 Hero → 01 → Preview → 02 → 03 → 04 → Actions. No wizard or misplaced Preview before 01.
+
+Summary is UNSAVED local draft only, with disclaimer: explicit category/title/parsed skills/budget/deadline, non-empty deliverable/criteria counts and at most one actual deliverable title. Empty rows do not count; empty summary “Chưa có nội dung”. No fake OPEN/participants/payment/ranking/score/percentage or saved/ready/completed claims. Authoring category is never title-inferred; neutral before selection, selected semantic family/default variant 0 without job ID, stable within-family ID variant after saving (preview is not guaranteed final exact variant). Persisted OTHER fallback remains unchanged. Reuse shared thumbnails/plates/toolkit.
+
+Create-only deliverables/criteria retain separate numbered rows, Cream fields, Ink rules, add/remove and bounds. Controls have readable labels/focus; hard zero-blur shadows on structural surfaces only. Final Ink band/Acid CTA, pending duplicate locks and existing motion/reduced-motion remain unchanged.
+
+Accepted final C2 validation: **50/50 JobEditor tests PASS**, production build/diff check PASS, **Create 1440 PASS / Create 1024 PASS / Edit 1440 PASS**, no horizontal overflow/sticky overlap, console **0**, keyboard focus/reduced motion PASS. Backend/API/frozen surfaces unchanged; browser visual-QA draft **NOT SUBMITTED**. No tests/build or runtime smoke rerun during freeze. Source security check found no secrets, credentials, .env values, screenshots or machine-local absolute paths added.
+
+Next: **CLIENT WORK C3 → APPLICANTS**, `/work/:jobId/applications`, **NOT_STARTED**. Inspect ClientApplicants in Workflow.tsx, Applicant DTO/API, assignment authorization, profile access and current tests before implementation. C3 was not started during this freeze.
 
 ## QA discipline retained
 
