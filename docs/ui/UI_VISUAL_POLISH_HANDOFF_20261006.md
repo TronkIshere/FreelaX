@@ -5,7 +5,7 @@
 - Repository: `TronkIshere/FreelaX`.
 - Active branch: `feat/ui-visual-polish-20261006`.
 - Integrated MVP ancestor: `35ba34e9b68be67b9405d3407159a2fde010911c`.
-- Frozen last product/source implementation commit: `f42e44a5dcde0b8713fea532aa43345e943629b5`.
+- Frozen last product/source implementation commit: `2f5f0e4b0667cf9fefbc3f7897fe63a904fa12bc`.
 
 Accepted source chain, oldest first:
 
@@ -15,8 +15,9 @@ Accepted source chain, oldest first:
 | `01c7e55` | Final kinetic editorial Overview |
 | `302ae06` | Real job category and skill discovery filters |
 | `f42e44a` | Final kinetic Freelancer Explore |
+| `2f5f0e4` | Final kinetic Freelancer Applications |
 
-A later documentation commit may be branch HEAD. It does not replace `f42e44a` as the frozen source implementation baseline. Read the current HEAD with Git; do not mistake a docs-only HEAD for new product implementation. Current source wins over older conflicting documentation. Explicit Product Owner instructions remain authoritative.
+A later documentation commit may be branch HEAD. It does not replace `2f5f0e4` as the frozen source implementation baseline. Read the current HEAD with Git; do not mistake a docs-only HEAD for new product implementation. Current source wins over older conflicting documentation. Explicit Product Owner instructions remain authoritative.
 
 ## Current UI progress matrix
 
@@ -30,8 +31,8 @@ Statuses below refer to this visual stream, not to absence of existing functiona
 | Freelancer Overview | FROZEN / APPROVED |
 | Freelancer → Công việc → Khám phá | FROZEN / APPROVED |
 | Job discovery data foundation | FROZEN / IMPLEMENTED |
-| Freelancer → Công việc → Ứng tuyển | NEXT / NOT_STARTED |
-| Freelancer → Công việc → Công việc của tôi | NOT_STARTED in this visual stream |
+| Freelancer → Công việc → Ứng tuyển | PASS / FROZEN |
+| Freelancer → Công việc → Công việc của tôi | NEXT / NOT_STARTED in this visual stream |
 | Client Work surfaces | Not yet visually polished in this stream |
 | Finance / Income / Payment | Later |
 | Activity | Later |
@@ -61,7 +62,7 @@ Non-negotiable grammar:
 
 Rejected: generic SaaS, pastel SaaS cards, soft shadows, glass, blur, glow, gradient dashboard surfaces, pill-heavy UI, bento dashboard language, generic crypto dashboards, random sticker scatter, random job-ID-only semantic thumbnails, and stock imagery as product identity.
 
-Frozen Overview and Explore are references for visual grammar, **not reusable page templates**. New page composition must follow its own real task/data.
+Frozen Overview, Explore and Applications are references for visual grammar, **not reusable page templates**. New page composition must follow its own real task/data. Do not reopen frozen surfaces for general polish; only a concrete regression justifies a fix.
 
 ## Current toolkit
 
@@ -157,7 +158,7 @@ Authority: real stored category → legacy skills fallback → legacy title fall
 
 Source: `frontend/src/ui/job-thumbnails/JobThumbnail.tsx`, `jobFamily.ts`, `jobFamily.test.ts`.
 
-## Full exact source manifest
+## Historical source manifest through Explore
 
 Scope: `git diff --name-status 35ba34e9b68be67b9405d3407159a2fde010911c..f42e44a5dcde0b8713fea532aa43345e943629b5`. A = added; M = modified. Exactly **46 files**, each listed once. This is the accepted source stream, not this docs-only commit's file list.
 
@@ -256,11 +257,17 @@ A marketplace-backend/docs/JOB_DISCOVERY_CONTRACT.md
 - Never copy secrets/credentials into screenshots or docs. `.env` content is never documentation material.
 - Older P06/Workpack runtime blockers remain historical evidence. Successful Explore live smoke does not retrospectively certify every earlier feature/runtime gate.
 
-## Exact next task — NOT_STARTED
+## Frozen Freelancer Applications baseline
 
-**Freelancer → Công việc → Ứng tuyển**, route `/work/applications`.
+**Freelancer → Công việc → Ứng tuyển = PASS / FROZEN**, route `/work/applications`.
 
-Concept first: **APPLICATION STATUS / EDITORIAL TRACKER**, not another discovery job board. Inspect real statuses, response fields, available actions/routes and current tests before implementation. Preserve Explore's semantic thumbnail grammar without copying its page layout mechanically.
+Source commit: `2f5f0e4b0667cf9fefbc3f7897fe63a904fa12bc` — `feat(frontend): finalize kinetic freelancer applications`.
+
+Approved APPLICATION STATUS / EDITORIAL TRACKER: left status rail, kinetic heading with underline/rays, first Vermilion application record, compact editorial ledger and real pagination. Final micro-polish removes the redundant result-header filter label, locks lower-row descriptions/actions at 16px and facts/status/budget at 15px, and groups first-card status/budget/action without moving thumbnail/main copy. Overview and Explore remain unchanged and FROZEN.
+
+Final accepted validation: 35/35 focused tests PASS; production build PASS; `git diff --check` PASS; 1440 PASS; 1024 PASS; no horizontal overflow; console errors 0. These are prior accepted gates, not rerun during the freeze/commit task. No API/backend changes.
+
+Semantic thumbnails reuse Explore's category-first taxonomy. `totalElements` supplies only the truthful server total for the active query, never invented per-status counts. No fake timeline, statuses, counts or mutation controls were introduced.
 
 Current implementation is `MyApplications` in `frontend/src/Workflow.tsx`. It calls `MarketplaceApi.myApplications(page, status, size)` in `frontend/src/api.ts`, using `GET /api/v1/marketplace/jobs/applications/me` with page/size and optional status. Server pagination is adapted by the existing API stack.
 
@@ -268,16 +275,20 @@ Actual application statuses: `PENDING`, `ACCEPTED`, `REJECTED`, `CANCELLED`; lab
 
 Do not invent Client viewed, selection probability, fake response deadline, interview stage, response countdown or fake activity timeline. Timeline/status visuals must use server facts.
 
+## Exact next task — NOT_STARTED
+
+**Freelancer → Công việc → Công việc của tôi**, route `/work/mine`. Status: **NOT_STARTED** in this visual stream. Reuse the approved kinetic toolkit and semantic thumbnails; inspect current `MyWork` in `frontend/src/WorkLifecycle.tsx` and its real contract before a separately authorized implementation.
+
 ### Files to inspect first in the next session
 
-1. `frontend/src/App.tsx` — trusted role routes/subnav and `/work/applications`.
-2. `frontend/src/Workflow.tsx` — actual `MyApplications` component and existing job destinations.
-3. `frontend/src/Workflow.test.tsx` — current MyApplications filter/paging/error tests.
-4. `frontend/src/api.ts` and `frontend/src/api.test.ts` — actual `myApplications` method, response adaptation and contracts.
+1. `frontend/src/App.tsx` — trusted role routes/subnav and `/work/mine`.
+2. `frontend/src/WorkLifecycle.tsx` — actual `MyWork` component and existing workflow destinations.
+3. `frontend/src/WorkLifecycle.test.tsx` — existing MyWork/workflow tests.
+4. `frontend/src/api.ts` and `frontend/src/api.test.ts` — existing MyWork calls, response adaptation and contracts.
 5. `frontend/src/types.ts` and `frontend/src/status.ts` — application/job fields and labels.
 6. `frontend/src/Jobs.tsx`, `frontend/src/Jobs.test.tsx`, `frontend/src/jobDiscovery.ts` — frozen Explore reference and real discovery controls.
 7. `frontend/src/ui/kinetic/` and `frontend/src/ui/job-thumbnails/` — approved reusable visual grammar.
 8. `marketplace-backend/docs/JOB_DISCOVERY_CONTRACT.md` — real category/skills authority.
-9. `marketplace-backend/src/main/java/com/marketplace/backend/controller/JobController.java` — read-only verification of `/applications/me` if needed.
+9. `marketplace-backend/src/main/java/com/marketplace/backend/controller/JobController.java` — read-only verification of existing job routes if needed.
 
-Read documentation first in the order in `START_HERE_UI.md`. Do not begin Applications during the documentation handoff.
+Read documentation first in the order in `START_HERE_UI.md`. Do not begin My Work during this freeze/documentation task.

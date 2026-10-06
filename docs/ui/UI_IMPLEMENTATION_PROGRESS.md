@@ -3,7 +3,7 @@
 ## VISUAL POLISH STREAM — 2026-10-06
 
 Current branch: `feat/ui-visual-polish-20261006`.
-Frozen source implementation baseline: `f42e44a5dcde0b8713fea532aa43345e943629b5`.
+Frozen source implementation baseline: `2f5f0e4b0667cf9fefbc3f7897fe63a904fa12bc`.
 Documentation commits may advance HEAD without changing this source baseline.
 
 | Stage | Status | Accepted source/evidence |
@@ -12,11 +12,12 @@ Documentation commits may advance HEAD without changing this source baseline.
 | VP.1 Kinetic toolkit + Overview | PASS / FROZEN | `01c7e55`; 61/61 focused tests, build/diff PASS, console 0, 1440/1024 PASS |
 | VP.2 Job discovery data foundation | PASS / FROZEN | `302ae06`; real category/skills authoring/filtering, Marketplace package PASS |
 | VP.3 Freelancer Explore | PASS / FROZEN | `f42e44a`; 54/54 final correction tests, build/diff PASS, 1440/1024 no overflow |
-| VP.4 Freelancer Applications | NOT_STARTED / NEXT | Concept and real MyApplications contract inspection first |
+| VP.4 Freelancer Applications | PASS / FROZEN | `2f5f0e4`; 35/35 focused tests, production build/diff PASS, 1440/1024 PASS, console 0 |
+| VP.5 Freelancer My Work | NOT_STARTED / NEXT | Freelancer → Công việc → Công việc của tôi (`/work/mine`) |
 
 Explore live category/skill/combined/exclusion/Clear PASS is newer scoped runtime evidence. Earlier 115/115 focused frontend gate also passed. Local “Landing page redesign” category/skills edit is runtime evidence, not seed/source data. The approved narrow backend exception `302ae06` is complete; no unrelated backend expansion is authorized.
 
-Client/Freelancer Overview and Freelancer Explore are FROZEN. Do not start Applications as part of this docs-only handoff. See the handoff/session log for exact source manifest, typography, taxonomy and accepted QA history.
+Client/Freelancer Overview, Freelancer Explore and Freelancer Applications are FROZEN. Do not reopen for general polish. Applications uses only real PENDING, ACCEPTED, REJECTED and CANCELLED statuses, Explore's semantic thumbnails and `totalElements` for truthful query totals; no fake timeline/status/counts or API/backend changes. Accepted desktop QA has no horizontal overflow. Tests/build were not rerun during this freeze task. See the handoff/session log for source manifests and accepted QA history. Next My Work remains NOT_STARTED; do not begin it during this task.
 
 Mobile optimization is deferred. Current MVP delivery target is desktop/laptop, validated at 1440px and 1024px.
 

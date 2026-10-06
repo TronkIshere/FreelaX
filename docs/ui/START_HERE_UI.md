@@ -3,12 +3,13 @@
 ## Current authority — 2026-10-06
 
 Repository: `TronkIshere/FreelaX`. Branch: `feat/ui-visual-polish-20261006`.
-Frozen source implementation: `f42e44a5dcde0b8713fea532aa43345e943629b5`.
+Frozen source implementation: `2f5f0e4b0667cf9fefbc3f7897fe63a904fa12bc` (Applications source commit).
 A later docs-only commit may be branch HEAD; it does not change this source baseline.
 
 - Overview = FROZEN / APPROVED (both Client and Freelancer).
 - Freelancer Explore = FROZEN / APPROVED.
-- Freelancer Applications = NEXT / NOT_STARTED in this visual stream.
+- Freelancer Applications = PASS / FROZEN.
+- Freelancer My Work = NEXT / NOT_STARTED in this visual stream.
 
 Read in this exact order (paths are repository-relative):
 
@@ -20,9 +21,11 @@ Read in this exact order (paths are repository-relative):
 6. `docs/ui/WORKPACK_P06_UI_POLISH.md`
 7. `marketplace-backend/docs/JOB_DISCOVERY_CONTRACT.md`
 8. `docs/mvp-functional-spec.md`
-9. Current source: actual `MyApplications` in `frontend/src/Workflow.tsx`, its tests/API/types/status mappings and the handoff's source inspection list.
+9. Current source: actual `MyWork` in `frontend/src/WorkLifecycle.tsx`, its tests/API/types/status mappings and the handoff's source inspection list.
 
-Use KINETIC EDITORIAL BRUTALISM and the approved toolkit. Frozen Overview/Explore demonstrate visual grammar, not generic page templates. Do not reopen them without a concrete regression. Next Applications requires a concept based on real application statuses/actions before implementation; it has not started.
+Use KINETIC EDITORIAL BRUTALISM and the approved toolkit. Frozen Overview/Explore/Applications demonstrate visual grammar, not generic page templates. Do not reopen them for general polish; require a concrete regression. Exact next page: Freelancer → Công việc → Công việc của tôi (`/work/mine`), NOT_STARTED. Do not begin it during this freeze task.
+
+Applications final accepted validation: 35/35 focused tests PASS, production build PASS, `git diff --check` PASS, 1440 PASS, 1024 PASS, no overflow, console errors 0. No API/backend changes. Only real PENDING, ACCEPTED, REJECTED and CANCELLED statuses; no fake timeline/status/counts. Semantic thumbnails reuse Explore, and `totalElements` is used only for truthful server totals. These accepted gates were not rerun during freeze/commit.
 
 Commit `302ae06` is the completed, explicitly approved category/job-skills backend exception for truthful discovery UI. It gives no authority for unrelated backend expansion.
 

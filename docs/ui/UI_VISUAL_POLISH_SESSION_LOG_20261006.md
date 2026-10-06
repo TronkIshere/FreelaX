@@ -54,13 +54,25 @@ Human screenshot approval froze Freelancer Explore; Overview remained untouched 
 
 `f42e44a5dcde0b8713fea532aa43345e943629b5` — `feat(frontend): finalize kinetic freelancer explore` was normally pushed after `302ae06`. Local/remote HEAD matched and the worktree was clean.
 
-This is the frozen **source** baseline. A later docs-only commit may advance branch HEAD without changing the frozen implementation.
+This is the frozen Explore **source** baseline. Applications advances the source baseline as recorded below; later docs-only commits do not change product implementation.
 
 ## 8. Handoff and next page
 
 The documentation pass synchronizes current authority while retaining dated historical P06/Workpack gates. Earlier environment-blocked smoke remains recorded as blocked; later Explore live PASS does not rewrite history or certify unrelated features.
 
-Next: Freelancer → Công việc → Ứng tuyển, **NOT_STARTED** in this visual stream. Inspect current MyApplications/API/statuses/routes/tests and create an APPLICATION STATUS / EDITORIAL TRACKER concept before implementation. Do not mechanically copy Explore or invent viewed/probability/deadline/interview/timeline facts.
+At the initial handoff, next was Freelancer → Công việc → Ứng tuyển, NOT_STARTED. That checkpoint is superseded by the approved Applications freeze below.
+
+## 9. Applications final micro-polish, approval and freeze
+
+Human screenshot approval: **Freelancer → Công việc → Ứng tuyển = PASS / FROZEN**. Overview and Freelancer Explore remain FROZEN; no general polish is authorized on these surfaces.
+
+`2f5f0e4b0667cf9fefbc3f7897fe63a904fa12bc` — `feat(frontend): finalize kinetic freelancer applications` was normally pushed. Source files: `frontend/src/Workflow.tsx`, `frontend/src/Workflow.test.tsx`, `frontend/src/styles.css`.
+
+Approved APPLICATION STATUS / EDITORIAL TRACKER reuses Explore's semantic thumbnails, status rail, editorial rows and kinetic toolkit. Final correction removes the redundant top-right filter label, increases lower-row functional text to 15–16px and aligns first-card status/budget/action. No API/backend changes; only real PENDING, ACCEPTED, REJECTED and CANCELLED statuses. No fake timeline/status/counts; `totalElements` is used only for the truthful server total of the active query.
+
+Accepted final validation: 35/35 focused tests PASS; production build PASS; `git diff --check` PASS; 1440 PASS; 1024 PASS; no overflow; console errors 0. No tests/build were rerun for this freeze task.
+
+Exact next page: **Freelancer → Công việc → Công việc của tôi**, `/work/mine`, **NOT_STARTED**. Do not begin it during this freeze task.
 
 ## QA discipline retained
 
