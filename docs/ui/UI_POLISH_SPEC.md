@@ -1,5 +1,39 @@
 # FREELAX P06 UI POLISH SPEC
 
+## LOCKED VISUAL SYSTEM V2 — 2026-10-06
+
+Authority: `UI_VISUAL_POLISH_HANDOFF_20261006.md`; branch `feat/ui-visual-polish-20261006`; frozen source `f42e44a5dcde0b8713fea532aa43345e943629b5`.
+Client/Freelancer Overview and Freelancer Explore are FROZEN. Next Freelancer Applications is NOT_STARTED. Historical hierarchy guidance below remains useful; conflicting visual/baseline notes are superseded here.
+
+**KINETIC EDITORIAL BRUTALISM**: Cream `#FFF7E8`, Ink `#17212B`, Vermilion `#F15A3D`, Acid `#F5D12F`, Fresh Mint `#B8DFC4`, Cobalt `#3567E8`.
+
+- Cream paper; Ink masthead/structural type; Acid active nav; Vermilion attention; Cobalt secondary accent; Mint confirmed/positive accents.
+- Dominant Vermilion uses Cream main headline/value/body. Ink is allowed in small contrasting labels/buttons; primary CTA is Ink/Cream.
+- 1.5–2px Ink borders and hard offset shadows with zero blur. Cut-paper layers, tape/tab, seeded Rough arrows/underline/bursts and deliberate asymmetry connect to content. Modest radius allowed.
+- Reject generic SaaS/pastel cards, soft shadows, glass/blur/glow, gradient dashboard surfaces, pill-heavy/bento/crypto dashboards, unrelated stickers, random job-ID-only semantic thumbnails and stock-image product identity.
+- Lucide functional icons, Rough.js/CSS/SVG personality, Motion micro-interactions; reuse `frontend/src/ui/kinetic/`. 160ms presets, no loops; visible keyboard focus and live reduced-motion opt-out required.
+- Functional desktop typography should read at roughly 14px or more; hierarchy comes from weight/color/spacing/placement. Overview exact supporting scale: hero 18px/1.5/500, account-count 16px/1.4/500, status caption 16px/1.4/600, footer 15px/1.4/500. Preserve stronger titles and amounts.
+
+Semantic job thumbnails:
+
+| Category | Visual |
+| --- | --- |
+| WEB_FRONTEND | Browser/layout/cursor |
+| BACKEND_API | Code/server/database |
+| SEO_CONTENT | Magnifier/search/chart/document |
+| MOBILE_APP | Smartphone/app UI |
+| UI_UX_DESIGN | Wireframe/design controls/cursor |
+| ECOMMERCE | Storefront/cart/bag |
+| DATA_ANALYTICS | Dashboard/charts |
+| BRANDING_GRAPHIC | Logo/typography/color swatches |
+| OTHER | Generic Development |
+
+Authority: real stored category → legacy skills → legacy title → Generic Development; stored OTHER never infers another family. Fallback is for missing recognized categories; see the source adapter/contract. No job ID chooses family.
+
+Frozen Overview + Explore are the best references for visual grammar, **not reusable page templates**. Applications must express real application status as an editorial tracker. Screenshot first, human approval before commit; no fake reference-image data. Desktop 1440/1024 is the current gate; mobile is deferred.
+
+## Historical P06 hierarchy guidance
+
 ## Design objective
 
 Keep the current FreelaX visual identity while making every screen faster to understand.

@@ -90,9 +90,15 @@ a recognized persisted category. No job ID influences family selection.
 
 No work-mode field or Remote/Hybrid/Onsite control is added. Auth, roles,
 applications, assignment, contracts, submissions, finance and other services
-remain outside this change. The approved Overview remains frozen and the
-existing uncommitted Explore visual work is preserved.
+remain outside the discovery change. The approved Overview remains frozen;
+Explore is now committed and frozen at source baseline
+`f42e44a5dcde0b8713fea532aa43345e943629b5`.
 
-This source change does not recreate the running Marketplace container or alter
-the local MySQL runtime. Rebuild/restart Marketplace before live validation of
-the new fields/filters; existing runtime credentials must be preserved.
+## Accepted runtime evidence — 2026-10-06
+
+Marketplace's matching build/schema were used for real category/skill/combined/
+exclusion/Clear validation: PASS. A local job was edited through the real Client
+API for visual smoke; this is runtime evidence, not guaranteed fresh-DB seed
+content. See `docs/ui/UI_VISUAL_POLISH_HANDOFF_20261006.md` for the freeze and
+validation scope. A fresh runtime still needs the matching application/schema;
+preserve local runtime configuration and never copy credentials into docs.

@@ -131,13 +131,15 @@ Các chỉ số chỉ tính từ contract thật trong DB:
 
 ### 5.1 Input tạo job
 
-`POST /api/v1/jobs`
+`POST /api/v1/marketplace/jobs`
 
 ```json
 {
   "title": "Landing page responsive",
   "description": "Bối cảnh và phạm vi công việc",
-  "budget": { "amount": "500.00", "currency": "USD" },
+  "category": "WEB_FRONTEND",
+  "skills": ["HTML", "CSS", "Responsive Design"],
+  "budgetUsd": 500.00,
   "deliveryDueAt": "2026-10-15T17:00:00Z",
   "reviewWindowHours": 72,
   "maxRevisions": 2,
@@ -159,9 +161,47 @@ Validation:
 - Job chỉ publish khi các field bắt buộc hợp lệ.
 - Job `OPEN` chỉ được sửa nội dung khi chưa assign. Sau assign, lưu snapshot bất biến trong contract.
 
-Output gồm `job`, public client summary, `allowedActions`, và version.
+Output hiện tại là envelope `ResponseAPI<JobResponse>` (`code`, `data`); `data` có `category` và `skills`. Ví dụ input trên dùng field hiện có `budgetUsd`; không dùng object `budget` đề xuất ở quy ước tổng quát. Các đề xuất khác của spec không tự trở thành contract đã triển khai.
 
 Fallback: tạo job và tạo payment checkout không nằm trong cùng request. Job phải tạo được dù Payment/Solana đang lỗi; funding là bước sau khi assign.
+
+### 5.2 Category, job skills và Job Discovery — đã triển khai 2026-10-06
+
+Contract nguồn: [JOB_DISCOVERY_CONTRACT.md](../marketplace-backend/docs/JOB_DISCOVERY_CONTRACT.md). Commit `302ae06` là ngoại lệ backend/product-data hẹp đã được duyệt để UI lọc và thumbnail dựa trên dữ liệu thật; ngoại lệ đã hoàn tất.
+
+Tạo job yêu cầu category rõ ràng, thuộc enum:
+
+```text
+WEB_FRONTEND
+BACKEND_API
+SEO_CONTENT
+MOBILE_APP
+UI_UX_DESIGN
+ECOMMERCE
+DATA_ANALYTICS
+BRANDING_GRAPHIC
+OTHER
+```
+
+`skills` thuộc Job, không phải skills của profile Freelancer. Tối đa 10 entry; trim; mỗi entry 2–40 ký tự; không null/rỗng; không trùng không phân biệt hoa/thường; giữ cách viết hoa để hiển thị. Khi tạo, skills omitted/null tương đương `[]`. Category/skills không hợp lệ trả HTTP 400 `INVALID_DATA` theo contract hiện có.
+
+Legacy: category `OTHER`, skills `[]`; không backfill từ title hoặc profile. PATCH `/api/v1/marketplace/jobs/{jobId}` cho category/skills tùy chọn; omitted/null giữ giá trị, `skills: []` xóa skills. Ownership/OPEN eligibility và budget guard hiện có giữ nguyên; UI edit không mở budget editing.
+
+`GET /api/v1/marketplace/jobs/discover` dùng filter/pagination thật trên server:
+
+| Parameter | Contract hiện tại |
+| --- | --- |
+| keyword | Tìm trong title/description |
+| minBudgetUsd / maxBudgetUsd | Giới hạn ngân sách USD |
+| category | Một enum chính xác; omitted/empty là tất cả |
+| skills | Query parameter lặp, ví dụ `skills=HTML&skills=CSS` |
+| application | ALL / APPLIED / NOT_APPLIED |
+| sort | NEWEST / BUDGET_ASC / BUDGET_DESC |
+| page / size | Pagination trên server; response có total theo jobs |
+
+Skills match **ANY** kỹ năng được chọn, exact sau trim, case-insensitive; không ngầm tách dấu phẩy trong query parameter. Category/skills/keyword/budget/application kết hợp bằng AND. Job match nhiều skills chỉ xuất hiện một lần; không lọc giả trên một page đã tải ở frontend. OPEN/unassigned eligibility hiện có giữ nguyên.
+
+Không có field work mode; không có filter Remote/Hybrid/Onsite. Thumbnail dùng category thật trước; OTHER luôn Generic Development. Skills/title fallback chỉ dành cho legacy không có category được nhận diện. Đây là phạm vi discovery đã triển khai, không xác nhận các quyết định sản phẩm tương lai khác trong spec.
 
 ## 6. Assign, contract và funding
 

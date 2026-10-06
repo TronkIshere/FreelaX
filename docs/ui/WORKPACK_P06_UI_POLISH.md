@@ -1,5 +1,31 @@
 # WORKPACK P06 — UI DE-CLUTTER & MARKETPLACE POLISH
 
+## CURRENT CONTINUATION OVERRIDE — 2026-10-06
+
+This override supersedes old active branch/master baseline and next-stage instructions below. Preserve the historical workpack as context; current source and explicit Product Owner instructions remain authoritative.
+
+- Branch: `feat/ui-visual-polish-20261006`.
+- Frozen source baseline: `f42e44a5dcde0b8713fea532aa43345e943629b5`. Later docs-only HEADs do not change it.
+- FROZEN: Client/Freelancer Overview and Freelancer Explore.
+- NEXT: Freelancer → Công việc → Ứng tuyển; NOT_STARTED in this visual stream.
+- First read: handoff, session log and the order in `START_HERE_UI.md`.
+- Use the approved kinetic toolkit; create an application-status/editorial-tracker concept from real MyApplications contracts before implementation. No mechanical Explore copy, invented viewed/deadline/probability/interview/timeline data or taste-polish reopening of frozen screens.
+- One-time backend/product-data exception `302ae06` added real job category/skills and discovery filtering. COMPLETE; no unrelated backend expansion authorized.
+- The current task is documentation synchronization only. Do not implement Applications in this pass.
+
+New-session preflight (for the next session, not executed during this docs-only task):
+
+```bash
+git switch feat/ui-visual-polish-20261006
+git pull --ff-only
+git status --short
+git log -5 --oneline
+```
+
+If source/worktree differs from the accepted baseline, inspect the delta before editing. Do not reset, clean or discard user work. Mobile optimization is deferred; current desktop gate is 1440/1024.
+
+## Historical workpack
+
 ## Authority
 
 Use this order:
@@ -12,7 +38,7 @@ Use this order:
 6. `docs/mvp-functional-spec.md` for future-facing structure.
 7. README.
 
-## Current baseline
+## Historical P06 baseline (superseded for current continuation)
 
 Reviewed branch:
 

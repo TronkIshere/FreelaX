@@ -1,5 +1,26 @@
 # FREELAX UI DEVELOPMENT MEMORY
 
+## CURRENT CONTINUATION — 2026-10-06
+
+This section supersedes older conflicting branch, baseline, scope and active-task notes below. Read `UI_VISUAL_POLISH_HANDOFF_20261006.md` first, then the dated session log.
+
+- Repository: `TronkIshere/FreelaX`; branch `feat/ui-visual-polish-20261006`.
+- Frozen source baseline: `f42e44a5dcde0b8713fea532aa43345e943629b5`; later documentation HEADs do not change source authority.
+- Client/Freelancer Overview = FROZEN / APPROVED (`01c7e55`). Freelancer Explore = FROZEN / APPROVED (`f42e44a`). No taste-polish reopening without concrete regression.
+- NEXT: Freelancer → Công việc → Ứng tuyển, NOT_STARTED in this visual stream. Existing functional `MyApplications` is in `frontend/src/Workflow.tsx`; concept first, real server statuses/actions only.
+- Toolkit: `frontend/src/ui/kinetic/`; `roughjs@4.6.6`, `motion@14.0.0`, `lucide-react@1.52.0`. Locked KINETIC EDITORIAL BRUTALISM; hard zero-blur depth, Cream main type on Vermilion, deterministic connected marks, micro-motion and reduced-motion.
+- Stored category/job-skills foundation is implemented/frozen. Nine categories include OTHER; job skills max 10, trim, 2–40 chars, no null/blank/case-insensitive duplicates. Legacy OTHER/[]; no title/profile backfill.
+- Real discover parameters: keyword, minBudgetUsd, maxBudgetUsd, category, repeated skills, application, sort, page, size. ANY exact trimmed case-insensitive skill match; filters compose with AND; server pagination. No work-mode/Remote/Hybrid/Onsite field/control.
+- Semantic thumbnails: stored category → legacy skills → legacy title → Generic Development; recognized OTHER is always Generic. No job-ID family randomness. See the handoff's full taxonomy and source adapter details.
+- Commit `302ae06` was an explicitly approved narrow backend/product-data exception required for truthful filters/thumbnails. COMPLETE; it does not authorize unrelated backend expansion. Older frontend/docs-only and backend-unchanged notes are historical scope records.
+- Accepted Overview: 61/61 focused tests, build/diff PASS, console 0, 1440/1024 PASS. Accepted final Explore: 54/54 focused correction tests, build/diff PASS, real category/skill/combined/exclusion/Clear smoke PASS, 1440/1024 no overflow. Do not reinterpret older blocked runtime entries as passed.
+- The local Client API edit of “Landing page redesign” to WEB_FRONTEND + HTML/CSS/Responsive Design is runtime evidence only, not guaranteed fresh-DB seed content.
+- Mobile optimization is deferred. Current MVP delivery target is desktop/laptop, validated at 1440px and 1024px.
+
+## Historical P06 / integrated MVP memory
+
+The records below retain earlier product/workflow context and their original evidence. Their old “active/current” wording is subordinate to the continuation above; verify against current source before reuse.
+
 > Status: ACTIVE UI MEMORY
 > Scope: P06.4 verified contract integration + UI polish; frontend/docs only
 > Repository: `TronkIshere/FreelaX`

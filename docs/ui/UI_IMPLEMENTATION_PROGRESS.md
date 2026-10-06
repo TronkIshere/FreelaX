@@ -1,5 +1,29 @@
 # FREELAX UI IMPLEMENTATION PROGRESS
 
+## VISUAL POLISH STREAM — 2026-10-06
+
+Current branch: `feat/ui-visual-polish-20261006`.
+Frozen source implementation baseline: `f42e44a5dcde0b8713fea532aa43345e943629b5`.
+Documentation commits may advance HEAD without changing this source baseline.
+
+| Stage | Status | Accepted source/evidence |
+| --- | --- | --- |
+| VP.0 Visual branch/direction lock | PASS | Integrated MVP `35ba34e`, initial foundation `a47c865` |
+| VP.1 Kinetic toolkit + Overview | PASS / FROZEN | `01c7e55`; 61/61 focused tests, build/diff PASS, console 0, 1440/1024 PASS |
+| VP.2 Job discovery data foundation | PASS / FROZEN | `302ae06`; real category/skills authoring/filtering, Marketplace package PASS |
+| VP.3 Freelancer Explore | PASS / FROZEN | `f42e44a`; 54/54 final correction tests, build/diff PASS, 1440/1024 no overflow |
+| VP.4 Freelancer Applications | NOT_STARTED / NEXT | Concept and real MyApplications contract inspection first |
+
+Explore live category/skill/combined/exclusion/Clear PASS is newer scoped runtime evidence. Earlier 115/115 focused frontend gate also passed. Local “Landing page redesign” category/skills edit is runtime evidence, not seed/source data. The approved narrow backend exception `302ae06` is complete; no unrelated backend expansion is authorized.
+
+Client/Freelancer Overview and Freelancer Explore are FROZEN. Do not start Applications as part of this docs-only handoff. See the handoff/session log for exact source manifest, typography, taxonomy and accepted QA history.
+
+Mobile optimization is deferred. Current MVP delivery target is desktop/laptop, validated at 1440px and 1024px.
+
+## Historical P06 and integration records
+
+The original P06.0–P06.x and Workpack entries below are preserved. Their earlier ENVIRONMENT BLOCKED runtime gates remain blocked historical evidence; the newer Explore smoke does not retrospectively mark those gates PASS. Old baseline/next-task wording below is superseded by the current visual stream above.
+
 > Baseline reviewed: `master` at `3332d30ad542a5d49f721e1a1f46d9da8b8203c3`
 
 Status legend:
@@ -330,7 +354,7 @@ Baseline HEAD: `1f602bbc5d5d25cacc41920fd35ea99892fd71bf`
 Files modified: `frontend/src/components.tsx`, `frontend/src/styles.css`, `docs/ui/UI_IMPLEMENTATION_PROGRESS.md`
 Files created: `frontend/src/components.test.tsx`
 Tests: `node node_modules/vitest/vitest.mjs run src/components.test.tsx src/Polish.test.tsx src/Jobs.test.tsx src/Workflow.test.tsx src/Finance.test.tsx` — 5 files, 40 tests PASS (8 focused shared-component tests). Existing React Router future-flag warnings only.
-Build: `npm run build` — PASS using the installed `C:/Program Files/nodejs/npm.cmd`.
+Build: `npm run build` — PASS using the existing installed npm executable.
 Browser smoke: isolated shared-component preview PASS, no console errors; native disclosure keyboard activation and visible focus verified. App session restoration returned HTTP 500 from the Vite proxy for `/api/v1/auth/refresh-token`; the proxy logged upstream `ECONNREFUSED`. Authenticated route smoke was not performed; runtime/backend were not changed.
 Responsive: shared preview at 1440px, 1024px, 390px and 320px; no horizontal overflow, including an expanded long technical identifier.
 Accessibility: semantic h1/h2/h3 and dl/dt/dd preserved; native details/summary, error/status roles, polite announcements, disabled actions, visible Cobalt focus and reduced motion retained.

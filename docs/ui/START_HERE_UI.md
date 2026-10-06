@@ -1,27 +1,33 @@
-# START HERE — FREELAX MVP UI
+# START HERE — FREELAX UI VISUAL POLISH
 
-Read in this order:
+## Current authority — 2026-10-06
 
-1. `UI_DEVELOPMENT_MEMORY.md`
-2. `UI_POLISH_SPEC.md`
-3. `UI_IMPLEMENTATION_PROGRESS.md`
-4. `WORKPACK_P06_UI_POLISH.md`
-5. repository `README.md`
-6. repository `docs/mvp-functional-spec.md`
-7. current frontend source
+Repository: `TronkIshere/FreelaX`. Branch: `feat/ui-visual-polish-20261006`.
+Frozen source implementation: `f42e44a5dcde0b8713fea532aa43345e943629b5`.
+A later docs-only commit may be branch HEAD; it does not change this source baseline.
 
-Active instruction:
+- Overview = FROZEN / APPROVED (both Client and Freelancer).
+- Freelancer Explore = FROZEN / APPROVED.
+- Freelancer Applications = NEXT / NOT_STARTED in this visual stream.
 
-> UI Workpack B integrates existing Step 8 Profile/Portfolio and Step 9 Review APIs. Preserve the committed Step 6 participant/Admin workspace and Steps 1–5 workflow/Finance. Keep changes frontend/docs only; use trusted session authorities and server-owned reputation/visibility.
+Read in this exact order (paths are repository-relative):
 
-> Product Owner scope override: Mobile optimization is deferred. Current MVP delivery target is desktop/laptop, validated at 1440px and 1024px. Preserve existing responsive CSS; mobile is not a P06.4 gate.
+1. `docs/ui/UI_VISUAL_POLISH_HANDOFF_20261006.md`
+2. `docs/ui/UI_VISUAL_POLISH_SESSION_LOG_20261006.md`
+3. `docs/ui/UI_DEVELOPMENT_MEMORY.md`
+4. `docs/ui/UI_POLISH_SPEC.md`
+5. `docs/ui/UI_IMPLEMENTATION_PROGRESS.md`
+6. `docs/ui/WORKPACK_P06_UI_POLISH.md`
+7. `marketplace-backend/docs/JOB_DISCOVERY_CONTRACT.md`
+8. `docs/mvp-functional-spec.md`
+9. Current source: actual `MyApplications` in `frontend/src/Workflow.tsx`, its tests/API/types/status mappings and the handoff's source inspection list.
 
-Current reviewed baseline:
+Use KINETIC EDITORIAL BRUTALISM and the approved toolkit. Frozen Overview/Explore demonstrate visual grammar, not generic page templates. Do not reopen them without a concrete regression. Next Applications requires a concept based on real application statuses/actions before implementation; it has not started.
 
-`feat/mvp-ui-steps6-9-20261005` at `11f0611` (`feat(frontend): integrate dispute and admin workflow`). Workpack B changes remain uncommitted; consult UI_IMPLEMENTATION_PROGRESS for current tests/build and runtime gates. Authenticated runtime smoke remains ENVIRONMENT BLOCKED.
+Commit `302ae06` is the completed, explicitly approved category/job-skills backend exception for truthful discovery UI. It gives no authority for unrelated backend expansion.
 
-Important baseline change:
+Explore live category/skill/combined/exclusion/Clear smoke and 1440/1024 visual gates passed. Older environment-blocked records remain historical and do not describe the active Explore freeze. No new runtime validation is claimed by this documentation pass.
 
-The current master now includes the Contract/Milestone foundation. UI may use API-backed fields such as deliverables, acceptance criteria, delivery due date, review window hours, max revisions, contract summary, milestone status and revisions used when those values are present.
+Mobile optimization is deferred. Current MVP delivery target is desktop/laptop, validated at 1440px and 1024px. Preserve existing responsive CSS.
 
-Do not treat the remaining future MVP spec as already implemented.
+Current source/API is authoritative where older notes conflict. Do not treat future product proposals in the MVP spec as already implemented. Never store secrets, credentials, local screenshots or machine-local paths in handoff material.
