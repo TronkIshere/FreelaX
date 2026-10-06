@@ -3,7 +3,7 @@
 ## VISUAL POLISH STREAM — 2026-10-06
 
 Current branch: `feat/ui-visual-polish-20261006`.
-Frozen source implementation baseline: `2f5f0e4b0667cf9fefbc3f7897fe63a904fa12bc`.
+Frozen source implementation baseline: `ca8b93d45a42249f779c13f0348f945ac275d7e0`.
 Documentation commits may advance HEAD without changing this source baseline.
 
 | Stage | Status | Accepted source/evidence |
@@ -13,11 +13,17 @@ Documentation commits may advance HEAD without changing this source baseline.
 | VP.2 Job discovery data foundation | PASS / FROZEN | `302ae06`; real category/skills authoring/filtering, Marketplace package PASS |
 | VP.3 Freelancer Explore | PASS / FROZEN | `f42e44a`; 54/54 final correction tests, build/diff PASS, 1440/1024 no overflow |
 | VP.4 Freelancer Applications | PASS / FROZEN | `2f5f0e4`; 35/35 focused tests, production build/diff PASS, 1440/1024 PASS, console 0 |
-| VP.5 Freelancer My Work | NOT_STARTED / NEXT | Freelancer → Công việc → Công việc của tôi (`/work/mine`) |
+| VP.5 Freelancer My Work | PASS / FROZEN | `ca8b93d`; 62/62 focused tests, build/diff PASS, 1440/1024 PASS, console 0 |
+| Stable Job Visual Identity | LOCKED | `ca8b93d`; 131/131 focused tests, 36/36 thumbnail recheck, build/diff and cross-screen identity PASS |
+| Client Work surfaces | NOT_STARTED / NEXT | Inspect current Client Jobs / applicant / job detail workflows before implementation |
 
 Explore live category/skill/combined/exclusion/Clear PASS is newer scoped runtime evidence. Earlier 115/115 focused frontend gate also passed. Local “Landing page redesign” category/skills edit is runtime evidence, not seed/source data. The approved narrow backend exception `302ae06` is complete; no unrelated backend expansion is authorized.
 
-Client/Freelancer Overview, Freelancer Explore and Freelancer Applications are FROZEN. Do not reopen for general polish. Applications uses only real PENDING, ACCEPTED, REJECTED and CANCELLED statuses, Explore's semantic thumbnails and `totalElements` for truthful query totals; no fake timeline/status/counts or API/backend changes. Accepted desktop QA has no horizontal overflow. Tests/build were not rerun during this freeze task. See the handoff/session log for source manifests and accepted QA history. Next My Work remains NOT_STARTED; do not begin it during this task.
+Client/Freelancer Overview, Freelancer Explore, Applications and My Work are FROZEN. Do not reopen for general polish. Applications uses only real PENDING, ACCEPTED, REJECTED and CANCELLED statuses and `totalElements` for truthful query totals; no fake timeline/status/counts or API/backend changes. Accepted desktop QA has no horizontal overflow. Tests/build were not rerun during this freeze task. See the handoff/session log for source manifests and accepted QA history. Next CLIENT WORK SURFACES remains NOT_STARTED; do not begin during this task.
+
+My Work `/work/mine` is an ACTIVE WORK / DELIVERY TRACKER: first server record emphasized, state-aware treatment, semantic thumbnail, real budget/optional deadline/revision context, state-derived next destination, flat ledger and server pagination. No invented search/filter/sort. Runtime observed 4 jobs, IN_PROGRESS and COMPLETED; sparse legacy category/skills are runtime observations, not guaranteed seed data. Budget is job value; COMPLETED is not payout confirmation. AWAITING_PAYMENT is read-only for Freelancer; RELEASE_PENDING/REFUND_PENDING do not claim payment/refund completion.
+
+Stable thumbnails: meaningful category → skills → title → Generic Development; OTHER permits decorative skills/title fallback without modifying stored category. Job ID only selects a deterministic variant within family (three approved variants; absent ID → 0), with stable family/job Rough seed. Same job has identical family/variant/marks across Explore, Applications and My Work; future Client Work must reuse this component.
 
 Mobile optimization is deferred. Current MVP delivery target is desktop/laptop, validated at 1440px and 1024px.
 

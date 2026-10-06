@@ -2,8 +2,8 @@
 
 ## LOCKED VISUAL SYSTEM V2 — 2026-10-06
 
-Authority: `UI_VISUAL_POLISH_HANDOFF_20261006.md`; branch `feat/ui-visual-polish-20261006`; frozen source `f42e44a5dcde0b8713fea532aa43345e943629b5`.
-Client/Freelancer Overview and Freelancer Explore are FROZEN. Next Freelancer Applications is NOT_STARTED. Historical hierarchy guidance below remains useful; conflicting visual/baseline notes are superseded here.
+Authority: `UI_VISUAL_POLISH_HANDOFF_20261006.md`; branch `feat/ui-visual-polish-20261006`; frozen source `ca8b93d45a42249f779c13f0348f945ac275d7e0`.
+Client/Freelancer Overview and Freelancer Explore/Applications/My Work are FROZEN. Stable Job Visual Identity is LOCKED. Next CLIENT WORK SURFACES is NOT_STARTED; inspect current Client Jobs / applicant / job detail workflows before implementation. Historical hierarchy guidance below remains useful; conflicting visual/baseline notes are superseded here.
 
 **KINETIC EDITORIAL BRUTALISM**: Cream `#FFF7E8`, Ink `#17212B`, Vermilion `#F15A3D`, Acid `#F5D12F`, Fresh Mint `#B8DFC4`, Cobalt `#3567E8`.
 
@@ -26,11 +26,21 @@ Semantic job thumbnails:
 | ECOMMERCE | Storefront/cart/bag |
 | DATA_ANALYTICS | Dashboard/charts |
 | BRANDING_GRAPHIC | Logo/typography/color swatches |
-| OTHER | Generic Development |
+| OTHER | Legacy skills → title → Generic Development (decorative only) |
 
-Authority: real stored category → legacy skills → legacy title → Generic Development; stored OTHER never infers another family. Fallback is for missing recognized categories; see the source adapter/contract. No job ID chooses family.
+Authority: meaningful stored category → legacy skills → legacy title → Generic Development. OTHER is semantically unspecified for decoration; try skills then title without changing the stored backend category. No job ID chooses family.
 
-Frozen Overview + Explore are the best references for visual grammar, **not reusable page templates**. Applications must express real application status as an editorial tracker. Screenshot first, human approval before commit; no fake reference-image data. Desktop 1440/1024 is the current gate; mobile is deferred.
+Stable identity: `variant = stableHash(job.id) % 3`, `visualKey = family + ':' + variant`; missing ID uses variant 0. WEB_FRONTEND + job A/B may choose different browser variants 0/1/2, but both remain Web/Frontend. Rough decoration uses stable family + job identity; no random/time/order dependence, stable rerender/remount. Reuse the same JobThumbnail for Explore, Applications, My Work and future Client Work. No page-specific thumbnails, database thumbnail ID or upload.
+
+Frozen Overview + Explore + Applications + My Work are references for visual grammar, **not reusable page templates**. Screenshot first, human approval before commit; no fake reference-image data. Desktop 1440/1024 is the current gate; mobile is deferred.
+
+### Locked My Work composition
+
+`/work/mine` = ACTIVE WORK / DELIVERY TRACKER. Active subnav, editorial “Công việc của bạn.” heading, real server total/order/pagination, first record emphasized, semantic thumbnail, real budget/optional deadline/revision context, state-derived next destination and flat ledger. No invented search/filter/sort.
+
+AWAITING_PAYMENT → waiting/read-only; IN_PROGRESS → Cobalt; SUBMITTED_FOR_REVIEW → Acid; REVISION_REQUESTED → Vermilion; COMPLETED → Fresh Mint; CANCELLED → restrained Ink/Cream. State truth always outranks color. Budget is job value, not payout confirmation; COMPLETED is not paid, RELEASE_PENDING is not paid, REFUND_PENDING is not refunded. No Freelancer funding action; deadline/revision usage only when real.
+
+Accepted My Work validation: 62/62 focused tests, build/diff PASS, 1440/1024 PASS, console errors 0. Stable thumbnail validation: 131/131 focused tests, 36/36 recheck, build/diff and cross-screen identity PASS. Runtime observed 4 My Work jobs with IN_PROGRESS/COMPLETED and sparse legacy category/skills; this is not guaranteed seed content.
 
 ## Historical P06 hierarchy guidance
 

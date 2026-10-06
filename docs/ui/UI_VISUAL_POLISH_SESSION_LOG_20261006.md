@@ -30,7 +30,7 @@ Human screenshot approval froze Client/Freelancer Overview and the global visual
 
 Next page was Freelancer → Công việc → Khám phá. Approved direction used a search area, subordinate work subnav, filter sidebar and editorial result board. The first result can carry Vermilion emphasis without claiming recommendation authority.
 
-Semantic job thumbnails were chosen instead of random job-ID-only shapes: Web, Backend/API, SEO/Content, Mobile, UI/UX, E-commerce, Data/Analytics, Branding and Generic Development. Real category is primary authority, then legacy skills/title fallback where no recognized category exists. Stored OTHER always stays Generic Development.
+Semantic job thumbnails were chosen instead of random job-ID-only shapes: Web, Backend/API, SEO/Content, Mobile, UI/UX, E-commerce, Data/Analytics, Branding and Generic Development. At this historical checkpoint, real category was primary authority and stored OTHER stayed Generic Development. The approved decorative OTHER fallback in section 10 supersedes that earlier rule without modifying stored category.
 
 ## 5. Real category/skills API gap and approved foundation
 
@@ -72,7 +72,23 @@ Approved APPLICATION STATUS / EDITORIAL TRACKER reuses Explore's semantic thumbn
 
 Accepted final validation: 35/35 focused tests PASS; production build PASS; `git diff --check` PASS; 1440 PASS; 1024 PASS; no overflow; console errors 0. No tests/build were rerun for this freeze task.
 
-Exact next page: **Freelancer → Công việc → Công việc của tôi**, `/work/mine`, **NOT_STARTED**. Do not begin it during this freeze task.
+At this checkpoint, next was **Freelancer → Công việc → Công việc của tôi**, `/work/mine`, **NOT_STARTED**. The approved My Work freeze below supersedes that checkpoint.
+
+## 10. My Work + stable Job visual identity approval and freeze
+
+Human approval: **Freelancer → Công việc → Công việc của tôi = PASS / FROZEN**; **Stable Job Visual Identity = LOCKED**. Overview, Explore and Applications remain FROZEN; no general taste-polish reopening.
+
+`ca8b93d45a42249f779c13f0348f945ac275d7e0` — `feat(frontend): finalize kinetic freelancer my work` was normally pushed. Source files: `frontend/src/WorkLifecycle.tsx`, `frontend/src/Workflow.test.tsx`, `frontend/src/WorkflowLifecycle.test.tsx`, `frontend/src/styles.css`, `frontend/src/ui/job-thumbnails/JobThumbnail.tsx`, `jobFamily.ts`, `jobFamily.test.ts`.
+
+Approved `/work/mine` concept: ACTIVE WORK / DELIVERY TRACKER, with active subnav, editorial heading, real server total/order, first record emphasized, state-aware surface, semantic thumbnail, real budget/optional deadline/revision context, next-action copy, flat ledger and real pagination. No invented search/filter/sort. AWAITING_PAYMENT is waiting/read-only; IN_PROGRESS Cobalt; SUBMITTED_FOR_REVIEW Acid; REVISION_REQUESTED Vermilion; COMPLETED Mint; CANCELLED restrained Ink/Cream. State truth outranks color. Budget is job value; COMPLETED does not confirm payout. No Freelancer funding action; RELEASE_PENDING is not paid and REFUND_PENDING is not refunded. Deadline/revision usage only when real.
+
+Approved thumbnail correction supersedes the old OTHER rule: meaningful stored category → legacy skills → legacy title → Generic Development. OTHER is unspecified for decoration: try skills, then title, otherwise Generic Development; stored category/business semantics unchanged. Job ID selects only a stable variant inside the resolved family (`stableHash(id) % 3`, absent ID → 0). Stable family + job identity seeds Rough marks; no random/time/order dependence, stable rerender/remount. Web jobs may choose browser variants 0/1/2 but remain visibly Web/Frontend. Explore, Applications, My Work and future Client Work reuse the same component; no page-specific thumbnails, database thumbnail ID or uploads.
+
+Accepted My Work gate: **62/62 focused tests PASS**, build/diff PASS, **1440/1024 PASS**, no overflow, console errors **0**. Stable identity gate: **131/131 focused tests PASS**, thumbnail recheck **36/36 PASS**, build/diff PASS, **cross-screen identity PASS**. Exact thumbnail markup matched across all three screen adapters in tests; runtime matched the overlapping Explore/Applications job and all four Applications/My Work jobs. No tests/build rerun during freeze. No backend/API/database/dependency changes; security inspection found no secrets, credentials, screenshots or machine-local paths added.
+
+Current runtime observation: **4 My Work jobs**, encountered **IN_PROGRESS / COMPLETED**; legacy category/skills may remain sparse. These are observations, not guaranteed seed content. No runtime data mutation was performed in this freeze.
+
+Next visual area: **CLIENT WORK SURFACES — NOT_STARTED**. Inspect current Client Jobs / applicant / job detail workflows before implementation. Do not start in this task.
 
 ## QA discipline retained
 

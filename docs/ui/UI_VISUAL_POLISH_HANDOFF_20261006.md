@@ -5,7 +5,7 @@
 - Repository: `TronkIshere/FreelaX`.
 - Active branch: `feat/ui-visual-polish-20261006`.
 - Integrated MVP ancestor: `35ba34e9b68be67b9405d3407159a2fde010911c`.
-- Frozen last product/source implementation commit: `2f5f0e4b0667cf9fefbc3f7897fe63a904fa12bc`.
+- Frozen last product/source implementation commit: `ca8b93d45a42249f779c13f0348f945ac275d7e0`.
 
 Accepted source chain, oldest first:
 
@@ -16,8 +16,9 @@ Accepted source chain, oldest first:
 | `302ae06` | Real job category and skill discovery filters |
 | `f42e44a` | Final kinetic Freelancer Explore |
 | `2f5f0e4` | Final kinetic Freelancer Applications |
+| `ca8b93d` | Final kinetic Freelancer My Work + stable Job visual identity |
 
-A later documentation commit may be branch HEAD. It does not replace `2f5f0e4` as the frozen source implementation baseline. Read the current HEAD with Git; do not mistake a docs-only HEAD for new product implementation. Current source wins over older conflicting documentation. Explicit Product Owner instructions remain authoritative.
+A later documentation commit may be branch HEAD. It does not replace `ca8b93d` as the frozen source implementation baseline. Read the current HEAD with Git; do not mistake a docs-only HEAD for new product implementation. Current source wins over older conflicting documentation. Explicit Product Owner instructions remain authoritative.
 
 ## Current UI progress matrix
 
@@ -32,8 +33,9 @@ Statuses below refer to this visual stream, not to absence of existing functiona
 | Freelancer → Công việc → Khám phá | FROZEN / APPROVED |
 | Job discovery data foundation | FROZEN / IMPLEMENTED |
 | Freelancer → Công việc → Ứng tuyển | PASS / FROZEN |
-| Freelancer → Công việc → Công việc của tôi | NEXT / NOT_STARTED in this visual stream |
-| Client Work surfaces | Not yet visually polished in this stream |
+| Freelancer → Công việc → Công việc của tôi | PASS / FROZEN |
+| Stable Job Visual Identity | LOCKED |
+| Client Work surfaces | NEXT / NOT_STARTED |
 | Finance / Income / Payment | Later |
 | Activity | Later |
 | Account / Profile | Later unless explicitly reprioritized |
@@ -62,7 +64,7 @@ Non-negotiable grammar:
 
 Rejected: generic SaaS, pastel SaaS cards, soft shadows, glass, blur, glow, gradient dashboard surfaces, pill-heavy UI, bento dashboard language, generic crypto dashboards, random sticker scatter, random job-ID-only semantic thumbnails, and stock imagery as product identity.
 
-Frozen Overview, Explore and Applications are references for visual grammar, **not reusable page templates**. New page composition must follow its own real task/data. Do not reopen frozen surfaces for general polish; only a concrete regression justifies a fix.
+Frozen Overview, Explore, Applications and My Work are references for visual grammar, **not reusable page templates**. New page composition must follow its own real task/data. Do not reopen frozen surfaces for general polish; only a concrete regression justifies a fix.
 
 ## Current toolkit
 
@@ -152,9 +154,13 @@ Commit `302ae06` was an **explicitly approved narrow backend/product-data except
 | ECOMMERCE | Storefront / cart / bag |
 | DATA_ANALYTICS | Dashboard / charts |
 | BRANDING_GRAPHIC | Logo / typography / color swatches |
-| OTHER | Generic Development |
+| OTHER | Legacy skills → title → Generic Development (decorative only) |
 
-Authority: real stored category → legacy skills fallback → legacy title fallback → Generic Development. A recognized stored `OTHER` always means Generic Development. Fallback applies only when there is no recognized persisted category; the legacy source adapter also recognizes category/type strings before skills. Job ID never chooses semantic family.
+Authority: meaningful stored category → legacy skills fallback → legacy title fallback → Generic Development. OTHER is semantically unspecified for decorative classification: try skills, then title, otherwise Generic Development. Stored backend category is unchanged; no title/profile backfill. The legacy source adapter also recognizes category/type strings when no meaningful persisted enum exists. Job ID never chooses semantic family.
+
+Stable Job Visual Identity = **LOCKED**. `variant = stableHash(job.id) % 3`; `visualKey = family + ':' + variant`. Three restrained variants per family; missing ID → variant 0. WEB_FRONTEND + job A/B may receive different browser variants, but both remain visibly Web/Frontend. Rough marks use stable family + hashed job identity, never visible UUID text. Deterministic with no Math.random, Date.now or render-order dependence; exact rerender/remount stability.
+
+Same job must retain identical family, variant and Rough decoration across Explore, Applications, My Work and future Client Work. Reuse the shared JobThumbnail; no page-specific Job thumbnails, database thumbnail ID or upload. Cross-screen focused test verifies exact markup across all three screens; runtime verifies identical artwork for the overlapping Explore/Applications job and all four Applications/My Work jobs.
 
 Source: `frontend/src/ui/job-thumbnails/JobThumbnail.tsx`, `jobFamily.ts`, `jobFamily.test.ts`.
 
@@ -275,20 +281,53 @@ Actual application statuses: `PENDING`, `ACCEPTED`, `REJECTED`, `CANCELLED`; lab
 
 Do not invent Client viewed, selection probability, fake response deadline, interview stage, response countdown or fake activity timeline. Timeline/status visuals must use server facts.
 
+## Frozen Freelancer My Work baseline
+
+**Freelancer → Công việc → Công việc của tôi = PASS / FROZEN**, route `/work/mine`. Stable Job Visual Identity = **LOCKED**.
+
+Source commit: `ca8b93d45a42249f779c13f0348f945ac275d7e0` — `feat(frontend): finalize kinetic freelancer my work`. It includes My Work and the stable shared thumbnail correction in one approved source commit:
+
+```text
+frontend/src/WorkLifecycle.tsx
+frontend/src/Workflow.test.tsx
+frontend/src/WorkflowLifecycle.test.tsx
+frontend/src/styles.css
+frontend/src/ui/job-thumbnails/JobThumbnail.tsx
+frontend/src/ui/job-thumbnails/jobFamily.ts
+frontend/src/ui/job-thumbnails/jobFamily.test.ts
+```
+
+Approved concept: **ACTIVE WORK / DELIVERY TRACKER**. Active subnav; editorial “Công việc của bạn.” heading; real total; first server record emphasized; state-aware primary surface; semantic thumbnail; real budget; deadline/revision context only when returned; state-derived next-action copy; flat ledger below; real pagination. No invented search/filter/sort. Existing detailed workflow and Overview remain unchanged; Explore/Applications layout remains frozen, with only the approved shared thumbnail identity correction.
+
+| Actual job state | Visual treatment |
+| --- | --- |
+| AWAITING_PAYMENT | Waiting/read-only |
+| IN_PROGRESS | Cobalt work |
+| SUBMITTED_FOR_REVIEW | Acid review |
+| REVISION_REQUESTED | Vermilion attention |
+| COMPLETED | Fresh Mint |
+| CANCELLED | Restrained Ink/Cream |
+
+State truth outranks decorative color. Contract DISPUTED, RELEASE_PENDING and REFUND_PENDING context remains explicit. Budget is job value, not payout confirmation; COMPLETED does not mean paid. AWAITING_PAYMENT exposes no Freelancer funding action. RELEASE_PENDING is not paid; REFUND_PENDING is not refunded. Deadline/revision usage only when real.
+
+Accepted My Work validation: **62/62 focused tests PASS**, build PASS, `git diff --check` PASS, **1440 PASS / 1024 PASS**, no overflow, console errors **0**. Stable thumbnail correction: **131/131 focused tests PASS**, thumbnail recheck **36/36 PASS**, build/diff PASS, cross-screen identity PASS. These accepted gates were not rerun for freeze/commit. No backend/API/database/dependency changes.
+
+Runtime observation: **4 My Work jobs**, encountered statuses **IN_PROGRESS / COMPLETED**. Legacy category/skills remain sparse; OTHER skills/title fallback was observed for SEO/API work. This is current runtime evidence, not guaranteed seed data or proof that every state exists in the local database.
+
 ## Exact next task — NOT_STARTED
 
-**Freelancer → Công việc → Công việc của tôi**, route `/work/mine`. Status: **NOT_STARTED** in this visual stream. Reuse the approved kinetic toolkit and semantic thumbnails; inspect current `MyWork` in `frontend/src/WorkLifecycle.tsx` and its real contract before a separately authorized implementation.
+**CLIENT WORK SURFACES**. Status: **NOT_STARTED** in this visual stream. Inspect current Client Jobs / applicant / job detail workflows first, then reuse the approved kinetic toolkit and shared stable JobThumbnail under a separately authorized workpack.
 
 ### Files to inspect first in the next session
 
-1. `frontend/src/App.tsx` — trusted role routes/subnav and `/work/mine`.
-2. `frontend/src/WorkLifecycle.tsx` — actual `MyWork` component and existing workflow destinations.
-3. `frontend/src/WorkLifecycle.test.tsx` — existing MyWork/workflow tests.
-4. `frontend/src/api.ts` and `frontend/src/api.test.ts` — existing MyWork calls, response adaptation and contracts.
-5. `frontend/src/types.ts` and `frontend/src/status.ts` — application/job fields and labels.
-6. `frontend/src/Jobs.tsx`, `frontend/src/Jobs.test.tsx`, `frontend/src/jobDiscovery.ts` — frozen Explore reference and real discovery controls.
+1. `frontend/src/App.tsx` — trusted Client role routes/navigation.
+2. `frontend/src/Jobs.tsx`, `frontend/src/Jobs.test.tsx` — existing Client Jobs list and real pagination/actions.
+3. `frontend/src/Workflow.tsx`, `frontend/src/Workflow.test.tsx` — Client applicant and shared job-detail workflows.
+4. `frontend/src/api.ts` and `frontend/src/api.test.ts` — existing Client reads/actions, response adaptation and contracts.
+5. `frontend/src/types.ts` and `frontend/src/status.ts` — current application/job/contract fields and labels.
+6. `frontend/src/WorkLifecycle.tsx`, `frontend/src/ContractLifecycle.tsx` — existing detailed work destinations; frozen My Work is visual grammar only.
 7. `frontend/src/ui/kinetic/` and `frontend/src/ui/job-thumbnails/` — approved reusable visual grammar.
 8. `marketplace-backend/docs/JOB_DISCOVERY_CONTRACT.md` — real category/skills authority.
 9. `marketplace-backend/src/main/java/com/marketplace/backend/controller/JobController.java` — read-only verification of existing job routes if needed.
 
-Read documentation first in the order in `START_HERE_UI.md`. Do not begin My Work during this freeze/documentation task.
+Read documentation first in the order in `START_HERE_UI.md`. Do not begin Client Work during this freeze/documentation task.
