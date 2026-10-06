@@ -1,6 +1,7 @@
 package com.marketplace.backend.repository;
 
 import com.marketplace.backend.entity.Job;
+import com.marketplace.backend.entity.JobCategory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -30,6 +31,10 @@ public interface JobRepository extends JpaRepository<Job, UUID> {
                    OR LOWER(COALESCE(j.description, '')) LIKE LOWER(CONCAT('%', :keyword, '%')))
               AND (:minBudget IS NULL OR j.budgetUsd >= :minBudget)
               AND (:maxBudget IS NULL OR j.budgetUsd <= :maxBudget)
+              AND (:category IS NULL OR COALESCE(j.category, com.marketplace.backend.entity.JobCategory.OTHER) = :category)
+              AND (:filterSkills = false OR EXISTS (
+                   SELECT j2.id FROM Job j2 JOIN j2.skills skill
+                   WHERE j2.id = j.id AND LOWER(skill) IN :skills))
               AND (:applicationFilter = 'ALL'
                    OR (:applicationFilter = 'APPLIED' AND EXISTS (
                        SELECT a.id FROM JobApplication a
@@ -43,6 +48,9 @@ public interface JobRepository extends JpaRepository<Job, UUID> {
                        @Param("minBudget") BigDecimal minBudget,
                        @Param("maxBudget") BigDecimal maxBudget,
                        @Param("applicationFilter") String applicationFilter,
+                       @Param("category") JobCategory category,
+                       @Param("filterSkills") boolean filterSkills,
+                       @Param("skills") List<String> skills,
                        Pageable pageable);
 
     List<Job> findByFreelancerIdAndMisaCertificateIdIsNotNull(UUID freelancerId);

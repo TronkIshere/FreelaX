@@ -6,12 +6,18 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
+import jakarta.persistence.ElementCollection;
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OrderColumn;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
+import java.util.List;
+import java.util.ArrayList;
 
 @Entity
 @Table(name = "jobs")
@@ -24,6 +30,16 @@ public class Job extends AbstractEntity<UUID> {
 
     @Column(columnDefinition = "TEXT")
     private String description;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30, columnDefinition = "varchar(30) default 'OTHER'")
+    private JobCategory category = JobCategory.OTHER;
+
+    @ElementCollection
+    @CollectionTable(name = "job_skills", joinColumns = @JoinColumn(name = "job_id"))
+    @OrderColumn(name = "skill_order")
+    @Column(name = "skill", nullable = false, length = 40)
+    private List<String> skills = new ArrayList<>();
 
     @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal budgetUsd;

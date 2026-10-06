@@ -30,6 +30,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.util.MultiValueMap;
 
 import java.util.List;
 import java.math.BigDecimal;
@@ -70,11 +71,13 @@ public class JobController {
             @RequestParam(required = false) BigDecimal minBudgetUsd,
             @RequestParam(required = false) BigDecimal maxBudgetUsd,
             @RequestParam(defaultValue = "NEWEST") String sort,
-            @RequestParam(defaultValue = "ALL") String application) {
+            @RequestParam(defaultValue = "ALL") String application,
+            @RequestParam(required = false) String category,
+            @RequestParam MultiValueMap<String, String> query) {
         return ResponseAPI.<PageResponse<DiscoverJobResponse>>builder()
                 .code(200)
                 .data(jobService.discover(principal.getId(), page, size, keyword,
-                        minBudgetUsd, maxBudgetUsd, sort, application))
+                        minBudgetUsd, maxBudgetUsd, sort, application, category, query.get("skills")))
                 .build();
     }
 

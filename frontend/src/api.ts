@@ -1,4 +1,5 @@
 import type { DiscoverJob, DiscoveryFilters, Job, JobApplication, JobPaymentStatus, JobSubmission, MyApplication, Notification as MarketplaceNotification, Page, RegisterInput, TaxRecord, User, UserType } from './types';
+import type { CreateJobInput, UpdateJobInput } from './types';
 
 import type { ClientBankAccount, ClientBankInput, FundingResponse, SubmissionPayload, ContractSubmission, ReviewDecision, ContractSettlement, ContractCancellationRecord, CancellationRequest, CancellationDecision } from './types';
 
@@ -181,6 +182,8 @@ export class MarketplaceApi {
     if (filters.keyword.trim()) query.set('keyword', filters.keyword.trim());
     if (filters.minBudgetUsd) query.set('minBudgetUsd', filters.minBudgetUsd);
     if (filters.maxBudgetUsd) query.set('maxBudgetUsd', filters.maxBudgetUsd);
+    if (filters.category) query.set('category', filters.category);
+    for (const skill of filters.skills ?? []) query.append('skills', skill);
     return serverPage<DiscoverJob>(await this.authorized<unknown>('/marketplace/jobs/discover?' + query));
   }
 
@@ -190,6 +193,17 @@ export class MarketplaceApi {
 
   async job(jobId: string): Promise<Job> {
     return this.authorized<Job>('/marketplace/jobs/' + encodeURIComponent(jobId));
+  }
+
+  async createJob(input: CreateJobInput): Promise<Job> {
+    const { title, description, category, skills, budgetUsd, deliveryDueAt, reviewWindowHours, maxRevisions, deliverables, acceptanceCriteria } = input;
+    return this.authorized('/marketplace/jobs', { method: 'POST', body: JSON.stringify({ title, description, category, skills,
+      budgetUsd, deliveryDueAt, reviewWindowHours, maxRevisions, deliverables, acceptanceCriteria }) });
+  }
+
+  async updateJob(jobId: string, input: UpdateJobInput): Promise<Job> {
+    const { title, description, category, skills } = input;
+    return this.authorized('/marketplace/jobs/' + encodeURIComponent(jobId), { method: 'PATCH', body: JSON.stringify({ title, description, category, skills }) });
   }
 
   async findDiscoverJob(jobId: string): Promise<DiscoverJob | null> {

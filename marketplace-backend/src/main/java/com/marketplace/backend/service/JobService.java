@@ -28,7 +28,12 @@ public interface JobService {
 
     PageResponse<DiscoverJobResponse> discover(UUID freelancerId, int page, int size, String keyword,
                                                 BigDecimal minBudgetUsd, BigDecimal maxBudgetUsd,
-                                                String sort, String application);
+                                                String sort, String application, String category, List<String> skills);
+
+    default PageResponse<DiscoverJobResponse> discover(UUID freelancerId, int page, int size, String keyword,
+            BigDecimal minBudgetUsd, BigDecimal maxBudgetUsd, String sort, String application) {
+        return discover(freelancerId, page, size, keyword, minBudgetUsd, maxBudgetUsd, sort, application, null, List.of());
+    }
 
     PageResponse<MyApplicationResponse> listMyApplications(UUID freelancerId, int page, int size,
                                                             JobApplicationStatus status);
