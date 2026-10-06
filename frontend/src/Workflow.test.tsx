@@ -197,7 +197,7 @@ describe('P05.2 job detail and workflow', () => {
       ] });
     await render(<MyApplications />, '/work/applications');
     expect([...host.querySelectorAll('.job-family-art')].map(node => node.getAttribute('data-family')))
-      .toEqual(['web', 'development']);
+      .toEqual(['web', 'web']);
     expect([...host.querySelectorAll('.applications-skills li')].map(node => node.textContent)).toEqual(['HTML', 'CSS']);
     expect(host.querySelectorAll('.applications-skills')).toHaveLength(1);
     expect(host.querySelectorAll('.applications-ledger > li')).toHaveLength(2);

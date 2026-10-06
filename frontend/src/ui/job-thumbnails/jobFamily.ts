@@ -1,7 +1,9 @@
 import type { JobCategory } from '../../types';
+import { stableSeed } from '../kinetic/palette';
 // Decorative classification only. No business category or generated job data.
 export type JobFamily = 'web' | 'backend' | 'seo' | 'mobile' | 'uiux' | 'ecommerce' | 'data' | 'branding' | 'development';
 export interface JobThumbnailSource {
+  id?: string | null;
   title?: string | null;
   category?: string | null;
   type?: string | null;
@@ -37,8 +39,25 @@ function match(values: readonly (string | null | undefined)[]): JobFamily | unde
   return signals.find(([, pattern]) => pattern.test(text))?.[0];
 }
 export function jobFamily(source: JobThumbnailSource): JobFamily {
+  // OTHER is unspecified only for decorative legacy classification; stored data is unchanged.
+  if (source.category === 'OTHER') {
+    return match(source.skills ?? []) ?? match([source.title]) ?? 'development';
+  }
   if (source.category && Object.hasOwn(categoryFamilies, source.category)) {
     return categoryFamilies[source.category as JobCategory];
   }
   return match([source.category, source.type]) ?? match(source.skills ?? []) ?? match([source.title]) ?? 'development';
+}
+
+export const jobVariantCounts: Record<JobFamily, number> = {
+  web: 3, backend: 3, seo: 3, mobile: 3, uiux: 3, ecommerce: 3, data: 3, branding: 3, development: 3,
+};
+
+export function jobVisualIdentity(source: JobThumbnailSource) {
+  const family = jobFamily(source);
+  const id = source.id?.trim();
+  const identity = id ? stableSeed(id) : null;
+  const variant = identity === null ? 0 : identity % jobVariantCounts[family];
+  return { family, variant, visualKey: family + ':' + variant,
+    roughKey: 'job-family:' + family + ':' + (identity ?? 'default') };
 }

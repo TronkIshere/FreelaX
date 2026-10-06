@@ -970,3 +970,75 @@ a { color: inherit; }
   .applications-ledger-row { grid-template-columns: 70px minmax(0, 1fr) 150px; gap: 14px; }
   .applications-ledger-row h3 { font-size: 18px; }
 }
+/* VP.5: assigned-work records only; frozen surfaces and detailed workflow are untouched. */
+.app-shell:has(.my-work-page) > .subnav { gap: 8px; border-bottom: 2px solid var(--ink); margin-top: 16px; }
+.app-shell:has(.my-work-page) > .subnav a { padding: 12px 24px; font-size: 16px; font-weight: 650; color: var(--ink); }
+.app-shell:has(.my-work-page) > .subnav a.active { background: var(--acid); border-bottom: 4px solid var(--vermilion); }
+.my-work-page, .my-work-results { min-width: 0; }
+.my-work-page .page-head { border: 0; padding: 30px 0 32px; }
+.my-work-page .page-head h1 { font-size: 56px; line-height: 1.15; letter-spacing: -.035em; max-width: none; margin: 0 0 18px; }
+.my-work-page .my-work-supporting-copy { font-size: 18px; line-height: 1.5; font-weight: 500; max-width: 75ch; }
+.my-work-title-start, .my-work-title-emphasis { position: relative; display: inline-block; }
+.my-work-title-emphasis { color: var(--vermilion); }
+.my-work-title-emphasis > .ku-rough:not(.my-work-rays) { position: absolute; width: 88%; height: 12px; left: 6%; bottom: -10px; }
+.my-work-page .my-work-rays { position: absolute; max-width: none; }
+.my-work-rays--left { top: -19px; left: -18px; transform: rotate(-8deg); }
+.my-work-rays--right { right: -38px; top: 5px; transform: rotate(92deg); }
+.my-work-results-heading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 10px 24px; margin-bottom: 20px; }
+.my-work-results-heading h2 { font-size: 26px; line-height: 1.3; letter-spacing: -.025em; margin: 0; }
+.my-work-results-heading p { font-size: 16px; line-height: 1.4; font-weight: 500; color: var(--soft-ink); margin: 0; }
+.my-work-results-heading p strong { color: var(--ink); font-size: 24px; margin-right: 5px; }
+.my-work-ledger { list-style: none; padding: 0; margin: 0; }
+.my-work-primary { padding: 0 6px 6px 0; margin-bottom: 20px; }
+.my-work-primary-record { display: grid; grid-template-columns: 150px minmax(0, 1fr) 240px; gap: 28px; align-items: center; padding: 28px; }
+.my-work-thumbnail { min-width: 0; }
+.my-work-page .job-family-art { width: 100%; height: auto; aspect-ratio: 1; }
+.my-work-copy { min-width: 0; }
+.my-work-page h3 { font-size: 21px; line-height: 1.3; letter-spacing: -.02em; margin: 0 0 8px; font-weight: 800; overflow-wrap: anywhere; }
+.my-work-primary-record h3 { font-size: 30px; margin-top: 16px; }
+.my-work-description { font-size: 16px; line-height: 1.5; margin: 0; font-weight: 450; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.my-work-skills { display: flex; flex-wrap: wrap; list-style: none; padding: 0; margin: 12px 0 0; gap: 6px; }
+.my-work-skills li { font-size: 14px; line-height: 1.4; font-weight: 550; padding: 3px 7px; background: var(--cream); color: var(--ink); border: 1px solid var(--ink); overflow-wrap: anywhere; }
+.my-work-status { display: inline-flex; align-items: center; gap: 7px; color: var(--ink); font-size: 15px; line-height: 1.4; font-weight: 750; }
+.my-work-status svg { flex-shrink: 0; }
+.my-work-primary-record .ku-label { padding: 6px 10px; }
+.my-work-primary-record .my-work-status { font-size: 16px; }
+.my-work-facts { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 15px; line-height: 1.5; margin-top: 16px; }
+.my-work-facts > span { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.my-work-facts svg { flex-shrink: 0; }
+.my-work-facts time, .my-work-facts strong { font-weight: 650; }
+.my-work-facts:empty { display: none; }
+.my-work-context { font-size: 15px; line-height: 1.5; margin-top: 16px; }
+.my-work-context > strong { display: block; margin-bottom: 4px; font-weight: 750; }
+.my-work-context p { font-size: inherit; line-height: inherit; margin: 0; }
+.my-work-next { display: grid; gap: 18px; justify-items: stretch; min-width: 0; }
+.my-work-budget { display: grid; gap: 4px; font-size: 15px; line-height: 1.4; font-weight: 500; }
+.my-work-budget strong { font-size: 26px; line-height: 1.2; letter-spacing: -.02em; font-weight: 800; font-variant-numeric: tabular-nums; }
+.my-work-primary-record .my-work-next { border-left: 1.5px solid currentColor; padding-left: 24px; }
+.my-work-next .button, .my-work-link { display: inline-flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 16px; line-height: 1.4; font-weight: 700; text-underline-offset: 4px; }
+.my-work-next .button { padding: 12px 14px; text-decoration: none; }
+.my-work-next .button .ku-action-arrow { color: var(--acid); }
+.my-work-next .ku-action-arrow svg { width: 24px; height: 24px; }
+.my-work-ledger-row { grid-template-columns: 86px minmax(0, 1fr) 220px; gap: 24px; padding: 22px 0; }
+.my-work-ledger-row .my-work-description { -webkit-line-clamp: 1; color: var(--soft-ink); }
+.my-work-ledger-row .ku-ledger-facts { font-size: 15px; line-height: 1.5; gap: 10px 18px; }
+.my-work-ledger-row .ku-ledger-metadata { width: 100%; }
+.my-work-ledger-row .my-work-facts { margin-top: 2px; }
+.my-work-ledger-row .my-work-context { margin-top: 8px; }
+.my-work-ledger-row .my-work-budget strong { font-size: 21px; }
+.my-work-ledger-row .my-work-status { border-left: 5px solid var(--ink); padding-left: 9px; }
+.my-work-ledger-row .my-work-status--cobalt { border-color: var(--cobalt); }
+.my-work-ledger-row .my-work-status--vermilion { border-color: var(--vermilion); }
+.my-work-ledger-row .my-work-status--acid { border-color: var(--acid); }
+.my-work-ledger-row .my-work-status--mint { border-color: var(--mint); }
+.my-work-empty .action-group { margin-top: 20px; }
+.my-work-empty .text-link { display: inline-flex; align-items: center; gap: 8px; font-size: 16px; }
+@media (max-width: 1100px) {
+  .my-work-page .page-head h1 { font-size: 48px; }
+  .my-work-primary-record { grid-template-columns: 110px minmax(0, 1fr) 205px; gap: 20px; padding: 22px; }
+  .my-work-primary-record h3 { font-size: 26px; }
+  .my-work-primary-record .my-work-next { padding-left: 18px; }
+  .my-work-primary-record .my-work-next .button { padding-inline: 10px; }
+  .my-work-ledger-row { grid-template-columns: 72px minmax(0, 1fr) 205px; gap: 20px; }
+  .my-work-ledger-row h3 { font-size: 19px; }
+}

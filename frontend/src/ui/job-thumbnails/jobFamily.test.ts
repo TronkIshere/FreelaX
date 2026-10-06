@@ -1,11 +1,23 @@
-import { describe, expect, it } from 'vitest';
-import { jobFamily } from './jobFamily';
+// @vitest-environment jsdom
+import { act, createElement as h } from 'react';
+import { createRoot } from 'react-dom/client';
+import { MemoryRouter } from 'react-router-dom';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { jobFamily, jobVisualIdentity, jobVariantCounts, type JobFamily } from './jobFamily';
+import { JobThumbnail } from './JobThumbnail';
+import { FreelancerDiscovery } from '../../Jobs';
+import { MyApplications } from '../../Workflow';
+import { MyWork } from '../../WorkLifecycle';
+import { api } from '../../api';
+
+(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+afterEach(() => vi.restoreAllMocks());
 
 describe('semantic job thumbnail mapping', () => {
   it.each([
     ['WEB_FRONTEND', 'web'], ['BACKEND_API', 'backend'], ['SEO_CONTENT', 'seo'], ['MOBILE_APP', 'mobile'],
     ['UI_UX_DESIGN', 'uiux'], ['ECOMMERCE', 'ecommerce'], ['DATA_ANALYTICS', 'data'],
-    ['BRANDING_GRAPHIC', 'branding'], ['OTHER', 'development'],
+    ['BRANDING_GRAPHIC', 'branding'],
   ] as const)('treats persisted category %s as authoritative over skills and title', (category, expected) => {
     expect(jobFamily({ category, skills: ['React'], title: 'Landing page redesign' })).toBe(expected);
   });
@@ -37,6 +49,13 @@ describe('semantic job thumbnail mapping', () => {
     expect(jobFamily({ title: null, category: null, skills: null })).toBe('development');
     expect(jobFamily({ title: 'E2E 123', category: 'Unspecified', skills: [] })).toBe('development');
   });
+  it('treats stored OTHER as unspecified decoration, using skills before title without changing category', () => {
+    const source = { id: 'web-looking-id', category: 'OTHER', skills: ['Spring'], title: 'Tối ưu SEO trang chủ' };
+    expect(jobFamily(source)).toBe('backend');
+    expect(source.category).toBe('OTHER');
+    expect(jobFamily({ ...source, skills: [] })).toBe('seo');
+    expect(jobFamily({ ...source, skills: [], title: 'P04 E2E' })).toBe('development');
+  });
   it('is deterministic across ids, repeated calls, and skill order', () => {
     const a = { id: 'job-a', title: 'P04 E2E', skills: ['React', 'CSS'] };
     const b = { ...a, id: 'job-b', skills: [...a.skills].reverse() };
@@ -44,5 +63,92 @@ describe('semantic job thumbnail mapping', () => {
     expect(jobFamily(a)).toBe(jobFamily(b));
     const misleadingId = { id: 'landing-page', title: 'P04 E2E' };
     expect(jobFamily(misleadingId)).toBe('development');
+  });
+});
+
+describe('stable job visual identity', () => {
+  it('resolves the same identity across calls and nonsemantic data changes', () => {
+    const source = { id: 'job-shared-1', category: 'WEB_FRONTEND', title: 'Server database' };
+    expect(jobVisualIdentity(source)).toEqual(jobVisualIdentity({ ...source, title: 'SEO content' }));
+    expect(jobVisualIdentity(source).family).toBe('web');
+    expect(jobVisualIdentity(source).roughKey).not.toContain(source.id);
+    expect(jobVisualIdentity({ ...source, category: 'BACKEND_API', id: 'landing-page' }).family).toBe('backend');
+  });
+
+  it('uses variant zero and stable semantic decoration when id is absent', () => {
+    expect(jobVisualIdentity({ category: 'MOBILE_APP' })).toEqual({ family: 'mobile', variant: 0,
+      visualKey: 'mobile:0', roughKey: 'job-family:mobile:default' });
+    expect(jobVisualIdentity({ category: 'MOBILE_APP', id: null }).visualKey).toBe('mobile:0');
+  });
+
+  it.each(Object.keys(jobVariantCounts) as JobFamily[])('selects distinct approved artwork inside %s without using ids to classify', async family => {
+    const titles: Record<JobFamily, string> = { web: 'Landing page', backend: 'REST API', seo: 'SEO content',
+      mobile: 'Mobile app', uiux: 'Figma wireframe', ecommerce: 'Storefront', data: 'Analytics',
+      branding: 'Branding logo', development: 'P04 E2E' };
+    const variants = new Map<number, string>();
+    for (let i = 0; i < 200 && variants.size < jobVariantCounts[family]; i++) {
+      const id = 'job-' + i;
+      const identity = jobVisualIdentity({ id, title: titles[family] });
+      expect(identity.family).toBe(family);
+      expect(identity.variant).toBeGreaterThanOrEqual(0);
+      expect(identity.variant).toBeLessThan(jobVariantCounts[family]);
+      variants.set(identity.variant, id);
+    }
+    expect(variants.size).toBe(3);
+    const host = document.createElement('div');
+    const root = createRoot(host);
+    try {
+      const drawings = new Set<string>();
+      for (const [variant, id] of variants) {
+        await act(async () => root.render(h(JobThumbnail, { job: { id, title: titles[family] } })));
+        expect(host.querySelector('.job-family-art')?.getAttribute('data-visual-key')).toBe(family + ':' + variant);
+        drawings.add(host.querySelector('.job-family-drawing')!.innerHTML);
+      }
+      expect(drawings.size).toBe(3);
+    } finally { act(() => root.unmount()); }
+  });
+
+  it('preserves exact artwork and Rough paths across rerender and remount', async () => {
+    const job = { id: 'job-stable', category: 'SEO_CONTENT' };
+    const host = document.createElement('div');
+    let root = createRoot(host);
+    try {
+      await act(async () => root.render(h(JobThumbnail, { job })));
+      const first = host.innerHTML;
+      await act(async () => root.render(h(JobThumbnail, { job: { ...job, title: 'Changed title' } })));
+      expect(host.innerHTML).toBe(first);
+      act(() => root.unmount());
+      root = createRoot(host);
+      await act(async () => root.render(h(JobThumbnail, { job })));
+      expect(host.innerHTML).toBe(first);
+    } finally { act(() => root.unmount()); }
+  });
+
+  it('passes the same job id through real Explore, Applications and My Work adapters', async () => {
+    const job = { id: 'job-cross-screen', title: 'Shared backend job', description: 'Real response shape',
+      category: 'BACKEND_API' as const, skills: ['Java'], budgetUsd: 300, createdAt: '2026-10-06',
+      clientUserId: 'client-1', freelancerId: 'freelancer-1', status: 'IN_PROGRESS' as const };
+    const page = { currentPage: 0, pageSize: 10, totalPages: 1, totalElements: 1 };
+    vi.spyOn(api, 'discoverJobs').mockResolvedValue({ ...page, data: [{ ...job,
+      client: { id: 'client-1', displayName: 'Client' }, hasApplied: true, applicationId: 'application-1', applicationStatus: 'ACCEPTED' }] });
+    vi.spyOn(api, 'myApplications').mockResolvedValue({ ...page, data: [{ id: 'application-1', status: 'ACCEPTED',
+      createdAt: '2026-10-06', updatedAt: '2026-10-06', job: { ...job, clientDisplayName: 'Client' } }] });
+    vi.spyOn(api, 'myJobs').mockResolvedValue({ ...page, data: [job] });
+    const host = document.createElement('div');
+    const expected = jobVisualIdentity(job);
+    const artworks: string[] = [];
+    for (const Component of [FreelancerDiscovery, MyApplications, MyWork]) {
+      const root = createRoot(host);
+      try {
+        await act(async () => root.render(h(MemoryRouter, {}, h(Component))));
+        const thumbnail = host.querySelector('.job-family-art')!;
+        expect(thumbnail.getAttribute('data-family')).toBe(expected.family);
+        expect(thumbnail.getAttribute('data-visual-key')).toBe(expected.visualKey);
+        expect(thumbnail.getAttribute('data-rough-key')).toBe(expected.roughKey);
+        expect(thumbnail.getAttribute('data-rough-key')).not.toBe(jobVisualIdentity({ ...job, id: null }).roughKey);
+        artworks.push(thumbnail.outerHTML);
+      } finally { act(() => root.unmount()); }
+    }
+    expect(new Set(artworks).size).toBe(1);
   });
 });

@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import { Ban, CalendarDays, CircleCheck, Clock3, Hourglass, PencilLine, RotateCcw, Scale } from 'lucide-react';
 import { ContractLifecycle } from './ContractLifecycle';
 import { ApiError, api } from './api';
 import { ActionGroup, EvidenceDisclosure, PageHeading, SectionHeading, StatePanel } from './components';
 import { Pagination } from './Jobs';
-import { date, jobLabel, money, shortId, submissionLabel } from './status';
+import { date, jobLabel, money, submissionLabel } from './status';
+import { KineticActionArrow, KineticCard, KineticLedgerRow, RoughBurst, RoughUnderline, TapeSticker } from './ui/kinetic';
+import { JobThumbnail } from './ui/job-thumbnails/JobThumbnail';
 import type { Job, JobSubmission, Page, User } from './types';
 
 const MAX_TEXT = 10000;
@@ -330,6 +333,76 @@ function LegacyWorkLifecycle({ job, user, onJobUpdated, children, footer }: {
   </div>;
 }
 
+// List presentation only: links open the existing workspace and never mutate work or money.
+const myWorkStates = {
+  AWAITING_PAYMENT: { surface: 'cream', icon: Hourglass, action: 'Xem trạng thái', copy: 'Đang chờ Client hoàn tất funding trước khi công việc bắt đầu.' },
+  IN_PROGRESS: { surface: 'cobalt', icon: PencilLine, action: 'Tiếp tục công việc', copy: 'Bạn có thể tiếp tục chuẩn bị và gửi bàn giao.' },
+  SUBMITTED_FOR_REVIEW: { surface: 'acid', icon: Clock3, action: 'Xem bàn giao', copy: 'Bàn giao đang chờ Client phản hồi.' },
+  REVISION_REQUESTED: { surface: 'vermilion', icon: RotateCcw, action: 'Xem phản hồi', copy: 'Client đã yêu cầu chỉnh sửa. Mở công việc để xem phản hồi.' },
+  COMPLETED: { surface: 'mint', icon: CircleCheck, action: 'Xem hồ sơ', copy: 'Phần công việc đã hoàn tất.' },
+  CANCELLED: { surface: 'cream', icon: Ban, action: 'Xem hồ sơ', copy: 'Công việc đã được hủy.' },
+} as const;
+
+function myWorkPresentation(job: Job) {
+  const state = myWorkStates[job.status as keyof typeof myWorkStates]
+    ?? { surface: 'cream' as const, icon: Hourglass, action: 'Xem trạng thái', copy: 'Mở công việc để xem trạng thái từ Marketplace.' };
+  const contract = job.contract;
+  if (contract?.status === 'DISPUTED' || contract?.milestoneStatus === 'DISPUTED') {
+    return { ...state, surface: 'vermilion' as const, icon: Scale, action: 'Xem tranh chấp', context: 'Hợp đồng đang tranh chấp', copy: 'Mở công việc để xem hồ sơ tranh chấp và trạng thái xử lý.' };
+  }
+  if (contract?.milestoneStatus === 'REFUND_PENDING') {
+    return { ...state, surface: 'cream' as const, icon: Hourglass, action: 'Xem trạng thái', context: 'Đang đối soát hoàn tiền', copy: 'Hoàn tiền đang được xử lý, chưa được xác nhận hoàn tất.' };
+  }
+  if (contract?.milestoneStatus === 'RELEASE_PENDING') {
+    return { ...state, surface: 'acid' as const, icon: Hourglass, action: 'Xem trạng thái', context: 'Đã duyệt · đang xử lý tiền', copy: 'Phần bàn giao đã được duyệt; xử lý tiền chưa hoàn tất.' };
+  }
+  if (contract?.status === 'CANCELLED' || contract?.milestoneStatus === 'REFUNDED') {
+    return { ...state, surface: 'cream' as const, icon: Ban, action: 'Xem hồ sơ', context: 'Hợp đồng đã hủy', copy: 'Mở hồ sơ để xem bằng chứng và trạng thái tài chính riêng.' };
+  }
+  return { ...state, context: null };
+}
+
+function MyWorkRecord({ job, primary }: { job: Job; primary: boolean }) {
+  const state = myWorkPresentation(job);
+  const Icon = state.icon;
+  const due = job.contract?.deliveryDueAt ?? job.deliveryDueAt;
+  const contract = job.contract;
+  const revisionTerms = contract && Number.isInteger(contract.revisionsUsed) && contract.revisionsUsed >= 0
+    && Number.isInteger(contract.maxRevisions) && contract.maxRevisions >= 0;
+  const titleId = 'my-work-' + job.id;
+  const status = <span className={'my-work-status my-work-status--' + state.surface}>
+    <Icon size={20} aria-hidden="true" /><span>{jobLabel(job.status)}</span></span>;
+  const facts = <div className="my-work-facts">
+    {due && <span><CalendarDays size={18} aria-hidden="true" />Hạn bàn giao <time dateTime={due}>{date(due)}</time></span>}
+    {revisionTerms && <span><RotateCcw size={17} aria-hidden="true" />Chỉnh sửa <strong>{contract.revisionsUsed} / {contract.maxRevisions}</strong></span>}
+  </div>;
+  const copy = <><h3 id={titleId}>{job.title}</h3>
+    {job.description && <p className="my-work-description">{job.description}</p>}
+    {!!job.skills?.length && <ul className="my-work-skills" aria-label="Kỹ năng công việc">
+      {job.skills.map(skill => <li key={skill}>{skill}</li>)}
+    </ul>}
+  </>;
+  const action = <div className="my-work-next">
+    <span className="my-work-budget">Ngân sách <strong>{money(job.budgetUsd)}</strong></span>
+    <Link className={primary ? 'button' : 'my-work-link'} to={'/work/' + job.id}
+      aria-label={state.action + ': ' + job.title}>{state.action} <KineticActionArrow /></Link>
+  </div>;
+  const context = <div className="my-work-context">
+    {state.context && <strong>{state.context}</strong>}<p>{state.copy}</p>
+  </div>;
+  if (primary) return <li className="my-work-primary">
+    <KineticCard variant={state.surface} aria-labelledby={titleId} className="my-work-primary-record">
+      <div className="my-work-thumbnail" aria-hidden="true"><JobThumbnail job={job} /></div>
+      <div className="my-work-copy"><TapeSticker variant="cream" rotation={-1}>{status}</TapeSticker>
+        {copy}{facts}{context}</div>
+      {action}
+    </KineticCard>
+  </li>;
+  return <KineticLedgerRow className="my-work-ledger-row" aria-labelledby={titleId}
+    thumbnail={<JobThumbnail job={job} />} title={copy} status={status}
+    metadata={<>{facts}{context}</>} action={action} />;
+}
+
 export function MyWork() {
   const [page, setPage] = useState(0);
   const [result, setResult] = useState<Page<Job> | null>(null);
@@ -346,24 +419,31 @@ export function MyWork() {
     );
     return () => { active = false; };
   }, [page, attempt]);
-  return <>
-    <PageHeading eyebrow="Freelancer / Công việc / Công việc của tôi" title="Công việc của tôi"
-      description="Các công việc được giao và tiến độ thực tế từ Marketplace."
-      aside="Công việc → bàn giao → phản hồi → hoàn thành" />
+  return <div className="my-work-page">
+    <PageHeading eyebrow="" descriptionClassName="my-work-supporting-copy"
+      title={<><span className="my-work-title-start">Công việc
+        <RoughBurst seedKey="my-work-heading:left" accent="vermilion" size={40} className="my-work-rays my-work-rays--left" />
+      </span>{' '}<span className="my-work-title-emphasis">của bạn.
+        <RoughUnderline seedKey="my-work-heading:underline" size={240} />
+        <RoughBurst seedKey="my-work-heading:right" accent="ink" size={42} className="my-work-rays my-work-rays--right" />
+      </span></>}
+      description="Các công việc đã được giao và bước tiếp theo của bạn từ Marketplace." />
+    <section className="my-work-results" aria-label="Công việc được giao" aria-busy={loading}>
+    <header className="my-work-results-heading"><h2>Hồ sơ công việc</h2>
+      {!loading && !error && result && <p aria-live="polite"><strong>{result.totalElements}</strong> công việc được giao</p>}
+    </header>
     {loading ? <StatePanel kind="loading" title="Đang tải công việc" body="Đang lấy công việc đã giao từ Marketplace." />
       : error ? <StatePanel kind="error" title="Không thể tải công việc" body={error}
         action={{ label: 'Thử lại', onClick: () => setAttempt(value => value + 1) }} />
-      : !result || result.data.length === 0 ? <StatePanel kind="empty" title="Chưa có công việc được giao"
-        body="Công việc xuất hiện ở đây sau khi Client chọn bạn từ danh sách ứng tuyển." />
-      : <><section className="my-work-list" aria-label="Công việc được giao">
-        {result.data.map(item => <article key={item.id} className="my-work-row">
-          <div><span className="eyebrow">Công việc / {date(item.createdAt)}</span>
-            <h2><Link to={'/work/' + item.id}>{item.title}</Link></h2>
-            <p>{item.description}</p></div>
-          <div><span className="cell-label">Trạng thái</span><strong>{jobLabel(item.status)}</strong></div>
-          <div><span className="cell-label">Ngân sách</span><strong>{money(item.budgetUsd)}</strong></div>
-          <div><span className="cell-label">Mã công việc</span><code title={item.id}>{shortId(item.id)}</code></div>
-        </article>)}
-      </section><Pagination page={result} onPage={setPage} /></>}
-  </>;
+      : !result || result.data.length === 0 ? <div className="my-work-empty">
+        <StatePanel kind="empty" title="Chưa có công việc được giao"
+          body="Công việc xuất hiện ở đây sau khi Client chọn bạn từ danh sách ứng tuyển." />
+        <ActionGroup><Link className="button" to="/work/applications">Xem ứng tuyển <KineticActionArrow /></Link>
+          <Link className="text-link" to="/work">Khám phá công việc <KineticActionArrow /></Link></ActionGroup>
+      </div>
+      : <><ul className="my-work-ledger" aria-label="Hồ sơ công việc được giao">
+        {result.data.map((item, index) => <MyWorkRecord key={item.id} job={item} primary={index === 0} />)}
+      </ul><Pagination page={result} onPage={setPage} /></>}
+    </section>
+  </div>;
 }
