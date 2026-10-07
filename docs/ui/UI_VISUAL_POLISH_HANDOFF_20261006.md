@@ -5,7 +5,7 @@
 - Repository: `TronkIshere/FreelaX`.
 - Active branch: `feat/ui-visual-polish-20261006`.
 - Integrated MVP ancestor: `35ba34e9b68be67b9405d3407159a2fde010911c`.
-- Frozen last product/source implementation commit: `9c76ffb6c7a03db7a876ed8d871043b14e13d6c2` (P06.5B Client Finance Detail, Client 1440 only, approved 2026-10-07; earlier frozen surfaces preserved).
+- Frozen last product/source implementation commit: `837bcf02f7321a72ce597693660c4f63bc224be3` (P06.5B Freelancer Finance Detail 1440, approved 2026-10-07; Client 1440 and earlier frozen surfaces preserved).
 
 Accepted source chain, oldest first:
 
@@ -22,8 +22,9 @@ Accepted source chain, oldest first:
 | `45c54c5` | Client Applicants C3: final corrected candidate decision desk |
 | `96cafbe` | P06.5A role-based Finance list + editorial folder tabs |
 | `9c76ffb` | P06.5B Client Finance Detail + current-vs-processing guard; Client 1440 |
+| `837bcf0` | P06.5B Freelancer Finance Detail 1440; shared grammar and role-correct copy |
 
-A later documentation commit may be branch HEAD. It does not replace `9c76ffb` as the frozen source implementation baseline. Read the current HEAD with Git; do not mistake a docs-only HEAD for new product implementation. Current source wins over older conflicting documentation. Explicit Product Owner instructions remain authoritative.
+A later documentation commit may be branch HEAD. It does not replace `837bcf0` as the latest frozen source implementation baseline; `9c76ffb` remains the Client 1440 source authority. Read the current HEAD with Git; do not mistake a docs-only HEAD for new product implementation. Current source wins over older conflicting documentation. Explicit Product Owner instructions remain authoritative.
 
 ## Current UI progress matrix
 
@@ -45,7 +46,7 @@ Statuses below refer to this visual stream, not to absence of existing functiona
 | Client Work C2 — Job Authoring (`/work/new`, `/work/:jobId/edit`) | PASS / FROZEN |
 | Client Work C3 — Applicants (`/work/:jobId/applications`) | PASS / FROZEN |
 | P06.5A Finance list | PASS / FROZEN; `96cafbe` |
-| P06.5B Client Finance detail / Money Evidence Spine | PASS / FROZEN; Client 1440 only; `9c76ffb`; Freelancer 1440/1024 NOT FROZEN |
+| P06.5B Finance detail / Money Evidence Spine | PASS / FROZEN; Client 1440 `9c76ffb`, Freelancer 1440 `837bcf0`; Client/Freelancer 1024 NOT VALIDATED / NOT FROZEN |
 | Remaining Tax / Activity visual polish | NOT_STARTED; existing shared Finance tabs are frozen |
 | Account / Profile | Later unless explicitly reprioritized |
 
@@ -458,15 +459,15 @@ Source: `96cafbe985c68c4fdcc0e53a52141375335ca387` — `feat(frontend): finalize
 
 Accepted implementation validation (tests/build not rerun during freeze): Finance focused tests **30/30 PASS** after folder tabs; earlier Finance visual gate **36/36 PASS**; type-check PASS; accepted production build PASS; `git diff --check` PASS; Client 1440 PASS, Freelancer 1440 PASS, Client 1024 PASS; console errors **0**; keyboard focus PASS; reduced motion preserved.
 
-Current: P06.5B CLIENT FINANCE DETAIL — PASS / FROZEN at `/finance?jobId=...`, Client 1440 only. Source `9c76ffb6c7a03db7a876ed8d871043b14e13d6c2`. Freelancer 1440 and 1024 remain future validation work, NOT FROZEN. Remaining Tax / Activity visual polish stays NOT_STARTED. Stop after this freeze; do not begin another surface.
+Current: P06.5B Client 1440 and Freelancer 1440 — PASS / FROZEN at `/finance?jobId=...`. Client source `9c76ffb6c7a03db7a876ed8d871043b14e13d6c2`; Freelancer source `837bcf02f7321a72ce597693660c4f63bc224be3`. Client/Freelancer 1024 NOT VALIDATED / NOT FROZEN. Next: P06.5B CLIENT 1024 RESPONSIVE VALIDATION — NOT_STARTED. P06.5C/Tax/Activity remain NOT_STARTED. Stop after this freeze.
 
 ## Deferred validation — NOT FROZEN
 
-P06.5B Freelancer 1440 and 1024 remain future validation work, NOT FROZEN. Remaining Tax / Activity visual polish stays NOT_STARTED. Stop after this freeze; do not begin another surface.
+P06.5B Client/Freelancer 1024 remain NOT VALIDATED / NOT FROZEN. Next: Client 1024 responsive validation — NOT_STARTED. P06.5C/Tax/Activity remain NOT_STARTED. Stop after this freeze.
 
 ## P06.5B CLIENT FINANCE DETAIL — FROZEN (2026-10-07)
 
-Source: `9c76ffb6c7a03db7a876ed8d871043b14e13d6c2` — `feat(frontend): finalize client finance evidence spine`. Route `/finance?jobId=...`. Human-approved Client 1440 composition only: single-Job financial case file, dominant Acid statement with stable Job identity, five-stage vertical Money Evidence Spine, semantic connectors, compact right-side case summary and secondary/collapsed technical evidence. Existing P06.5A list/folder tabs and earlier frozen surfaces are unchanged. Freelancer 1440 and 1024 are NOT FROZEN and remain future validation work; P06.5C/Tax/Activity are not started by this freeze.
+Source: `9c76ffb6c7a03db7a876ed8d871043b14e13d6c2` — `feat(frontend): finalize client finance evidence spine`. Route `/finance?jobId=...`. Human-approved Client 1440 composition only: single-Job financial case file, dominant Acid statement with stable Job identity, five-stage vertical Money Evidence Spine, semantic connectors, compact right-side case summary and secondary/collapsed technical evidence. Existing P06.5A list/folder tabs and earlier frozen surfaces are unchanged. Freelancer 1440 is frozen by the later role freeze below; Client/Freelancer 1024 remain NOT VALIDATED / NOT FROZEN; P06.5C/Tax/Activity are not started by this freeze.
 
 ### Financial truth and attention semantics — LOCKED
 
@@ -487,3 +488,15 @@ Source: `9c76ffb6c7a03db7a876ed8d871043b14e13d6c2` — `feat(frontend): finalize
 - Previously verified P04 job `0f8dcb6c-a2e4-4f85-8123-03fa7ce4467f`: CAPTURED; clientPaymentStatus FAILED; withdrawal/off-ramp NOT_STARTED; tax NOT_ATTEMPTED/no TaxRecord. Stage 02 ERROR + CURRENT; 03–05 pending/upcoming, not propagated errors. This final pass re-opened only the SEO case.
 
 Regression guard covers current payment/tax errors, current NOT_STARTED evidence, upcoming stages after an earlier failure, and unchanged financial tone/status when only attention selection changes. No secrets, credentials, screenshots or machine-local paths are included in the commits.
+
+## P06.5B FREELANCER FINANCE DETAIL 1440 — FROZEN (2026-10-07)
+
+Source `837bcf02f7321a72ce597693660c4f63bc224be3` — `feat(frontend): finalize freelancer finance detail`. Route `/finance?jobId=...`; Freelancer 1440 HUMAN VISUAL PASS / FROZEN. Real `/auth/me` proof: FREELANCER / Freelancer Seed. Active nav `Thu nhập`, breadcrumb `FREELANCER / THU NHẬP`, description `Theo dõi release, chi trả và chứng từ của công việc này.`, back link `Lịch sử thu nhập`. `Thanh toán Client` remains the truthful shared payer lifecycle stage name, not a role leak.
+
+The exact frozen Client Money Evidence Spine grammar is reused: single-Job case file, Acid statement, five stages, semantic connectors, compact summary, collapsed technical evidence and hard Ink depth. Only role-specific description/back-link and role assertions changed; no separate Freelancer redesign. CURRENT != PROCESSING: source state plus stage tone own the status wording; attention priority alone never claims processing. Financial states remain server-driven, with no fabricated values or optimistic advancement. Bank details remain masked; technical refs remain allowlisted/collapsed; no secret/private or Client-private fields, fake certificate or inferred tax acceptance.
+
+Approved runtime proof only, not product defaults: SEO job `af2a0ed3-d2df-4029-8649-d01c8cbdc67a`, Job value $300.00, 298.5 Mock USDC, estimated 7,440,112 VND; simulation=true / Mô phỏng, localnet. Stages 01–04 completed; existing TaxRecord EXPORT_FAILED → ERROR + CURRENT / `Cần kiểm tra`, not `Đang xử lý`. Job value is not an amount received, estimated VND is not completed bank payout, and simulation is not real bank settlement.
+
+Final freeze gate: 51/51 focused Finance tests PASS; production frontend build run once PASS (known >500 kB warning non-blocking); diff check PASS. Approved real Freelancer 1440 screenshot: console errors 0, no overflow, focus preserved; local screenshot not committed. Backend/API/database/proxy/ports unchanged; no runtime data mutation. Client 1440 and P06.5A remain FROZEN and unchanged.
+
+Client 1024 and Freelancer 1024 have NOT been validated/frozen. P06.5C has NOT_STARTED. Next only: **P06.5B CLIENT 1024 RESPONSIVE VALIDATION — NOT_STARTED**. This freeze ends here; do not begin it in this pass.

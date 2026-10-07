@@ -161,7 +161,7 @@ Source: `96cafbe985c68c4fdcc0e53a52141375335ca387` — `feat(frontend): finalize
 
 Accepted implementation validation (tests/build not rerun during freeze): Finance focused tests **30/30 PASS** after folder tabs; earlier Finance visual gate **36/36 PASS**; type-check PASS; accepted production build PASS; `git diff --check` PASS; Client 1440 PASS, Freelancer 1440 PASS, Client 1024 PASS; console errors **0**; keyboard focus PASS; reduced motion preserved.
 
-Current: P06.5B CLIENT FINANCE DETAIL — PASS / FROZEN at `/finance?jobId=...`, Client 1440 only. Source `9c76ffb6c7a03db7a876ed8d871043b14e13d6c2`. Freelancer 1440 and 1024 remain future validation work, NOT FROZEN. Remaining Tax / Activity visual polish stays NOT_STARTED. Stop after this freeze; do not begin another surface.
+Current: P06.5B Client 1440 and Freelancer 1440 — PASS / FROZEN at `/finance?jobId=...`. Client source `9c76ffb6c7a03db7a876ed8d871043b14e13d6c2`; Freelancer source `837bcf02f7321a72ce597693660c4f63bc224be3`. Client/Freelancer 1024 NOT VALIDATED / NOT FROZEN. Next: P06.5B CLIENT 1024 RESPONSIVE VALIDATION — NOT_STARTED. P06.5C/Tax/Activity remain NOT_STARTED. Stop after this freeze.
 
 ## QA discipline retained
 
@@ -181,4 +181,16 @@ Source `9c76ffb6c7a03db7a876ed8d871043b14e13d6c2`; `/finance?jobId=...`; Client 
 
 CURRENT = attention order (first applicable error, otherwise first unfinished), not backend enum; CURRENT != PROCESSING. Real raw/source state + stage tone determine wording; current alone never claims processing/completion/error/finality. Completed Mint/check/solid path; current strongest; upcoming pending Cream/dashed; real error Vermilion/`Cần kiểm tra`. `Chờ bằng chứng` is supported pending presentation copy. Missing record != read failure; earlier error does not propagate to later upcoming stages. No optimistic stage advancement; server refresh/reconciliation owns state. Simulation/localnet/devnet truth and collapsed secondary technical evidence remain visible/accurate. P06.5A and earlier frozen surfaces unchanged.
 
-Final gate: 49/49 focused Finance tests PASS, production build/diff check PASS, clean real SEO Client 1440 screenshot, console errors 0, no overflow, keyboard focus preserved. Backend/API unchanged; no runtime data mutation. Freelancer 1440 and 1024 remain future validation work, NOT FROZEN. Do not begin Tax/Activity in this freeze.
+Final gate: 49/49 focused Finance tests PASS, production build/diff check PASS, clean real SEO Client 1440 screenshot, console errors 0, no overflow, keyboard focus preserved. Backend/API unchanged; no runtime data mutation. At the Client freeze, Freelancer 1440 was not yet frozen; the later Freelancer freeze below supersedes that checkpoint. Client/Freelancer 1024 remain NOT VALIDATED / NOT FROZEN. Do not begin Tax/Activity in this freeze.
+
+## P06.5B FREELANCER FINANCE DETAIL 1440 — FROZEN (2026-10-07)
+
+Source `837bcf02f7321a72ce597693660c4f63bc224be3` — `feat(frontend): finalize freelancer finance detail`. Route `/finance?jobId=...`; Freelancer 1440 HUMAN VISUAL PASS / FROZEN. Real `/auth/me` proof: FREELANCER / Freelancer Seed. Active nav `Thu nhập`, breadcrumb `FREELANCER / THU NHẬP`, description `Theo dõi release, chi trả và chứng từ của công việc này.`, back link `Lịch sử thu nhập`. `Thanh toán Client` remains the truthful shared payer lifecycle stage name, not a role leak.
+
+The exact frozen Client Money Evidence Spine grammar is reused: single-Job case file, Acid statement, five stages, semantic connectors, compact summary, collapsed technical evidence and hard Ink depth. Only role-specific description/back-link and role assertions changed; no separate Freelancer redesign. CURRENT != PROCESSING: source state plus stage tone own the status wording; attention priority alone never claims processing. Financial states remain server-driven, with no fabricated values or optimistic advancement. Bank details remain masked; technical refs remain allowlisted/collapsed; no secret/private or Client-private fields, fake certificate or inferred tax acceptance.
+
+Approved runtime proof only, not product defaults: SEO job `af2a0ed3-d2df-4029-8649-d01c8cbdc67a`, Job value $300.00, 298.5 Mock USDC, estimated 7,440,112 VND; simulation=true / Mô phỏng, localnet. Stages 01–04 completed; existing TaxRecord EXPORT_FAILED → ERROR + CURRENT / `Cần kiểm tra`, not `Đang xử lý`. Job value is not an amount received, estimated VND is not completed bank payout, and simulation is not real bank settlement.
+
+Final freeze gate: 51/51 focused Finance tests PASS; production frontend build run once PASS (known >500 kB warning non-blocking); diff check PASS. Approved real Freelancer 1440 screenshot: console errors 0, no overflow, focus preserved; local screenshot not committed. Backend/API/database/proxy/ports unchanged; no runtime data mutation. Client 1440 and P06.5A remain FROZEN and unchanged.
+
+Client 1024 and Freelancer 1024 have NOT been validated/frozen. P06.5C has NOT_STARTED. Next only: **P06.5B CLIENT 1024 RESPONSIVE VALIDATION — NOT_STARTED**. This freeze ends here; do not begin it in this pass.
