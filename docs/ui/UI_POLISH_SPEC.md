@@ -2,8 +2,8 @@
 
 ## LOCKED VISUAL SYSTEM V2 — 2026-10-07
 
-Authority: `UI_VISUAL_POLISH_HANDOFF_20261006.md`; branch `feat/ui-visual-polish-20261006`; latest frozen source `926c8fc64c2f8767165b5f69f15293abf91c86b2` (P06.5D Activity; P06.5A/B/C and earlier locks remain authoritative).
-Client/Freelancer Overview remains FROZEN; Client Work C1/C2/C3 are PASS / FROZEN. Freelancer Explore/Applications/My Work are RE-FROZEN after the approved narrow row-identity override. Stable Job Visual Identity and Global Row Identity / State Rail / Category Plate are LOCKED. P06.5A Finance list is PASS / FROZEN. Current: P06.5D ACTIVITY / EDITORIAL EVENT LEDGER — PASS / FROZEN. Source `926c8fc64c2f8767165b5f69f15293abf91c86b2`. Real Marketplace account notifications, type-driven editorial plates/rails, independent reading state and unchanged routing/pagination. Client/Freelancer 1440/1024 runtime QA, screenshots, focus and console 0 PASS; 138/138 focused tests, production build and diff check PASS. P06.5A/B/C remain FROZEN and unchanged. Next: P06.6 — ACCOUNT / PROFILE — NOT_STARTED. Stop after this freeze. Historical guidance below remains useful; conflicting visual/baseline notes are superseded here.
+Authority: `UI_VISUAL_POLISH_HANDOFF_20261006.md`; branch `feat/ui-visual-polish-20261006`; latest frozen source `c71c554bd73d7e8aff21032aa317e5cab8e4a89c` (P06.5D Activity; P06.5A/B/C and earlier locks remain authoritative).
+Client/Freelancer Overview remains FROZEN; Client Work C1/C2/C3 are PASS / FROZEN. Freelancer Explore/Applications/My Work are RE-FROZEN after the approved narrow row-identity override. Stable Job Visual Identity and Global Row Identity / State Rail / Category Plate are LOCKED. P06.5A Finance list is PASS / FROZEN. Current: P06.5D ACTIVITY VISUAL EMPHASIS PATCH — PASS / FROZEN. Source `c71c554bd73d7e8aff21032aa317e5cab8e4a89c`. Messages over 240 characters clamp to three lines with local original-text disclosure; stronger semantic tags, Acid unread stamps and Ink/Cream mark-read actions. Client/Freelancer 1440/1024 runtime QA, screenshots, focus and console 0 PASS; 146/146 focused tests, production build and diff check PASS. P06.5A/B/C unchanged. Next: P06.6 — ACCOUNT / PROFILE — NOT_STARTED. Stop after this freeze. Historical guidance below remains useful; conflicting visual/baseline notes are superseded here.
 
 **KINETIC EDITORIAL BRUTALISM**: Cream `#FFF7E8`, Ink `#17212B`, Vermilion `#F15A3D`, Acid `#F5D12F`, Fresh Mint `#B8DFC4`, Cobalt `#3567E8`.
 
@@ -155,7 +155,7 @@ Source: `96cafbe985c68c4fdcc0e53a52141375335ca387` — `feat(frontend): finalize
 
 Accepted implementation validation (tests/build not rerun during freeze): Finance focused tests **30/30 PASS** after folder tabs; earlier Finance visual gate **36/36 PASS**; type-check PASS; accepted production build PASS; `git diff --check` PASS; Client 1440 PASS, Freelancer 1440 PASS, Client 1024 PASS; console errors **0**; keyboard focus PASS; reduced motion preserved.
 
-Current: P06.5D ACTIVITY / EDITORIAL EVENT LEDGER — PASS / FROZEN. Source `926c8fc64c2f8767165b5f69f15293abf91c86b2`. Real Marketplace account notifications, type-driven editorial plates/rails, independent reading state and unchanged routing/pagination. Client/Freelancer 1440/1024 runtime QA, screenshots, focus and console 0 PASS; 138/138 focused tests, production build and diff check PASS. P06.5A/B/C remain FROZEN and unchanged. Next: P06.6 — ACCOUNT / PROFILE — NOT_STARTED. Stop after this freeze.
+Current: P06.5D ACTIVITY VISUAL EMPHASIS PATCH — PASS / FROZEN. Source `c71c554bd73d7e8aff21032aa317e5cab8e4a89c`. Messages over 240 characters clamp to three lines with local original-text disclosure; stronger semantic tags, Acid unread stamps and Ink/Cream mark-read actions. Client/Freelancer 1440/1024 runtime QA, screenshots, focus and console 0 PASS; 146/146 focused tests, production build and diff check PASS. P06.5A/B/C unchanged. Next: P06.6 — ACCOUNT / PROFILE — NOT_STARTED. Stop after this freeze.
 
 ## Historical P06 hierarchy guidance
 
@@ -579,3 +579,20 @@ Source commit: `926c8fc64c2f8767165b5f69f15293abf91c86b2` — `feat(frontend): f
 | PAYOUT_FAILED | Chi trả cần xử lý | finance | error |
 
 Unknown → Cập nhật từ Marketplace / neutral / neutral. Semantic tones describe the notification meaning, not payout finality or read state.
+
+## P06.5D Activity visual emphasis patch — re-frozen (2026-10-07)
+
+**P06.5D ACTIVITY VISUAL EMPHASIS PATCH — FROZEN.** Source `c71c554bd73d7e8aff21032aa317e5cab8e4a89c` — `style(frontend): strengthen activity notification hierarchy`. Input authority `e38d10dc2ab855e58b728bbdf0a428d5f66c8fa1`, clean worktree. This narrow patch supersedes the initial Activity message/tag/read-action styling; the original `926c8fc` freeze remains historical.
+
+- Long means `message.length > 240`, presentation only. Same original server text defaults to three lines at 16px/1.55, max 62ch; technical tokens wrap anywhere. No fabricated summary, free-form parsing or inferred amount/currency/status/evidence. Activity remains a notification-level surface; richer technical evidence belongs primarily to existing destination/detail pages.
+- Local real buttons “Xem thêm nội dung” / “Thu gọn” expose `aria-expanded` and `aria-controls`; full original message remains accessible as React text. Expanded secondary Cream evidence has a restrained structural edge. No API fetch, read mutation, routing change or height animation. Replaced server message resets local expansion. Short messages receive no unnecessary disclosure.
+- Tags: error Vermilion/Cream, active Cobalt/Cream, attention Acid/Ink, success Mint/Ink, closed Ink/Cream, unknown neutral Cream/Ink. Rectangular 2px Ink borders and 15px/800 labels. All 21 resolver mappings stay unchanged.
+- Unread: compact full Acid/Ink, 2px Ink, 14px/850, visible “Chưa đọc”; already-read remains neutral/subordinate. Event severity still derives only from type and reading state only from read; an unread error has a Vermilion tag plus Acid reading stamp, never a fully recolored row.
+- Mark-read: Ink/Cream, 2px Ink, 800 weight, hard small offset shadow; pending “Đang lưu…” is disabled/legible. Server-returned object still owns read state, with duplicate lock/error recovery and existing cross-surface dispatches unchanged. No optimistic success.
+- Counts, account scoping, server order/pagination and existing Job/Finance/rating destinations unchanged. Unitless Notification.amount remains omitted. No backend/API/auth/dependency changes. Activity-scoped CSS only; frozen Finance/Tax CSS prefix verified byte-equivalent after line-ending normalization. P06.5A/B/C and earlier frozen surfaces remain unchanged.
+- Real /auth/me sessions: Freelancer Seed (FREELANCER), 13 total / 10 loaded / 10 unread on page 1; Nguyen Huu Trong (CLIENT), 7 total / 7 loaded / 7 unread. The real “Hoàn tất mô phỏng payout” message is compact by default and expands to the identical server text. Two long messages on the Freelancer page; none on the Client page. No runtime notification or business mutation; real Freelancer pagination exercised.
+- Client/Freelancer 1440 and 1024 PASS at 100% zoom: no horizontal overflow, clipping or action collision; expanded references wrap. Destination, disclosure and mark-read keyboard focus PASS with 3px Cobalt; reduced-motion transition 0s, no loops. Activity console/page errors = 0. Read/pending/error outcomes and absent event families remain automated-test evidence; runtime rows are all unread.
+- Screenshots returned from outside Git: Freelancer 1440 collapsed + expanded, Client 1440, and Client/Freelancer 1024. No credentials or screenshots committed; external browser scripts/report stay outside Git.
+- Final gate: **146/146 focused tests PASS** (Polish 65 + Finance 81; original 138 preserved + 8 new regression cases), single TypeScript/Vite production build PASS, diff check PASS. Existing bundle-size warning is non-blocking.
+
+**NEXT: P06.6 — ACCOUNT / PROFILE — NOT_STARTED. STOP.** Do not reopen this freeze for general polish.
