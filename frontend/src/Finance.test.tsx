@@ -5,6 +5,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { api, ApiError } from './api';
 import { FinanceHome, TaxRecordDetail, TaxRecordsPage } from './Finance';
+import { contractMoneyStages, legacyMoneyStages, resolveMoneySpine } from './financeSpine';
 import type { ContractCancellationRecord, ContractSettlement, Job, JobPaymentStatus, TaxRecord, User } from './types';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -181,6 +182,7 @@ describe('P1 contract financial evidence', () => {
     expect(host.textContent).not.toContain('Release đã xác nhận');
     expect(host.textContent).not.toContain('Hoàn tiền đã xác nhận');
     expect(host.querySelector('.finance-stages')).toBeNull();
+    expect(host.querySelectorAll('.contract-money-spine > li')).toHaveLength(5);
   });
   it('distinguishes failed reads from empty records and offers one read-only reconciliation action', async () => {
     vi.mocked(api.settlement).mockRejectedValue(new Error('Settlement unavailable'));
@@ -337,6 +339,219 @@ describe('P1 contract financial evidence', () => {
     await act(async () => resolve(release));
     expect(host.textContent).toContain('Other contract');
     expect(host.querySelector('.finance-statement')?.textContent).not.toContain('Release đã xác nhận');
+  });
+});
+
+describe('P06.5B single-job money evidence spine', () => {
+  const working = { ...payment, offRampStatus: 'SIMULATED', taxExportStatus: 'NOT_ATTEMPTED',
+    clientPaymentConfirmedAt: '2026-10-06T01:15:00', withdrawalConfirmedAt: '2026-10-06T01:18:00',
+    paymentTransactionSignature: 'real-returned-signature' };
+  beforeEach(() => {
+    vi.spyOn(api, 'job').mockResolvedValue({ ...job, category: 'SEO_CONTENT' });
+    vi.spyOn(api, 'paymentStatus').mockResolvedValue(working);
+    vi.spyOn(api, 'taxRecordForJob').mockRejectedValue(new ApiError('No record', 404));
+  });
+  const detail = () => render(<FinanceHome user={client} />, '/finance?jobId=job-1');
+
+  it('renders one job statement and spine, never the frozen Finance list', async () => {
+    await detail();
+    expect(api.job).toHaveBeenCalledExactlyOnceWith('job-1');
+    expect(host.querySelectorAll('.finance-job-statement')).toHaveLength(1);
+    expect(host.querySelector('.finance-list-page')).toBeNull();
+    expect(host.querySelectorAll('.money-spine-item')).toHaveLength(5);
+    expect(host.querySelector('.job-family-art')?.getAttribute('data-family')).toBe('seo');
+    expect(host.querySelector('.finance-case-summary')?.textContent).toContain('Editorial work');
+    expect(host.querySelector('a[href="/finance"]')?.textContent).toContain('Danh sách thanh toán');
+  });
+
+  it('resolves completed/current/upcoming from actual stage statuses with semantic connectors', async () => {
+    await detail();
+    const items = [...host.querySelectorAll('.money-spine-item')];
+    expect(items.map(item => item.getAttribute('data-state'))).toEqual(['done', 'done', 'done', 'active', 'pending']);
+    expect(host.querySelector('[aria-current="step"]')?.getAttribute('data-stage')).toBe('vnd');
+    expect(host.querySelectorAll('.connector-completed')).toHaveLength(3);
+    expect(host.querySelectorAll('.connector-current')).toHaveLength(1);
+    expect(host.querySelectorAll('.connector-upcoming')).toHaveLength(1);
+    expect(host.querySelector('[data-stage="withdrawal"] h3')?.textContent).toBe('Rút on-chain');
+  });
+
+  it('does not advance when local time or animation completes; advances after a new API response', async () => {
+    vi.useFakeTimers();
+    await detail();
+    await act(async () => {
+      host.querySelector('.money-stage-record')!.dispatchEvent(new Event('animationend', { bubbles: true }));
+      await vi.advanceTimersByTimeAsync(14000);
+    });
+    expect(host.querySelector('[aria-current="step"]')?.getAttribute('data-stage')).toBe('vnd');
+    expect(api.paymentStatus).toHaveBeenCalledTimes(1);
+    vi.mocked(api.paymentStatus).mockResolvedValue(payment);
+    vi.mocked(api.taxRecordForJob).mockResolvedValue({ ...tax, status: 'SUBMITTED', statusLabel: 'Đã gửi cơ quan thuế' });
+    await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+    expect(host.querySelector('[aria-current="step"]')?.getAttribute('data-stage')).toBe('tax');
+    expect(host.querySelector('[data-stage="vnd"]')?.getAttribute('data-state')).toBe('done');
+    expect(host.textContent).not.toContain('Cơ quan thuế đã chấp nhận');
+  });
+
+  it('shows simulation/devnet truth, real timestamps and only returned technical references', async () => {
+    await detail();
+    expect(host.querySelector('.finance-job-statement')?.textContent).toContain('Mô phỏng');
+    expect(host.querySelector('.finance-job-statement')?.textContent).toContain('DEVNET');
+    expect(host.querySelector('[data-stage="settlement"] time')?.getAttribute('datetime')).toBe(working.clientPaymentConfirmedAt);
+    expect(host.querySelector('[data-stage="checkout"] time')).toBeNull();
+    const technical = host.querySelector('.technical-evidence')!;
+    expect(technical.hasAttribute('open')).toBe(false);
+    expect(technical.textContent).toContain('real-returned-signature');
+    expect(host.querySelector('.money-spine')?.textContent).not.toContain('real-returned-signature');
+    expect(host.textContent).not.toContain('1234567890');
+  });
+
+  it('omits unavailable optional money, dates, bank and technical evidence rather than fabricating it', async () => {
+    vi.mocked(api.paymentStatus).mockResolvedValue({ ...working, amountUsdcReceived: null, estimatedAmountVnd: null,
+      amountVndBeforeOffRampFee: null, offRampFeeVnd: null, payoutBankAccountNumber: null,
+      paymentTransactionSignature: null, clientPaymentConfirmedAt: null, withdrawalConfirmedAt: null });
+    await detail();
+    expect(host.querySelector('.finance-job-statement')?.textContent).not.toContain('VND');
+    expect(host.querySelector('.finance-case-summary')?.textContent).not.toContain('Mock USDC');
+    expect(host.querySelector('.money-spine time')).toBeNull();
+    expect(host.querySelector('[data-stage="vnd"]')?.textContent).not.toContain('BIDV');
+    expect(host.querySelector('.technical-evidence')?.textContent).not.toContain('real-returned-signature');
+  });
+
+  it('never treats successful export as an accepted certificate; all accepted stages have no invented current step', async () => {
+    vi.mocked(api.paymentStatus).mockResolvedValue(payment);
+    await detail();
+    expect(host.querySelector('[data-stage="tax"]')?.getAttribute('data-state')).toBe('pending');
+    expect(host.textContent).not.toContain('Cơ quan thuế đã chấp nhận');
+    vi.mocked(api.taxRecordForJob).mockResolvedValue(tax);
+    await act(async () => button('Làm mới từ Marketplace')!.click());
+    expect(host.querySelectorAll('.stage-done.money-spine-item')).toHaveLength(5);
+    expect(host.querySelector('[aria-current="step"]')).toBeNull();
+    expect(host.querySelector('.finance-case-focus')?.textContent).toContain('Các chặng đã xác nhận');
+  });
+
+  it('emphasizes actual failed evidence without changing already confirmed stages', async () => {
+    vi.mocked(api.taxRecordForJob).mockResolvedValue({ ...tax, status: 'EXPORT_FAILED', statusLabel: 'Lập chứng từ thất bại' });
+    await detail();
+    expect(host.querySelector('[aria-current="step"]')?.getAttribute('data-stage')).toBe('tax');
+    expect(host.querySelector('[data-stage="tax"]')?.getAttribute('data-state')).toBe('error');
+    expect(host.querySelectorAll('.stage-done.money-spine-item')).toHaveLength(3);
+  });
+
+  it.each(['clientPayment', 'tax'] as const)('keeps current %s failure as attention, never processing', async source => {
+    vi.mocked(api.paymentStatus).mockResolvedValue(source === 'clientPayment'
+      ? { ...payment, clientPaymentStatus: 'FAILED' } : payment);
+    if (source === 'tax') vi.mocked(api.taxRecordForJob).mockResolvedValue({ ...tax,
+      status: 'EXPORT_FAILED', statusLabel: 'Lập chứng từ thất bại' });
+    await detail();
+    const current = host.querySelector('[aria-current="step"]')!;
+    expect(current.getAttribute('data-stage')).toBe(source === 'tax' ? 'tax' : 'settlement');
+    expect(current.classList.contains('money-spine-current')).toBe(true);
+    expect(current.getAttribute('data-state')).toBe('error');
+    expect(current.querySelector('.money-stage-badge')?.textContent).toContain('Cần kiểm tra');
+    expect(current.textContent).not.toContain('Đang xử lý');
+    expect(current.querySelector('.money-stage-badge')?.textContent).not.toContain('Đang đối soát');
+  });
+
+  it('keeps the first unfinished NOT_STARTED stage current and pending without claiming processing', async () => {
+    vi.mocked(api.paymentStatus).mockResolvedValue({ ...payment, onRampStatus: 'NOT_STARTED',
+      clientPaymentStatus: 'NOT_STARTED', onChainOffRampStatus: 'NOT_STARTED',
+      offRampStatus: 'NOT_STARTED', taxExportStatus: 'NOT_ATTEMPTED' });
+    await detail();
+    const current = host.querySelector('[aria-current="step"]')!;
+    expect(current.getAttribute('data-stage')).toBe('settlement');
+    expect(current.getAttribute('data-state')).toBe('pending');
+    expect(current.querySelector('.money-stage-badge')?.textContent).toContain('Chờ bằng chứng');
+    expect(current.querySelector('.money-stage-status')?.textContent).toBe('Chưa bắt đầu · Chưa bắt đầu');
+    expect(current.textContent).not.toContain('Đang xử lý');
+    expect(current.textContent).not.toContain('Cần kiểm tra');
+  });
+
+  it('does not propagate an earlier payment failure into upcoming NOT_STARTED or NOT_ATTEMPTED stages', async () => {
+    vi.mocked(api.paymentStatus).mockResolvedValue({ ...payment, clientPaymentStatus: 'FAILED',
+      onChainOffRampStatus: 'NOT_STARTED', offRampStatus: 'NOT_STARTED', taxExportStatus: 'NOT_ATTEMPTED' });
+    await detail();
+    expect(host.querySelector('[aria-current="step"]')?.getAttribute('data-stage')).toBe('settlement');
+    for (const key of ['withdrawal', 'vnd', 'tax']) {
+      const upcoming = host.querySelector('[data-stage="' + key + '"]')!;
+      expect(upcoming.getAttribute('data-state')).toBe('pending');
+      expect(upcoming.hasAttribute('aria-current')).toBe(false);
+      expect(upcoming.querySelector('.money-stage-badge')?.textContent).toContain('Chờ bằng chứng');
+      expect(upcoming.textContent).not.toContain('Cần kiểm tra');
+    }
+    expect(host.querySelector('[data-stage="tax"] .money-stage-status')?.textContent).toBe('Chưa lập chứng từ');
+  });
+
+  it('changes attention selection without mutating an unchanged stage financial tone or status', () => {
+    const stages = legacyMoneyStages(job, { ...payment, offRampStatus: 'NOT_STARTED', taxExportStatus: 'NOT_ATTEMPTED' }, null);
+    const before = JSON.stringify(stages);
+    expect(resolveMoneySpine(stages).current).toBe(3);
+    expect(JSON.stringify(stages)).toBe(before);
+    const failed = legacyMoneyStages(job, { ...payment, clientPaymentStatus: 'FAILED',
+      offRampStatus: 'NOT_STARTED', taxExportStatus: 'NOT_ATTEMPTED' }, null);
+    const failedBefore = JSON.stringify(failed);
+    expect(resolveMoneySpine(failed).current).toBe(1);
+    expect(JSON.stringify(failed)).toBe(failedBefore);
+    expect(failed[3]).toEqual(stages[3]); // Same pending evidence, now upcoming instead of current.
+  });
+
+  it('distinguishes an unreadable certificate from a confirmed missing record after reconciliation', async () => {
+    vi.useFakeTimers();
+    vi.mocked(api.taxRecordForJob).mockRejectedValueOnce(new Error('Tax unavailable'));
+    await detail();
+    expect(host.querySelector('.finance-tax-callout')?.textContent).toContain('Chưa đọc được chứng từ');
+    expect(host.querySelector('.finance-tax-callout')?.textContent).not.toContain('Không có bản ghi');
+    expect(host.querySelector('[data-stage="tax"]')?.getAttribute('data-state')).toBe('error');
+    await act(async () => { await vi.advanceTimersByTimeAsync(15000); });
+    expect(host.querySelector('.finance-tax-callout')?.textContent).toContain('Chưa có chứng từ');
+    expect(host.querySelector('[data-stage="tax"]')?.getAttribute('data-state')).toBe('pending');
+    expect(host.textContent).not.toContain('Tax unavailable');
+  });
+
+  it('removes stale legacy evidence after failed reconciliation and retains a read-only retry', async () => {
+    await detail();
+    vi.mocked(api.paymentStatus).mockRejectedValue(new Error('Payment unavailable'));
+    await act(async () => button('Làm mới từ Marketplace')!.click());
+    expect(host.querySelector('.money-spine')).toBeNull();
+    expect(host.textContent).toContain('Payment unavailable');
+    expect(button('Tải lại')).toBeTruthy();
+  });
+
+  it.each([client, freelancer])('preserves participant authority for $userType', async user => {
+    await render(<FinanceHome user={{ ...user, id: 'outsider' }} />, '/finance?jobId=job-1');
+    expect(host.textContent).toContain('Không có quyền xem');
+    expect(host.querySelector('.finance-job-statement')).toBeNull();
+  });
+
+  it('keeps reduced-motion updates immediate without any animation-controlled state', async () => {
+    vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() })));
+    try {
+      await detail();
+      vi.mocked(api.paymentStatus).mockResolvedValue(payment);
+      vi.mocked(api.taxRecordForJob).mockResolvedValue(tax);
+      await act(async () => button('Làm mới từ Marketplace')!.click());
+      expect(host.querySelector('[aria-current="step"]')).toBeNull();
+      expect((host.querySelector('.money-stage-record') as HTMLElement).style.transform).not.toContain('-3');
+    } finally { vi.unstubAllGlobals(); }
+  });
+
+  it('keeps not-started legacy evidence pending even when status strings exist', () => {
+    const stages = legacyMoneyStages(job, { ...payment, checkoutOrderStatus: 'CREATED', onRampStatus: 'NOT_STARTED',
+      clientPaymentStatus: 'NOT_STARTED', onChainOffRampStatus: 'NOT_STARTED', offRampStatus: 'NOT_STARTED', taxExportStatus: 'NOT_ATTEMPTED' }, null);
+    expect(stages.every(stage => stage.tone === 'pending')).toBe(true);
+    expect(resolveMoneySpine(stages).current).toBe(0);
+  });
+
+  it('uses independent contract settlement statuses and keeps final refunds outside the release path', () => {
+    const stages = contractMoneyStages(contractJob, { settlement: { ...release, onChainStatus: 'FAILED', onChainError: 'Chain error' }, cancellation: null, error: '' }, null, null);
+    expect(stages[1].tone).toBe('done');
+    expect(stages[2].tone).toBe('error');
+    expect(stages[4].tone).toBe('active'); // Export succeeded; certificate is not yet ACCEPTED.
+    expect(resolveMoneySpine(stages).current).toBe(2);
+    const refund = contractMoneyStages({ ...contractJob, contract: { ...contractJob.contract!, status: 'CANCELLED' } },
+      { settlement: null, cancellation: { ...cancellation, cancellationStatus: 'CANCELLED', refundStatus: 'SUCCEEDED' }, error: '' }, null, null);
+    expect(refund[1].title).toBe('Hoàn tiền Client');
+    expect(refund.slice(2).every(stage => stage.applicable === false)).toBe(true);
+    expect(resolveMoneySpine(refund).current).toBe(-1);
   });
 });
 
