@@ -6,6 +6,7 @@ import { JobCategoryPlate, JobIdentityCluster } from './ui/JobRowIdentity';
 import { RoughBurst, RoughUnderline, useKineticMotion } from './ui/kinetic';
 import { contractMoneyStages, legacyMoneyStages, resolveMoneySpine, type MoneyStage } from './financeSpine';
 import { ApiError, api } from './api';
+import { taxPresentation } from './taxPresentation';
 import { EvidenceDisclosure, FactGrid, PageHeading, SectionHeading, StatePanel } from './components';
 import { Pagination } from './Jobs';
 import { checkoutLabel, clientPaymentLabel, decimal, exportLabel, maskedBank, offRampLabel,
@@ -579,6 +580,19 @@ export function FinanceHome({ user }: { user: User }) {
   return jobId ? <JobEvidence key={jobId} jobId={jobId} user={user} /> : <FinanceList user={user} />;
 }
 
+function TaxStatus({ record }: { record: TaxRecord }) {
+  const { tone, label } = taxPresentation(record);
+  const Icon = tone === 'accepted' ? CircleCheck : tone === 'error' || tone === 'attention' ? CircleAlert : tone === 'closed' ? FileText : Clock3;
+  return <span className={'tax-status tax-tone-' + tone}><Icon size={20} aria-hidden="true" />{label}</span>;
+}
+
+function TaxHeading({ detail = false }: { detail?: boolean }) {
+  return <PageHeading eyebrow="Tài chính / Chứng từ thuế"
+    title={<>{detail ? 'Hồ sơ' : 'Chứng từ'} <span className="tax-title-emphasis">{detail ? 'chứng từ.' : 'theo công việc.'}<RoughUnderline /></span></>}
+    description={detail ? 'Đối chiếu số liệu thuế, trạng thái chứng từ và bằng chứng từ Marketplace.'
+      : 'Theo dõi từng hồ sơ thuế. Kết quả xuất sang MISA và trạng thái cơ quan thuế được ghi nhận riêng.'} />;
+}
+
 export function TaxRecordsPage() {
   const [page, setPage] = useState(0);
   const [result, setResult] = useState<Page<TaxRecord> | null>(null);
@@ -595,29 +609,31 @@ export function TaxRecordsPage() {
     );
     return () => { active = false; };
   }, [page, attempt]);
-  return <>
-    <PageHeading eyebrow="Tài chính / Thuế" title="Chứng từ theo công việc."
-      description="Bản ghi thuế được lấy từ Marketplace. Trạng thái của chứng từ khác với trạng thái thanh toán." />
+  return <article className="tax-page tax-ledger-page">
+    <TaxHeading />
     <FinanceNav />
     {loading && <StatePanel kind="loading" title="Đang tải chứng từ" body="Marketplace đang trả danh sách chứng từ của tài khoản." />}
     {!loading && error && <StatePanel kind="error" title="Không thể tải chứng từ" body={error}
       action={{ label: 'Thử lại', onClick: () => setAttempt(value => value + 1) }} />}
     {!loading && !error && result && <>
       {result.data.length === 0 ? <StatePanel kind="empty" title="Chưa có chứng từ trên trang này"
-        body="Chứng từ chỉ xuất hiện khi quá trình chi trả và xuất thuế tạo được bản ghi." /> :
-        <div className="tax-list">{result.data.map(record => <article key={record.id} className="tax-list-row">
-          <div><span className="finance-category">Hồ sơ thuế / công việc</span>
+        body="Chưa có bản ghi chứng từ trên trang này. Điều đó không xác nhận công việc được miễn thuế." /> :
+        <section aria-label="Sổ chứng từ thuế"><header className="tax-ledger-heading"><h2>Sổ chứng từ thuế</h2><span>{result.data.length} hồ sơ trên trang này</span></header>
+        <div className="tax-ledger-columns" aria-hidden="true"><span>Công việc / chứng từ</span><span>Trạng thái chứng từ</span><span>Thu nhập chịu thuế</span><span>Hồ sơ</span></div>
+        <div className="tax-list">{result.data.map(record => <article key={record.id} className={'tax-list-row tax-tone-' + taxPresentation(record).tone}>
+          <div className="tax-ledger-identity"><span className="tax-document-mark" aria-hidden="true"><FileText size={34} /></span><div><span className="finance-category">Hồ sơ thuế / công việc</span>
             <h2><Link to={'/finance/tax-records/' + record.id}>{record.jobTitle || 'Công việc ' + record.jobId.slice(0, 8)}</Link></h2>
-            <span>Tạo {date(record.createdAt)}</span></div>
-          <div><span className="cell-label">Trạng thái MISA</span><strong>{record.statusLabel || record.status}</strong></div>
-          <div><span className="cell-label">Thu nhập chịu thuế</span><strong>{vnd(record.taxableIncomeVnd)}</strong></div>
-          <Link className="finance-row-link" to={'/finance/tax-records/' + record.id}>Xem chi tiết →</Link>
-        </article>)}</div>}
+            <span className="tax-ledger-date">Tạo {date(record.createdAt)}</span>
+            {record.certificateNumber && <span className="tax-certificate-number">Số chứng từ: {record.certificateNumber}</span>}</div></div>
+          <div className="tax-ledger-state"><TaxStatus record={record} /></div>
+          <div className="tax-ledger-amount"><span className="cell-label">Thu nhập chịu thuế</span><strong>{vnd(record.taxableIncomeVnd)}</strong></div>
+          <Link className="tax-record-link" to={'/finance/tax-records/' + record.id}>Xem chi tiết <ArrowUpRight size={20} aria-hidden="true" /></Link>
+        </article>)}</div></section>}
       <nav className="pagination" aria-label="Phân trang chứng từ"><span>{result.totalElements} chứng từ · Trang {result.totalPages ? page + 1 : 0}/{result.totalPages}</span>
         <div><button className="button button-secondary" disabled={page <= 0} onClick={() => setPage(page - 1)}>Trang trước</button>
           <button className="button button-secondary" disabled={page >= result.totalPages - 1} onClick={() => setPage(page + 1)}>Trang sau</button></div></nav>
     </>}
-  </>;
+  </article>;
 }
 
 export function TaxRecordDetail() {
@@ -638,6 +654,7 @@ export function TaxRecordDetail() {
     let active = true;
     setLoading(true);
     setError('');
+    setPayment(null);
     api.taxRecord(taxRecordId).then(async data => {
       if (!active) return;
       setRecord(data);
@@ -648,7 +665,7 @@ export function TaxRecordDetail() {
         if (active) { setPayment(null); setPaymentError(message(cause)); }
       }
       if (active) setLoading(false);
-    }, cause => { if (active) { setError(message(cause)); setLoading(false); } });
+    }, cause => { if (active) { setRecord(null); setError(message(cause)); setLoading(false); } });
     return () => { active = false; };
   }, [taxRecordId, attempt]);
 
@@ -699,19 +716,20 @@ export function TaxRecordDetail() {
   const payoutComplete = payment?.offRampStatus === 'COMPLETED';
   const canSync = payoutComplete && !!record.misaCertificateId && syncableTaxStatuses.has(record.status);
   const canRetry = payoutComplete && record.status === 'EXPORT_FAILED';
-  return <>
-    <PageHeading eyebrow="Tài chính / Chứng từ" title={record.jobTitle || 'Chứng từ theo công việc'}
-      description="Trạng thái và số liệu thuế do Marketplace trả về. Số thu nhập chịu thuế dùng tỷ giá USD/VND riêng."
-      aside={record.statusLabel || record.status} />
+  return <article className="tax-page tax-case-page">
+    <TaxHeading detail />
     <FinanceNav />
     <div className="finance-back"><Link to="/finance/tax-records">← Danh sách chứng từ</Link>
       <Link to={financePath(record.jobId)}>Bằng chứng thanh toán</Link></div>
-    <section className="tax-statement" aria-label="Tình trạng chứng từ">
-      <span className="finance-category">Trạng thái MISA</span>
-      <h2>{record.statusLabel || record.status}</h2>
+    <section className={'tax-statement tax-tone-' + taxPresentation(record).tone} aria-label="Tình trạng chứng từ">
+      <div className="tax-statement-identity"><span className="tax-case-document" aria-hidden="true"><FileText size={68} /></span><div><span className="finance-category">Hồ sơ thuế / công việc</span>
+      <h2>{record.jobTitle || 'Công việc ' + record.jobId.slice(0, 8)}</h2>
+      <TaxStatus record={record} /></div></div>
       {payment?.simulation === true && <p className="simulation-mark">Mô phỏng · luồng chi trả; chứng từ phản ánh dữ liệu hệ thống.</p>}
       <div className="tax-amounts"><div><span>Thu nhập chịu thuế</span><strong>{vnd(record.taxableIncomeVnd)}</strong></div>
         <div><span>Thuế đã khấu trừ</span><strong>{vnd(record.taxWithheldVnd)}</strong></div></div>
+    </section>
+    <div className="tax-case-layout"><section className="tax-fact-ledger" aria-label="Số liệu hồ sơ thuế"><h2>Số liệu và mốc chứng từ</h2><p>Thu nhập chịu thuế và thuế đã khấu trừ là hai giá trị riêng. Tỷ giá dưới đây dùng cho bản ghi thuế.</p>
       <dl className="tax-facts">
         <div><dt>Giá trị công việc</dt><dd>{record.amountUsd == null ? '—' : money(Number(record.amountUsd))}</dd></div>
         <div><dt>Tỷ giá USD/VND dùng cho thuế</dt><dd>{record.usdToVndRate == null ? '—' : decimal(record.usdToVndRate, 4)}
@@ -722,22 +740,24 @@ export function TaxRecordDetail() {
         <div><dt>Đồng bộ gần nhất</dt><dd>{stamp(record.lastSyncedAt)}</dd></div>
       </dl>
     </section>
-    {paymentError && <p className="finance-inline-error" role="alert">Chưa xác minh được trạng thái chi trả; thao tác đồng bộ/lập lại tạm khóa: {paymentError}</p>}
     <section className="tax-actions" aria-label="Tác vụ chứng từ">
-      <div><h2>Chứng từ và trạng thái</h2>
-        <p>Đồng bộ khi chứng từ có mã MISA và chi trả đã hoàn tất; lập lại chỉ khi xuất chứng từ thất bại.</p></div>
+      <div><h2><FileText size={26} aria-hidden="true" />Chứng từ và trạng thái</h2>
+        <p>Mã chứng từ không xác nhận cơ quan thuế đã chấp nhận. Trạng thái trên hồ sơ là căn cứ đối chiếu.</p></div>
+      {paymentError && <p className="finance-inline-error" role="alert">Chưa xác minh được trạng thái chi trả; thao tác đồng bộ/lập lại tạm khóa: {paymentError}</p>}
+      {loading && <p role="status">Đang đối chiếu trạng thái chi trả từ Marketplace.</p>}
       <div className="tax-action-buttons">
-        {canSync && <button className="button button-secondary" type="button" disabled={busy} onClick={() => void act('sync')}>Đồng bộ trạng thái</button>}
-        {canRetry && <button className="button button-secondary" type="button" disabled={busy} onClick={() => void act('retry')}>Lập lại chứng từ</button>}
+        {canSync && <button className="button button-secondary" type="button" disabled={busy || loading} onClick={() => void act('sync')}>Đồng bộ trạng thái</button>}
+        {canRetry && <button className="button button-secondary" type="button" disabled={busy || loading} onClick={() => void act('retry')}>Lập lại chứng từ</button>}
         {record.misaCertificateId && <>
           <button className="button" type="button" disabled={busy} onClick={() => void download('pdf')}>Tải PDF</button>
           <button className="button button-secondary" type="button" disabled={busy} onClick={() => void download('xml')}>Tải XML</button>
         </>}
         {!canSync && !canRetry && !record.misaCertificateId && <span>Chưa có tệp chứng từ để tải.</span>}
       </div>
+      <p className="tax-action-context">Đồng bộ khi chứng từ có mã MISA và chi trả đã hoàn tất; lập lại chỉ khi xuất chứng từ thất bại.</p>
       {notice && <p className="lifecycle-success" role="status">{notice}</p>}
       {actionError && <p className="finance-inline-error" role="alert">{actionError}</p>}
-    </section>
+    </section></div>
     <details className="technical-evidence"><summary>Chi tiết kỹ thuật chứng từ</summary>
       <dl className="tax-technical">
         {([['Tax record ID', record.id], ['Job ID', record.jobId], ['MISA certificate ID', record.misaCertificateId],
@@ -748,6 +768,6 @@ export function TaxRecordDetail() {
           .map(([label, value]) => <div key={label}><dt>{label}</dt><dd><code>{value}</code></dd></div>)}
       </dl>
     </details>
-    <button className="text-button finance-refresh" type="button" onClick={() => setAttempt(value => value + 1)}>Làm mới từ Marketplace</button>
-  </>;
+    <button className="text-button finance-refresh" type="button" disabled={busy || loading} onClick={() => setAttempt(value => value + 1)}><RefreshCw size={18} aria-hidden="true" />Làm mới từ Marketplace</button>
+  </article>;
 }

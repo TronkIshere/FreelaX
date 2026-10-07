@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { api, ApiError } from './api';
 import { FinanceHome, TaxRecordDetail, TaxRecordsPage } from './Finance';
 import { contractMoneyStages, legacyMoneyStages, resolveMoneySpine } from './financeSpine';
+import { taxPresentation } from './taxPresentation';
 import type { ContractCancellationRecord, ContractSettlement, Job, JobPaymentStatus, TaxRecord, User } from './types';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -45,6 +46,123 @@ async function render(element: React.ReactNode, path = '/finance') {
 function button(label: string) {
   return [...host.querySelectorAll('button')].find(item => item.textContent?.trim() === label);
 }
+
+describe('P06.5C tax evidence contract', () => {
+  async function detail(record: TaxRecord = tax, support = payment) {
+    vi.spyOn(api, 'taxRecord').mockResolvedValue(record);
+    vi.spyOn(api, 'paymentStatus').mockResolvedValue(support);
+    await render(<Routes><Route path="/finance/tax-records/:taxRecordId" element={<TaxRecordDetail />} /></Routes>, '/finance/tax-records/tax-1');
+  }
+
+  it.each([
+    ['ACCEPTED', 'accepted'], ['DRAFT', 'pending'], ['SIGNED', 'pending'], ['SUBMITTED', 'pending'],
+    ['EXPORT_FAILED', 'error'], ['REJECTED', 'error'], ['CORRECTION_REQUIRED', 'attention'],
+    ['CANCELLED', 'closed'], ['REPLACED', 'closed'], ['FUTURE_STATUS', 'pending'],
+  ])('uses only TaxRecord %s for the %s presentation', (status, tone) => {
+    const record = { ...tax, status, statusLabel: 'Exact server label' } as TaxRecord;
+    expect(taxPresentation(record)).toEqual({ tone, label: 'Exact server label' });
+    expect(taxPresentation({ ...record, statusLabel: '' }).label).toBe(status);
+  });
+
+  it('does not promote a draft with certificate ID and successful payment export to ACCEPTED', async () => {
+    await detail({ ...tax, status: 'DRAFT', statusLabel: 'Đã lập chứng từ, chưa phát hành' });
+    expect(host.querySelector('.tax-statement')?.classList.contains('tax-tone-pending')).toBe(true);
+    expect(host.querySelector('.tax-statement')?.textContent).not.toContain('Cơ quan thuế đã chấp nhận');
+    expect(button('Đồng bộ trạng thái')).toBeTruthy();
+    expect(button('Tải PDF')).toBeTruthy();
+  });
+
+  it.each(['DRAFT', 'SIGNED', 'SUBMITTING', 'SUBMITTED', 'CORRECTION_REQUIRED'])('preserves the completed-payout sync gate for %s', async status => {
+    await detail({ ...tax, status, statusLabel: status } as TaxRecord);
+    expect(button('Đồng bộ trạng thái')).toBeTruthy();
+    expect(button('Lập lại chứng từ')).toBeUndefined();
+  });
+
+  it.each(['DRAFT', 'EXPORT_FAILED'])('hides %s mutations without completed payout', async status => {
+    await detail({ ...tax, status, statusLabel: status } as TaxRecord, { ...payment, offRampStatus: 'COMPLETION_SUBMITTED' });
+    expect(button('Đồng bộ trạng thái')).toBeUndefined();
+    expect(button('Lập lại chứng từ')).toBeUndefined();
+  });
+
+  it('requires a certificate ID for sync and both downloads', async () => {
+    await detail({ ...tax, status: 'DRAFT', statusLabel: 'Draft', misaCertificateId: null });
+    expect(button('Đồng bộ trạng thái')).toBeUndefined();
+    expect(button('Tải PDF')).toBeUndefined();
+    expect(button('Tải XML')).toBeUndefined();
+    expect(host.textContent).toContain('Chưa có tệp chứng từ');
+  });
+
+  it('keeps a loaded TaxRecord and certificate downloads when payment support fails', async () => {
+    vi.spyOn(api, 'taxRecord').mockResolvedValue({ ...tax, status: 'DRAFT', statusLabel: 'Real draft' });
+    vi.spyOn(api, 'paymentStatus').mockRejectedValue(new ApiError('Support read failed', 503));
+    await render(<Routes><Route path="/finance/tax-records/:taxRecordId" element={<TaxRecordDetail />} /></Routes>, '/finance/tax-records/tax-1');
+    expect(host.querySelector('.tax-statement')?.textContent).toContain('Real draft');
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain('Support read failed');
+    expect(button('Đồng bộ trạng thái')).toBeUndefined();
+    expect(button('Lập lại chứng từ')).toBeUndefined();
+    expect(button('Tải XML')).toBeTruthy();
+  });
+
+  it('renders distinct server amounts/rate without inventing a percentage or replacing null with zero', async () => {
+    await detail({ ...tax, taxableIncomeVnd: null, taxWithheldVnd: 123456, amountUsd: null, usdToVndRate: null });
+    const amounts = host.querySelector('.tax-amounts')!;
+    expect(amounts.querySelectorAll('strong')[0].textContent).toBe('—');
+    expect(amounts.querySelectorAll('strong')[1].textContent).toBe('123.456 VND');
+    expect(host.querySelector('.tax-facts')?.textContent).not.toContain('$0');
+    expect(host.querySelector('.tax-facts')?.textContent).not.toContain('%');
+    expect(host.textContent).toContain('Mô phỏng');
+  });
+
+  it('keeps only allowlisted technical evidence in a closed disclosure', async () => {
+    await detail({ ...tax, lookupCode: 'lookup-real', transactionReference: 'transaction-real', privateToken: 'do-not-render', payoutBankAccountNumber: '987654321012' } as TaxRecord);
+    const disclosure = host.querySelector('details.technical-evidence')!;
+    expect(disclosure.hasAttribute('open')).toBe(false);
+    expect(disclosure.textContent).toContain('lookup-real');
+    expect(disclosure.textContent).toContain('transaction-real');
+    expect(host.textContent).not.toContain('do-not-render');
+    expect(host.textContent).not.toContain('987654321012');
+  });
+
+  it('reconciles a sync from the returned record and locks duplicate actions', async () => {
+    let finish!: (value: TaxRecord) => void;
+    const sync = vi.spyOn(api, 'syncTaxRecord').mockImplementation(() => new Promise(resolve => { finish = resolve; }));
+    await detail({ ...tax, status: 'SUBMITTED', statusLabel: 'Đã gửi cơ quan thuế' });
+    await act(async () => { button('Đồng bộ trạng thái')!.click(); button('Đồng bộ trạng thái')!.click(); });
+    expect(sync).toHaveBeenCalledExactlyOnceWith(tax.id);
+    expect(button('Đồng bộ trạng thái')!.disabled).toBe(true);
+    expect(host.querySelector('.tax-statement')?.textContent).toContain('Đã gửi cơ quan thuế');
+    await act(async () => { finish({ ...tax, status: 'REJECTED', statusLabel: 'Cơ quan thuế từ chối' }); });
+    expect(host.querySelector('.tax-statement')?.textContent).toContain('Cơ quan thuế từ chối');
+    expect(host.querySelector('.tax-statement')?.classList.contains('tax-tone-error')).toBe(true);
+  });
+
+  it('does not show stale TaxRecord evidence after the primary refresh read fails', async () => {
+    await detail();
+    vi.mocked(api.taxRecord).mockRejectedValue(new ApiError('Primary read failed', 503));
+    await act(async () => { button('Làm mới từ Marketplace')!.click(); });
+    expect(host.querySelector('.tax-statement')).toBeNull();
+    expect(host.textContent).toContain('Primary read failed');
+    expect(button('Thử lại')).toBeTruthy();
+  });
+
+  it('renders the real ledger without job enrichment calls and keeps folder 02 active', async () => {
+    const jobRead = vi.spyOn(api, 'job');
+    vi.spyOn(api, 'taxRecords').mockResolvedValue({ currentPage: 0, pageSize: 10, totalPages: 1, totalElements: 1, data: [{ ...tax, certificateNumber: 'CT-real' }] });
+    await render(<TaxRecordsPage />, '/finance/tax-records');
+    expect(jobRead).not.toHaveBeenCalled();
+    expect(host.querySelectorAll('.tax-list-row')).toHaveLength(1);
+    expect(host.textContent).toContain('CT-real');
+    expect(host.textContent).toContain('1 hồ sơ trên trang này');
+    expect(host.querySelector('.finance-nav a[aria-current="page"]')?.getAttribute('href')).toBe('/finance/tax-records');
+  });
+
+  it('does not interpret an empty ledger as tax exemption', async () => {
+    vi.spyOn(api, 'taxRecords').mockResolvedValue({ currentPage: 0, pageSize: 10, totalPages: 0, totalElements: 0, data: [] });
+    await render(<TaxRecordsPage />, '/finance/tax-records');
+    expect(host.textContent).toContain('không xác nhận công việc được miễn thuế');
+    expect(host.querySelectorAll('.tax-list-row')).toHaveLength(0);
+  });
+});
 
 describe('P05.4 financial screens', () => {
   it('shows only completed participant jobs as Freelancer income with real summaries', async () => {
