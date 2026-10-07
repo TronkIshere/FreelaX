@@ -161,7 +161,7 @@ Source: `96cafbe985c68c4fdcc0e53a52141375335ca387` — `feat(frontend): finalize
 
 Accepted implementation validation (tests/build not rerun during freeze): Finance focused tests **30/30 PASS** after folder tabs; earlier Finance visual gate **36/36 PASS**; type-check PASS; accepted production build PASS; `git diff --check` PASS; Client 1440 PASS, Freelancer 1440 PASS, Client 1024 PASS; console errors **0**; keyboard focus PASS; reduced motion preserved.
 
-Current: P06.5B Client 1440 and Freelancer 1440 — PASS / FROZEN at `/finance?jobId=...`. Client source `9c76ffb6c7a03db7a876ed8d871043b14e13d6c2`; Freelancer source `837bcf02f7321a72ce597693660c4f63bc224be3`. Client/Freelancer 1024 NOT VALIDATED / NOT FROZEN. Next: P06.5B CLIENT 1024 RESPONSIVE VALIDATION — NOT_STARTED. P06.5C/Tax/Activity remain NOT_STARTED. Stop after this freeze.
+Current: P06.5B FINANCE DETAIL — FULLY FROZEN at `/finance?jobId=...`: Client 1440, Freelancer 1440, Client 1024 and Freelancer 1024. Client source `9c76ffb6c7a03db7a876ed8d871043b14e13d6c2`; latest shared source `837bcf02f7321a72ce597693660c4f63bc224be3`. Both 1024 targets passed with zero source changes. Next: P06.5C — TAX / CHỨNG TỪ THUẾ — NOT_STARTED. Tax/Activity implementation has not begun. Stop after this freeze.
 
 ## QA discipline retained
 
@@ -181,7 +181,7 @@ Source `9c76ffb6c7a03db7a876ed8d871043b14e13d6c2`; `/finance?jobId=...`; Client 
 
 CURRENT = attention order (first applicable error, otherwise first unfinished), not backend enum; CURRENT != PROCESSING. Real raw/source state + stage tone determine wording; current alone never claims processing/completion/error/finality. Completed Mint/check/solid path; current strongest; upcoming pending Cream/dashed; real error Vermilion/`Cần kiểm tra`. `Chờ bằng chứng` is supported pending presentation copy. Missing record != read failure; earlier error does not propagate to later upcoming stages. No optimistic stage advancement; server refresh/reconciliation owns state. Simulation/localnet/devnet truth and collapsed secondary technical evidence remain visible/accurate. P06.5A and earlier frozen surfaces unchanged.
 
-Final gate: 49/49 focused Finance tests PASS, production build/diff check PASS, clean real SEO Client 1440 screenshot, console errors 0, no overflow, keyboard focus preserved. Backend/API unchanged; no runtime data mutation. At the Client freeze, Freelancer 1440 was not yet frozen; the later Freelancer freeze below supersedes that checkpoint. Client/Freelancer 1024 remain NOT VALIDATED / NOT FROZEN. Do not begin Tax/Activity in this freeze.
+Final gate: 49/49 focused Finance tests PASS, production build/diff check PASS, clean real SEO Client 1440 screenshot, console errors 0, no overflow, keyboard focus preserved. Backend/API unchanged; no runtime data mutation. At the Client freeze, Freelancer 1440 was not yet frozen; the later Freelancer freeze below supersedes that checkpoint. Client/Freelancer 1024 are FROZEN by the final responsive closure below. Do not begin Tax/Activity in this freeze.
 
 ## P06.5B FREELANCER FINANCE DETAIL 1440 — FROZEN (2026-10-07)
 
@@ -193,4 +193,25 @@ Approved runtime proof only, not product defaults: SEO job `af2a0ed3-d2df-4029-8
 
 Final freeze gate: 51/51 focused Finance tests PASS; production frontend build run once PASS (known >500 kB warning non-blocking); diff check PASS. Approved real Freelancer 1440 screenshot: console errors 0, no overflow, focus preserved; local screenshot not committed. Backend/API/database/proxy/ports unchanged; no runtime data mutation. Client 1440 and P06.5A remain FROZEN and unchanged.
 
-Client 1024 and Freelancer 1024 have NOT been validated/frozen. P06.5C has NOT_STARTED. Next only: **P06.5B CLIENT 1024 RESPONSIVE VALIDATION — NOT_STARTED**. This freeze ends here; do not begin it in this pass.
+At this 1440 checkpoint, both 1024 targets were still pending. The final responsive closure below supersedes that checkpoint: all four P06.5B targets are now FROZEN. P06.5C remains NOT_STARTED.
+
+## P06.5B FINANCE DETAIL — FULLY FROZEN (2026-10-07)
+
+| Target | Final status | Validation authority |
+| --- | --- | --- |
+| Client 1440 | FROZEN | Existing human-approved baseline preserved; not reopened |
+| Freelancer 1440 | FROZEN | Existing human-approved baseline preserved; not reopened |
+| Client 1024 | FROZEN | Prior HUMAN VISUAL PASS preserved without redo; zero source changes |
+| Freelancer 1024 | FROZEN | Real Freelancer Seed session, 1024px / 100% zoom; runtime PASS; zero source changes |
+
+Shared source remains `837bcf02f7321a72ce597693660c4f63bc224be3`; Client source authority remains `9c76ffb6c7a03db7a876ed8d871043b14e13d6c2`. No responsive source commit: **NONE — zero source changes**. Final validation started from documentation HEAD `a1308676d97d288ea85d3d9dbb1775afb7bc53a2`.
+
+Both roles share the frozen five-stage Money Evidence Spine, connectors, completed/current/upcoming/error grammar and case summary. Role-specific nav, description and back links remain correct. Freelancer proof: active `Thu nhập`, breadcrumb `FREELANCER / THU NHẬP`, description `Theo dõi release, chi trả và chứng từ của công việc này.`, back `Lịch sử thu nhập`. `Thanh toán Client` remains the valid payer-stage name.
+
+Real Freelancer 1024 record: SEO job `af2a0ed3-d2df-4029-8649-d01c8cbdc67a`; stages 01–04 completed; existing TaxRecord EXPORT_FAILED makes stage 05 ERROR + CURRENT / `Cần kiểm tra`. Simulation=true / `Mô phỏng`, localnet remain explicit. No financial data was mutated or fabricated. No horizontal overflow, clipping, nav/account collision, stage/connector misalignment or footer overlap; long evidence wraps, summary remains readable, disclosure and visible keyboard focus work; console errors **0**.
+
+Financial semantics remain LOCKED: **CURRENT != PROCESSING**. `Chờ bằng chứng` is supported frontend presentation copy, not a backend status. Missing record != read failure; an earlier error does not propagate into later upcoming stages. No optimistic, animation or local-time stage advancement; server/API refresh and reconciliation remain authoritative. Simulation/localnet/devnet labels follow returned source truth. Technical evidence stays secondary, allowlisted and collapsed by default; bank masking/privacy remain preserved, with no Client-private fields, credentials, fake certificate or inferred tax-authority acceptance.
+
+Final gate: **51/51 focused Finance tests PASS**, production frontend build **PASS** (run once; known >500 kB warning non-blocking), `git diff --check` **PASS**. P06.5A, both 1440 baselines, backend/API/database/proxy/ports remain unchanged. Mobile optimization is deferred. Current MVP delivery target is desktop/laptop, validated at 1440px and 1024px; no mobile implementation or validation was added.
+
+**NEXT: P06.5C — TAX / CHỨNG TỪ THUẾ — NOT_STARTED.** P06.5C/Tax/Activity were not started during this freeze. Stop here; do not reopen P06.5B for general polish.
