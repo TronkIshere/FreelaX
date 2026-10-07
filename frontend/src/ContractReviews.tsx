@@ -48,8 +48,10 @@ export function ReviewReport({ review, user, onRefresh }: { review: Review; user
   </>}</section>;
 }
 const emptyReview: ReviewInput = { overall: 0, dimensions: { communication: 0, requirementsOrQuality: 0, timeliness: 0 }, comment: '' };
-export function ContractReviews({ job, user, settlement, blocked = false }: { job: Job; user: User; settlement: ContractSettlement | null; blocked?: boolean }) {
+export function ContractReviews({ job, user, settlement, blocked = false, onOpportunityChange }: { job: Job; user: User; settlement: ContractSettlement | null; blocked?: boolean; onOpportunityChange?: (available: boolean) => void }) {
   const id = job.contract!.id;
+  const readScope = id + ':' + user.id;
+  const [loadedScope, setLoadedScope] = useState<string | null>(null);
   const [rows, setRows] = useState<Review[] | null>(null); const [draft, setDraft] = useState<ReviewInput>(emptyReview);
   const [error, setError] = useState<unknown>(null); const [busy, setBusy] = useState(false); const [notice, setNotice] = useState('');
   const [uncertain, setUncertain] = useState(false); const [checked, setChecked] = useState(false); const [ineligible, setIneligible] = useState(false);
@@ -58,12 +60,19 @@ export function ContractReviews({ job, user, settlement, blocked = false }: { jo
   const lock = useRef(false); const generation = useRef(0);
   async function load() {
     const current = ++generation.current;
-    try { const reviews = await api.contractReviews(id); if (current === generation.current) { setRows(reviews); setChecked(true); setReady(true); return reviews; } }
+    setReady(false);
+    try { const reviews = await api.contractReviews(id); if (current === generation.current) { setRows(reviews); setLoadedScope(readScope); setChecked(true); setReady(true); return reviews; } }
     catch (e) { if (current === generation.current) { setError(e); setReady(false); setChecked(false); if (e instanceof ApiError && [403, 404].includes(e.status)) setRows(null); } } return null;
   }
   useEffect(() => { setRows(null); setIneligible(false); void load(); return () => { generation.current++; }; }, [id, user.id]);
   const own = rows?.find(r => r.reviewerId === user.id);
-  const eligible = ready && reviewOpportunity(job, user, settlement, rows || [], blocked) && !ineligible;
+  const eligible = ready && loadedScope === readScope && reviewOpportunity(job, user, settlement, rows || [], blocked) && !ineligible;
+  // One fetch owner and one eligibility rule drive both the existing composer and its entry point.
+  const opportunity = eligible && !own?.submitted;
+  useEffect(() => {
+    onOpportunityChange?.(opportunity);
+    return () => onOpportunityChange?.(false);
+  }, [opportunity, onOpportunityChange]);
   async function submit() {
     if (lock.current || !eligible || uncertain) return;
     const payload = intent || draft;
@@ -84,7 +93,7 @@ export function ContractReviews({ job, user, settlement, blocked = false }: { jo
   return <section id="contract-reviews" className="contract-reviews"><SectionHeading title="Đánh giá hợp đồng" description="Đánh giá hai chiều; không thể sửa hoặc xóa sau khi gửi." />
     <DisputeError error={error} />{notice && <p role="status">{notice}</p>}
     {!rows ? <p role="status">Đang đọc đánh giá…</p> : !rows.length ? <p>Chưa có lời mời đánh giá từ máy chủ.</p> : rows.map(r => <div key={r.id}><ReviewRecord review={r} user={user} mode="participant" /><ReviewReport review={r} user={user} onRefresh={async () => { await load(); }} /></div>)}
-    {eligible && !own?.submitted && <form className="review-composer" onSubmit={e => { e.preventDefault(); void submit(); }}><SectionHeading title="Đánh giá đối tác" level={3} />
+    {opportunity && <form className="review-composer" onSubmit={e => { e.preventDefault(); void submit(); }}><SectionHeading title="Đánh giá đối tác" level={3} />
       {rating('Tổng thể', draft.overall, v => setDraft(d => ({ ...d, overall: v })))}
       {rating('Giao tiếp', draft.dimensions.communication, v => setDraft(d => ({ ...d, dimensions: { ...d.dimensions, communication: v } })))}
       {rating(user.userType === 'CLIENT' ? 'Chất lượng bàn giao' : 'Độ rõ ràng của yêu cầu', draft.dimensions.requirementsOrQuality, v => setDraft(d => ({ ...d, dimensions: { ...d.dimensions, requirementsOrQuality: v } })))}
