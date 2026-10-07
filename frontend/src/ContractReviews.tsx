@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, ApiError, hasAuthority } from './api';
 import { ActionGroup, EvidenceDisclosure, FactGrid, SectionHeading } from './components';
@@ -57,15 +57,36 @@ export function ContractReviews({ job, user, settlement, blocked = false, onOppo
   const [uncertain, setUncertain] = useState(false); const [checked, setChecked] = useState(false); const [ineligible, setIneligible] = useState(false);
   const [intent, setIntent] = useState<ReviewInput | null>(null);
   const [ready, setReady] = useState(false);
+  const [pollTick, setPollTick] = useState(0);
   const lock = useRef(false); const generation = useRef(0);
-  async function load() {
+  const reading = useRef(false);
+  const load = useCallback(async () => {
     const current = ++generation.current;
+    reading.current = true;
     setReady(false);
     try { const reviews = await api.contractReviews(id); if (current === generation.current) { setRows(reviews); setLoadedScope(readScope); setChecked(true); setReady(true); return reviews; } }
-    catch (e) { if (current === generation.current) { setError(e); setReady(false); setChecked(false); if (e instanceof ApiError && [403, 404].includes(e.status)) setRows(null); } } return null;
-  }
+    catch (e) { if (current === generation.current) { setError(e); setReady(false); setChecked(false); if (e instanceof ApiError && [403, 404].includes(e.status)) setRows(null); } }
+    finally { if (current === generation.current) reading.current = false; }
+    return null;
+  }, [id, readScope]);
   useEffect(() => { setRows(null); setIneligible(false); void load(); return () => { generation.current++; }; }, [id, user.id]);
   const own = rows?.find(r => r.reviewerId === user.id);
+  // Invitations are created after completion by the server scheduler. Re-read
+  // while awaiting an invitation/publication; time and focus never grant eligibility.
+  useEffect(() => {
+    let active = true;
+    const reconcile = async () => {
+      if (document.visibilityState === 'hidden' || lock.current || reading.current) return;
+      await load();
+    };
+    const onFocus = () => { void reconcile(); };
+    window.addEventListener('focus', onFocus);
+    const waiting = !own || (own.submitted && !own.publishedAt);
+    const timer = waiting ? window.setTimeout(async () => {
+      await reconcile(); if (active) setPollTick(value => value + 1);
+    }, 30000) : undefined;
+    return () => { active = false; window.removeEventListener('focus', onFocus); window.clearTimeout(timer); };
+  }, [own, load, pollTick]);
   const eligible = ready && loadedScope === readScope && reviewOpportunity(job, user, settlement, rows || [], blocked) && !ineligible;
   // One fetch owner and one eligibility rule drive both the existing composer and its entry point.
   const opportunity = eligible && !own?.submitted;

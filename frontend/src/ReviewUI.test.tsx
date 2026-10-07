@@ -26,7 +26,7 @@ beforeEach(() => {
   vi.spyOn(api, 'reportedReviews').mockResolvedValue([published]); vi.spyOn(api, 'profile').mockResolvedValue(profile); vi.spyOn(api, 'publicReviews').mockResolvedValue([published]);
   vi.spyOn(api, 'portfolio').mockResolvedValue([]); vi.spyOn(api, 'job').mockResolvedValue(job); vi.spyOn(api, 'settlement').mockResolvedValue(settlement); vi.spyOn(api, 'cancellation').mockResolvedValue(null);
 });
-afterEach(() => { act(() => root.unmount()); host.remove(); vi.restoreAllMocks(); });
+afterEach(() => { act(() => root.unmount()); host.remove(); vi.restoreAllMocks(); vi.useRealTimers(); });
 async function mount(node: ReactNode, path = '/') { await act(async () => root.render(<MemoryRouter initialEntries={[path]} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>{node}</MemoryRouter>)); }
 const button = (text: string) => [...host.querySelectorAll('button')].find(b => b.textContent === text)!;
 async function click(text: string) { await act(async () => button(text).click()); }
@@ -96,6 +96,27 @@ describe('Step 9 reviews and moderation', () => {
 });
 
 describe('Completed review opportunity notification contract', () => {
+  it('reconciles a scheduler invitation arriving after the completed page mounted, then stops invitation polling', async () => {
+    vi.useFakeTimers(); rows = []; const notify = vi.fn();
+    await mount(<ContractReviews job={job} user={client} settlement={settlement} onOpportunityChange={notify} />);
+    expect(host.querySelector('.review-composer')).toBeNull(); expect(notify).toHaveBeenLastCalledWith(false);
+    await act(async () => vi.advanceTimersByTimeAsync(30000));
+    expect(host.querySelector('.review-composer')).toBeNull();
+    rows = [invite]; await act(async () => vi.advanceTimersByTimeAsync(30000));
+    expect(notify).toHaveBeenLastCalledWith(true); expect(host.querySelector('.review-composer')).not.toBeNull();
+    const reads = vi.mocked(api.contractReviews).mock.calls.length;
+    await act(async () => vi.advanceTimersByTimeAsync(60000)); expect(api.contractReviews).toHaveBeenCalledTimes(reads);
+    await act(async () => root.unmount()); root = createRoot(host);
+    await act(async () => window.dispatchEvent(new Event('focus'))); expect(api.contractReviews).toHaveBeenCalledTimes(reads);
+  });
+  it('focus reconciles newly available invitations without remounting or weakening settlement eligibility', async () => {
+    rows = []; const notify = vi.fn();
+    await mount(<ContractReviews job={job} user={client} settlement={{ ...settlement, moneyStatus: 'PENDING' }} onOpportunityChange={notify} />);
+    rows = [invite]; await act(async () => window.dispatchEvent(new Event('focus')));
+    expect(api.contractReviews).toHaveBeenCalledTimes(2); expect(notify).toHaveBeenLastCalledWith(false);
+    await mount(<ContractReviews job={job} user={client} settlement={settlement} onOpportunityChange={notify} />);
+    expect(notify).toHaveBeenLastCalledWith(true);
+  });
   it('reports only proven opportunity, resets on read failure and does not fetch twice', async () => {
     const notify = vi.fn(); await mount(<ContractReviews job={job} user={client} settlement={settlement} onOpportunityChange={notify} />);
     expect(notify).toHaveBeenLastCalledWith(true); expect(api.contractReviews).toHaveBeenCalledOnce();
