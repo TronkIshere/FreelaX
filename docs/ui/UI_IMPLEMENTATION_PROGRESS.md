@@ -3,7 +3,7 @@
 ## VISUAL POLISH STREAM — 2026-10-07
 
 Current branch: `feat/ui-visual-polish-20261006`.
-Frozen source implementation baseline: `96cafbe985c68c4fdcc0e53a52141375335ca387` (P06.5A Finance list + folder tabs; earlier surfaces remain frozen).
+Frozen source implementation baseline: `9c76ffb6c7a03db7a876ed8d871043b14e13d6c2` (P06.5B Client Finance Detail, Client 1440 only; earlier surfaces remain frozen).
 Documentation commits may advance HEAD without changing this source baseline.
 
 | Stage | Status | Accepted source/evidence |
@@ -20,12 +20,12 @@ Documentation commits may advance HEAD without changing this source baseline.
 | Client Work C2 — Job Authoring | PASS / FROZEN | `846142d`; `/work/new`, `/work/:jobId/edit`; 50/50 JobEditor tests, build/diff PASS, accepted desktop QA |
 | Client Work C3 — Applicants | PASS / FROZEN | `45c54c5`; `/work/:jobId/applications`; 66/66 focused tests, build/diff and corrected desktop/confirmation QA PASS |
 | P06.5A Finance list | PASS / FROZEN | `96cafbe`; 30/30 final Finance tests, type-check/build/diff PASS, accepted Client/Freelancer desktop QA |
-| P06.5B Finance detail / Money Evidence Spine | NOT_STARTED / NEXT | Exact detail contract/evidence hierarchy → visual concept/screenshots → human approval before implementation |
+| P06.5B Client Finance detail / Money Evidence Spine | PASS / FROZEN, Client 1440 only | `9c76ffb`; 49/49 focused tests, build/diff PASS; real Client 1440 clean screenshot, console 0/focus/overflow PASS; Freelancer 1440/1024 NOT FROZEN |
 | Remaining Tax / Activity visual polish | NOT_STARTED | Existing shared Finance folder tabs are frozen |
 
 Explore live category/skill/combined/exclusion/Clear PASS is newer scoped runtime evidence. Earlier 115/115 focused frontend gate also passed. Local “Landing page redesign” category/skills edit is runtime evidence, not seed/source data. The approved narrow backend exception `302ae06` is complete; no unrelated backend expansion is authorized.
 
-Client/Freelancer Overview remains FROZEN. Client Work C1/C2/C3 are PASS / FROZEN. Freelancer Explore, Applications and My Work are RE-FROZEN after the approved narrow cross-surface identity override; no general polish reopening. Applications retains only real PENDING, ACCEPTED, REJECTED and CANCELLED statuses and truthful `totalElements` totals; no fake timeline/status/counts. P06.5A Finance list is PASS / FROZEN. Next: P06.5B — FINANCE DETAIL / MONEY EVIDENCE SPINE (`/finance?jobId=...`), NOT_STARTED. Inspect the exact detail contract → define evidence hierarchy → create visual concept → generate target screenshots → obtain human visual approval → only then write the implementation prompt. Do not implement or invent P06.5B during this freeze.
+Client/Freelancer Overview remains FROZEN. Client Work C1/C2/C3 are PASS / FROZEN. Freelancer Explore, Applications and My Work are RE-FROZEN after the approved narrow cross-surface identity override; no general polish reopening. Applications retains only real PENDING, ACCEPTED, REJECTED and CANCELLED statuses and truthful `totalElements` totals; no fake timeline/status/counts. P06.5A Finance list is PASS / FROZEN. Current: P06.5B CLIENT FINANCE DETAIL — PASS / FROZEN at `/finance?jobId=...`, Client 1440 only. Source `9c76ffb6c7a03db7a876ed8d871043b14e13d6c2`. Freelancer 1440 and 1024 remain future validation work, NOT FROZEN. Remaining Tax / Activity visual polish stays NOT_STARTED. Stop after this freeze; do not begin another surface.
 
 C3 accepted concept: CANDIDATE DECISION DESK / EDITORIAL CANDIDATE DOSSIER. Final corrected state-aware colored Job banner replaces rejected plain Cream + lines: OPEN Acid; AWAITING_PAYMENT/review Acid + Ink; IN_PROGRESS Cobalt; revision Vermilion; COMPLETED Mint + Strong Green; CANCELLED Ink/Cream. Shared semantic thumbnail/plate and real Job facts; equal Cream dossiers with hard Ink border/zero-blur shadow, enlarged deterministic identity tiles, separate evidence/status/action zones. Application rails: PENDING Acid, ACCEPTED Strong Green, REJECTED Vermilion, CANCELLED Ink; 6px/5px and visible labels.
 
@@ -241,7 +241,7 @@ Completed:
 
 ## P06.5 — Finance + Tax + Activity
 
-Status: `PARTIAL` — P06.5A Finance list PASS / FROZEN; P06.5B and remaining Tax / Activity polish NOT_STARTED. The target notes below do not authorize implementation without human concept approval.
+Status: `PARTIAL` — P06.5A Finance list and P06.5B Client 1440 PASS / FROZEN; P06.5B Freelancer 1440/1024 not frozen; remaining Tax / Activity polish NOT_STARTED. The target notes below do not authorize implementation without human concept approval.
 
 ## P06.5A Finance list — PASS / APPROVED / FROZEN (2026-10-07)
 
@@ -260,7 +260,7 @@ Source: `96cafbe985c68c4fdcc0e53a52141375335ca387` — `feat(frontend): finalize
 
 Accepted implementation validation (tests/build not rerun during freeze): Finance focused tests **30/30 PASS** after folder tabs; earlier Finance visual gate **36/36 PASS**; type-check PASS; accepted production build PASS; `git diff --check` PASS; Client 1440 PASS, Freelancer 1440 PASS, Client 1024 PASS; console errors **0**; keyboard focus PASS; reduced motion preserved.
 
-Next: P06.5B — FINANCE DETAIL / MONEY EVIDENCE SPINE (`/finance?jobId=...`), NOT_STARTED. Inspect the exact detail contract → define evidence hierarchy → create visual concept → generate target screenshots → obtain human visual approval → only then write the implementation prompt. Do not implement or invent P06.5B during this freeze.
+Current: P06.5B CLIENT FINANCE DETAIL — PASS / FROZEN at `/finance?jobId=...`, Client 1440 only. Source `9c76ffb6c7a03db7a876ed8d871043b14e13d6c2`. Freelancer 1440 and 1024 remain future validation work, NOT FROZEN. Remaining Tax / Activity visual polish stays NOT_STARTED. Stop after this freeze; do not begin another surface.
 
 
 Expected files:
@@ -598,3 +598,11 @@ Validation:
 - `git diff --check`: PASS. No backend tests or full backend E2E rerun. No proven backend contract mismatch. Branch/HEAD unchanged; all Workpack B changes uncommitted and unstaged. No commit/push/merge.
 
 Remaining: run the real 1440px/1024px authenticated Step 8/9 and preserved Step 6/Steps 1–5 smoke once the existing frontend/Marketplace runtime is available. No anonymous profile access, uploads, profile verification actions, review edit/delete, moderation undo or publication deadline API exists. Review GET has no explicit eligibility flag; UI conservatively relies on invitations plus existing financial truth and backend POST. Overall verdict: STEP 8 / 9 UI BLOCKED — existing local runtime unavailable; implementation/test/build gates passed.
+
+## P06.5B CLIENT FINANCE DETAIL — FROZEN (2026-10-07)
+
+Source `9c76ffb6c7a03db7a876ed8d871043b14e13d6c2`; `/finance?jobId=...`; Client 1440 approved only. Full composition, runtime-truth mapping and semantic authority: `UI_VISUAL_POLISH_HANDOFF_20261006.md`, P06.5B section.
+
+CURRENT = attention order (first applicable error, otherwise first unfinished), not backend enum; CURRENT != PROCESSING. Real raw/source state + stage tone determine wording; current alone never claims processing/completion/error/finality. Completed Mint/check/solid path; current strongest; upcoming pending Cream/dashed; real error Vermilion/`Cần kiểm tra`. `Chờ bằng chứng` is supported pending presentation copy. Missing record != read failure; earlier error does not propagate to later upcoming stages. No optimistic stage advancement; server refresh/reconciliation owns state. Simulation/localnet/devnet truth and collapsed secondary technical evidence remain visible/accurate. P06.5A and earlier frozen surfaces unchanged.
+
+Final gate: 49/49 focused Finance tests PASS, production build/diff check PASS, clean real SEO Client 1440 screenshot, console errors 0, no overflow, keyboard focus preserved. Backend/API unchanged; no runtime data mutation. Freelancer 1440 and 1024 remain future validation work, NOT FROZEN. Do not begin Tax/Activity in this freeze.

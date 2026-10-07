@@ -3,7 +3,7 @@
 ## Current authority — 2026-10-07
 
 Repository: `TronkIshere/FreelaX`. Branch: `feat/ui-visual-polish-20261006`.
-Frozen source implementation: `96cafbe985c68c4fdcc0e53a52141375335ca387` (P06.5A Finance list + folder tabs; all earlier frozen surfaces preserved).
+Frozen source implementation: `9c76ffb6c7a03db7a876ed8d871043b14e13d6c2` (P06.5B Client Finance Detail, Client 1440 only; all earlier frozen surfaces preserved).
 A later docs-only commit may be branch HEAD; it does not change this source baseline.
 
 - Overview = FROZEN / APPROVED (both Client and Freelancer).
@@ -15,7 +15,7 @@ A later docs-only commit may be branch HEAD; it does not change this source base
 - Client Work C2 — Job Authoring (`/work/new`, `/work/:jobId/edit`) = PASS / FROZEN.
 - Client Work C3 — Applicants (`/work/:jobId/applications`) = PASS / FROZEN.
 - P06.5A Finance list + editorial folder tabs = PASS / FROZEN.
-- Next: P06.5B — FINANCE DETAIL / MONEY EVIDENCE SPINE (`/finance?jobId=...`), NOT_STARTED. Inspect the exact detail contract → define evidence hierarchy → create visual concept → generate target screenshots → obtain human visual approval → only then write the implementation prompt. Do not implement or invent P06.5B during this freeze.
+- Current: P06.5B CLIENT FINANCE DETAIL — PASS / FROZEN at `/finance?jobId=...`, Client 1440 only. Source `9c76ffb6c7a03db7a876ed8d871043b14e13d6c2`. Freelancer 1440 and 1024 remain future validation work, NOT FROZEN. Remaining Tax / Activity visual polish stays NOT_STARTED. Stop after this freeze; do not begin another surface.
 - Remaining Tax / Activity visual polish = NOT_STARTED.
 
 Read in this exact order (paths are repository-relative):
@@ -28,9 +28,9 @@ Read in this exact order (paths are repository-relative):
 6. `docs/ui/WORKPACK_P06_UI_POLISH.md`
 7. `marketplace-backend/docs/JOB_DISCOVERY_CONTRACT.md`
 8. `docs/mvp-functional-spec.md`
-9. Current source: inspect Finance detail (`/finance?jobId=...`) and its exact API/types/status/tests for the P06.5B concept; reuse the shared kinetic toolkit and frozen Finance list grammar.
+9. Current source: Finance.tsx, Finance.test.tsx and financeSpine.ts; preserve the frozen P06.5B Client 1440 grammar and its source-backed attention/status separation.
 
-Use KINETIC EDITORIAL BRUTALISM and the approved toolkit. Frozen Overview/Explore/Applications/My Work/Client Work C1/C2/C3 demonstrate visual grammar, not generic page templates. Do not reopen for general polish; require a concrete regression. Exact next visual area: P06.5B — FINANCE DETAIL / MONEY EVIDENCE SPINE (`/finance?jobId=...`), NOT_STARTED. Inspect the exact detail contract → define evidence hierarchy → create visual concept → generate target screenshots → obtain human visual approval → only then write the implementation prompt. Do not implement or invent P06.5B during this freeze.
+Use KINETIC EDITORIAL BRUTALISM and the approved toolkit. Frozen Overview/Explore/Applications/My Work/Client Work C1/C2/C3 demonstrate visual grammar, not generic page templates. Do not reopen for general polish; require a concrete regression. Current frozen detail: P06.5B CLIENT FINANCE DETAIL — PASS / FROZEN at `/finance?jobId=...`, Client 1440 only. Source `9c76ffb6c7a03db7a876ed8d871043b14e13d6c2`. Freelancer 1440 and 1024 remain future validation work, NOT FROZEN. Remaining Tax / Activity visual polish stays NOT_STARTED. Stop after this freeze; do not begin another surface.
 
 P06.5A lock: Client “Thanh toán theo công việc.” / Freelancer “Thu nhập theo công việc.” at `/finance`; four colored blocks, Cream ledger/header tint, shared stable Job identity, semantic state markers, light Xem chi tiết, Acid active folder tabs and one process panel. Hồ sơ trên trang is only the real page count; Funding/Release/Hoàn tiền are workflow guidance, never invented money totals. Show returned simulation markers. 1024 blocks stack, rows reflow and tabs stay horizontal. Full locks and accepted validation are in the handoff/spec.
 
@@ -59,3 +59,11 @@ Explore live category/skill/combined/exclusion/Clear smoke and 1440/1024 visual 
 Mobile optimization is deferred. Current MVP delivery target is desktop/laptop, validated at 1440px and 1024px. Preserve existing responsive CSS.
 
 Current source/API is authoritative where older notes conflict. Do not treat future product proposals in the MVP spec as already implemented. Never store secrets, credentials, local screenshots or machine-local paths in handoff material.
+
+## P06.5B CLIENT FINANCE DETAIL — FROZEN (2026-10-07)
+
+Source `9c76ffb6c7a03db7a876ed8d871043b14e13d6c2`; `/finance?jobId=...`; Client 1440 approved only. Full composition, runtime-truth mapping and semantic authority: `UI_VISUAL_POLISH_HANDOFF_20261006.md`, P06.5B section.
+
+CURRENT = attention order (first applicable error, otherwise first unfinished), not backend enum; CURRENT != PROCESSING. Real raw/source state + stage tone determine wording; current alone never claims processing/completion/error/finality. Completed Mint/check/solid path; current strongest; upcoming pending Cream/dashed; real error Vermilion/`Cần kiểm tra`. `Chờ bằng chứng` is supported pending presentation copy. Missing record != read failure; earlier error does not propagate to later upcoming stages. No optimistic stage advancement; server refresh/reconciliation owns state. Simulation/localnet/devnet truth and collapsed secondary technical evidence remain visible/accurate. P06.5A and earlier frozen surfaces unchanged.
+
+Final gate: 49/49 focused Finance tests PASS, production build/diff check PASS, clean real SEO Client 1440 screenshot, console errors 0, no overflow, keyboard focus preserved. Backend/API unchanged; no runtime data mutation. Freelancer 1440 and 1024 remain future validation work, NOT FROZEN. Do not begin Tax/Activity in this freeze.

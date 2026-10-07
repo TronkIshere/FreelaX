@@ -5,7 +5,7 @@
 - Repository: `TronkIshere/FreelaX`.
 - Active branch: `feat/ui-visual-polish-20261006`.
 - Integrated MVP ancestor: `35ba34e9b68be67b9405d3407159a2fde010911c`.
-- Frozen last product/source implementation commit: `96cafbe985c68c4fdcc0e53a52141375335ca387` (P06.5A Finance list + folder tabs, approved 2026-10-07; earlier frozen surfaces preserved).
+- Frozen last product/source implementation commit: `9c76ffb6c7a03db7a876ed8d871043b14e13d6c2` (P06.5B Client Finance Detail, Client 1440 only, approved 2026-10-07; earlier frozen surfaces preserved).
 
 Accepted source chain, oldest first:
 
@@ -21,8 +21,9 @@ Accepted source chain, oldest first:
 | `846142d` | Client Job Authoring C2: approved create/edit work order |
 | `45c54c5` | Client Applicants C3: final corrected candidate decision desk |
 | `96cafbe` | P06.5A role-based Finance list + editorial folder tabs |
+| `9c76ffb` | P06.5B Client Finance Detail + current-vs-processing guard; Client 1440 |
 
-A later documentation commit may be branch HEAD. It does not replace `96cafbe` as the frozen source implementation baseline. Read the current HEAD with Git; do not mistake a docs-only HEAD for new product implementation. Current source wins over older conflicting documentation. Explicit Product Owner instructions remain authoritative.
+A later documentation commit may be branch HEAD. It does not replace `9c76ffb` as the frozen source implementation baseline. Read the current HEAD with Git; do not mistake a docs-only HEAD for new product implementation. Current source wins over older conflicting documentation. Explicit Product Owner instructions remain authoritative.
 
 ## Current UI progress matrix
 
@@ -44,7 +45,7 @@ Statuses below refer to this visual stream, not to absence of existing functiona
 | Client Work C2 — Job Authoring (`/work/new`, `/work/:jobId/edit`) | PASS / FROZEN |
 | Client Work C3 — Applicants (`/work/:jobId/applications`) | PASS / FROZEN |
 | P06.5A Finance list | PASS / FROZEN; `96cafbe` |
-| P06.5B Finance detail / Money Evidence Spine | NEXT / NOT_STARTED; human concept/target screenshot approval first |
+| P06.5B Client Finance detail / Money Evidence Spine | PASS / FROZEN; Client 1440 only; `9c76ffb`; Freelancer 1440/1024 NOT FROZEN |
 | Remaining Tax / Activity visual polish | NOT_STARTED; existing shared Finance tabs are frozen |
 | Account / Profile | Later unless explicitly reprioritized |
 
@@ -457,8 +458,32 @@ Source: `96cafbe985c68c4fdcc0e53a52141375335ca387` — `feat(frontend): finalize
 
 Accepted implementation validation (tests/build not rerun during freeze): Finance focused tests **30/30 PASS** after folder tabs; earlier Finance visual gate **36/36 PASS**; type-check PASS; accepted production build PASS; `git diff --check` PASS; Client 1440 PASS, Freelancer 1440 PASS, Client 1024 PASS; console errors **0**; keyboard focus PASS; reduced motion preserved.
 
-Next: P06.5B — FINANCE DETAIL / MONEY EVIDENCE SPINE (`/finance?jobId=...`), NOT_STARTED. Inspect the exact detail contract → define evidence hierarchy → create visual concept → generate target screenshots → obtain human visual approval → only then write the implementation prompt. Do not implement or invent P06.5B during this freeze.
+Current: P06.5B CLIENT FINANCE DETAIL — PASS / FROZEN at `/finance?jobId=...`, Client 1440 only. Source `9c76ffb6c7a03db7a876ed8d871043b14e13d6c2`. Freelancer 1440 and 1024 remain future validation work, NOT FROZEN. Remaining Tax / Activity visual polish stays NOT_STARTED. Stop after this freeze; do not begin another surface.
 
-## Exact next task — NOT_STARTED
+## Deferred validation — NOT FROZEN
 
-P06.5B — FINANCE DETAIL / MONEY EVIDENCE SPINE (`/finance?jobId=...`), NOT_STARTED. Inspect the exact detail contract → define evidence hierarchy → create visual concept → generate target screenshots → obtain human visual approval → only then write the implementation prompt. Do not implement or invent P06.5B during this freeze.
+P06.5B Freelancer 1440 and 1024 remain future validation work, NOT FROZEN. Remaining Tax / Activity visual polish stays NOT_STARTED. Stop after this freeze; do not begin another surface.
+
+## P06.5B CLIENT FINANCE DETAIL — FROZEN (2026-10-07)
+
+Source: `9c76ffb6c7a03db7a876ed8d871043b14e13d6c2` — `feat(frontend): finalize client finance evidence spine`. Route `/finance?jobId=...`. Human-approved Client 1440 composition only: single-Job financial case file, dominant Acid statement with stable Job identity, five-stage vertical Money Evidence Spine, semantic connectors, compact right-side case summary and secondary/collapsed technical evidence. Existing P06.5A list/folder tabs and earlier frozen surfaces are unchanged. Freelancer 1440 and 1024 are NOT FROZEN and remain future validation work; P06.5C/Tax/Activity are not started by this freeze.
+
+### Financial truth and attention semantics — LOCKED
+
+- Legacy stages: Thanh toán Client → Quyết toán USDC → Rút on-chain → Chi trả VND → Chứng từ thuế. Contract records retain independent Funding / Release or Refund / on-chain / VND / tax semantics; no funding-to-release inference.
+- COMPLETED follows the stage's own confirmed source evidence. Mint/check/solid completed connector. Successful tax export alone does not establish certificate ACCEPTED.
+- CURRENT is frontend attention order, not a backend enum or financial status: first applicable ERROR, otherwise first applicable unfinished stage. CURRENT != PROCESSING. It never changes tone/status/completion/error/finality; status wording and icons follow raw/source truth plus stage tone, not `current === true`.
+- ERROR uses real failure/read-error evidence and `Cần kiểm tra`. Pending uses `Chờ bằng chứng` as a frontend presentation label; raw NOT_STARTED supports `Chưa bắt đầu`. A pending current stage remains pending, never automatically processing or error.
+- UPCOMING is a later pending stage; preceding failure does not propagate ERROR into it. Cream/subdued treatment and dashed connectors do not suggest processing or an ETA. All stages resolved means no invented current step. Non-applicable refund stages remain explicitly non-applicable.
+- Missing record != read failure: NOT_ATTEMPTED plus no TaxRecord supports `Chưa lập chứng từ` / `Chưa có chứng từ`; a failed tax read uses `Chưa đọc được chứng từ`. Existing pending/error records are not absent records.
+- No optimistic/local-time/animation advancement. Server refresh/reconciliation is authoritative; motion is only brief feedback after fetched state changes. Reduced motion renders immediately.
+- Simulation/localnet/devnet markers remain source-truthful. The observed runtime is simulation/localnet, not DEVNET or production bank finality. Money, masked bank destination, timestamps and references come only from returned evidence; omit unavailable facts.
+
+### Final validation and real runtime observations
+
+49/49 focused Finance tests PASS (44 previous + 5 guard cases); production build PASS; known >500 kB bundle warning is non-blocking; diff check PASS. Clean Client 1440 screenshot captured outside the repository, no accidental focus outline. Console errors 0 in the final QA window; no horizontal overflow; keyboard focus verified and CSS preserved. No backend/API/database/proxy/port changes or runtime data mutations.
+
+- SEO job `af2a0ed3-d2df-4029-8649-d01c8cbdc67a`: CAPTURED; CONFIRMED/CONFIRMED; withdrawal CONFIRMED; off-ramp COMPLETED; existing TaxRecord EXPORT_FAILED. Stages 01–04 completed, 05 ERROR + CURRENT, never a processing claim.
+- Previously verified P04 job `0f8dcb6c-a2e4-4f85-8123-03fa7ce4467f`: CAPTURED; clientPaymentStatus FAILED; withdrawal/off-ramp NOT_STARTED; tax NOT_ATTEMPTED/no TaxRecord. Stage 02 ERROR + CURRENT; 03–05 pending/upcoming, not propagated errors. This final pass re-opened only the SEO case.
+
+Regression guard covers current payment/tax errors, current NOT_STARTED evidence, upcoming stages after an earlier failure, and unchanged financial tone/status when only attention selection changes. No secrets, credentials, screenshots or machine-local paths are included in the commits.

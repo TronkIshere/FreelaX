@@ -5,7 +5,7 @@
 This section supersedes older conflicting branch, baseline, scope and active-task notes below. Read `UI_VISUAL_POLISH_HANDOFF_20261006.md` first, then the dated session log.
 
 - Repository: `TronkIshere/FreelaX`; branch `feat/ui-visual-polish-20261006`.
-- Frozen source baseline: `96cafbe985c68c4fdcc0e53a52141375335ca387` — `feat(frontend): finalize kinetic finance overview`; earlier frozen surfaces preserved. Later documentation HEADs do not change source authority.
+- Frozen source baseline: `9c76ffb6c7a03db7a876ed8d871043b14e13d6c2` — `feat(frontend): finalize client finance evidence spine`; earlier frozen surfaces preserved. Later documentation HEADs do not change source authority.
 - Client/Freelancer Overview = FROZEN / APPROVED (`01c7e55`). Freelancer Explore = FROZEN / APPROVED (`f42e44a`), Applications = PASS / FROZEN (`2f5f0e4`), My Work = PASS / FROZEN (`ca8b93d`). No taste-polish reopening without concrete regression.
 - Client Work C1 (`/work`) = PASS / FROZEN: CLIENT WORK CONTROL BOARD, first server record emphasized, truthful totalElements/order/pagination, real status/budget/deadline/context and existing state-derived actions. No fake search/filter/sort, applicant/status counts or urgency.
 - Freelancer Explore / Applications / My Work = RE-FROZEN after the narrow approved row-identity override. Overview remains FROZEN. Global Row Identity / State Rail / Category Plate = LOCKED; do not reopen for general taste-polish.
@@ -25,7 +25,7 @@ This section supersedes older conflicting branch, baseline, scope and active-tas
 - P06.5A Finance list = PASS / FROZEN. Client `/finance`: “Thanh toán theo công việc.”; Freelancer `/finance`: “Thu nhập theo công việc.” Four blocks + Cream ledger/header tint + shared stable Job identity + semantic status + light row CTA + editorial folder tabs + one process panel. No fabricated aggregates or crypto-dashboard language. Hồ sơ trên trang is the real page count; Funding/Release/Hoàn tiền are guidance unless existing API explicitly returns aggregate truth. Simulation markers and financial semantics stay intact.
 - Folder tabs: 01 active at `/finance`; 02 active at tax list/detail. Active Acid/Ink + hard border/shadow; inactive Cream/Ink + Cobalt index. Shared baseline, Lucide icon/index, horizontal at 1440/1024; no pills/dropdown. 1024 blocks stack and rows reflow without overflow/clipping.
 - Accepted implementation validation (tests/build not rerun during freeze): Finance focused tests **30/30 PASS** after folder tabs; earlier Finance visual gate **36/36 PASS**; type-check PASS; accepted production build PASS; `git diff --check` PASS; Client 1440 PASS, Freelancer 1440 PASS, Client 1024 PASS; console errors **0**; keyboard focus PASS; reduced motion preserved.
-- NEXT: P06.5B — FINANCE DETAIL / MONEY EVIDENCE SPINE (`/finance?jobId=...`), NOT_STARTED. Inspect the exact detail contract → define evidence hierarchy → create visual concept → generate target screenshots → obtain human visual approval → only then write the implementation prompt. Do not implement or invent P06.5B during this freeze. Remaining Tax / Activity visual polish is NOT_STARTED.
+- CURRENT: P06.5B CLIENT FINANCE DETAIL — PASS / FROZEN at `/finance?jobId=...`, Client 1440 only. Source `9c76ffb6c7a03db7a876ed8d871043b14e13d6c2`. Freelancer 1440 and 1024 remain future validation work, NOT FROZEN. Remaining Tax / Activity visual polish stays NOT_STARTED. Stop after this freeze; do not begin another surface.
 - Global row channels are independent: thumbnail = semantic Job type; plate = explicit visual family; rail/status = progress. Secondary rows remain Cream editorial ledger rows. Solid saturated rail: 6px at 1440, 5px at 1024; visible text retained, no gradient/blur/glow/color animation.
 - Job progress: OPEN/AWAITING_PAYMENT/SUBMITTED_FOR_REVIEW Acid `#F5D12F` (Ink structure for waiting/review); IN_PROGRESS Cobalt `#3567E8`; REVISION_REQUESTED Vermilion `#F15A3D`; COMPLETED Strong Success Green `#39B96E`; CANCELLED Ink `#17212B`. Fresh Mint `#B8DFC4` remains a light success surface.
 - Application progress: PENDING Acid, ACCEPTED Strong Green, REJECTED Vermilion, CANCELLED Ink. Primary surfaces: PENDING Acid/Ink, ACCEPTED Mint/Green marker, REJECTED Vermilion/Cream, CANCELLED restrained Ink/Cream inactive. Never revert PENDING to default Vermilion.
@@ -363,3 +363,11 @@ finance/tax read-only smoke PASS
 backend changed: NO
 unsupported feature introduced: NO
 ```
+
+## P06.5B CLIENT FINANCE DETAIL — FROZEN (2026-10-07)
+
+Source `9c76ffb6c7a03db7a876ed8d871043b14e13d6c2`; `/finance?jobId=...`; Client 1440 approved only. Full composition, runtime-truth mapping and semantic authority: `UI_VISUAL_POLISH_HANDOFF_20261006.md`, P06.5B section.
+
+CURRENT = attention order (first applicable error, otherwise first unfinished), not backend enum; CURRENT != PROCESSING. Real raw/source state + stage tone determine wording; current alone never claims processing/completion/error/finality. Completed Mint/check/solid path; current strongest; upcoming pending Cream/dashed; real error Vermilion/`Cần kiểm tra`. `Chờ bằng chứng` is supported pending presentation copy. Missing record != read failure; earlier error does not propagate to later upcoming stages. No optimistic stage advancement; server refresh/reconciliation owns state. Simulation/localnet/devnet truth and collapsed secondary technical evidence remain visible/accurate. P06.5A and earlier frozen surfaces unchanged.
+
+Final gate: 49/49 focused Finance tests PASS, production build/diff check PASS, clean real SEO Client 1440 screenshot, console errors 0, no overflow, keyboard focus preserved. Backend/API unchanged; no runtime data mutation. Freelancer 1440 and 1024 remain future validation work, NOT FROZEN. Do not begin Tax/Activity in this freeze.
