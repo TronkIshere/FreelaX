@@ -1,5 +1,17 @@
 # FREELAX UI DEVELOPMENT MEMORY
 
+## Final continuation authority — P06.8 / 2026-10-08
+
+**P06 VISUAL / PRODUCT UI STREAM — COMPLETE / FROZEN. P06.8 FINAL FREEZE / HANDOFF — FROZEN.**
+
+Start with [FreelaX Final Freeze / Handoff](./FREELAX_FINAL_FREEZE_HANDOFF_20261008.md). It is the shortest current-truth entry point and supersedes old current/next-phase claims below. Dated session history and prior evidence remain intact.
+
+- Branch: `feat/ui-visual-polish-20261006`.
+- Final product/source authority: `7fc31555b9cd3f50a23872401968ee67c5275f30`.
+- P06.7 documentation authority: `44987c7e16dcc785845adbf8d05df6be44bf25cd`.
+- P06.8 documentation authority: the commit `docs: finalize P06.8 FreelaX handoff` containing this update. Resolve its exact SHA with `git log -1 --format=%H --grep='^docs: finalize P06.8 FreelaX handoff$'`; the final delivery report records it. A documentation commit does not create newer product source.
+- NEXT: **NONE WITHIN P06**. Future product work requires a new explicitly approved track/branch.
+
 ## CURRENT CONTINUATION — 2026-10-08
 
 This section supersedes older conflicting branch, baseline, scope and active-task notes below. Read `UI_VISUAL_POLISH_HANDOFF_20261006.md` first, then the dated session log.
@@ -25,7 +37,7 @@ This section supersedes older conflicting branch, baseline, scope and active-tas
 - P06.5A Finance list = PASS / FROZEN. Client `/finance`: “Thanh toán theo công việc.”; Freelancer `/finance`: “Thu nhập theo công việc.” Four blocks + Cream ledger/header tint + shared stable Job identity + semantic status + light row CTA + editorial folder tabs + one process panel. No fabricated aggregates or crypto-dashboard language. Hồ sơ trên trang is the real page count; Funding/Release/Hoàn tiền are guidance unless existing API explicitly returns aggregate truth. Simulation markers and financial semantics stay intact.
 - Folder tabs: 01 active at `/finance`; 02 active at tax list/detail. Active Acid/Ink + hard border/shadow; inactive Cream/Ink + Cobalt index. Shared baseline, Lucide icon/index, horizontal at 1440/1024; no pills/dropdown. 1024 blocks stack and rows reflow without overflow/clipping.
 - Accepted implementation validation (tests/build not rerun during freeze): Finance focused tests **30/30 PASS** after folder tabs; earlier Finance visual gate **36/36 PASS**; type-check PASS; accepted production build PASS; `git diff --check` PASS; Client 1440 PASS, Freelancer 1440 PASS, Client 1024 PASS; console errors **0**; keyboard focus PASS; reduced motion preserved.
-- Current: P06.7 FULL REGRESSION / QA — PASS / FROZEN. Source `7fc31555b9cd3f50a23872401968ee67c5275f30` fixes delayed contract review invitations. Real modern contract-backed lifecycle, scheduler settlement/invitations, both reviews and public reputation are verified. ContractReviews remains the single review read/eligibility owner. Focused tests 99/99 and full frontend tests 793/793 (22 files), production build and diff check PASS. Client/Freelancer 1440/1024 regression PASS. Unexpected JS/page errors 0; unexpected network/runtime failures 0; overflow 0; eight handled missing-TaxRecord 404 resource messages are documented expected network absence. Solana/on-chain is not fully reconciled; off-ramp/tax NOT_STARTED. P06.5A/B/C/D and P06.6 remain frozen. Next: P06.8 — FINAL FREEZE / HANDOFF — NOT_STARTED. Stop after this freeze.
+- Current: P06.8 FINAL FREEZE / HANDOFF — FROZEN. Overall P06 UI stream COMPLETE / FROZEN. Final source 7fc31555b9cd3f50a23872401968ee67c5275f30; P06.7 docs 44987c7e16dcc785845adbf8d05df6be44bf25cd. Read FREELAX_FINAL_FREEZE_HANDOFF_20261008.md for current product truth, read-only QA and known limitations. NEXT: NONE WITHIN P06; no new source scope.
 - Global row channels are independent: thumbnail = semantic Job type; plate = explicit visual family; rail/status = progress. Secondary rows remain Cream editorial ledger rows. Solid saturated rail: 6px at 1440, 5px at 1024; visible text retained, no gradient/blur/glow/color animation.
 - Job progress: OPEN/AWAITING_PAYMENT/SUBMITTED_FOR_REVIEW Acid `#F5D12F` (Ink structure for waiting/review); IN_PROGRESS Cobalt `#3567E8`; REVISION_REQUESTED Vermilion `#F15A3D`; COMPLETED Strong Success Green `#39B96E`; CANCELLED Ink `#17212B`. Fresh Mint `#B8DFC4` remains a light success surface.
 - Application progress: PENDING Acid, ACCEPTED Strong Green, REJECTED Vermilion, CANCELLED Ink. Primary surfaces: PENDING Acid/Ink, ACCEPTED Mint/Green marker, REJECTED Vermilion/Cream, CANCELLED restrained Ink/Cream inactive. Never revert PENDING to default Vermilion.
@@ -557,3 +569,13 @@ Activity exposes the real assignment, funding, submission, approval, release, in
 The compact real evidence remains two 1440 screenshots outside Git: Client completed Job review callout and Freelancer public profile after publication. No additional screenshots, secrets, credentials or machine-local paths are committed. Mobile optimization is deferred; current MVP delivery target is desktop/laptop at 1440/1024.
 
 **P06.7 FULL REGRESSION / QA — FROZEN. NEXT: P06.8 — FINAL FREEZE / HANDOFF — NOT_STARTED. STOP.**
+
+## 2026-10-08 — P06.8 FINAL FREEZE / HANDOFF — FROZEN
+
+P06.8 FINAL FREEZE / HANDOFF — FROZEN. Overall P06 UI stream COMPLETE / FROZEN. Final source 7fc31555b9cd3f50a23872401968ee67c5275f30; P06.7 docs 44987c7e16dcc785845adbf8d05df6be44bf25cd. Read FREELAX_FINAL_FREEZE_HANDOFF_20261008.md for current product truth, read-only QA and known limitations. NEXT: NONE WITHIN P06; no new source scope.
+
+P06.8 read-only smoke: 22 route/role/width checks PASS (14 at 1440, 8 at 1024); Client/Freelancer sessions verified through /auth/me. Correct active nav, desktop nav preserved, no clipped functional controls or horizontal overflow. Unexpected JS/page errors 0; unexpected network/runtime failures 0; 4 handled missing-TaxRecord HTTP 404 responses. Existing ON_RAMP_AWAITING_RECONCILIATION alerts match settlement.onChainError for both roles; they remain a downstream limitation, not a new frontend regression. No business mutation and no new screenshot.
+
+P06.7 PRIOR ACCEPTED EVIDENCE: focused 99/99 PASS; full 793/793 PASS in 22 files; production build PASS. No source tests/build rerun in this docs-only phase. Real contract E2E IDs, scheduler invitations, both published reviews, server reputation and delayed invitation fix remain in the P06.7 record. Its eight handled TaxRecord 404s remain distinct from the four observed in this smaller P06.8 smoke.
+
+README now describes actual contract-backed scope. Final handoff preserves local-demo boundaries, separate primary/downstream finance truth, on-chain UNKNOWN / ON_RAMP_AWAITING_RECONCILIATION, off-ramp/tax NOT_STARTED, wallet provisioning limitation, desktop 1440/1024 and mobile deferred. Earlier session/phase checkpoints remain historical, not current feature-absence claims. No backend/API/CSS/product source changed. No secrets/private financial data or screenshots added. No tag or merge; Skill Verification / Solana Attestation stays FUTURE / CONCEPT ONLY. **STOP — NONE WITHIN P06.**

@@ -1,5 +1,17 @@
 # FreelaX visual polish handoff — 2026-10-06
 
+## Final continuation authority — P06.8 / 2026-10-08
+
+**P06 VISUAL / PRODUCT UI STREAM — COMPLETE / FROZEN. P06.8 FINAL FREEZE / HANDOFF — FROZEN.**
+
+Start with [FreelaX Final Freeze / Handoff](./FREELAX_FINAL_FREEZE_HANDOFF_20261008.md). It is the shortest current-truth entry point and supersedes old current/next-phase claims below. Dated session history and prior evidence remain intact.
+
+- Branch: `feat/ui-visual-polish-20261006`.
+- Final product/source authority: `7fc31555b9cd3f50a23872401968ee67c5275f30`.
+- P06.7 documentation authority: `44987c7e16dcc785845adbf8d05df6be44bf25cd`.
+- P06.8 documentation authority: the commit `docs: finalize P06.8 FreelaX handoff` containing this update. Resolve its exact SHA with `git log -1 --format=%H --grep='^docs: finalize P06.8 FreelaX handoff$'`; the final delivery report records it. A documentation commit does not create newer product source.
+- NEXT: **NONE WITHIN P06**. Future product work requires a new explicitly approved track/branch.
+
 ## Repository, branch and source authority
 
 - Repository: `TronkIshere/FreelaX`.
@@ -30,6 +42,7 @@ Accepted source chain, oldest first:
 | `a0e16f9` | P06.6 identity passport, Marketplace profile and portfolio/partner dossiers |
 | `99e5f08` | Completed Job review opportunity callout; existing composer/eligibility reused |
 | `7fc3155` | Delayed scheduler-created review invitation reconciliation; real contract E2E verified |
+| `44987c7` | P06.7 documentation freeze authority; no product source change |
 
 A later documentation commit may be branch HEAD. It does not replace `7fc3155` as the latest frozen source implementation baseline; `9c76ffb` remains the Client 1440 source authority. Read the current HEAD with Git; do not mistake a docs-only HEAD for new product implementation. Current source wins over older conflicting documentation. Explicit Product Owner instructions remain authoritative.
 
@@ -59,7 +72,7 @@ Statuses below refer to this visual stream, not to absence of existing functiona
 | P06.6 Account / Profile | PASS / FROZEN |
 | PRE-P06.7 Completed Job review opportunity | PASS / FROZEN; `99e5f08` |
 | P06.7 Full regression / QA | PASS / FROZEN; `7fc3155`; real contract E2E, 793/793 tests |
-| P06.8 Final freeze / handoff | NEXT / NOT_STARTED |
+| P06.8 Final freeze / handoff | FROZEN; overall UI stream COMPLETE / FROZEN |
 
 ## Locked visual direction
 
@@ -470,9 +483,9 @@ Source: `96cafbe985c68c4fdcc0e53a52141375335ca387` — `feat(frontend): finalize
 
 Accepted implementation validation (tests/build not rerun during freeze): Finance focused tests **30/30 PASS** after folder tabs; earlier Finance visual gate **36/36 PASS**; type-check PASS; accepted production build PASS; `git diff --check` PASS; Client 1440 PASS, Freelancer 1440 PASS, Client 1024 PASS; console errors **0**; keyboard focus PASS; reduced motion preserved.
 
-Current: P06.7 FULL REGRESSION / QA — PASS / FROZEN. Source `7fc31555b9cd3f50a23872401968ee67c5275f30` fixes delayed contract review invitations. Real modern contract-backed lifecycle, scheduler settlement/invitations, both reviews and public reputation are verified. ContractReviews remains the single review read/eligibility owner. Focused tests 99/99 and full frontend tests 793/793 (22 files), production build and diff check PASS. Client/Freelancer 1440/1024 regression PASS. Unexpected JS/page errors 0; unexpected network/runtime failures 0; overflow 0; eight handled missing-TaxRecord 404 resource messages are documented expected network absence. Solana/on-chain is not fully reconciled; off-ramp/tax NOT_STARTED. P06.5A/B/C/D and P06.6 remain frozen. Next: P06.8 — FINAL FREEZE / HANDOFF — NOT_STARTED. Stop after this freeze.
+Current: P06.8 FINAL FREEZE / HANDOFF — FROZEN. Overall P06 UI stream COMPLETE / FROZEN. Final source 7fc31555b9cd3f50a23872401968ee67c5275f30; P06.7 docs 44987c7e16dcc785845adbf8d05df6be44bf25cd. Read FREELAX_FINAL_FREEZE_HANDOFF_20261008.md for current product truth, read-only QA and known limitations. NEXT: NONE WITHIN P06; no new source scope.
 
-## Next phase — NOT_STARTED
+## Historical next-phase checkpoint — superseded by P06.8
 
 P06.5B is fully frozen for Client/Freelancer at 1440/1024. Next: P06.5C — TAX / CHỨNG TỪ THUẾ — NOT_STARTED. Tax/Activity remain unstarted. Stop after this freeze.
 
@@ -701,3 +714,13 @@ The compact real evidence remains two 1440 screenshots outside Git: Client compl
 | Freelancer review | `d62dc196-0384-4321-9047-6999c1b6581a`; submitted/published |
 
 Invitations were naturally created approximately 58 seconds after primary release. Review publication used the existing both-submitted server rule, without clock or database manipulation.
+
+## 2026-10-08 — P06.8 FINAL FREEZE / HANDOFF — FROZEN
+
+P06.8 FINAL FREEZE / HANDOFF — FROZEN. Overall P06 UI stream COMPLETE / FROZEN. Final source 7fc31555b9cd3f50a23872401968ee67c5275f30; P06.7 docs 44987c7e16dcc785845adbf8d05df6be44bf25cd. Read FREELAX_FINAL_FREEZE_HANDOFF_20261008.md for current product truth, read-only QA and known limitations. NEXT: NONE WITHIN P06; no new source scope.
+
+P06.8 read-only smoke: 22 route/role/width checks PASS (14 at 1440, 8 at 1024); Client/Freelancer sessions verified through /auth/me. Correct active nav, desktop nav preserved, no clipped functional controls or horizontal overflow. Unexpected JS/page errors 0; unexpected network/runtime failures 0; 4 handled missing-TaxRecord HTTP 404 responses. Existing ON_RAMP_AWAITING_RECONCILIATION alerts match settlement.onChainError for both roles; they remain a downstream limitation, not a new frontend regression. No business mutation and no new screenshot.
+
+P06.7 PRIOR ACCEPTED EVIDENCE: focused 99/99 PASS; full 793/793 PASS in 22 files; production build PASS. No source tests/build rerun in this docs-only phase. Real contract E2E IDs, scheduler invitations, both published reviews, server reputation and delayed invitation fix remain in the P06.7 record. Its eight handled TaxRecord 404s remain distinct from the four observed in this smaller P06.8 smoke.
+
+README now describes actual contract-backed scope. Final handoff preserves local-demo boundaries, separate primary/downstream finance truth, on-chain UNKNOWN / ON_RAMP_AWAITING_RECONCILIATION, off-ramp/tax NOT_STARTED, wallet provisioning limitation, desktop 1440/1024 and mobile deferred. Earlier session/phase checkpoints remain historical, not current feature-absence claims. No backend/API/CSS/product source changed. No secrets/private financial data or screenshots added. No tag or merge; Skill Verification / Solana Attestation stays FUTURE / CONCEPT ONLY. **STOP — NONE WITHIN P06.**
