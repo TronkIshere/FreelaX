@@ -3,7 +3,7 @@
 ## VISUAL POLISH STREAM — 2026-10-08
 
 Current branch: `feat/ui-visual-polish-20261006`.
-Frozen source implementation baseline: `99e5f081bb89c2b84df5d8736d2965b35dd206d3` (completed review opportunity patch; P06.6/P06.5A/B/C/D and earlier frozen surfaces preserved).
+Frozen source implementation baseline: `7fc31555b9cd3f50a23872401968ee67c5275f30` (delayed review invitation reconciliation; all earlier frozen visual surfaces preserved).
 Documentation commits may advance HEAD without changing this source baseline.
 
 | Stage | Status | Accepted source/evidence |
@@ -25,11 +25,12 @@ Documentation commits may advance HEAD without changing this source baseline.
 | P06.5D Activity / Editorial Event Ledger | PASS / RE-FROZEN — visual emphasis patch | `c71c554`; 146/146 focused tests, build/diff PASS; Client/Freelancer 1440/1024; original-text disclosure, focus, console 0 |
 | P06.6 Account / Profile | PASS / FROZEN | `a0e16f9`; 220/220 focused tests, build/diff PASS; Client/Freelancer and partner 1440/1024; console 0 |
 | PRE-P06.7 Completed Job review opportunity | PASS / FROZEN | `99e5f08`; 317/317 tests, build/diff PASS; runtime absent opportunity reported; isolated 1024 layout PASS |
-| P06.7 Full regression / QA | NOT_STARTED | Next authorized phase only after separate request |
+| P06.7 Full regression / QA | PASS / FROZEN | `7fc3155`; real contract E2E, 99/99 focused + 793/793 full tests, accepted expected TaxRecord absence |
+| P06.8 Final freeze / handoff | NOT_STARTED | Next separately authorized phase |
 
 Explore live category/skill/combined/exclusion/Clear PASS is newer scoped runtime evidence. Earlier 115/115 focused frontend gate also passed. Local “Landing page redesign” category/skills edit is runtime evidence, not seed/source data. The approved narrow backend exception `302ae06` is complete; no unrelated backend expansion is authorized.
 
-Client/Freelancer Overview remains FROZEN. Client Work C1/C2/C3 are PASS / FROZEN. Freelancer Explore, Applications and My Work are RE-FROZEN after the approved narrow cross-surface identity override; no general polish reopening. Applications retains only real PENDING, ACCEPTED, REJECTED and CANCELLED statuses and truthful `totalElements` totals; no fake timeline/status/counts. P06.5A Finance list is PASS / FROZEN. Current: PRE-P06.7 COMPLETED JOB REVIEW OPPORTUNITY PATCH — PASS / FROZEN. Source `99e5f081bb89c2b84df5d8736d2965b35dd206d3`. Existing ContractReviews remains the single review fetch/eligibility owner; the high completed-work callout anchors to #contract-reviews. Review is optional post-completion feedback and does not gate completion/release/payout. P06.5A/B/C/D and P06.6 remain frozen. 317/317 tests, production build and diff check PASS. Real Client/Freelancer Job Detail is healthy, but no eligible review opportunity exists in current runtime; 1024 callout layout/focus/native anchor passed an isolated presentation fixture. Next: P06.7 — FULL REGRESSION / QA — NOT_STARTED. Stop after this freeze.
+Client/Freelancer Overview remains FROZEN. Client Work C1/C2/C3 are PASS / FROZEN. Freelancer Explore, Applications and My Work are RE-FROZEN after the approved narrow cross-surface identity override; no general polish reopening. Applications retains only real PENDING, ACCEPTED, REJECTED and CANCELLED statuses and truthful `totalElements` totals; no fake timeline/status/counts. P06.5A Finance list is PASS / FROZEN. Current: P06.7 FULL REGRESSION / QA — PASS / FROZEN. Source `7fc31555b9cd3f50a23872401968ee67c5275f30` fixes delayed contract review invitations. Real modern contract-backed lifecycle, scheduler settlement/invitations, both reviews and public reputation are verified. ContractReviews remains the single review read/eligibility owner. Focused tests 99/99 and full frontend tests 793/793 (22 files), production build and diff check PASS. Client/Freelancer 1440/1024 regression PASS. Unexpected JS/page errors 0; unexpected network/runtime failures 0; overflow 0; eight handled missing-TaxRecord 404 resource messages are documented expected network absence. Solana/on-chain is not fully reconciled; off-ramp/tax NOT_STARTED. P06.5A/B/C/D and P06.6 remain frozen. Next: P06.8 — FINAL FREEZE / HANDOFF — NOT_STARTED. Stop after this freeze.
 
 C3 accepted concept: CANDIDATE DECISION DESK / EDITORIAL CANDIDATE DOSSIER. Final corrected state-aware colored Job banner replaces rejected plain Cream + lines: OPEN Acid; AWAITING_PAYMENT/review Acid + Ink; IN_PROGRESS Cobalt; revision Vermilion; COMPLETED Mint + Strong Green; CANCELLED Ink/Cream. Shared semantic thumbnail/plate and real Job facts; equal Cream dossiers with hard Ink border/zero-blur shadow, enlarged deterministic identity tiles, separate evidence/status/action zones. Application rails: PENDING Acid, ACCEPTED Strong Green, REJECTED Vermilion, CANCELLED Ink; 6px/5px and visible labels.
 
@@ -304,23 +305,9 @@ Trusted session passport, Marketplace profile/editor, Freelancer portfolio and a
 
 ## P06.7 — Responsive / accessibility / regression
 
-Status: `NOT_STARTED`
+Status: `PASS / FROZEN` — source `7fc31555b9cd3f50a23872401968ee67c5275f30`.
 
-Required checks:
-
-- desktop
-- ~1024px
-- mobile
-- keyboard navigation
-- focus-visible
-- no horizontal overflow
-- loading/error/empty states
-- Client five routes
-- Freelancer five routes
-- contract/milestone display smoke
-- finance/tax read-only smoke
-- auth login/register
-- no console errors
+Real contract-backed lifecycle/reviews/reputation and Client/Freelancer desktop 1440/1024 regression passed. Exact validation, expected missing-TaxRecord network absence and independently unfinished downstream state are recorded in the final dated P06.7 freeze below. Mobile is deferred; earlier mobile/auth-register planning does not describe this gate.
 
 ## P06.8 — Final UI review
 
@@ -744,3 +731,36 @@ Source: `99e5f081bb89c2b84df5d8736d2965b35dd206d3` — `feat(frontend): surface 
 - Callout-only **isolated presentation fixture** at 1440/1024: readable, no clipping/overflow, keyboard CTA/Cobalt focus PASS, native hash destination visible PASS, reduced-motion plate transform none. This verifies layout/accessibility, not real runtime review eligibility. No fixture or screenshot is committed.
 - Source scope: `ContractLifecycle.tsx`, `ContractReviews.tsx`, their two focused test files, and appended scoped `styles.css` rules only. No backend/API/types/Finance/Activity/Profile implementation changed; frozen CSS prefix preserved. No credentials, secrets, local paths or screenshots added to tracked files.
 - **P06.5A/B/C/D + P06.6 remain FROZEN.** NEXT: **P06.7 — FULL REGRESSION / QA — NOT_STARTED**. Do not begin P06.7 without a separate request.
+
+## 2026-10-08 — P06.7 FULL REGRESSION / QA — FROZEN
+
+This accepted finalization supersedes earlier P06.7 NOT_STARTED and strict-console BLOCKED checkpoints. Source: `7fc31555b9cd3f50a23872401968ee67c5275f30` — `fix(frontend): reconcile delayed contract review invitations`. Only ContractReviews.tsx and ReviewUI.test.tsx changed; backend/API contracts and frozen P06.5A/B/C/D, P06.6 and earlier visual surfaces are preserved.
+
+**REAL CONTRACT-BACKED E2E = PASS.** Client creates Job → Freelancer applies → Client assigns → WorkContract/Milestone created → funding SUCCEEDED → contract ACTIVE → contract-backed submission → Client approval → RELEASE_PENDING → scheduler settlement → moneyStatus SUCCEEDED → milestone RELEASED → contract COMPLETED → Job COMPLETED → scheduler-created two-sided invitations → Client review → Freelancer review → both published → public reputation/profile updated. Legacy `contract:null` Jobs were not used as E2E proof. User-facing mutations used the real UI/API. No direct database INSERT/UPDATE or manual scheduler invocation manufactured the lifecycle; SELECT-only verification supplied internal fields omitted from public DTOs.
+
+The real runtime defect was invitations arriving after ContractReviews mounted without another review read. The fix keeps ContractReviews as the single read owner and the existing server-authoritative eligibility/callout callback. Read-only reconciliation every 30 seconds while awaiting own invitation or publication skips hidden pages, in-flight reads and mutation locks. Focus reconciles server truth; time never grants eligibility. Polling stops once an unsubmitted own invitation is present or own review is published, and timers/listeners/generation are cleaned up on unmount. Two new regression tests failed before the patch and pass after it, covering delayed invitations, focus, unchanged settlement eligibility and cleanup.
+
+The original Job's reviews were already published, so the workpack's regression exception used one additional legitimate Job: `5b020abd-1e92-4f5c-af8d-2429ce8a78f1`. Its completed review section was present at 17:52:47Z; scheduler invitations appeared at 17:53:36Z; the already-open Client page discovered the opportunity at 17:53:47Z without hard reload. Both real review CTAs anchor to `#contract-reviews`; Client/Freelancer 1024 callout/form checks preceded submission. Both reviews were server-published after the second submission; both public profiles show actual published comments and reputation. Final server reputation: two published reviews, average 5/5 for each QA participant. Ratings/comments are synthetic local QA evidence, not claims about a real person's performance.
+
+**Expected network absence policy — exact endpoint only:** `GET /api/v1/marketplace/tax-records/jobs/{jobId}` returning HTTP 404 / frontend ApiError code 4010 is non-blocking only when the TaxRecord genuinely does not exist, `missingTax(...)` handles it, tax=null and taxError='' remain truthful, the UI says `Chưa có chứng từ`, no JS/page exception or 5xx/CORS/runtime failure occurs, and independent financial state proves tax is not complete. Do not extend this exception to arbitrary 404s or alter frozen Finance/Tax/backend semantics to hide browser logging.
+
+| Final gate | Accepted evidence |
+| --- | --- |
+| Unexpected JS/page errors | 0 |
+| Unexpected network/runtime failures | 0 |
+| Expected handled missing-TaxRecord resource messages | 8 HTTP 404 responses |
+| Horizontal overflow | 0 |
+| Runtime gate | PASS WITH DOCUMENTED EXPECTED NETWORK ABSENCE |
+| Desktop regression | 46 page/role/width checks; Client/Freelancer 1440 and 1024 PASS, visible keyboard focus |
+| Focused verification | `npm test -- src/ReviewUI.test.tsx src/ContractLifecycle.test.tsx`: 99/99 PASS |
+| Full regression | `npm test`: 793/793 PASS, 22 files; all prior tests retained |
+| Production build | PASS on this exact source state; reused rather than rebuilt during finalization; known bundle-size warning non-blocking |
+| Diff check | PASS |
+
+Activity exposes the real assignment, funding, submission, approval, release, invitation and publication events. Finance preserves separate funding/release/downstream truth. Existing ACCEPTED certificate PDF/XML authenticated Blob downloads passed for both roles; no binary was parsed as JSON.
+
+**Independent downstream truth:** Solana RPC was unavailable during final regression. On-chain remains UNKNOWN / ON_RAMP_AWAITING_RECONCILIATION, off-ramp NOT_STARTED, tax NOT_STARTED. Primary settlement/review success does not claim bank transfer, Solana completion, tax export or certificate acceptance for the new QA Jobs. No downstream success was fabricated.
+
+The compact real evidence remains two 1440 screenshots outside Git: Client completed Job review callout and Freelancer public profile after publication. No additional screenshots, secrets, credentials or machine-local paths are committed. Mobile optimization is deferred; current MVP delivery target is desktop/laptop at 1440/1024.
+
+**P06.7 FULL REGRESSION / QA — FROZEN. NEXT: P06.8 — FINAL FREEZE / HANDOFF — NOT_STARTED. STOP.**
