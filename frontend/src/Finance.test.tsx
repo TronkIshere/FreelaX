@@ -353,6 +353,36 @@ describe('P06.5B single-job money evidence spine', () => {
   });
   const detail = () => render(<FinanceHome user={client} />, '/finance?jobId=job-1');
 
+  it.each([client, freelancer])('keeps the shared detail grammar and role-correct context for $userType', async user => {
+    vi.mocked(api.paymentStatus).mockResolvedValue({ ...payment, network: 'localnet' });
+    vi.mocked(api.taxRecordForJob).mockResolvedValue({ ...tax, status: 'EXPORT_FAILED', statusLabel: 'Lập chứng từ thất bại' });
+    await render(<FinanceHome user={user} />, '/finance?jobId=job-1');
+    const receiver = user.userType === 'FREELANCER';
+    expect(host.querySelector('.eyebrow')?.textContent).toBe(receiver ? 'Freelancer / Thu nhập' : 'Client / Thanh toán');
+    expect(host.querySelector('h1')?.textContent).toBe('Chi tiết hồ sơ tiền.');
+    expect(host.querySelector('.page-head p')?.textContent).toBe(receiver
+      ? 'Theo dõi release, chi trả và chứng từ của công việc này.'
+      : 'Theo dõi dòng tiền của một công việc, từ thanh toán đến chứng từ thuế.');
+    expect(host.querySelector('.finance-detail-back a')?.textContent?.trim()).toBe(receiver ? 'Lịch sử thu nhập' : 'Danh sách thanh toán');
+    expect(host.querySelector('.finance-detail-back a')?.getAttribute('href')).toBe('/finance');
+    expect(host.querySelector('.finance-list-page')).toBeNull();
+    expect(host.querySelectorAll('.money-spine-item')).toHaveLength(5);
+    expect(host.querySelectorAll('.stage-done.money-spine-item')).toHaveLength(4);
+    const current = host.querySelector('[aria-current="step"]')!;
+    expect(current.getAttribute('data-stage')).toBe('tax');
+    expect(current.querySelector('.money-stage-badge')?.textContent).toContain('Cần kiểm tra');
+    expect(current.textContent).not.toContain('Đang xử lý');
+    expect(host.querySelector('.finance-statement-value')?.textContent).toContain('$300.00');
+    expect(host.querySelector('.finance-statement-value')?.textContent).toContain('298,5 Mock USDC');
+    expect(host.querySelector('.finance-statement-value')?.textContent).toContain('7.440.112 VND dự kiến');
+    expect(host.querySelector('.finance-case-note')?.textContent).toContain('Mô phỏng');
+    expect(host.querySelector('[data-stage="settlement"]')?.textContent).toContain('localnet');
+    expect(host.textContent).not.toContain('DEVNET');
+    expect(host.textContent).not.toContain('1234567890');
+    expect(host.querySelector('.technical-evidence')?.hasAttribute('open')).toBe(false);
+    expect([...host.querySelectorAll('button')].map(item => item.textContent?.trim())).toEqual(['Làm mới từ Marketplace']);
+  });
+
   it('renders one job statement and spine, never the frozen Finance list', async () => {
     await detail();
     expect(api.job).toHaveBeenCalledExactlyOnceWith('job-1');

@@ -529,8 +529,11 @@ function JobEvidence({ jobId, user }: { jobId: string; user: User }) {
       title={<><span className="finance-detail-title-start">Chi tiết <RoughBurst className="finance-detail-rays finance-detail-rays--left" size={35} accent="vermilion" seedKey="finance-detail:left" /></span>
         <span className="finance-detail-title-emphasis">hồ sơ tiền.<RoughUnderline size={230} seedKey="finance-detail:underline" />
           <RoughBurst className="finance-detail-rays finance-detail-rays--right" size={35} accent="ink" seedKey="finance-detail:right" /></span></>}
-      description="Theo dõi dòng tiền của một công việc, từ thanh toán đến chứng từ thuế." />
-    <div className="finance-detail-back"><Link to="/finance"><ArrowLeft size={22} aria-hidden="true" />Danh sách thanh toán</Link></div>
+      description={user.userType === 'FREELANCER'
+        ? 'Theo dõi release, chi trả và chứng từ của công việc này.'
+        : 'Theo dõi dòng tiền của một công việc, từ thanh toán đến chứng từ thuế.'} />
+    <div className="finance-detail-back"><Link to="/finance"><ArrowLeft size={22} aria-hidden="true" />
+      {user.userType === 'FREELANCER' ? 'Lịch sử thu nhập' : 'Danh sách thanh toán'}</Link></div>
     {job.contract && <ContractEvidence initialJob={job} />}
     {!payment && !job.contract && <StatePanel kind="error" title="Chưa thể đọc trạng thái thanh toán"
       body={paymentError || 'Marketplace chưa trả dữ liệu.'} action={{ label: 'Tải lại', onClick: retry }} />}
