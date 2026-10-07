@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { MemoryRouter } from 'react-router-dom';
+import { Link, MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Account } from './Account';
 import { Activity } from './Activity';
@@ -10,8 +10,11 @@ import { App } from './App';
 import { AuthEntry } from './Auth';
 import { api, ApiError } from './api';
 import { Overview } from './Overview';
+import { OwnProfile, ProfileRecord } from './Profile';
+import { Portfolio } from './Portfolio';
+import { PublicProfile } from './PublicProfile';
 import { SessionProvider } from './session';
-import type { Job, MyApplication, Notification as MarketplaceNotification, User } from './types';
+import type { Job, MyApplication, Notification as MarketplaceNotification, PortfolioItem, Profile, User } from './types';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 const client: User = { id: 'client-1', email: 'client@example.test', displayName: 'Client One', userType: 'CLIENT' };
@@ -380,5 +383,114 @@ describe('P06.5D editorial Marketplace notification ledger', () => {
     await act(async () => click('Thử lại').click());
     expect(host.textContent).toContain('Chưa có thông báo');
     expect(host.textContent).not.toContain('không có giao dịch');
+  });
+});
+
+describe('P06.6 identity passport and Marketplace dossier', () => {
+  const profile: Profile = { userId: freelancer.id, userType: 'FREELANCER', displayName: 'Marketplace Name', email: 'private@example.test', version: 7,
+    headline: 'Server headline', bio: 'Server biography', avatarUrl: 'https://media.example.test/avatar', languages: [{ code: 'vi', proficiency: 'Native' }], skills: ['React', 'Java'],
+    verification: { email: 'UNVERIFIED', identity: 'UNVERIFIED', paymentMethod: 'UNVERIFIED', source: 'NOT_CONFIGURED' },
+    reputation: { completedContracts: 0, fundedContracts: 0, disputeCount: 0, reviewCount: 0, averageRating: null, onTimeRate: null, calculatedAt: '2026-10-07' } };
+  const item: PortfolioItem = { id: 'folio', userId: freelancer.id, version: 3, title: 'Server project', description: 'Server project description', skills: ['React'], projectUrl: 'https://work.example.test/project', thumbnailUrl: 'https://media.example.test/project', completedAt: null, sortOrder: 0 };
+  function reads(p = profile, rows: PortfolioItem[] = []) {
+    vi.spyOn(api, 'ownProfile').mockResolvedValue(p); vi.spyOn(api, 'profile').mockResolvedValue(p);
+    vi.spyOn(api, 'portfolio').mockResolvedValue(rows); vi.spyOn(api, 'publicReviews').mockResolvedValue([]);
+  }
+  const field = (label: string) => [...host.querySelectorAll('label')].find(l => l.textContent?.startsWith(label))!.querySelector('input,textarea') as HTMLInputElement;
+  async function change(label: string, value: string) {
+    const el = field(label); const ctor = el.tagName === 'TEXTAREA' ? HTMLTextAreaElement : HTMLInputElement;
+    await act(async () => { Object.getOwnPropertyDescriptor(ctor.prototype, 'value')!.set!.call(el, value); el.dispatchEvent(new Event('input', { bubbles: true })); });
+  }
+  async function save() { await act(async () => host.querySelector('.profile-editor')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))); }
+  it.each([client, freelancer])('keeps $userType session identity distinct from editable profile', async user => {
+    reads({ ...profile, userId: user.id, userType: user.userType }); await render(<Account user={user} onLogout={vi.fn()} loggingOut={false} />);
+    expect(host.querySelector('#account-identity-title')?.textContent).toBe(user.displayName);
+    expect(host.querySelector('.account-record')?.textContent).toContain(user.email);
+    expect(host.querySelector('.profile-record-heading h2')?.textContent).toBe('Marketplace Name');
+    expect(host.querySelector('.account-record')?.textContent).not.toContain(profile.email);
+    expect((host.querySelector('.account-technical') as HTMLDetailsElement).open).toBe(false);
+    expect(host.querySelector('.account-technical code')?.textContent).toBe(user.id);
+    expect(host.querySelector('.profile-document')?.textContent).not.toContain(user.email);
+    expect(host.querySelectorAll('img')).toHaveLength(0);
+  });
+  it('keeps pending logout disabled without inventing account/security controls', async () => {
+    reads(); const logout = vi.fn(); await render(<Account user={freelancer} onLogout={logout} loggingOut />);
+    expect(click('Đang đăng xuất…').disabled).toBe(true); await act(async () => click('Đang đăng xuất…').click()); expect(logout).not.toHaveBeenCalled();
+    expect(host.textContent).not.toMatch(/Đổi mật khẩu|Xóa tài khoản|2FA|Phantom/);
+  });
+  it.each([{ ...profile, userId: 'other' }, { ...profile, userType: 'CLIENT' as const }])('rejects an own-profile/session identity mismatch', async p => {
+    reads(p); await render(<OwnProfile user={freelancer} />); expect(host.querySelector('.marketplace-profile-record')).toBeNull(); expect(host.textContent).toContain('Không thể tải'); expect(click('Thử tải hồ sơ')).toBeTruthy();
+  });
+  it('keeps real zero/null reputation, raw verification and explicit safe links', async () => {
+    await render(<ProfileRecord profile={profile} />); expect(host.querySelector('.profile-no-rating')?.textContent).toBe('Chưa có đánh giá công bố');
+    expect(host.textContent).not.toMatch(/0 \/ 5|Tỷ lệ đúng hạn|Top Rated|100%/);
+    expect(host.querySelector('.profile-reputation')?.textContent).toContain('Hợp đồng đã cấp vốn0');
+    const disclosure = host.querySelector('details') as HTMLDetailsElement; expect(disclosure.open).toBe(false); expect(disclosure.textContent).toContain('NOT_CONFIGURED');
+    const link = host.querySelector('a')!; expect(link.getAttribute('target')).toBe('_blank'); expect(link.getAttribute('rel')).toBe('noopener noreferrer'); expect(host.querySelector('img')).toBeNull();
+  });
+  it('preserves long real content without private identity or truncation', async () => {
+    const longName = 'Nguyễn '.repeat(10).trim(); const bio = 'Nội dung '.repeat(180);
+    await render(<ProfileRecord profile={{ ...profile, displayName: longName, bio, skills: ['Responsive implementation with TypeScript'] }} />);
+    expect(host.querySelector('h2')?.textContent).toBe(longName); expect(host.querySelector('.profile-bio')?.textContent).toBe(bio); expect(host.textContent).not.toContain(profile.email);
+  });
+  it('locks grouped editor fields and duplicate profile writes while pending', async () => {
+    reads(); const patch = vi.spyOn(api, 'patchProfile').mockReturnValue(new Promise(() => {})); await render(<OwnProfile user={freelancer} />);
+    await act(async () => click('Chỉnh sửa hồ sơ').click()); expect(field('Tên hiển thị').value).toBe(profile.displayName); expect(host.querySelectorAll('.profile-field-group > legend')).toHaveLength(4);
+    await save(); await save(); expect(patch).toHaveBeenCalledOnce(); expect(field('Tên hiển thị').matches(':disabled')).toBe(true); expect(click('Lưu kỹ năng').disabled).toBe(true); expect(click('Đóng bản nháp').disabled).toBe(true);
+    expect(patch.mock.calls[0][0]).toMatchObject({ version: 7, languages: profile.languages });
+  });
+  it('does not submit an invalid grouped-editor draft', async () => {
+    reads(); const patch = vi.spyOn(api, 'patchProfile'); await render(<OwnProfile user={freelancer} />); await act(async () => click('Chỉnh sửa hồ sơ').click()); await change('Tên hiển thị', 'x'); await save(); expect(patch).not.toHaveBeenCalled(); expect(field('Tên hiển thị').value).toBe('x');
+  });
+  it('distinguishes a successful server save from failed session reconciliation', async () => {
+    reads(); const updated = { ...profile, displayName: 'Saved Name', version: 8 }; const reconcile = vi.fn().mockRejectedValueOnce(new Error('Session offline')).mockResolvedValue(undefined);
+    const patch = vi.spyOn(api, 'patchProfile').mockImplementation(async () => { vi.mocked(api.ownProfile).mockResolvedValue(updated); return updated; });
+    await render(<Account user={freelancer} onLogout={vi.fn()} loggingOut={false} onReconcileUser={reconcile} />); await act(async () => click('Chỉnh sửa hồ sơ').click()); await change('Tên hiển thị', 'Saved Name'); await save();
+    expect(host.querySelector('.profile-identity-retry')?.textContent).toContain('Hồ sơ đã lưu trên máy chủ'); expect(host.querySelector('#account-identity-title')?.textContent).toBe(freelancer.displayName);
+    expect(host.querySelector('.profile-record-heading h2')?.textContent).toBe('Saved Name'); expect(host.querySelector('.profile-reconciliation')).toBeNull(); await act(async () => click('Đọc lại danh tính phiên').click()); expect(patch).toHaveBeenCalledOnce(); expect(reconcile).toHaveBeenCalledTimes(2);
+  });
+  it('uses local folio plates and safe links without fetching remote images', async () => {
+    reads(profile, [item]); await render(<Portfolio userId={freelancer.id} />); expect(host.querySelector('.portfolio-plate')?.getAttribute('aria-hidden')).toBe('true'); expect(host.querySelector('img')).toBeNull();
+    expect(host.querySelectorAll('a[target="_blank"][rel="noopener noreferrer"]')).toHaveLength(2); expect(host.textContent).toContain('1 công trình'); expect(host.querySelector('button.portfolio-add')).toBeNull(); expect(host.textContent).not.toContain('Hoàn thành:');
+  });
+  it('honors the twelve-item cap and does not infer project skills', async () => {
+    reads(profile, Array.from({ length: 12 }, (_, i) => ({ ...item, id: String(i), skills: [], thumbnailUrl: null }))); await render(<Portfolio userId={freelancer.id} editable />);
+    expect(click('Thêm công trình').disabled).toBe(true); expect(host.querySelectorAll('.portfolio-record')).toHaveLength(12); expect(host.querySelectorAll('.profile-tokens')).toHaveLength(0);
+  });
+  it('rejects a future portfolio date before persistence', async () => {
+    reads(); const mutation = vi.spyOn(api, 'savePortfolio'); await render(<Portfolio userId={freelancer.id} editable />); await act(async () => click('Thêm công trình').click());
+    await change('Tiêu đề công trình', 'Valid title'); await change('Mô tả công trình', 'Valid description'); await change('Ngày hoàn thành', '2999-01-01'); await save(); expect(mutation).not.toHaveBeenCalled();
+  });
+  it('reconciles an uncertain delete that already succeeded without repeating DELETE', async () => {
+    reads(profile, [item]); vi.spyOn(api, 'deletePortfolio').mockImplementation(async () => { vi.mocked(api.portfolio).mockResolvedValue([]); throw new ApiError('Timeout', 0); });
+    await render(<Portfolio userId={freelancer.id} editable />); await act(async () => click('Xóa Server project').click()); await act(async () => click('Xác nhận xóa công trình').click());
+    expect(api.deletePortfolio).toHaveBeenCalledOnce(); expect(host.textContent).toContain('Danh sách máy chủ không còn mục này'); expect(host.querySelector('.portfolio-delete-confirmation')).toBeNull();
+  });
+  it.each([403, 404])('does not expose a partner profile after HTTP %s', async status => {
+    reads(); vi.mocked(api.profile).mockRejectedValue(new ApiError('Unavailable profile', status)); await render(<Routes><Route path="/profiles/:userId" element={<PublicProfile user={client} />} /></Routes>, '/profiles/' + freelancer.id);
+    expect(host.querySelector('.profile-document')).toBeNull(); expect(click('Thử đọc lại hồ sơ')).toBeTruthy(); expect(host.textContent).not.toContain('Marketplace Name');
+  });
+  it('keeps partner profile private and reviews subject to publication/moderation', async () => {
+    reads(profile, [item]); const base = { id: 'r', contractId: 'contract', reviewerId: client.id, revieweeId: freelancer.id, submitted: true, publishedAt: '2026-10-07', overall: 4, contentHidden: false, reported: false };
+    vi.mocked(api.publicReviews).mockResolvedValue([{ ...base, comment: 'Published server comment' }, { ...base, id: 'hidden', contentHidden: true, comment: 'Hidden server comment' }, { ...base, id: 'draft', publishedAt: null, comment: 'Unpublished server comment' }]);
+    await render(<Routes><Route path="/profiles/:userId" element={<PublicProfile user={client} />} /></Routes>, '/profiles/' + freelancer.id);
+    expect(host.textContent).not.toContain(profile.email); expect(host.textContent).not.toContain('Chỉnh sửa hồ sơ'); expect(host.textContent).not.toContain('Thêm công trình');
+    expect(host.textContent).toContain('Published server comment'); expect(host.textContent).not.toContain('Hidden server comment'); expect(host.textContent).not.toContain('Unpublished server comment'); expect(api.publicReviews).toHaveBeenCalledWith(freelancer.id, 0);
+  });
+  it('clears the prior partner document while a different userId is loading', async () => {
+    reads(); vi.mocked(api.profile).mockImplementation(id => id === freelancer.id ? Promise.resolve(profile) : new Promise(() => {}));
+    await render(<><Link to="/profiles/other-partner">Different partner</Link><Routes><Route path="/profiles/:userId" element={<PublicProfile user={client} />} /></Routes></>, '/profiles/' + freelancer.id);
+    expect(host.textContent).toContain('Marketplace Name'); await act(async () => (host.querySelector('a[href="/profiles/other-partner"]') as HTMLAnchorElement).click());
+    expect(host.querySelector('.profile-document')).toBeNull(); expect(host.textContent).not.toContain('Marketplace Name'); expect(api.profile).toHaveBeenLastCalledWith('other-partner');
+  });
+  it('keeps Client partner company facts without a Freelancer portfolio slot', async () => {
+    reads({ ...profile, userId: client.id, userType: 'CLIENT', companyName: 'Server Studio', companyWebsite: 'https://studio.example.test' });
+    await render(<Routes><Route path="/profiles/:userId" element={<PublicProfile user={freelancer} />} /></Routes>, '/profiles/' + client.id);
+    expect(host.textContent).toContain('Server Studio'); expect(host.querySelector('.portfolio-section')).toBeNull(); expect(api.portfolio).not.toHaveBeenCalled(); expect(host.querySelector('.profile-language-skills')?.textContent).not.toContain('React');
+  });
+  it('keeps existing twenty-record review pagination without fabricated totals', async () => {
+    reads(); vi.mocked(api.publicReviews).mockImplementation(async (_, page) => page === 0 ? Array.from({ length: 20 }, (_, i) => ({ id: 'review-' + i, contractId: 'contract-' + i, reviewerId: client.id, revieweeId: freelancer.id, submitted: true, publishedAt: '2026-10-07', contentHidden: false, reported: false })) : []);
+    await render(<Routes><Route path="/profiles/:userId" element={<PublicProfile user={client} />} /></Routes>, '/profiles/' + freelancer.id);
+    expect(click('Trang tiếp').disabled).toBe(false); await act(async () => click('Trang tiếp').click()); expect(api.publicReviews).toHaveBeenLastCalledWith(freelancer.id, 1); expect(click('Trang tiếp').disabled).toBe(true); expect(host.textContent).toContain('Trang 2'); expect(host.textContent).not.toContain('Trang 2 /');
   });
 });

@@ -1709,3 +1709,126 @@ a { color: inherit; }
   .activity-mark-read, .activity-page .activity-row-content > a svg { transition: none; }
   .activity-mark-read:hover:not(:disabled), .activity-mark-read:focus-visible, .activity-page .activity-row-content > a:hover svg, .activity-page .activity-row-content > a:focus-visible svg { transform: none; }
 }
+
+/* P06.6: Account/session identity and editable Marketplace evidence stay distinct. */
+.account-page .page-head h1, .public-profile-page .page-head h1 { font-size: clamp(40px, 4.4vw, 62px); letter-spacing: -.035em; }
+.profile-title-accent { display: inline-block; position: relative; color: var(--vermilion); }
+.profile-title-underline { position: absolute; width: 65%; height: 15px; bottom: -8px; left: 16%; }
+.profile-title-rays { position: absolute; right: -35px; top: -12px; }
+.account-page .page-head p, .public-profile-page .page-head p { font-size: 17px; line-height: 1.5; }
+.account-page .account-document { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 30px; max-width: none; margin: 30px 0 0; padding: 26px 30px; border: 2px solid var(--ink); border-top: 8px solid var(--acid); background: var(--cream); box-shadow: 5px 5px 0 var(--ink); }
+.account-page .account-identity-copy { min-width: 0; }
+.account-page .account-source-label { display: inline-block; padding: 4px 9px; background: var(--acid); font-size: 14px; font-weight: 800; }
+.account-page .account-document h2 { font-size: 36px; line-height: 1.18; margin: 12px 0 14px; letter-spacing: -.025em; }
+.account-page .account-record { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 24px; padding: 0; margin: 0; border: 0; }
+.account-page .account-record div { display: block; padding: 0; border: 0; min-width: 0; }
+.account-page .account-record dt { font-size: 14px; font-weight: 650; text-transform: none; letter-spacing: 0; margin-bottom: 4px; color: var(--soft-ink); }
+.account-page .account-record dd { font-size: 17px; font-weight: 650; line-height: 1.5; }
+.account-page .account-technical { margin: 16px 0 0; border-bottom: 0; }
+.account-page .account-technical summary { padding: 10px 0 0; font-size: 14px; }
+.account-page .account-technical code { display: block; padding-top: 10px; font-size: 14px; }
+.profile-plate { --profile-accent: var(--mint); --profile-plate-ink: var(--ink); position: relative; width: 104px; height: 108px; border: 2px solid var(--ink); background: var(--profile-accent); color: var(--profile-plate-ink); box-shadow: 5px 5px 0 var(--ink); transform: rotate(-2deg); display: grid; place-content: center; margin: 9px 0; }
+.profile-plate-client { --profile-accent: var(--cobalt); --profile-plate-ink: var(--cream); }
+.profile-plate::before { content: ''; position: absolute; inset: 5px -7px -5px 7px; border: 1px solid var(--ink); background: var(--cream); z-index: -1; transform: rotate(4deg); }
+.profile-plate strong { font-size: 34px; font-weight: 900; line-height: 1; letter-spacing: -.02em; }
+.profile-plate svg { position: absolute; bottom: 9px; right: 10px; }
+.profile-plate-tape { position: absolute; width: 38px; height: 12px; top: -7px; left: 26px; background: var(--acid); border: 1px solid var(--ink); transform: rotate(5deg); }
+.profile-plate-rule { position: absolute; left: 10px; bottom: 11px; width: 30px; height: 2px; background: currentColor; }
+.profile-document { margin-block: 32px; }
+.profile-document .profile-record-heading { display: grid; grid-template-columns: 100px minmax(0, 1fr) auto; align-items: center; gap: 24px; padding: 20px 26px; background: var(--mint); border: 2px solid var(--ink); box-shadow: 4px 4px 0 var(--ink); }
+.profile-document .profile-record-heading > div { min-width: 0; }
+.profile-document .profile-record-heading .profile-plate { width: 84px; height: 88px; --profile-accent: var(--cream); --profile-plate-ink: var(--ink); }
+.profile-document .profile-record-heading .profile-plate strong { font-size: 30px; }
+.profile-document .profile-source-label { display: inline-block; font-size: 14px; font-weight: 750; }
+.profile-document .profile-record-heading h2 { margin: 7px 0; font-size: 32px; font-weight: 850; line-height: 1.2; letter-spacing: -.025em; overflow-wrap: anywhere; }
+.profile-document .profile-headline { margin: 0; font-size: 18px; font-weight: 650; line-height: 1.5; overflow-wrap: anywhere; }
+.profile-document .profile-role-stamp { padding: 7px 12px; border: 2px solid var(--ink); background: var(--cream); font-size: 15px; font-weight: 800; }
+.profile-document .profile-record-body { padding: 18px 0 0; }
+.profile-document .profile-bio { margin: 8px 0 20px; max-width: 66ch; font-size: 17px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+.profile-document .profile-external { font-size: 15px; }
+.profile-document .profile-record-body > .fact-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 15px 0 22px; gap: 20px; }
+.profile-document .fact-grid dt { font-size: 14px; font-weight: 600; }
+.profile-document .profile-record-body > .fact-grid dd { font-size: 18px; }
+.profile-document .profile-language-skills { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px; padding: 18px 0; border-bottom: 1px solid var(--line); }
+.profile-document .profile-language-skills h3 { font-size: 19px; margin: 0 0 10px; }
+.profile-tokens { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; }
+.profile-tokens > span { max-width: 100%; padding: 5px 9px; border: 1.5px solid var(--ink); background: var(--cream); font-size: 15px; font-weight: 650; line-height: 1.4; overflow-wrap: anywhere; }
+.profile-token-separator { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; clip-path: inset(50%); overflow: hidden; white-space: nowrap; }
+.profile-document .profile-reputation { padding-top: 22px; }
+.profile-document .profile-reputation .section-heading { padding: 0 0 16px; }
+.profile-document .profile-reputation .section-heading h3 { font-size: 25px; font-weight: 850; }
+.profile-document .profile-reputation .section-heading p { font-size: 15px; margin-top: 6px; }
+.profile-document .profile-reputation .fact-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; padding: 0; border: 2px solid var(--ink); }
+.profile-document .profile-reputation .fact-grid > div { padding: 16px 18px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.profile-document .profile-reputation .fact-grid > div:first-child { background: var(--mint); }
+.profile-document .profile-reputation .fact-grid dd { font-size: 26px; line-height: 1.3; font-weight: 850; }
+.profile-document .profile-no-rating { display: block; font-size: 16px; font-weight: 650; line-height: 1.45; }
+.profile-document .technical-evidence { margin: 18px 0; }
+.profile-document .technical-evidence summary { padding: 12px 0; font-size: 14px; }
+.profile-document .technical-evidence .evidence-body { font-size: 14px; }
+.profile-document .profile-own-actions { padding: 2px 0 20px; border-bottom: 2px solid var(--ink); }
+.profile-document .profile-own-actions .action-group { align-items: center; gap: 22px; }
+.profile-document .profile-edit-action { gap: 9px; }
+.profile-document .text-link { font-size: 15px; font-weight: 700; overflow-wrap: anywhere; }
+.profile-document .profile-editor { max-width: none; margin: 26px 0; padding-top: 20px; border-top: 3px solid var(--ink); }
+.profile-document .profile-editor > .section-heading { padding: 0 0 20px; }
+.profile-document .profile-editor .profile-field-group { border-bottom: 1px solid var(--line); padding: 10px 0 20px; margin-bottom: 22px; }
+.profile-document .profile-field-group legend { font-size: 19px; font-weight: 800; padding: 0 0 6px; }
+.profile-document .profile-field-group legend > span { display: inline-block; background: var(--mint); padding: 4px 8px; border: 1px solid var(--ink); margin-right: 8px; font-size: 15px; }
+.profile-document .profile-field-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 24px; }
+.profile-document .profile-editor label { font-size: 15px; font-weight: 650; min-width: 0; }
+.profile-document .profile-editor input, .profile-document .profile-editor select, .profile-document .profile-editor textarea { background: var(--cream); border: 2px solid var(--ink); padding: 10px 12px; font-size: 16px; font-weight: 400; }
+.profile-document .profile-editor textarea { min-height: 144px; }
+.profile-document .profile-language { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; align-items: center; gap: 20px; border-bottom: 1px solid var(--line); padding-bottom: 12px; }
+.profile-document .profile-language .text-button { font-size: 14px; }
+.profile-document .profile-skills-editor { margin-top: 26px; }
+.profile-document .profile-reconciliation, .profile-document .profile-identity-retry { padding: 20px 24px; background: var(--pale-acid); border: 2px solid var(--ink); margin: 20px 0; }
+.profile-document .profile-identity-retry { background: var(--cream); border-top: 6px solid var(--acid); }
+.profile-document .profile-reconciliation p, .profile-document .profile-identity-retry p { max-width: 68ch; font-size: 16px; line-height: 1.5; }
+.profile-document .portfolio-section { border-top: 3px solid var(--ink); padding-top: 20px; margin-top: 30px; }
+.profile-document .portfolio-section-heading { display: flex; align-items: flex-start; gap: 14px; }
+.profile-document .portfolio-section-heading > svg { flex-shrink: 0; margin-top: 3px; }
+.profile-document .portfolio-section-heading .section-heading { flex: 1; padding: 0 0 20px; }
+.profile-document .portfolio-section-heading h2 { font-size: 28px; font-weight: 850; }
+.profile-document .portfolio-empty { margin: 0 0 22px; font-size: 16px; }
+.profile-document .portfolio-record { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 24px; padding: 22px 0; border-bottom: 2px solid var(--ink); }
+.profile-document .portfolio-record-copy { min-width: 0; }
+.profile-document .portfolio-record h3 { font-size: 24px; font-weight: 850; line-height: 1.25; margin: 0 0 12px; }
+.profile-document .portfolio-record .submission-summary { font-size: 16px; line-height: 1.55; max-width: 65ch; margin: 0 0 14px; }
+.profile-document .portfolio-record .metadata { font-size: 14px; }
+.profile-document .portfolio-record .action-group { margin-top: 20px; }
+.profile-document .portfolio-plate { position: relative; width: 72px; height: 80px; margin: 6px 0 0 4px; background: var(--mint); border: 2px solid var(--ink); box-shadow: 4px 4px 0 var(--ink); transform: rotate(-2deg); display: grid; place-items: center; }
+.profile-document .portfolio-plate span { position: absolute; top: 5px; left: 6px; font-size: 12px; font-weight: 800; }
+.profile-document .portfolio-plate i { position: absolute; top: -6px; right: 8px; width: 25px; height: 9px; background: var(--cream); border: 1px solid var(--ink); transform: rotate(5deg); }
+.profile-document .portfolio-section > .text-button { margin-right: 18px; font-size: 15px; }
+.profile-document .portfolio-add { gap: 7px; }
+.profile-document .portfolio-delete-action { font-size: 15px; text-decoration-color: var(--vermilion); text-decoration-thickness: 2px; }
+.profile-document .portfolio-delete-confirmation { background: var(--cream); border: 2px solid var(--ink); border-top: 7px solid var(--vermilion); padding: 22px; }
+.profile-document .portfolio-delete-confirmation .button:first-child { box-shadow: 3px 3px 0 var(--vermilion); }
+.public-profile-page .profile-published-reviews { border-top: 3px solid var(--ink); margin-top: 30px; }
+.public-profile-page .profile-published-reviews .section-heading h2 { font-size: 28px; font-weight: 850; }
+.public-profile-page .review-record .metadata { font-size: 14px; }
+.account-page .account-actions { max-width: none; padding: 24px; background: var(--ink); color: var(--cream); border: 2px solid var(--ink); margin-top: 32px; }
+.account-page .account-actions .eyebrow { color: var(--mint); font-size: 14px; }
+.account-page .account-actions h2 { font-size: 25px; }
+.account-page .account-actions p { font-size: 15px; line-height: 1.5; }
+.account-page .account-logout { border-color: var(--cream); gap: 10px; flex-shrink: 0; }
+.account-page .account-logout:focus-visible { outline-color: var(--cobalt); }
+@media (max-width: 1100px) {
+  .account-page .account-document { grid-template-columns: 88px minmax(0, 1fr); padding: 22px; gap: 24px; }
+  .account-page .profile-plate { width: 80px; height: 88px; }
+  .account-page .profile-plate strong { font-size: 30px; }
+  .account-page .account-document h2 { font-size: 32px; }
+  .account-page .account-record { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .profile-document .profile-record-heading { grid-template-columns: 80px minmax(0, 1fr) auto; padding: 18px 20px; gap: 20px; }
+  .profile-document .profile-record-heading .profile-plate { width: 72px; height: 80px; }
+  .profile-document .profile-record-heading h2 { font-size: 29px; }
+  .profile-document .profile-reputation .fact-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .profile-document .profile-language { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 16px; }
+  .profile-document .profile-language .text-button { grid-column: 1 / -1; justify-self: start; }
+  .profile-document .portfolio-record { grid-template-columns: 66px minmax(0, 1fr); gap: 20px; }
+  .profile-document .portfolio-plate { width: 58px; height: 64px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .profile-plate, .profile-plate::before, .profile-plate-tape, .profile-document .portfolio-plate, .profile-document .portfolio-plate i { transform: none; }
+}
