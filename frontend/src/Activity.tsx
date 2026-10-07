@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowUpRight, Bell, Check, Coins, FileText, Gavel, RotateCcw, Star } from 'lucide-react';
 import { api } from './api';
-import { activityPresentation, type ActivityFamily } from './activityPresentation';
+import { activityPresentation, isLongActivityMessage, type ActivityFamily } from './activityPresentation';
 import { PageHeading, StatePanel } from './components';
 import { financePath } from './financeStatus';
 import { RoughBurst, RoughUnderline } from './ui/kinetic';
@@ -15,6 +15,18 @@ const familyIcons: Record<ActivityFamily, typeof FileText> = {
 const stamp = (value: string | null) => value ? value.slice(0, 16).replace('T', ' · ') : 'Chưa có thời gian';
 const financialEvents = new Set(['RELEASE_CONFIRMED', 'REFUND_PENDING', 'REFUND_CONFIRMED']);
 const ratingEvents = new Set(['REVIEW_INVITED', 'REVIEW_PUBLISHED']);
+
+function ActivityMessage({ message }: { message: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const contentId = useId();
+  const long = isLongActivityMessage(message);
+  // Only the original server text is clamped. Disclosure has no API/read-state side effects.
+  return <div className="activity-message">
+    <p id={contentId} className={'activity-message-text' + (long ? expanded ? ' is-expanded' : ' is-collapsed' : '')}>{message}</p>
+    {long && <button className="activity-message-toggle" type="button" aria-expanded={expanded}
+      aria-controls={contentId} onClick={() => setExpanded(value => !value)}>{expanded ? 'Thu gọn' : 'Xem thêm nội dung'}</button>}
+  </div>;
+}
 
 export function Activity() {
   const [page, setPage] = useState(0);
@@ -86,7 +98,7 @@ export function Activity() {
           </div></div>
           <div className="activity-row-content"><div className="activity-row-meta">
             <span className="activity-event-type">{presentation.label}</span><time dateTime={item.createdAt ?? undefined}>{stamp(item.createdAt)}</time></div>
-            <h3>{item.title}</h3><p>{item.message}</p>
+            <h3>{item.title}</h3><ActivityMessage key={item.message} message={item.message} />
             {/* amount has no currency/unit in Notification; preserve the server message without guessing. */}
             {item.jobId && <Link to={financialEvents.has(item.type) ? financePath(item.jobId) : '/work/' + encodeURIComponent(item.jobId) + (ratingEvents.has(item.type) ? '#contract-reviews' : '')}>
               {financialEvents.has(item.type) ? 'Xem bằng chứng tài chính' : ratingEvents.has(item.type) ? 'Xem đánh giá hợp đồng' : 'Xem công việc'} <ArrowUpRight size={21} aria-hidden="true" /></Link>}

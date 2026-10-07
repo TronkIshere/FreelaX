@@ -5,7 +5,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Account } from './Account';
 import { Activity } from './Activity';
-import { activityPresentation } from './activityPresentation';
+import { ACTIVITY_MESSAGE_PREVIEW_LIMIT, activityPresentation, isLongActivityMessage } from './activityPresentation';
 import { App } from './App';
 import { AuthEntry } from './Auth';
 import { api, ApiError } from './api';
@@ -165,6 +165,79 @@ describe('P06.5D editorial Marketplace notification ledger', () => {
     return vi.spyOn(api, 'notifications').mockResolvedValue({ currentPage: 0, pageSize: 10,
       totalPages, totalElements, data });
   }
+  it.each([0, 240, 241])('uses a stable presentation-only threshold for a %i-character message', length => {
+    expect(ACTIVITY_MESSAGE_PREVIEW_LIMIT).toBe(240);
+    expect(isLongActivityMessage('x'.repeat(length))).toBe(length > 240);
+  });
+  it('expands and collapses the original server text without fetching, marking read or changing destinations/counts', async () => {
+    const message = 'Server wording, unchanged. ' + 'transaction-reference-'.repeat(25);
+    const list = notifications([{ ...note, message, type: 'PAYMENT_RECEIVED', amount: 123456.78 }], 42, 5);
+    const mark = vi.spyOn(api, 'markNotificationRead');
+    await render(<Activity />);
+    const paragraph = host.querySelector('.activity-message-text')!;
+    const toggle = click('Xem thêm nội dung');
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(toggle.getAttribute('aria-controls')).toBe(paragraph.id);
+    expect(paragraph.classList.contains('is-collapsed')).toBe(true);
+    expect(paragraph.textContent).toBe(message);
+    await act(async () => toggle.click());
+    expect(click('Thu gọn').getAttribute('aria-expanded')).toBe('true');
+    expect(paragraph.classList.contains('is-expanded')).toBe(true);
+    expect(paragraph.textContent).toBe(message);
+    await act(async () => click('Thu gọn').click());
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(paragraph.classList.contains('is-collapsed')).toBe(true);
+    expect(paragraph.textContent).toBe(message);
+    expect(list).toHaveBeenCalledExactlyOnceWith(0);
+    expect(mark).not.toHaveBeenCalled();
+    expect(host.querySelector('.activity-row-content a')?.getAttribute('href')).toBe('/work/job-1');
+    expect(host.textContent).toContain('42 thông báo trong tài khoản');
+    expect(host.textContent).toContain('1 chưa đọc trên trang này');
+    expect(host.textContent).not.toMatch(/123456|USD|VND|USDC/);
+  });
+  it('does not add disclosure to a short message or rewrite its text', async () => {
+    notifications([note]);
+    await render(<Activity />);
+    expect(host.querySelector('.activity-message-toggle')).toBeNull();
+    expect(host.querySelector('.activity-message-text')?.textContent).toBe(note.message);
+    expect(host.querySelector('.is-collapsed, .is-expanded')).toBeNull();
+  });
+  it('keeps long HTML-like technical text inert and unknown severity neutral after expansion', async () => {
+    const message = '<img src=x onerror=unsafe()> <script>unsafe()</script> ' + 'hash'.repeat(100);
+    notifications([{ ...note, message, type: 'FUTURE_EVENT', jobId: null }]);
+    await render(<Activity />);
+    await act(async () => click('Xem thêm nội dung').click());
+    expect(host.querySelector('.activity-message-text')?.textContent).toBe(message);
+    expect(host.querySelector('script, img, .activity-row-content a')).toBeNull();
+    expect(host.querySelector('.activity-tone-neutral.unread .activity-read-state')?.textContent).toBe('Chưa đọc');
+  });
+  it('keeps error severity and read actions independent of expanded content', async () => {
+    const message = 'Exact server failure message. '.repeat(12);
+    notifications([{ ...note, type: 'PAYOUT_FAILED', message }]);
+    const mark = vi.spyOn(api, 'markNotificationRead').mockResolvedValue({ ...note, type: 'PAYOUT_FAILED', message, read: true });
+    await render(<Activity />);
+    await act(async () => click('Xem thêm nội dung').click());
+    expect(host.querySelector('.activity-tone-error.unread .activity-read-state')?.textContent).toBe('Chưa đọc');
+    expect(mark).not.toHaveBeenCalled();
+    await act(async () => click('Đánh dấu đã đọc').click());
+    expect(mark).toHaveBeenCalledExactlyOnceWith(note.id);
+    expect(host.querySelector('.activity-tone-error .activity-event-type')).toBeTruthy();
+    expect(host.querySelector('.activity-read-state.is-read')?.textContent).toBe('Đã đọc');
+    expect(host.querySelector('.activity-mark-read')).toBeNull();
+    expect(host.querySelector('.activity-message-text')?.textContent).toBe(message);
+  });
+  it('resets local expansion when reconciliation replaces the server message', async () => {
+    const message = 'Original server message. '.repeat(15);
+    const replacement = 'Reconciled server message. '.repeat(15);
+    notifications([{ ...note, message }]);
+    vi.spyOn(api, 'markNotificationRead').mockResolvedValue({ ...note, message: replacement, read: true });
+    await render(<Activity />);
+    await act(async () => click('Xem thêm nội dung').click());
+    await act(async () => click('Đánh dấu đã đọc').click());
+    expect(click('Xem thêm nội dung').getAttribute('aria-expanded')).toBe('false');
+    expect(host.querySelector('.activity-message-text')?.textContent).toBe(replacement);
+    expect(host.textContent).not.toContain(message);
+  });
   it.each([
     ['JOB_ASSIGNED', 'Được giao việc', 'work', 'success'],
     ['JOB_CANCELLED', 'Công việc đã hủy', 'work', 'closed'],

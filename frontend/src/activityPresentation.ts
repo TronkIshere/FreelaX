@@ -31,3 +31,9 @@ const unknown: Presentation = { label: 'Cập nhật từ Marketplace', family: 
 export function activityPresentation(type: string): Presentation {
   return Object.prototype.hasOwnProperty.call(presentations, type) ? presentations[type] : unknown;
 }
+
+// Length controls presentation only; it never implies event severity or financial state.
+export const ACTIVITY_MESSAGE_PREVIEW_LIMIT = 240;
+export function isLongActivityMessage(message: string): boolean {
+  return message.length > ACTIVITY_MESSAGE_PREVIEW_LIMIT;
+}

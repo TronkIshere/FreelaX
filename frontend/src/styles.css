@@ -1660,9 +1660,9 @@ a { color: inherit; }
 }
 .activity-page .activity-row::before { content: ''; position: absolute; left: 0; top: 14px; bottom: 14px; width: 7px; background: var(--event-rail); }
 .activity-page .activity-tone-success { --event-rail: #39B96E; --event-surface: var(--mint); }
-.activity-page .activity-tone-active { --event-rail: var(--cobalt); --event-surface: color-mix(in srgb, var(--cobalt) 17%, var(--cream)); }
+.activity-page .activity-tone-active { --event-rail: var(--cobalt); --event-surface: var(--cobalt); --event-type-ink: var(--cream); }
 .activity-page .activity-tone-attention { --event-rail: var(--acid); --event-surface: var(--acid); }
-.activity-page .activity-tone-error { --event-rail: var(--vermilion); --event-surface: var(--vermilion); }
+.activity-page .activity-tone-error { --event-rail: var(--vermilion); --event-surface: var(--vermilion); --event-type-ink: var(--cream); }
 .activity-page .activity-tone-closed { --event-surface: var(--ink); --event-type-ink: var(--cream); }
 .activity-page .activity-row-marker, .activity-page .activity-row.unread .activity-row-marker { background: transparent; display: flex; align-items: flex-start; padding-top: 9px; }
 .activity-event-plate { position: relative; width: 70px; height: 76px; display: grid; place-items: center; background: var(--cream); border: 2px solid var(--ink); box-shadow: 4px 4px 0 var(--ink); transform: rotate(-2deg); }
@@ -1672,17 +1672,22 @@ a { color: inherit; }
 .activity-plate-lines { position: absolute; bottom: 9px; left: 17px; width: 34px; height: 2px; background: var(--ink); }
 .activity-plate-lines::after { content: ''; position: absolute; top: 5px; left: 0; width: 23px; height: 2px; background: var(--ink); }
 .activity-page .activity-row-meta { align-items: center; gap: 9px 15px; margin-bottom: 12px; font-size: 14px; }
-.activity-page .activity-row-meta .activity-event-type { display: inline-block; padding: 6px 10px; border: 1.5px solid var(--ink); background: var(--event-surface); color: var(--event-type-ink); font-size: 15px; font-weight: 800; line-height: 1.35; }
+.activity-page .activity-row-meta .activity-event-type { display: inline-block; padding: 6px 10px; border: 2px solid var(--ink); background: var(--event-surface); color: var(--event-type-ink); font-size: 15px; font-weight: 800; line-height: 1.35; }
 .activity-page .activity-row-meta time { font-size: 14px; line-height: 1.4; }
 .activity-page .activity-row-content { min-width: 0; }
 .activity-page .activity-row-content h3 { margin: 0 0 9px; font-size: 24px; font-weight: 850; line-height: 1.25; letter-spacing: -.02em; overflow-wrap: anywhere; }
-.activity-page .activity-row-content p { margin: 0 0 13px; font-size: 16px; line-height: 1.55; max-width: 73ch; }
+.activity-page .activity-row-content .activity-message-text { margin: 0; font-size: 16px; line-height: 1.55; max-width: 62ch; white-space: pre-wrap; overflow-wrap: anywhere; }
+.activity-page .activity-message { margin-bottom: 13px; }
+.activity-page .activity-message-text.is-collapsed { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+.activity-page .activity-message-text.is-expanded { padding: 12px 14px; background: var(--cream); border-left: 2px solid var(--soft-ink); }
+.activity-page .activity-message-toggle { display: block; margin-top: 8px; padding: 3px 0; background: transparent; color: var(--ink); border: 0; font: inherit; font-size: 15px; font-weight: 750; text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 4px; cursor: pointer; }
 .activity-page .activity-row-content > a { display: inline-flex; align-items: center; gap: 7px; font-size: 15px; font-weight: 750; text-decoration-thickness: 1.5px; text-underline-offset: 4px; }
 .activity-page .activity-row-action { min-width: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 16px; padding-top: 3px; font-size: 14px; }
-.activity-read-state { display: inline-flex; align-items: center; gap: 5px; background: color-mix(in srgb, var(--acid) 18%, var(--cream)); border: 1px solid var(--ink); padding: 5px 9px; font-size: 14px; font-weight: 700; }
-.activity-read-state.is-read { border-color: transparent; background: transparent; color: var(--soft-ink); font-weight: 500; }
-.activity-mark-read { width: 100%; min-height: 42px; padding: 9px 10px; background: var(--cream); border: 1.5px solid var(--ink); color: var(--ink); font: inherit; font-size: 14px; font-weight: 750; cursor: pointer; box-shadow: 2px 2px 0 var(--ink); }
-.activity-mark-read:disabled { cursor: wait; opacity: .65; box-shadow: none; }
+.activity-page .activity-read-state { display: inline-flex; align-items: center; gap: 5px; background: var(--acid); color: var(--ink); border: 2px solid var(--ink); padding: 6px 10px; font-size: 14px; font-weight: 850; }
+.activity-page .activity-read-state.is-read { border-color: transparent; background: transparent; color: var(--soft-ink); font-weight: 500; }
+.activity-page .activity-mark-read { width: 100%; min-height: 42px; padding: 9px 10px; background: var(--ink); border: 2px solid var(--ink); color: var(--cream); font: inherit; font-size: 14px; font-weight: 800; cursor: pointer; box-shadow: 2px 2px 0 var(--ink); }
+.activity-page .activity-mark-read:disabled { cursor: wait; background: var(--soft-ink); opacity: 1; box-shadow: none; }
+.activity-page .activity-mark-read:focus-visible, .activity-page .activity-message-toggle:focus-visible { outline: 3px solid var(--cobalt); outline-offset: 4px; }
 .activity-mark-read, .activity-page .activity-row-content > a svg { transition: transform 160ms ease-out, box-shadow 160ms ease-out; }
 .activity-mark-read:hover:not(:disabled), .activity-mark-read:focus-visible { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--ink); }
 .activity-page .activity-row-content > a:hover svg, .activity-page .activity-row-content > a:focus-visible svg { transform: translate(3px, -2px); }
