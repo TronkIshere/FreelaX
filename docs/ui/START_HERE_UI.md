@@ -1,9 +1,9 @@
 # START HERE — FREELAX UI VISUAL POLISH
 
-## Current authority — 2026-10-07
+## Current authority — 2026-10-08
 
 Repository: `TronkIshere/FreelaX`. Branch: `feat/ui-visual-polish-20261006`.
-Frozen source implementation baseline: `a0e16f9090efae89b3431be511da2c418e21ac68` (P06.6 Account/Profile; P06.5A/B/C/D and earlier frozen surfaces preserved).
+Frozen source implementation baseline: `99e5f081bb89c2b84df5d8736d2965b35dd206d3` (completed review opportunity patch; P06.6/P06.5A/B/C/D and earlier frozen surfaces preserved).
 A later docs-only commit may be branch HEAD; it does not change this source baseline.
 
 - Overview = FROZEN / APPROVED (both Client and Freelancer).
@@ -15,7 +15,7 @@ A later docs-only commit may be branch HEAD; it does not change this source base
 - Client Work C2 — Job Authoring (`/work/new`, `/work/:jobId/edit`) = PASS / FROZEN.
 - Client Work C3 — Applicants (`/work/:jobId/applications`) = PASS / FROZEN.
 - P06.5A Finance list + editorial folder tabs = PASS / FROZEN.
-- Current: P06.6 ACCOUNT / PROFILE — PASS / FROZEN. Source `a0e16f9090efae89b3431be511da2c418e21ac68`. Trusted /auth/me identity passport remains distinct from editable /profiles/me dossier. Profile/skills versioning, display-name session reconciliation, portfolio uncertainty guards and partner-profile privacy preserved. Client/Freelancer Account and authenticated partner profile 1440/1024 PASS; console 0, Cobalt focus, no overflow, reduced motion PASS. 220/220 focused tests, production build and diff check PASS. P06.5A/B/C/D unchanged. Next: P06.7 — FULL REGRESSION / QA — NOT_STARTED. Stop after this freeze.
+- Current: PRE-P06.7 COMPLETED JOB REVIEW OPPORTUNITY PATCH — PASS / FROZEN. Source `99e5f081bb89c2b84df5d8736d2965b35dd206d3`. Existing ContractReviews remains the single review fetch/eligibility owner; the high completed-work callout anchors to #contract-reviews. Review is optional post-completion feedback and does not gate completion/release/payout. P06.5A/B/C/D and P06.6 remain frozen. 317/317 tests, production build and diff check PASS. Real Client/Freelancer Job Detail is healthy, but no eligible review opportunity exists in current runtime; 1024 callout layout/focus/native anchor passed an isolated presentation fixture. Next: P06.7 — FULL REGRESSION / QA — NOT_STARTED. Stop after this freeze.
 - P06.5C Tax / Chứng từ thuế = PASS / FROZEN. P06.5D Activity = PASS / FROZEN. P06.6 Account / Profile = PASS / FROZEN. Next: P06.7 Full regression / QA = NOT_STARTED.
 
 Read in this exact order (paths are repository-relative):
@@ -201,3 +201,22 @@ This dated freeze supersedes earlier Account/Profile NOT_STARTED and Auth-polish
 - Source scope: Account.tsx, Profile.tsx, Portfolio.tsx, PublicProfile.tsx, Polish.test.tsx and appended Account/Profile-scoped styles.css. Original frozen CSS prefix retained. P06.5A/B/C/D and earlier frozen surfaces, backend, API/types/contracts/dependencies unchanged. Mobile optimization deferred; current MVP desktop/laptop 1440/1024.
 
 **P06.6 ACCOUNT / PROFILE — FROZEN. NEXT: P06.7 — FULL REGRESSION / QA — NOT_STARTED. STOP.**
+
+## 2026-10-08 — PRE-P06.7 COMPLETED JOB REVIEW OPPORTUNITY PATCH — FROZEN
+
+Source: `99e5f081bb89c2b84df5d8736d2965b35dd206d3` — `feat(frontend): surface completed job review opportunity`.
+
+- The two-sided review system already existed. This patch improves discoverability only: a Mint/Strong Green completion follow-up note sits after the ownership band, before deep workflow/history; the existing composer stays at `#contract-reviews`.
+- Submission → approval → release/settlement → Job/Contract completion → optional review → server publication. Review never causes or gates completion, release, settlement or payout; a failed review cannot change completed financial truth.
+- The existing `reviewOpportunity` authority drives both composer and callout. `ContractReviews` owns the single API read and reports only the derived boolean; load/read failure, participant/contract changes and unmount clear availability. No duplicate review API fetch or parallel eligibility rule.
+- Eligibility requires actual non-admin participant, Job/Contract COMPLETED, milestone RELEASED, matching contract/job/milestone settlement with moneyStatus SUCCEEDED, an unsubmitted server invitation for the reviewer/reviewee pair, and no cancellation/refund/dispute/read-failure block. Completion alone is insufficient.
+- Participant IDs choose the counterpart: Client sees **Đánh giá Freelancer**; Freelancer sees **Đánh giá Client**. Both are native keyboard-accessible anchors to the existing review section, with 32px scroll margin and Cobalt focus. No new route, modal or form.
+- The callout disappears after authoritative submission/reconciliation confirms own submitted review, not optimistically on click. Uncertain mutations retain existing reconciliation and duplicate-submission guards.
+- Score/payload, review immutability, ratingUpdated profile refresh and publication semantics remain unchanged. Submitted does not mean publicly published; public visibility remains server-authoritative.
+- Visual: restrained Mint note, 8px Strong Green rail, 2px Ink border, zero-blur shadow, local document/check plate with small Acid tape. Heading 27px (25px at 1024), body/CTA 16px. Meaning is textual; reduced motion removes decorative transforms/transitions.
+- Gate: **317/317 PASS** — ReviewUI 34, ContractLifecycle 63, Polish 85, Finance 81, ProfileUI 17, profileContracts 37. Includes all **220/220** frozen P06.6 baseline tests and 35 new tests. Production build PASS (known bundle-size warning non-blocking); diff check PASS.
+- Real runtime: verified Client **Nguyen Huu Trong** and Freelancer **Freelancer Seed**. Each has three completed legacy Jobs with `contract: null`; no contract review invitation/settlement proof exists, no review read is issued, and the callout correctly stays absent. This is absent contract data, not a fetch failure. **REAL RUNTIME REVIEW OPPORTUNITY NOT AVAILABLE**.
+- Real Job Detail 1440/1024 remains healthy with no horizontal overflow and console errors **0**. No Job/payment/review state was mutated for QA. No eligible Client screenshot was produced; no fake runtime data or screenshot was introduced.
+- Callout-only **isolated presentation fixture** at 1440/1024: readable, no clipping/overflow, keyboard CTA/Cobalt focus PASS, native hash destination visible PASS, reduced-motion plate transform none. This verifies layout/accessibility, not real runtime review eligibility. No fixture or screenshot is committed.
+- Source scope: `ContractLifecycle.tsx`, `ContractReviews.tsx`, their two focused test files, and appended scoped `styles.css` rules only. No backend/API/types/Finance/Activity/Profile implementation changed; frozen CSS prefix preserved. No credentials, secrets, local paths or screenshots added to tracked files.
+- **P06.5A/B/C/D + P06.6 remain FROZEN.** NEXT: **P06.7 — FULL REGRESSION / QA — NOT_STARTED**. Do not begin P06.7 without a separate request.
