@@ -55,7 +55,7 @@ describe('P06.5C tax evidence contract', () => {
   }
 
   it.each([
-    ['ACCEPTED', 'accepted'], ['DRAFT', 'pending'], ['SIGNED', 'pending'], ['SUBMITTED', 'pending'],
+    ['ACCEPTED', 'accepted'], ['DRAFT', 'active'], ['SIGNED', 'active'], ['SUBMITTED', 'active'], ['SUBMITTING', 'active'],
     ['EXPORT_FAILED', 'error'], ['REJECTED', 'error'], ['CORRECTION_REQUIRED', 'attention'],
     ['CANCELLED', 'closed'], ['REPLACED', 'closed'], ['FUTURE_STATUS', 'pending'],
   ])('uses only TaxRecord %s for the %s presentation', (status, tone) => {
@@ -66,7 +66,7 @@ describe('P06.5C tax evidence contract', () => {
 
   it('does not promote a draft with certificate ID and successful payment export to ACCEPTED', async () => {
     await detail({ ...tax, status: 'DRAFT', statusLabel: 'Đã lập chứng từ, chưa phát hành' });
-    expect(host.querySelector('.tax-statement')?.classList.contains('tax-tone-pending')).toBe(true);
+    expect(host.querySelector('.tax-statement')?.classList.contains('tax-tone-active')).toBe(true);
     expect(host.querySelector('.tax-statement')?.textContent).not.toContain('Cơ quan thuế đã chấp nhận');
     expect(button('Đồng bộ trạng thái')).toBeTruthy();
     expect(button('Tải PDF')).toBeTruthy();
@@ -161,6 +161,14 @@ describe('P06.5C tax evidence contract', () => {
     await render(<TaxRecordsPage />, '/finance/tax-records');
     expect(host.textContent).toContain('không xác nhận công việc được miễn thuế');
     expect(host.querySelectorAll('.tax-list-row')).toHaveLength(0);
+  });
+
+  it.each([['EXPORT_FAILED', 'error'], ['ACCEPTED', 'accepted'], ['FUTURE_STATUS', 'pending']])('connects the %s action zone to its source-derived %s statement', async (status, tone) => {
+    await detail({ ...tax, status, statusLabel: 'Exact runtime wording' } as TaxRecord);
+    for (const selector of ['.tax-statement', '.tax-status', '.tax-actions']) {
+      expect(host.querySelector(selector)?.classList.contains('tax-tone-' + tone)).toBe(true);
+    }
+    expect(host.querySelector('.tax-status')?.textContent).toBe('Exact runtime wording');
   });
 });
 

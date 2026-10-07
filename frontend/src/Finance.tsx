@@ -621,7 +621,7 @@ export function TaxRecordsPage() {
         <section aria-label="Sổ chứng từ thuế"><header className="tax-ledger-heading"><h2>Sổ chứng từ thuế</h2><span>{result.data.length} hồ sơ trên trang này</span></header>
         <div className="tax-ledger-columns" aria-hidden="true"><span>Công việc / chứng từ</span><span>Trạng thái chứng từ</span><span>Thu nhập chịu thuế</span><span>Hồ sơ</span></div>
         <div className="tax-list">{result.data.map(record => <article key={record.id} className={'tax-list-row tax-tone-' + taxPresentation(record).tone}>
-          <div className="tax-ledger-identity"><span className="tax-document-mark" aria-hidden="true"><FileText size={34} /></span><div><span className="finance-category">Hồ sơ thuế / công việc</span>
+          <div className="tax-ledger-identity"><span className="tax-document-mark" aria-hidden="true"><FileText size={42} /></span><div><span className="finance-category">Hồ sơ thuế / công việc</span>
             <h2><Link to={'/finance/tax-records/' + record.id}>{record.jobTitle || 'Công việc ' + record.jobId.slice(0, 8)}</Link></h2>
             <span className="tax-ledger-date">Tạo {date(record.createdAt)}</span>
             {record.certificateNumber && <span className="tax-certificate-number">Số chứng từ: {record.certificateNumber}</span>}</div></div>
@@ -740,7 +740,7 @@ export function TaxRecordDetail() {
         <div><dt>Đồng bộ gần nhất</dt><dd>{stamp(record.lastSyncedAt)}</dd></div>
       </dl>
     </section>
-    <section className="tax-actions" aria-label="Tác vụ chứng từ">
+    <section className={'tax-actions tax-tone-' + taxPresentation(record).tone} aria-label="Tác vụ chứng từ">
       <div><h2><FileText size={26} aria-hidden="true" />Chứng từ và trạng thái</h2>
         <p>Mã chứng từ không xác nhận cơ quan thuế đã chấp nhận. Trạng thái trên hồ sơ là căn cứ đối chiếu.</p></div>
       {paymentError && <p className="finance-inline-error" role="alert">Chưa xác minh được trạng thái chi trả; thao tác đồng bộ/lập lại tạm khóa: {paymentError}</p>}
