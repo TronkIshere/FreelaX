@@ -3,7 +3,7 @@
 ## VISUAL POLISH STREAM — 2026-10-07
 
 Current branch: `feat/ui-visual-polish-20261006`.
-Frozen source implementation baseline: `304dd195cd56fcab7ac92158e7264f0acea8e6e8` (P06.5C Tax evidence; earlier frozen surfaces preserved).
+Frozen source implementation baseline: `1b2ee56ac9c202994747d60739eee9e6c84f7c49` (P06.5C Tax visual emphasis; earlier frozen surfaces preserved).
 Documentation commits may advance HEAD without changing this source baseline.
 
 | Stage | Status | Accepted source/evidence |
@@ -21,12 +21,12 @@ Documentation commits may advance HEAD without changing this source baseline.
 | Client Work C3 — Applicants | PASS / FROZEN | `45c54c5`; `/work/:jobId/applications`; 66/66 focused tests, build/diff and corrected desktop/confirmation QA PASS |
 | P06.5A Finance list | PASS / FROZEN | `96cafbe`; 30/30 final Finance tests, type-check/build/diff PASS, accepted Client/Freelancer desktop QA |
 | P06.5B Finance detail / Money Evidence Spine | FULLY FROZEN, Client/Freelancer 1440/1024 | Client `9c76ffb`, shared source `837bcf0`; 51/51 focused tests, build/diff PASS; role/focus/overflow/console 0 PASS; zero responsive source changes |
-| P06.5C Tax / Chứng từ thuế | PASS / FROZEN | `304dd19`; 77/77 focused Finance tests, build/diff PASS, real Client/Freelancer 1440 and Freelancer 1024 layout QA PASS |
+| P06.5C Tax / Chứng từ thuế | PASS / FROZEN | `1b2ee56` visual patch; 81/81 focused Finance tests, build/diff PASS, Client ledger/Freelancer detail 1440 and 1024 layout QA PASS |
 | P06.5D Activity / Editorial Event Ledger | NOT_STARTED | Do not start during P06.5C freeze |
 
 Explore live category/skill/combined/exclusion/Clear PASS is newer scoped runtime evidence. Earlier 115/115 focused frontend gate also passed. Local “Landing page redesign” category/skills edit is runtime evidence, not seed/source data. The approved narrow backend exception `302ae06` is complete; no unrelated backend expansion is authorized.
 
-Client/Freelancer Overview remains FROZEN. Client Work C1/C2/C3 are PASS / FROZEN. Freelancer Explore, Applications and My Work are RE-FROZEN after the approved narrow cross-surface identity override; no general polish reopening. Applications retains only real PENDING, ACCEPTED, REJECTED and CANCELLED statuses and truthful `totalElements` totals; no fake timeline/status/counts. P06.5A Finance list is PASS / FROZEN. Current: P06.5C TAX / CHỨNG TỪ THUẾ — PASS / FROZEN. Source `304dd195cd56fcab7ac92158e7264f0acea8e6e8`. Tax Evidence Ledger and Certificate Case File use server TaxRecord truth, unchanged payout/action gates and authenticated Marketplace blobs. Client/Freelancer 1440 and Freelancer 1024 runtime layout checks PASS. P06.5A/P06.5B remain FROZEN and unchanged. Next: P06.5D — ACTIVITY / EDITORIAL EVENT LEDGER — NOT_STARTED. Stop after this freeze.
+Client/Freelancer Overview remains FROZEN. Client Work C1/C2/C3 are PASS / FROZEN. Freelancer Explore, Applications and My Work are RE-FROZEN after the approved narrow cross-surface identity override; no general polish reopening. Applications retains only real PENDING, ACCEPTED, REJECTED and CANCELLED statuses and truthful `totalElements` totals; no fake timeline/status/counts. P06.5A Finance list is PASS / FROZEN. Current: P06.5C TAX / CHỨNG TỪ THUẾ — PASS / FROZEN. Source `1b2ee56ac9c202994747d60739eee9e6c84f7c49`. Tax Evidence Ledger and Certificate Case File use server TaxRecord truth, unchanged payout/action gates and authenticated Marketplace blobs. Client/Freelancer 1440 and Freelancer 1024 runtime layout checks PASS. P06.5A/P06.5B remain FROZEN and unchanged. Next: P06.5D — ACTIVITY / EDITORIAL EVENT LEDGER — NOT_STARTED. Stop after this freeze.
 
 C3 accepted concept: CANDIDATE DECISION DESK / EDITORIAL CANDIDATE DOSSIER. Final corrected state-aware colored Job banner replaces rejected plain Cream + lines: OPEN Acid; AWAITING_PAYMENT/review Acid + Ink; IN_PROGRESS Cobalt; revision Vermilion; COMPLETED Mint + Strong Green; CANCELLED Ink/Cream. Shared semantic thumbnail/plate and real Job facts; equal Cream dossiers with hard Ink border/zero-blur shadow, enlarged deterministic identity tiles, separate evidence/status/action zones. Application rails: PENDING Acid, ACCEPTED Strong Green, REJECTED Vermilion, CANCELLED Ink; 6px/5px and visible labels.
 
@@ -261,7 +261,7 @@ Source: `96cafbe985c68c4fdcc0e53a52141375335ca387` — `feat(frontend): finalize
 
 Accepted implementation validation (tests/build not rerun during freeze): Finance focused tests **30/30 PASS** after folder tabs; earlier Finance visual gate **36/36 PASS**; type-check PASS; accepted production build PASS; `git diff --check` PASS; Client 1440 PASS, Freelancer 1440 PASS, Client 1024 PASS; console errors **0**; keyboard focus PASS; reduced motion preserved.
 
-Current: P06.5C TAX / CHỨNG TỪ THUẾ — PASS / FROZEN. Source `304dd195cd56fcab7ac92158e7264f0acea8e6e8`. Tax Evidence Ledger and Certificate Case File use server TaxRecord truth, unchanged payout/action gates and authenticated Marketplace blobs. Client/Freelancer 1440 and Freelancer 1024 runtime layout checks PASS. P06.5A/P06.5B remain FROZEN and unchanged. Next: P06.5D — ACTIVITY / EDITORIAL EVENT LEDGER — NOT_STARTED. Stop after this freeze.
+Current: P06.5C TAX / CHỨNG TỪ THUẾ — PASS / FROZEN. Source `1b2ee56ac9c202994747d60739eee9e6c84f7c49`. Tax Evidence Ledger and Certificate Case File use server TaxRecord truth, unchanged payout/action gates and authenticated Marketplace blobs. Client/Freelancer 1440 and Freelancer 1024 runtime layout checks PASS. P06.5A/P06.5B remain FROZEN and unchanged. Next: P06.5D — ACTIVITY / EDITORIAL EVENT LEDGER — NOT_STARTED. Stop after this freeze.
 
 
 Expected files:
@@ -664,3 +664,24 @@ Real QA records: SEO TaxRecord `02241f4d-e683-403e-a46e-9e08d45d7e74` = EXPORT_F
 Two representative 1440 screenshots saved outside Git: Client Tax ledger and Freelancer SEO case file. Screenshots are never committed. P06.5A and P06.5B source/semantics preserved; all new CSS is Tax-specific. Backend/API/database/dependencies/proxy/ports unchanged. Mobile optimization is deferred; today's target is desktop/laptop. No Activity implementation.
 
 **NEXT: P06.5D — ACTIVITY / EDITORIAL EVENT LEDGER — NOT_STARTED.** Earlier P06.5C NOT_STARTED checkpoints are historical and superseded by this freeze. Do not reopen frozen Finance/Tax surfaces for general polish.
+
+## FREELAX VISUAL EMPHASIS V1 — P06.5C RE-FROZEN — 2026-10-07
+
+Source: `1b2ee56ac9c202994747d60739eee9e6c84f7c49` — `style(frontend): strengthen tax evidence hierarchy`.
+Authority input: `5d2d2056703dbad474d5f43202b2ee2f049e78b5`, correct branch and clean worktree. This is a visual-only reinforcement of `304dd19`, not a new Tax/business flow.
+
+- Important records need a meaningful document visual anchor: layered Cream paper, Ink outline/hard shadow, a small source-tone tape. Tax ledger plate 64x76px at 1440 and 52x64px at 1024; no fake category, certificate preview or stock imagery.
+- Strengthen title/status/value hierarchy: ledger titles 24px / 20px, status 16px / 15px, taxable amount 25px / 22px at 1440 / 1024. Case-file amounts 30px / 25px, tabular numerals; body/metadata retain readable scale.
+- Status surface and state rail are source-driven. ACCEPTED uses Mint + Strong Green; EXPORT_FAILED/REJECTED a stronger Vermilion tint; CORRECTION_REQUIRED Acid; DRAFT/SIGNED/SUBMITTING/SUBMITTED Cobalt tint; CANCELLED/REPLACED and unknown future states Cream/Ink. Server label/status is unchanged. `active` is a presentation tone, never a new API status or claim of processing completion.
+- Rails are 8px; status has a 2px Ink border and at least 44px height. Cream remains the primary ledger surface. At most two strong semantic zones per row: rail and status. Document tape is a small related accent; amount/action cells remain Cream. No rainbow cells, gradients, glow or blurred depth.
+- Detail information architecture stays intact. The main status statement has an 8px state edge and stronger semantic surface; the document/action panel has a related tinted heading band and 7px edge, with Cream body. Light row actions retain Ink border/arrow/hard depth; no black detail-link CTA.
+- Recognition at 1024 is preserved through wrapping and existing column rhythm, not tiny type or removal of the visual anchor. No mobile/hamburger work. Reduced-motion handling retained for paper details and actions.
+- Business semantics unchanged: TaxRecord/API remains authority; export SUCCESS and certificate ID do not imply ACCEPTED. Sync/retry/download gates, null `—`, explicit simulation, payment-read failure isolation, returned-record mutations and collapsed allowlisted technical evidence are preserved. No backend/API/data mutation.
+
+Validation: **81/81 focused Finance tests PASS** (all 77 baseline cases retained, plus one SUBMITTING tone case and three action-zone/source-tone locks). TypeScript + Vite production build PASS; one completed production build, known bundle >500 kB warning non-blocking; diff check PASS. Frozen Finance.tsx and CSS prefixes compare identical; P06.5A/P06.5B semantics and styling preserved.
+
+Runtime evidence: Client / Nguyen Huu Trong Tax ledger 1440 contains real SEO EXPORT_FAILED and P04 ACCEPTED records; Freelancer / Freelancer Seed 1440 case-file screenshot uses the real SEO record. P04 ACCEPTED case briefly verified with PDF/XML visibility. Client ledger and Freelancer detail 1024 live DOM/layout PASS, no clipped cells, no overflow, horizontal folder tabs; technical disclosure keyboard PASS, 3px Cobalt focus, console errors 0. 1024 screenshot capture timed out in the browser tool; no 1024 screenshot is claimed. No financial/tax mutation or download completion claim.
+
+Two new 1440 screenshots are saved outside Git: Client Tax Evidence Ledger and Freelancer Tax Certificate Case File. Screenshot data/amounts/statuses are real runtime values; no fabricated references/timestamps and no secrets or screenshots committed.
+
+**P06.5C TAX / CHỨNG TỪ THUẾ — VISUAL EMPHASIS PATCH — FROZEN.** This section supersedes earlier weaker Tax typography/tone styling. P06.5A/P06.5B and all earlier frozen surfaces remain locked. **NEXT: P06.5D — ACTIVITY / EDITORIAL EVENT LEDGER — NOT_STARTED. STOP.**
