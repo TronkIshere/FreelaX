@@ -1,32 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { ArrowUpRight, Bell, Check, Coins, FileText, Gavel, RotateCcw, Star } from 'lucide-react';
 import { api } from './api';
+import { activityPresentation, type ActivityFamily } from './activityPresentation';
 import { PageHeading, StatePanel } from './components';
 import { financePath } from './financeStatus';
+import { RoughBurst, RoughUnderline } from './ui/kinetic';
 import type { Notification as MarketplaceNotification, Page } from './types';
 
-const labels: Record<string, string> = {
-  JOB_ASSIGNED: 'Được giao việc',
-  JOB_CANCELLED: 'Công việc đã hủy',
-  WORK_SUBMITTED: 'Có bản bàn giao',
-  REVISION_REQUESTED: 'Yêu cầu chỉnh sửa',
-  WORK_APPROVED: 'Bàn giao được duyệt',
-  FUNDING_CONFIRMED: 'Funding đã xác nhận',
-  RELEASE_CONFIRMED: 'Bản ghi release đã xác nhận',
-  CANCELLATION_REQUESTED: 'Đề nghị hủy — công việc tiếp tục',
-  CANCELLATION_REJECTED: 'Đề nghị hủy bị từ chối — công việc tiếp tục',
-  REFUND_PENDING: 'Hoàn tiền đang đối soát',
-  REFUND_CONFIRMED: 'Bản ghi hoàn tiền đã xác nhận',
-  REVIEW_GRACE_STARTED: 'Gia hạn review',
-  REVIEW_AUTO_APPROVED: 'Máy chủ tự duyệt',
-  DISPUTE_OPENED: 'Đã mở tranh chấp',
-  DISPUTE_DECIDED: 'Admin đã quyết định tranh chấp',
-  REVIEW_INVITED: 'Mời đánh giá hợp đồng',
-  REVIEW_PUBLISHED: 'Đánh giá đã công bố',
-  PAYMENT_SENT: 'Thanh toán Client',
-  PAYMENT_RECEIVED: 'Chi trả mô phỏng',
-  TAX_EXPORT_FAILED: 'Chứng từ thuế',
-  PAYOUT_FAILED: 'Chi trả cần xử lý',
+const familyIcons: Record<ActivityFamily, typeof FileText> = {
+  work: FileText, finance: Coins, refund: RotateCcw, review: Star,
+  dispute: Gavel, tax: FileText, neutral: Bell,
 };
 const stamp = (value: string | null) => value ? value.slice(0, 16).replace('T', ' · ') : 'Chưa có thời gian';
 const financialEvents = new Set(['RELEASE_CONFIRMED', 'REFUND_PENDING', 'REFUND_CONFIRMED']);
@@ -77,31 +61,41 @@ export function Activity() {
 
   const items = result?.data ?? [];
   const unread = items.filter(item => !item.read).length;
-  return <>
-    <PageHeading eyebrow="Marketplace / Hoạt động" title="Thông báo về công việc của bạn."
+  return <section className="activity-page" aria-label="Thông báo Marketplace">
+    <PageHeading eyebrow="Marketplace / Hoạt động" title={<>Thông báo về <span className="activity-title-accent">công việc của bạn.
+      <RoughUnderline seedKey="activity-title" className="activity-title-underline" />
+      <RoughBurst seedKey="activity-title-rays" size={38} accent="ink" className="activity-title-rays" /></span></>}
       description="Đây là thông báo do Marketplace gửi cho tài khoản này, không phải nhật ký mọi sự kiện trên hệ thống."
       aside={result ? result.totalElements + ' thông báo trong tài khoản' : undefined} />
     {loading && <StatePanel kind="loading" title="Đang tải thông báo" body="Marketplace đang trả hoạt động của tài khoản." />}
     {!loading && error && <StatePanel kind="error" title="Không thể tải hoạt động" body={error}
       action={{ label: 'Thử lại', onClick: () => setAttempt(value => value + 1) }} />}
     {!loading && !error && result && <>
-      <div className="activity-intro"><span className="category-label">Thông báo Marketplace</span>
+      <div className="activity-intro"><h2>Thông báo Marketplace</h2>
         <strong>{unread} chưa đọc trên trang này</strong></div>
       {items.length === 0 ? <StatePanel kind="empty" title="Chưa có thông báo"
         body="Khi công việc, bàn giao hoặc thanh toán có cập nhật, thông báo từ Marketplace sẽ xuất hiện tại đây." /> :
-        <div className="activity-list">{items.map(item => <article key={item.id}
-          className={'activity-row' + (item.read ? '' : ' unread')}>
-          <div className="activity-row-marker" aria-hidden="true" />
+        <div className="activity-list">{items.map(item => {
+          const presentation = activityPresentation(item.type);
+          const Icon = familyIcons[presentation.family];
+          return <article key={item.id}
+          className={'activity-row activity-tone-' + presentation.tone + (item.read ? '' : ' unread')}>
+          <div className="activity-row-marker" aria-hidden="true"><div className="activity-event-plate">
+            <span className="activity-plate-tape" /><Icon size={34} strokeWidth={1.8} />
+            <span className="activity-plate-lines" />
+          </div></div>
           <div className="activity-row-content"><div className="activity-row-meta">
-            <span>{labels[item.type] || 'Cập nhật từ Marketplace'}</span><time>{stamp(item.createdAt)}</time></div>
-            <h2>{item.title}</h2><p>{item.message}</p>
+            <span className="activity-event-type">{presentation.label}</span><time dateTime={item.createdAt ?? undefined}>{stamp(item.createdAt)}</time></div>
+            <h3>{item.title}</h3><p>{item.message}</p>
+            {/* amount has no currency/unit in Notification; preserve the server message without guessing. */}
             {item.jobId && <Link to={financialEvents.has(item.type) ? financePath(item.jobId) : '/work/' + encodeURIComponent(item.jobId) + (ratingEvents.has(item.type) ? '#contract-reviews' : '')}>
-              {financialEvents.has(item.type) ? 'Xem bằng chứng tài chính →' : ratingEvents.has(item.type) ? 'Xem đánh giá hợp đồng →' : 'Xem công việc →'}</Link>}
+              {financialEvents.has(item.type) ? 'Xem bằng chứng tài chính' : ratingEvents.has(item.type) ? 'Xem đánh giá hợp đồng' : 'Xem công việc'} <ArrowUpRight size={21} aria-hidden="true" /></Link>}
           </div>
-          <div className="activity-row-action">{item.read ? <span>Đã đọc</span> :
-            <button className="text-button" type="button" disabled={!!pendingId}
+          <div className="activity-row-action"><span className={'activity-read-state' + (item.read ? ' is-read' : '')}>
+            {item.read && <Check size={15} aria-hidden="true" />}{item.read ? 'Đã đọc' : 'Chưa đọc'}</span>
+            {!item.read && <button className="activity-mark-read" type="button" disabled={!!pendingId}
               onClick={() => void markRead(item)}>{pendingId === item.id ? 'Đang lưu…' : 'Đánh dấu đã đọc'}</button>}</div>
-        </article>)}</div>}
+        </article>; })}</div>}
       {actionError && <p className="form-error activity-action-error" role="alert">{actionError}</p>}
       <nav className="pagination" aria-label="Phân trang thông báo">
         <span>Trang {result.totalPages ? page + 1 : 0}/{result.totalPages}</span>
@@ -111,5 +105,5 @@ export function Activity() {
             disabled={page >= result.totalPages - 1} onClick={() => setPage(value => value + 1)}>Trang sau</button></div>
       </nav>
     </>}
-  </>;
+  </section>;
 }
