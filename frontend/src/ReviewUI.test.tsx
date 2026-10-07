@@ -26,7 +26,7 @@ beforeEach(() => {
   vi.spyOn(api, 'reportedReviews').mockResolvedValue([published]); vi.spyOn(api, 'profile').mockResolvedValue(profile); vi.spyOn(api, 'publicReviews').mockResolvedValue([published]);
   vi.spyOn(api, 'portfolio').mockResolvedValue([]); vi.spyOn(api, 'job').mockResolvedValue(job); vi.spyOn(api, 'settlement').mockResolvedValue(settlement); vi.spyOn(api, 'cancellation').mockResolvedValue(null);
 });
-afterEach(() => { act(() => root.unmount()); host.remove(); vi.restoreAllMocks(); });
+afterEach(() => { act(() => root.unmount()); host.remove(); vi.restoreAllMocks(); vi.useRealTimers(); });
 async function mount(node: ReactNode, path = '/') { await act(async () => root.render(<MemoryRouter initialEntries={[path]} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>{node}</MemoryRouter>)); }
 const button = (text: string) => [...host.querySelectorAll('button')].find(b => b.textContent === text)!;
 async function click(text: string) { await act(async () => button(text).click()); }
@@ -92,5 +92,57 @@ describe('Step 9 reviews and moderation', () => {
   });
   it('Overview shows review attention only for a server invitation, not submitted review', async () => {
     vi.spyOn(api, 'myJobs').mockResolvedValue({ currentPage: 0, pageSize: 8, totalPages: 1, totalElements: 1, data: [job] }); await mount(<Overview user={client} />); expect(host.textContent).toContain('Đánh giá đối tác'); rows = [published]; await act(async () => window.dispatchEvent(new Event('freelax:rating-update'))); expect(host.textContent).not.toContain('Đánh giá đối tác');
+  });
+});
+
+describe('Completed review opportunity notification contract', () => {
+  it('reconciles a scheduler invitation arriving after the completed page mounted, then stops invitation polling', async () => {
+    vi.useFakeTimers(); rows = []; const notify = vi.fn();
+    await mount(<ContractReviews job={job} user={client} settlement={settlement} onOpportunityChange={notify} />);
+    expect(host.querySelector('.review-composer')).toBeNull(); expect(notify).toHaveBeenLastCalledWith(false);
+    await act(async () => vi.advanceTimersByTimeAsync(30000));
+    expect(host.querySelector('.review-composer')).toBeNull();
+    rows = [invite]; await act(async () => vi.advanceTimersByTimeAsync(30000));
+    expect(notify).toHaveBeenLastCalledWith(true); expect(host.querySelector('.review-composer')).not.toBeNull();
+    const reads = vi.mocked(api.contractReviews).mock.calls.length;
+    await act(async () => vi.advanceTimersByTimeAsync(60000)); expect(api.contractReviews).toHaveBeenCalledTimes(reads);
+    await act(async () => root.unmount()); root = createRoot(host);
+    await act(async () => window.dispatchEvent(new Event('focus'))); expect(api.contractReviews).toHaveBeenCalledTimes(reads);
+  });
+  it('focus reconciles newly available invitations without remounting or weakening settlement eligibility', async () => {
+    rows = []; const notify = vi.fn();
+    await mount(<ContractReviews job={job} user={client} settlement={{ ...settlement, moneyStatus: 'PENDING' }} onOpportunityChange={notify} />);
+    rows = [invite]; await act(async () => window.dispatchEvent(new Event('focus')));
+    expect(api.contractReviews).toHaveBeenCalledTimes(2); expect(notify).toHaveBeenLastCalledWith(false);
+    await mount(<ContractReviews job={job} user={client} settlement={settlement} onOpportunityChange={notify} />);
+    expect(notify).toHaveBeenLastCalledWith(true);
+  });
+  it('reports only proven opportunity, resets on read failure and does not fetch twice', async () => {
+    const notify = vi.fn(); await mount(<ContractReviews job={job} user={client} settlement={settlement} onOpportunityChange={notify} />);
+    expect(notify).toHaveBeenLastCalledWith(true); expect(api.contractReviews).toHaveBeenCalledOnce();
+    vi.mocked(api.contractReviews).mockRejectedValue(new ApiError('Read failed', 503)); await click('Đọc lại đánh giá');
+    expect(notify).toHaveBeenLastCalledWith(false); expect(host.querySelector('.review-composer')).toBeNull(); expect(api.contractReviews).toHaveBeenCalledTimes(2);
+  });
+  it('withdraws notification when blocked truth changes without another review read', async () => {
+    const notify = vi.fn(); await mount(<ContractReviews job={job} user={client} settlement={settlement} onOpportunityChange={notify} />);
+    await mount(<ContractReviews job={job} user={client} settlement={settlement} blocked onOpportunityChange={notify} />);
+    expect(notify).toHaveBeenLastCalledWith(false); expect(host.querySelector('.review-composer')).toBeNull(); expect(api.contractReviews).toHaveBeenCalledOnce();
+  });
+  it('cannot reuse prior user read proof while a different reviewer is loading', async () => {
+    rows = [invite, { ...invite, id: 'other-invite', reviewerId: freelancer.id, revieweeId: client.id }];
+    const notify = vi.fn(); await mount(<ContractReviews job={job} user={client} settlement={settlement} onOpportunityChange={notify} />); expect(notify).toHaveBeenLastCalledWith(true);
+    vi.mocked(api.contractReviews).mockReturnValue(new Promise(() => {}));
+    await mount(<ContractReviews job={job} user={freelancer} settlement={settlement} onOpportunityChange={notify} />);
+    expect(notify).toHaveBeenLastCalledWith(false); expect(host.querySelector('.review-composer')).toBeNull(); expect(api.contractReviews).toHaveBeenCalledTimes(2);
+  });
+  it('resets parent opportunity on unmount', async () => {
+    const notify = vi.fn(); await mount(<ContractReviews job={job} user={client} settlement={settlement} onOpportunityChange={notify} />);
+    expect(notify).toHaveBeenLastCalledWith(true); await act(async () => root.unmount()); root = createRoot(host); expect(notify).toHaveBeenLastCalledWith(false);
+  });
+  it('reports false while re-reading invitation evidence, then restores only the server result', async () => {
+    const notify = vi.fn(); await mount(<ContractReviews job={job} user={client} settlement={settlement} onOpportunityChange={notify} />);
+    let finish!: (rows: Review[]) => void; vi.mocked(api.contractReviews).mockReturnValue(new Promise(resolve => { finish = resolve; }));
+    await click('Đọc lại đánh giá'); expect(notify).toHaveBeenLastCalledWith(false);
+    await act(async () => finish([{ ...invite, submitted: true, publishedAt: null }])); expect(notify).toHaveBeenLastCalledWith(false); expect(host.querySelector('.review-composer')).toBeNull();
   });
 });

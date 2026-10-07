@@ -103,6 +103,43 @@ async function render(user: User) {
 }
 
 describe('P06.3 operational overview', () => {
+  it.each([
+    [freelancer, 'Tìm công việc đầu tiên phù hợp với bạn.', 'Hiện chưa có công việc được giao.', 'Khám phá công việc'],
+    [client, 'Bắt đầu công việc đầu tiên.', 'Bạn chưa có công việc trong tài khoản.', 'Xem công việc'],
+  ] as const)('gives an empty $userType Overview a next action while retaining server truth', async (user, heading, truth, action) => {
+    await render(user);
+    const next = host.querySelector('.overview-clear')!;
+    expect(next.querySelector('h3')?.textContent).toBe(heading);
+    expect(next.querySelector('p')?.textContent).toBe(truth);
+    expect(next.querySelector('.button')?.textContent).toContain(action);
+    expect(next.querySelector('.button')?.getAttribute('href')).toBe('/work');
+    expect(host.querySelector('.overview-total')?.textContent).toBe('0 công việc trong tài khoản');
+    expect(host.querySelectorAll('.overview-attention-row')).toHaveLength(0);
+    expect(host.querySelector('.overview-metrics')).toBeNull();
+    expect(host.querySelector('.overview-attention')?.classList.contains('ku-surface--cream')).toBe(true);
+    expect(host.querySelector('.overview-attention.ku-surface--vermilion')).toBeNull();
+  });
+
+  it.each([client, freelancer])('integrates kinetic surfaces and ledger around real $userType work', async user => {
+    const current = job('attention', user.userType === 'CLIENT' ? 'OPEN' : 'REVISION_REQUESTED');
+    vi.mocked(api.myJobs).mockResolvedValue(page([current, job('completed', 'COMPLETED')], 2));
+    await render(user);
+    const primary = host.querySelector('.overview-attention.ku-card.ku-surface--vermilion')!;
+    expect(primary.querySelector('.ku-tape')?.textContent).toBe('CẦN XỬ LÝ');
+    expect(primary.querySelector('h3')?.textContent).toBe('Job attention');
+    expect(primary.querySelectorAll('.action-poster .ku-paper')).toHaveLength(3);
+    expect(primary.querySelectorAll('.ku-rough')).toHaveLength(3);
+    expect(primary.querySelector('.button .ku-action-arrow .lucide-arrow-right')).not.toBeNull();
+    expect(primary.querySelector('.button')?.getAttribute('href')).toBe(user.userType === 'CLIENT' ? '/work/attention/applications' : '/work/attention');
+    expect(host.querySelector('.overview-rows')?.tagName).toBe('UL');
+    const row = host.querySelector('.overview-rows > li.ku-ledger-row')!;
+    expect(row.querySelector('.ku-thumbnail[aria-hidden="true"]')).not.toBeNull();
+    expect(row.querySelector('.ku-label.ku-surface--mint')?.textContent).toBe('Hoàn thành');
+    expect(row.querySelector('.ku-ledger-value')?.textContent).toBe('$450.00');
+    expect([...host.querySelectorAll('.overview-metric.ku-card--compact dd')].map(item => item.textContent)).toEqual(['1', '1']);
+    expect(host.querySelector('.kinetic-marker, .kinetic-arrow, .metric-scribble, .overview-artwork')).toBeNull();
+  });
+
   it('puts Client reviews, recruiting and pending payment before a separate recent ledger', async () => {
     vi.mocked(api.myJobs).mockResolvedValue(page([
       job('active', 'IN_PROGRESS'), job('open', 'OPEN'), job('funding', 'AWAITING_PAYMENT'),
@@ -119,6 +156,8 @@ describe('P06.3 operational overview', () => {
     expect(host.querySelector('.overview-recent')?.textContent).toContain('Job active');
     expect(host.querySelector('.overview-recent')?.textContent).not.toContain('Job review');
     expect(host.textContent).toContain('18 công việc trong tài khoản');
+    expect(host.querySelector('.overview-metrics > p')?.textContent).toBe('Trạng thái trong 5 hồ sơ gần nhất');
+    expect([...host.querySelectorAll('.overview-metric dd')].map(value => value.textContent)).toEqual(['1', '1', '1', '1', '1']);
     expect(api.myJobs).toHaveBeenCalledExactlyOnceWith(0, 8);
     expect(api.myApplications).not.toHaveBeenCalled();
     expect(host.querySelector('.overview-applications')).toBeNull();
@@ -135,12 +174,15 @@ describe('P06.3 operational overview', () => {
     expect(host.querySelector('.overview-attention .button')?.textContent).toContain('Gửi bản sửa');
     expect(host.querySelector('.overview-recent')?.textContent).toContain('Job review');
     expect(host.querySelector('.overview-applications')?.textContent).toContain('Đang chờ');
+    expect(host.querySelector('.overview-applications')?.tagName).toBe('DETAILS');
+    expect(host.querySelector('.overview-applications')?.hasAttribute('open')).toBe(false);
     expect(api.myApplications).toHaveBeenCalledExactlyOnceWith(0, 'ALL', 4);
   });
 
   it('uses a pending application destination when no work needs attention', async () => {
     vi.mocked(api.myApplications).mockResolvedValue(page([application('PENDING')]));
     await render(freelancer);
+    expect(host.querySelector('.overview-clear h3')?.textContent).toBe('Theo dõi những cơ hội bạn đã ứng tuyển.');
     expect(host.querySelector('.overview-clear .button')?.getAttribute('href')).toBe('/work/applications');
     expect(host.querySelector('.overview-clear .button')?.textContent).toContain('Theo dõi ứng tuyển');
   });

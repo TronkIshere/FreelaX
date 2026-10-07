@@ -45,6 +45,29 @@ async function render(user: User, path = '/account') {
 function currentPath() { return host.querySelector('[data-testid="path"]')?.textContent; }
 
 describe('P06.2 role-aware shell', () => {
+  it.each([client, freelancer])('uses functional Lucide navigation and a single active accent for $userType', async user => {
+    await render(user);
+    expect(host.querySelectorAll('.primary-nav .nav-mark.lucide')).toHaveLength(5);
+    expect(host.querySelectorAll('.primary-nav .nav-accent[aria-hidden="true"]')).toHaveLength(1);
+    expect(host.querySelector('.primary-nav .active')?.getAttribute('href')).toBe('/account');
+    const work = host.querySelector('.primary-nav a[href="/work"]')! as HTMLAnchorElement;
+    await act(async () => work.focus());
+    expect(document.activeElement).toBe(work);
+    expect(work.getAttribute('aria-current')).toBeNull();
+    expect(host.querySelector('.primary-nav .active')?.getAttribute('aria-current')).toBe('page');
+  });
+
+  it('keeps live navigation static when reduced motion is requested', async () => {
+    vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener: () => {}, removeEventListener: () => {},
+      addListener: () => {}, removeListener: () => {} }));
+    try {
+      await render(client);
+      expect(host.querySelectorAll('.primary-nav [data-motion="off"]')).toHaveLength(5);
+      expect(host.querySelectorAll('.primary-nav [data-motion="on"]')).toHaveLength(0);
+      expect(host.querySelector('.primary-nav .nav-accent')?.getAttribute('style')).not.toContain('scaleX(0.65)');
+    } finally { vi.unstubAllGlobals(); }
+  });
+
   it('reconciles edited display name through auth/me without trusting the form or changing role capability', async () => {
     await render(client);
     const authoritative = { ...client, displayName: 'Authoritative server name' };

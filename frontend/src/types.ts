@@ -76,6 +76,8 @@ export interface Job {
   id: string;
   title: string;
   description: string;
+  category?: JobCategory | null;
+  skills?: string[] | null;
   budgetUsd: number;
   clientUserId: string;
   freelancerId: string | null;
@@ -146,6 +148,8 @@ export interface DiscoverJob {
   id: string;
   title: string;
   description: string;
+  category?: JobCategory | null;
+  skills?: string[] | null;
   budgetUsd: number;
   status: string;
   client: { id: string; displayName: string };
@@ -169,7 +173,19 @@ export interface DiscoveryFilters {
   maxBudgetUsd: string;
   sort: DiscoverySort;
   application: ApplicationFilter;
+  category?: JobCategory | '';
+  skills?: string[];
 }
+
+export type JobCategory = 'WEB_FRONTEND' | 'BACKEND_API' | 'SEO_CONTENT' | 'MOBILE_APP' | 'UI_UX_DESIGN'
+  | 'ECOMMERCE' | 'DATA_ANALYTICS' | 'BRANDING_GRAPHIC' | 'OTHER';
+export interface CreateJobInput {
+  title: string; description: string; category: JobCategory; skills: string[]; budgetUsd: number;
+  deliveryDueAt: string; reviewWindowHours: number; maxRevisions: number;
+  deliverables: { title: string; description: string; required: boolean }[];
+  acceptanceCriteria: { description: string; required: boolean }[];
+}
+export interface UpdateJobInput { title: string; description: string; category: JobCategory; skills: string[] }
 
 
 export type JobStatus = 'OPEN' | 'AWAITING_PAYMENT' | 'IN_PROGRESS' | 'SUBMITTED_FOR_REVIEW' | 'REVISION_REQUESTED' | 'COMPLETED' | 'CANCELLED';
@@ -194,6 +210,7 @@ export interface JobApplication {
 export interface MyApplication {
   id: string; status: JobApplicationStatus; createdAt: string | null; updatedAt: string | null;
   job: { id: string; title: string; description: string; budgetUsd: number; status: JobStatus;
+    category?: JobCategory | null; skills?: string[] | null;
     clientDisplayName: string | null; createdAt: string | null };
 }
 

@@ -1,14 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom';
+import { WalletCards, Coins, LockKeyhole, Clock3, RotateCcw, CircleCheck, CalendarDays, ArrowRight, ArrowLeft, ArrowUpRight, Landmark, CircleAlert, Check, BriefcaseBusiness, FileText, Info, RefreshCw } from 'lucide-react';
+import { motion } from 'motion/react';
+import { JobCategoryPlate, JobIdentityCluster } from './ui/JobRowIdentity';
+import { RoughBurst, RoughUnderline, useKineticMotion } from './ui/kinetic';
+import { contractMoneyStages, legacyMoneyStages, resolveMoneySpine, type MoneyStage } from './financeSpine';
 import { ApiError, api } from './api';
-import { ActionGroup, EvidenceDisclosure, FactGrid, PageHeading, SectionHeading, StatePanel } from './components';
+import { taxPresentation } from './taxPresentation';
+import { EvidenceDisclosure, FactGrid, PageHeading, SectionHeading, StatePanel } from './components';
 import { Pagination } from './Jobs';
 import { checkoutLabel, clientPaymentLabel, decimal, exportLabel, maskedBank, offRampLabel,
-  paymentStages, paymentTerminal, rateSource, safeExplorerUrl, syncableTaxStatuses, usdc, vnd,
+  paymentTerminal, rateSource, safeExplorerUrl, syncableTaxStatuses, usdc, vnd,
   financePath, contractFinanceLabel, contractFinanceNeedsRefresh, contractFinanceTone, financialCopy,
   settlementMoneyLabel, settlementStageLabel, releaseOwned } from './financeStatus';
 import { cancellationLabel, date, fundingLabel, money, refundLabel } from './status';
-import type { ContractFinance, EvidenceStage } from './financeStatus';
+import type { ContractFinance } from './financeStatus';
 import type { FundingResponse, Job, JobPaymentStatus, Page, TaxRecord, User } from './types';
 
 const POLL_MS = 15000;
@@ -17,9 +23,19 @@ const missingTax = (cause: unknown) => cause instanceof ApiError && (cause.statu
 const stamp = (value: string | null | undefined) => value ? value.slice(0, 16).replace('T', ' · ') : '—';
 
 function FinanceNav() {
+  const { pathname } = useLocation();
+  const taxActive = pathname === '/finance/tax-records' || pathname.startsWith('/finance/tax-records/');
   return <nav className="finance-nav" aria-label="Khu vực tài chính">
-    <Link to="/finance">Theo công việc</Link>
-    <Link to="/finance/tax-records">Chứng từ thuế</Link>
+    <Link className={'finance-folder-tab' + (!taxActive ? ' finance-folder-tab--active' : '')}
+      aria-current={!taxActive ? 'page' : undefined} to="/finance">
+      <span className="finance-tab-index" aria-hidden="true">01</span>
+      <BriefcaseBusiness size={20} aria-hidden="true" /><span>Theo công việc</span>
+    </Link>
+    <Link className={'finance-folder-tab' + (taxActive ? ' finance-folder-tab--active' : '')}
+      aria-current={taxActive ? 'page' : undefined} to="/finance/tax-records">
+      <span className="finance-tab-index" aria-hidden="true">02</span>
+      <FileText size={20} aria-hidden="true" /><span>Chứng từ thuế</span>
+    </Link>
   </nav>;
 }
 
@@ -75,52 +91,210 @@ function FinanceList({ user }: { user: User }) {
 
   const freelancer = user.userType === 'FREELANCER';
   const financial = result?.data.filter(job => job.contract || job.status === 'COMPLETED') ?? [];
-  return <>
+  return <section className={'finance-list-page' + (freelancer ? ' finance-list-page--income' : '')}>
     <PageHeading eyebrow={freelancer ? 'Freelancer / Thu nhập' : 'Client / Thanh toán'}
-      title={freelancer ? 'Thu nhập theo từng công việc.' : 'Thanh toán theo từng công việc.'}
-      description="Funding, release, hoàn tiền và chứng từ theo công việc; mỗi chặng có bằng chứng riêng từ Marketplace."
-      aside="Không hiển thị số dư ví hoặc lệnh chuyển tiền" />
+      title={<><span className="finance-title-start">{freelancer ? 'Thu nhập theo ' : 'Thanh toán theo '}
+        <RoughBurst seedKey="finance:left" accent="vermilion" size={38} className="finance-rays finance-rays--left" /></span>
+        <span className="finance-title-emphasis">công việc.<RoughUnderline seedKey="finance:underline" size={260} />
+          <RoughBurst seedKey="finance:right" accent="ink" size={38} className="finance-rays finance-rays--right" /></span></>}
+      description={freelancer ? 'Theo dõi release, chi trả và chứng từ theo từng công việc.'
+        : 'Theo dõi thanh toán, release và hoàn tiền theo từng công việc.'} />
     <FinanceNav />
     {loading && <StatePanel kind="loading" title="Đang tải hồ sơ tài chính" body="Đang đối chiếu công việc và trạng thái thanh toán." />}
     {!loading && error && <StatePanel kind="error" title="Không thể tải công việc" body={error}
       action={{ label: 'Thử lại', onClick: () => setAttempt(value => value + 1) }} />}
     {!loading && !error && result && <>
-      <div className="finance-list-intro"><strong>{financial.length} hồ sơ tài chính trên trang này</strong>
-        <span>Danh sách công việc được phân trang bởi Marketplace.</span></div>
+      <FinanceSummary count={financial.length} freelancer={freelancer} />
+      <header className="finance-ledger-heading"><h2>{freelancer ? 'Lịch sử thu nhập' : 'Danh sách thanh toán'}</h2>
+        <span>{financial.length} hồ sơ tài chính trên trang này</span></header>
       {financial.length === 0 ? <StatePanel kind="empty" title="Chưa có hồ sơ tài chính trên trang này"
         body="Chuyển trang để xem các công việc khác. Hồ sơ hợp đồng đang xử lý tiền cũng xuất hiện tại đây." /> :
-        <div className="finance-job-list">{financial.map(job => {
-          const entry = payments[job.id];
-          const status = entry?.data;
-          return <article className="finance-job-row" key={job.id}>
-            <div><span className="finance-category">{job.contract ? 'Hồ sơ hợp đồng' : 'Công việc hoàn thành'}</span>
-              <h2><Link to={financePath(job.id)}>{job.title}</Link></h2>
-              <p>Giá trị công việc: {money(job.budgetUsd)}</p></div>
-            <div className={job.contract ? 'finance-row-state finance-row-state-' + contractFinanceTone(job, entry?.contract) : undefined}><span className="cell-label">{job.contract ? 'Release / hoàn tiền' : 'Thanh toán Client'}</span>
-              <strong>{job.contract ? contractFinanceLabel(job, entry?.contract) : status ? checkoutLabel(status.checkoutOrderStatus) : entry?.error || 'Đang tải…'}</strong>
-              {entry?.contract?.error && <span role="alert">{entry.contract.error}</span>}</div>
-            <div><span className="cell-label">USDC / VND</span>
-              <strong>{status?.amountUsdcReceived == null ? 'Chưa có số USDC' : usdc(status.amountUsdcReceived)}</strong>
-              <span>{status?.estimatedAmountVnd == null ? 'Chưa có VND dự kiến' : vnd(status.estimatedAmountVnd) + ' dự kiến'}</span></div>
-            <div><span className="cell-label">Chi trả</span>
-              <strong>{entry?.contract?.settlement ? settlementStageLabel(entry.contract.settlement.offRampStatus) : status ? offRampLabel(status.offRampStatus) : 'Chưa có dữ liệu chi trả'}</strong>
-              {(status?.simulation || entry?.contract?.settlement?.simulation || entry?.contract?.cancellation?.simulation) && <b className="simulation-mark">Mô phỏng</b>}
-              <Link className="finance-row-link" to={financePath(job.id)}>Xem bằng chứng →</Link></div>
-          </article>;
-        })}</div>}
-      <Pagination page={result} onPage={setPage} />
-      <button className="text-button finance-refresh" type="button" onClick={() => setAttempt(value => value + 1)}>Làm mới từ Marketplace</button>
+        <div className="finance-ledger">
+          <div className="finance-ledger-header" aria-hidden="true"><span>Công việc</span><span>Giá trị</span>
+            <span>Trạng thái</span><span>Ngày cập nhật</span><span>Thao tác</span></div>
+          <div className="finance-ledger-rows">{financial.map(job => <FinanceLedgerRow key={job.id} job={job} entry={payments[job.id]} />)}</div>
+        </div>}
+      <div className="finance-list-tools"><Pagination page={result} onPage={setPage} />
+        <button className="text-button finance-refresh" type="button" onClick={() => setAttempt(value => value + 1)}>Làm mới từ Marketplace</button></div>
+      <FinanceProcess freelancer={freelancer} />
     </>}
-  </>;
+  </section>;
 }
 
-function StageRail({ stages }: { stages: EvidenceStage[] }) {
-  return <ol className="finance-stages" aria-label="Năm chặng tài chính">{stages.map((stage, index) =>
-    <li key={stage.key} className={'finance-stage stage-' + stage.tone}>
-      <span className="stage-number">0{index + 1}</span>
-      <div><h3>{stage.title}</h3><strong>{stage.status}</strong><p>{stage.note}</p>
-        {stage.error && <p className="finance-stage-error" role="alert">{stage.error}</p>}</div>
-    </li>)}</ol>;
+// No monetary aggregates are exposed by the current API. The three process tiles
+// are a reading key, not invented totals or interactive filters.
+function FinanceSummary({ count, freelancer }: { count: number; freelancer: boolean }) {
+  const steps = [
+    { key: 'funding', label: 'Thanh toán Client', title: 'Funding', note: 'Xác nhận theo từng hồ sơ', Icon: LockKeyhole, tone: 'active' },
+    { key: 'release', label: freelancer ? 'Giải ngân cho Freelancer' : 'Release cho Freelancer', title: 'Release',
+      note: 'Xác nhận theo từng hồ sơ', Icon: CircleCheck, tone: 'done' },
+    { key: 'refund', label: 'Hoàn tiền cho Client', title: 'Hoàn tiền', note: 'Xác nhận theo từng hồ sơ', Icon: RotateCcw, tone: 'refund' },
+  ];
+  if (!freelancer) [steps[1], steps[2]] = [steps[2], steps[1]];
+  const TotalIcon = freelancer ? Coins : WalletCards;
+  return <section className="finance-summary" aria-label="Hồ sơ và các chặng tài chính">
+    <article className="finance-summary-card finance-color-pending">
+      <TotalIcon aria-hidden="true" className="finance-summary-icon" strokeWidth={1.8} />
+      <div><h2>Hồ sơ trên trang</h2><strong className="finance-summary-count">{count}</strong><p>hồ sơ tài chính</p></div>
+    </article>
+    {steps.map(({ key, label, title, note, Icon, tone }) => <article key={key} className={'finance-summary-card finance-color-' + tone}>
+      <Icon aria-hidden="true" className="finance-summary-icon" strokeWidth={1.8} />
+      <div><h2>{label}</h2><strong className="finance-summary-stage">{title}</strong><p>{note}</p></div>
+    </article>)}
+  </section>;
+}
+
+function financeRowTone(job: Job, entry?: PaymentEntry) {
+  if (entry?.contract?.cancellation?.refundStatus === 'SUCCEEDED') return 'refund';
+  // Cancellation without a successful refund must not look like received money.
+  if (job.contract?.status === 'CANCELLED' || entry?.contract?.cancellation?.cancellationStatus === 'CANCELLED') return 'neutral';
+  if (job.contract) return contractFinanceTone(job, entry?.contract);
+  if (entry?.error) return 'error';
+  if (entry?.data?.checkoutOrderStatus === 'CAPTURED') return 'done';
+  return entry?.data?.checkoutOrderStatus === 'FAILED' ? 'error' : 'pending';
+}
+
+function financeUpdatedAt(entry?: PaymentEntry) {
+  const data = entry?.data;
+  return [entry?.contract?.settlement?.updatedAt, entry?.contract?.cancellation?.updatedAt,
+    data?.clientPaymentSubmittedAt, data?.clientPaymentConfirmedAt, data?.withdrawalSubmittedAt,
+    data?.withdrawalConfirmedAt, data?.simulatedPayoutAt, data?.offRampCompletionSubmittedAt, data?.offRampCompletedAt]
+    .filter((value): value is string => !!value && Number.isFinite(Date.parse(value)))
+    .sort((a, b) => Date.parse(b) - Date.parse(a))[0];
+}
+
+function FinanceLedgerRow({ job, entry }: { job: Job; entry?: PaymentEntry }) {
+  const status = entry?.data;
+  const tone = financeRowTone(job, entry);
+  const Icon = tone === 'refund' ? RotateCcw : tone === 'done' ? CircleCheck : tone === 'active' ? Clock3 : LockKeyhole;
+  const updatedAt = financeUpdatedAt(entry);
+  return <article className={'finance-ledger-row finance-color-' + tone} aria-label={job.title}>
+    <div className="finance-ledger-job"><JobIdentityCluster job={job} /><div>
+      <h3><Link to={financePath(job.id)}>{job.title}</Link></h3><JobCategoryPlate job={job} />
+      {!!job.skills?.length && <ul className="finance-job-skills" aria-label="Kỹ năng công việc">{job.skills.map(skill => <li key={skill}>{skill}</li>)}</ul>}
+    </div></div>
+    <div className="finance-ledger-value"><span className="finance-mobile-label">Giá trị công việc</span><strong>{money(job.budgetUsd)}</strong>
+      {status?.amountUsdcReceived != null && <span>{usdc(status.amountUsdcReceived)}</span>}
+      {status?.estimatedAmountVnd != null && <span>{vnd(status.estimatedAmountVnd)} dự kiến</span>}</div>
+    <div className="finance-ledger-state"><span className="finance-status-badge"><Icon size={19} aria-hidden="true" />
+      {job.contract ? contractFinanceLabel(job, entry?.contract) : status ? checkoutLabel(status.checkoutOrderStatus) : entry?.error || 'Chưa có dữ liệu'}</span>
+      <span className="finance-payout-label">{entry?.contract?.settlement ? 'Chi trả: ' + settlementStageLabel(entry.contract.settlement.offRampStatus)
+        : status ? offRampLabel(status.offRampStatus) : 'Chưa có dữ liệu chi trả'}</span>
+      {(status?.simulation || entry?.contract?.settlement?.simulation || entry?.contract?.cancellation?.simulation) && <b className="simulation-mark">Mô phỏng</b>}
+      {(entry?.error || entry?.contract?.error) && <span className="finance-row-error" role="alert">{entry.error || entry.contract?.error}</span>}
+    </div>
+    <div className="finance-ledger-date"><span className="finance-mobile-label">Ngày cập nhật</span>
+      <CalendarDays size={17} aria-hidden="true" />{updatedAt ? <time dateTime={updatedAt}>{stamp(updatedAt)}</time> : <span>Chưa có cập nhật</span>}</div>
+    <Link className="finance-detail-link" to={financePath(job.id)} aria-label={'Xem chi tiết: ' + job.title}>Xem chi tiết <ArrowRight size={22} aria-hidden="true" /></Link>
+  </article>;
+}
+
+function FinanceProcess({ freelancer }: { freelancer: boolean }) {
+  const Icon = freelancer ? Coins : WalletCards;
+  return <section className="finance-process" aria-labelledby="finance-process-title">
+    <Icon className="finance-process-icon" aria-hidden="true" strokeWidth={1.8} />
+    <div><h2 id="finance-process-title">{freelancer ? 'Quy trình nhận tiền' : 'Quy trình thanh toán'}</h2>
+      <p>{freelancer ? 'Đối chiếu release, chi trả và chứng từ trong hồ sơ của từng công việc.'
+        : 'Đối chiếu funding, release và hoàn tiền trong hồ sơ của từng công việc.'}</p>
+      <details><summary>Tìm hiểu thêm <ArrowRight size={20} aria-hidden="true" /></summary>
+        <p>{financialCopy.fundingVsRelease} {financialCopy.releaseSimulation} {financialCopy.taxVsCertificate}</p></details>
+    </div>
+  </section>;
+}
+
+function MoneySpine({ stages, contract = false }: { stages: MoneyStage[]; contract?: boolean }) {
+  const { current } = resolveMoneySpine(stages);
+  const { enabled, transition } = useKineticMotion();
+  const previous = useRef<string[] | null>(null);
+  const snapshot = stages.map(stage => stage.key + ':' + stage.tone + ':' + stage.status);
+  const changed = snapshot.map((value, index) => enabled && !!previous.current && previous.current[index] !== value);
+  useEffect(() => { previous.current = snapshot; });
+  const icons = [WalletCards, Coins, ArrowUpRight, Landmark, FileText];
+  return <section className="money-spine-section" aria-labelledby="money-spine-title">
+    <div className="money-spine-heading"><h2 id="money-spine-title">5 giai đoạn dòng tiền</h2><span>{contract ? 'Hồ sơ hợp đồng' : 'Hồ sơ thanh toán'} / Marketplace</span></div>
+    <ol className={'money-spine ' + (contract ? 'contract-money-spine' : 'finance-stages')} aria-label="Năm chặng tài chính">{stages.map((stage, index) => {
+      const isCurrent = current === index;
+      const completedPath = stages.slice(0, index + 1).every(item => item.tone === 'done');
+      const intoCurrent = completedPath && current === index + 1;
+      const Icon = icons[index];
+      // Status copy/icons follow source-derived tone, never isCurrent.
+      const StateIcon = stage.tone === 'done' ? CircleCheck : stage.tone === 'error' ? CircleAlert : Clock3;
+      return <li key={stage.key} className={'money-spine-item stage-' + stage.tone + (isCurrent ? ' money-spine-current' : '')}
+        data-stage={stage.key} data-state={stage.tone} aria-current={isCurrent ? 'step' : undefined}>
+        <div className="money-spine-track" aria-hidden="true">
+          <motion.span className="money-spine-node" initial={false} animate={{ scale: changed[index] && stage.tone === 'done' ? [1, 1.12, 1] : 1 }} transition={transition}>
+            {stage.tone === 'done' ? <Check size={24} strokeWidth={3} /> : stage.tone === 'error' ? <CircleAlert size={24} /> : String(index + 1).padStart(2, '0')}
+          </motion.span>
+          {index < stages.length - 1 && <motion.span className={'money-spine-connector ' + (completedPath ? 'connector-completed' : 'connector-upcoming') + (intoCurrent ? ' connector-current' : '')}
+            initial={false} animate={{ scaleY: changed[index] && completedPath ? [.85, 1] : 1 }} transition={{ ...transition, duration: enabled ? .24 : 0 }} />}
+        </div>
+        <motion.article className={'money-stage-record' + (!contract ? ' finance-stage' : '')} initial={false}
+          animate={{ y: changed[index] && isCurrent ? [0, -3, 0] : 0 }} transition={transition}>
+          <span className="money-stage-index" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+          <div className="money-stage-body"><header className="money-stage-heading"><Icon className="money-stage-icon" aria-hidden="true" strokeWidth={1.8} />
+            <div><h3>{stage.title}</h3><p>{stage.note}</p></div>
+            <div className="money-stage-state"><span className="money-stage-badge"><StateIcon size={19} aria-hidden="true" />
+              {stage.applicable === false ? 'Không áp dụng' : stage.tone === 'done' ? 'Đã xác nhận' : stage.tone === 'error' ? 'Cần kiểm tra' : stage.tone === 'active' ? 'Đang đối soát' : 'Chờ bằng chứng'}</span>
+              {isCurrent && <span className="money-current-caption">Giai đoạn hiện tại {index + 1}/5</span>}</div>
+          </header>
+          <p className="money-stage-status">{stage.status}</p>
+          {stage.timestamp && <time className="money-stage-date" dateTime={stage.timestamp}><CalendarDays size={15} aria-hidden="true" />{stamp(stage.timestamp)}</time>}
+          {!!stage.facts.length && <FactGrid facts={stage.facts} />}
+          {stage.error && <p className="finance-stage-error" role="alert">{stage.error}</p>}</div>
+        </motion.article>
+      </li>;
+    })}</ol>
+  </section>;
+}
+
+function FinanceJobStatement({ job, payment, tax, record, simulated = false }: { job: Job; payment: JobPaymentStatus | null;
+  tax: TaxRecord | null; record?: ContractFinance; simulated?: boolean }) {
+  const updated = [financeUpdatedAt({ data: payment, error: '', contract: record }), tax?.updatedAt]
+    .filter((value): value is string => !!value && Number.isFinite(Date.parse(value)))
+    .sort((a, b) => Date.parse(b) - Date.parse(a))[0];
+  return <section className="finance-job-statement" aria-label="Hồ sơ tài chính công việc">
+    <div className="finance-statement-art"><JobIdentityCluster job={job} /></div>
+    <div className="finance-statement-job"><JobCategoryPlate job={job} /><h2>{job.title}</h2>
+      {updated && <span className="finance-case-updated"><CalendarDays size={19} aria-hidden="true" />Cập nhật bản ghi <time dateTime={updated}>{stamp(updated)}</time></span>}</div>
+    <div className="finance-statement-value"><span>{job.contract ? 'Giá trị hợp đồng' : 'Giá trị công việc'}</span>
+      <strong>{job.contract ? decimal(job.contract.amount) + ' ' + job.contract.currency : money(job.budgetUsd)}</strong>
+      {payment?.amountUsdcReceived != null && <span>{usdc(payment.amountUsdcReceived)}</span>}
+      {payment?.estimatedAmountVnd != null && <span>{vnd(payment.estimatedAmountVnd)} dự kiến</span>}</div>
+    <div className="finance-case-environment">{(simulated || payment?.simulation === true) && <strong className="simulation-mark">Mô phỏng</strong>}
+      {payment?.network?.toLowerCase() === 'devnet' && <strong className="network-mark">DEVNET</strong>}
+      {!simulated && payment?.simulation !== true && payment?.network && <span>Mạng: {payment.network}</span>}</div>
+  </section>;
+}
+
+function FinancialCaseSummary({ job, payment, stages, tax, refresh, busy = false, children, stale = false, simulated = false }: {
+  job: Job; payment: JobPaymentStatus | null; stages: MoneyStage[]; tax: TaxRecord | null; refresh: () => void; busy?: boolean;
+  children?: React.ReactNode; stale?: boolean; simulated?: boolean;
+}) {
+  const { current, resolved } = resolveMoneySpine(stages);
+  const focus = current < 0 ? null : stages[current];
+  return <aside className="finance-case-sidebar" aria-label="Tóm tắt hồ sơ tiền">
+    <section className="finance-case-summary"><header><WalletCards size={36} aria-hidden="true" /><div><h2>Tóm tắt hồ sơ tiền</h2><p>Một công việc / một hồ sơ</p></div></header>
+      <dl><div><dt>Công việc</dt><dd>{job.title}</dd></div><div><dt>Danh mục</dt><dd><JobCategoryPlate job={job} /></dd></div>
+        <div><dt>{job.contract ? 'Giá trị hợp đồng' : 'Giá trị công việc'}</dt><dd>{job.contract ? decimal(job.contract.amount) + ' ' + job.contract.currency : money(job.budgetUsd)}</dd></div>
+        {payment?.amountUsdcReceived != null && <div><dt>USDC theo bản ghi</dt><dd>{usdc(payment.amountUsdcReceived)}</dd></div>}
+        {payment?.estimatedAmountVnd != null && <div><dt>VND dự kiến</dt><dd>{vnd(payment.estimatedAmountVnd)}</dd></div>}</dl>
+      <div className={'finance-case-focus stage-' + (focus?.tone || 'done')} aria-live="polite"><span>{stale ? 'Cần đối chiếu lại' : resolved ? 'Các chặng đã xác nhận' : 'Giai đoạn hiện tại'}</span>
+        <strong>{focus ? focus.title : resolved ? 'Hồ sơ đã đối chiếu' : 'Hồ sơ không có chặng chi trả tiếp theo'}</strong>
+        {focus && <span>{focus.status} · Bước {current + 1}/5</span>}</div>
+      {children}
+    </section>
+    <section className="finance-case-actions"><h2><FileText size={23} aria-hidden="true" />Bằng chứng liên quan</h2>
+      <Link className="button button-caution" to={tax ? '/finance/tax-records/' + encodeURIComponent(tax.id) : '/finance/tax-records'}>Xem chứng từ thuế <ArrowUpRight size={22} aria-hidden="true" /></Link>
+      <Link className="button button-secondary" to={'/work/' + encodeURIComponent(job.id)}>Hồ sơ công việc <ArrowRight size={22} aria-hidden="true" /></Link>
+      <button className="text-button finance-refresh" type="button" disabled={busy} onClick={refresh}><RefreshCw size={17} aria-hidden="true" />{busy ? 'Đang đối chiếu…' : stale ? 'Đối chiếu lại' : 'Làm mới từ Marketplace'}</button>
+    </section>
+    <section className="finance-case-note"><h2><Info size={23} aria-hidden="true" />Môi trường & bằng chứng</h2>
+      {(simulated || payment?.simulation === true) && <strong className="simulation-mark">Mô phỏng</strong>}
+      {payment?.network?.toLowerCase() === 'devnet' && <strong className="network-mark">DEVNET</strong>}
+      <p>{simulated || payment?.simulation === true ? 'Bản ghi mô phỏng không xác nhận chuyển khoản ngân hàng thật.' : 'Trạng thái hiển thị theo bằng chứng Marketplace đã trả về.'}</p>
+      <p>{financialCopy.taxVsCertificate}</p>
+    </section>
+  </aside>;
 }
 
 function TechnicalEvidence({ payment, tax }: { payment: JobPaymentStatus; tax: TaxRecord | null }) {
@@ -212,6 +386,8 @@ function ContractEvidence({ initialJob }: { initialJob: Job }) {
   }, [ready, busy, job, record, tick, attempt]);
   const { settlement, cancellation } = record;
   const refreshed = () => setAttempt(value => value + 1);
+  const stages = contractMoneyStages(job, record, funding, tax, fundingError, taxError);
+  const simulated = !!(settlement?.simulation || cancellation?.simulation || funding?.simulation);
   const technicalFacts = [
     { label: 'Tham chiếu release', value: settlement?.releaseReference },
     { label: 'Tham chiếu hoàn tiền', value: cancellation?.refundReference },
@@ -228,6 +404,38 @@ function ContractEvidence({ initialJob }: { initialJob: Job }) {
   return <>
     {!ready && <StatePanel kind="loading" title="Đang đối chiếu hồ sơ hợp đồng" body="Đọc funding, release và đề nghị hủy từ Marketplace." />}
     {ready && <>
+      <FinanceJobStatement job={job} payment={paymentError ? null : payment} tax={taxError ? null : tax} record={record} simulated={simulated} />
+      <div className="finance-case-layout">
+      <div className="finance-case-main"><MoneySpine stages={stages} contract />
+        {record.error && <StatePanel kind="error" title="Chưa thể đối chiếu đầy đủ" body={record.error + ' Bằng chứng đã đọc được giữ lại; đối chiếu lại để cập nhật.'} />}
+        {fundingError && <p role="alert">Không thể cập nhật funding: {fundingError}</p>}
+        {paymentError && <p className="finance-inline-error" role="alert">Chưa thể cập nhật bằng chứng chi trả: {paymentError}</p>}
+        {cancellation && <section className="cancellation-document" aria-label="Đề nghị hủy và hoàn tiền">
+          <SectionHeading title={cancellationLabel(cancellation.cancellationStatus)} />
+          <p>{cancellation.cancellationStatus === 'REQUESTED' ? 'Đề nghị đang chờ quyết định; công việc tiếp tục, chưa có hủy cuối cùng.' :
+            cancellation.cancellationStatus === 'REJECTED' ? 'Đề nghị bị từ chối; công việc tiếp tục, không có hoàn tiền từ đề nghị này.' :
+            cancellation.refundStatus === 'SUCCEEDED' ? cancellation.simulation ? financialCopy.refundSimulation : 'Marketplace đã xác nhận hoàn tiền. Không suy ra chuyển khoản ngân hàng từ bản ghi này.' :
+            cancellation.cancellationStatus === 'REFUND_PENDING' ? 'Hoàn tiền chưa được xác nhận; chưa phải hủy và hoàn tiền cuối cùng.' : 'Hợp đồng đã hủy; không suy ra hoàn tiền nếu chưa có bản ghi.'}</p>
+          <FactGrid facts={[{ label: 'Lý do', value: cancellation.reason || 'Chưa có lý do' },
+            { label: 'Hoàn tiền', value: refundLabel(cancellation.refundStatus) },
+            { label: 'Giá trị đề nghị', value: decimal(cancellation.amount) + ' ' + cancellation.currency },
+            { label: 'Cập nhật đề nghị', value: stamp(cancellation.updatedAt) }]} />
+        </section>}
+        {settlement && <section className="settlement-document" aria-label="Xử lý sau release">
+          <SectionHeading title="Dữ liệu hỗ trợ sau release" description="Lỗi ở chặng sau không đảo ngược release đã xác nhận." />
+          <FactGrid facts={[
+            ...(payment?.amountUsdcReceived != null && !paymentError ? [{ label: 'USDC theo bản ghi chi trả', value: usdc(payment.amountUsdcReceived) }] : []),
+            ...(payment?.estimatedAmountVnd != null && !paymentError ? [{ label: 'VND dự kiến', value: vnd(payment.estimatedAmountVnd) }] : []),
+            ...(payment?.payoutBankAccountNumber && !paymentError ? [{ label: 'Ngân hàng', value: (payment.payoutBankCode || '') + ' · ' + maskedBank(payment.payoutBankAccountNumber) }] : []),
+          ]} />
+        </section>}
+        <EvidenceDisclosure summary="Tham chiếu và lỗi kỹ thuật">
+          {technicalFacts.length ? <FactGrid facts={technicalFacts.map(fact => ({ label: fact.label, value: <code>{fact.value}</code> }))} />
+            : <p className="metadata">Chưa có tham chiếu kỹ thuật.</p>}
+        </EvidenceDisclosure>
+      </div>
+      <FinancialCaseSummary job={job} payment={paymentError ? null : payment} stages={stages} tax={taxError ? null : tax}
+        refresh={refreshed} busy={busy} stale={!!record.error} simulated={simulated}>
       <section className={'finance-statement finance-primary finance-primary-' + contractFinanceTone(job, record)} aria-label="Tiền chính của hợp đồng">
         <SectionHeading title={contractFinanceLabel(job, record)} aside={settlement?.simulation || cancellation?.simulation || funding?.simulation ? 'Mô phỏng' : undefined} />
         <p>{cancellation?.refundStatus === 'SUCCEEDED' && cancellation.simulation ? financialCopy.refundSimulation :
@@ -240,44 +448,12 @@ function ContractEvidence({ initialJob }: { initialJob: Job }) {
           { label: 'Hoàn tiền', value: cancellation ? refundLabel(cancellation.refundStatus) : record.error ? 'Chưa xác minh hoàn tiền' : refundLabel(null) },
         ]} />
       </section>
-      {record.error && <StatePanel kind="error" title="Chưa thể đối chiếu đầy đủ" body={record.error + ' Bằng chứng đã đọc được giữ lại; đối chiếu lại để cập nhật.'} />}
-      {fundingError && <p role="alert">Không thể cập nhật funding: {fundingError}</p>}
-      {cancellation && <section className="cancellation-document" aria-label="Đề nghị hủy và hoàn tiền">
-        <SectionHeading title={cancellationLabel(cancellation.cancellationStatus)} />
-        <p>{cancellation.cancellationStatus === 'REQUESTED' ? 'Đề nghị đang chờ quyết định; công việc tiếp tục, chưa có hủy cuối cùng.' :
-          cancellation.cancellationStatus === 'REJECTED' ? 'Đề nghị bị từ chối; công việc tiếp tục, không có hoàn tiền từ đề nghị này.' :
-          cancellation.refundStatus === 'SUCCEEDED' ? cancellation.simulation ? financialCopy.refundSimulation : 'Marketplace đã xác nhận hoàn tiền. Không suy ra chuyển khoản ngân hàng từ bản ghi này.' :
-          cancellation.cancellationStatus === 'REFUND_PENDING' ? 'Hoàn tiền chưa được xác nhận; chưa phải hủy và hoàn tiền cuối cùng.' : 'Hợp đồng đã hủy; không suy ra hoàn tiền nếu chưa có bản ghi.'}</p>
-        <FactGrid facts={[
-          { label: 'Lý do', value: cancellation.reason || 'Chưa có lý do' },
-          { label: 'Hoàn tiền', value: refundLabel(cancellation.refundStatus) },
-          { label: 'Giá trị đề nghị', value: decimal(cancellation.amount) + ' ' + cancellation.currency },
-          { label: 'Cập nhật', value: stamp(cancellation.updatedAt) },
-        ]} />
-      </section>}
-      {settlement && <section className="settlement-document" aria-label="Xử lý sau release">
-        <SectionHeading title="Bằng chứng sau release" description="Lỗi ở chặng sau không đảo ngược release đã xác nhận." />
-        <FactGrid facts={[
-          { label: 'On-chain', value: settlementStageLabel(settlement.onChainStatus) },
-          { label: 'Chi trả VND', value: settlementStageLabel(settlement.offRampStatus) },
-          { label: 'Lập / khôi phục chứng từ', value: settlementStageLabel(settlement.taxStatus) },
-          { label: 'USDC theo bản ghi chi trả', value: payment?.amountUsdcReceived == null ? 'Chưa có dữ liệu' : usdc(payment.amountUsdcReceived) },
-          { label: 'VND dự kiến', value: payment?.estimatedAmountVnd == null ? 'Chưa có ước tính' : vnd(payment.estimatedAmountVnd) },
-          { label: 'Ngân hàng', value: (payment?.payoutBankCode || 'Chưa có ngân hàng') + ' · ' + maskedBank(payment?.payoutBankAccountNumber) },
-        ]} />
-        <p className="metadata">{financialCopy.taxVsCertificate}</p>
-      </section>}
       <section className="finance-tax-callout" aria-label="Chứng từ thực tế">
         <div><h2>{tax ? tax.statusLabel || tax.status : taxError ? 'Chưa đọc được chứng từ' : settlement || releaseOwned(job) ? 'Chưa có chứng từ' : 'Chứng từ sau chi trả'}</h2>
           {taxError && <p role="alert">Chưa thể đọc chứng từ: {taxError}</p>}</div>
         <Link className="button button-secondary" to={tax ? '/finance/tax-records/' + encodeURIComponent(tax.id) : '/finance/tax-records'}>Xem chứng từ</Link>
       </section>
-      <EvidenceDisclosure summary="Tham chiếu và lỗi kỹ thuật">
-        {technicalFacts.length ? <FactGrid facts={technicalFacts.map(fact => ({ label: fact.label, value: <code>{fact.value}</code> }))} />
-          : <p className="metadata">Chưa có tham chiếu kỹ thuật.</p>}
-      </EvidenceDisclosure>
-      <ActionGroup><Link className="button button-secondary" to={'/work/' + encodeURIComponent(job.id)}>Xem hồ sơ công việc</Link>
-        <button className="text-button" type="button" disabled={busy} onClick={refreshed}>{busy ? 'Đang đối chiếu…' : record.error ? 'Đối chiếu lại' : 'Làm mới từ Marketplace'}</button></ActionGroup>
+      </FinancialCaseSummary></div>
     </>}
   </>;
 }
@@ -310,10 +486,10 @@ function JobEvidence({ jobId, user }: { jobId: string; user: User }) {
       if (jobResult.status === 'fulfilled') setJob(jobResult.value);
       else setJobError(message(jobResult.reason));
       if (paymentResult.status === 'fulfilled') setPayment(paymentResult.value);
-      else setPaymentError(message(paymentResult.reason));
+      else { setPayment(null); setPaymentError(message(paymentResult.reason)); }
       if (taxResult.status === 'fulfilled') setTax(taxResult.value);
       else if (missingTax(taxResult.reason)) setTax(null);
-      else setTaxError(message(taxResult.reason));
+      else { setTax(null); setTaxError(message(taxResult.reason)); }
       setLoading(false);
     }).catch(cause => { if (active) { setJobError(message(cause)); setLoading(false); } });
     return () => { active = false; };
@@ -330,10 +506,10 @@ function JobEvidence({ jobId, user }: { jobId: string; user: User }) {
       const [nextPayment, nextTax] = await Promise.allSettled([api.paymentStatus(jobId), api.taxRecordForJob(jobId)]);
       if (!active) return;
       if (nextPayment.status === 'fulfilled') setPayment(nextPayment.value);
-      else setPaymentError(message(nextPayment.reason));
+      else { setPayment(null); setPaymentError(message(nextPayment.reason)); }
       if (nextTax.status === 'fulfilled') { setTax(nextTax.value); setTaxError(''); }
-      else if (missingTax(nextTax.reason)) setTax(null);
-      else setTaxError(message(nextTax.reason));
+      else if (missingTax(nextTax.reason)) { setTax(null); setTaxError(''); }
+      else { setTax(null); setTaxError(message(nextTax.reason)); }
       setPollTick(value => value + 1);
     }, POLL_MS);
     return () => { active = false; window.clearTimeout(timer); };
@@ -342,38 +518,34 @@ function JobEvidence({ jobId, user }: { jobId: string; user: User }) {
   const retry = () => setAttempt(value => value + 1);
   if (loading && !job) return <StatePanel kind="loading" title="Đang tải bằng chứng thanh toán"
     body="Đang đối chiếu trạng thái tài chính của công việc từ Marketplace." />;
-  if (!job) return <StatePanel kind="error" title="Không thể tải công việc" body={jobError}
+  if (!job || jobError) return <StatePanel kind="error" title="Không thể tải công việc" body={jobError}
     action={{ label: 'Thử lại', onClick: retry }} />;
   const participant = user.userType === 'CLIENT' ? job.clientUserId === user.id : job.freelancerId === user.id;
   if (!participant) return <StatePanel kind="error" title="Không có quyền xem"
     body="Bằng chứng tài chính chỉ dành cho người tham gia công việc này." />;
-  return <>
-    <PageHeading eyebrow={(user.userType === 'CLIENT' ? 'Client / Thanh toán' : 'Freelancer / Thu nhập') + ' / Công việc'}
-      title={job.title} description="Bằng chứng tài chính theo từng chặng, cập nhật từ Marketplace."
-      aside={'Giá trị công việc ' + money(job.budgetUsd)} />
-    <FinanceNav />
-    <div className="finance-back"><Link to="/finance">← Danh sách công việc</Link><Link to={'/work/' + job.id}>Hồ sơ công việc</Link></div>
+  const stages = payment ? legacyMoneyStages(job, payment, tax) : [];
+  if (taxError && stages.length) stages[4] = { ...stages[4], tone: 'error', status: 'Chưa đọc được chứng từ', error: taxError };
+  return <article className="finance-detail-page">
+    <PageHeading eyebrow={user.userType === 'CLIENT' ? 'Client / Thanh toán' : 'Freelancer / Thu nhập'}
+      title={<><span className="finance-detail-title-start">Chi tiết <RoughBurst className="finance-detail-rays finance-detail-rays--left" size={35} accent="vermilion" seedKey="finance-detail:left" /></span>
+        <span className="finance-detail-title-emphasis">hồ sơ tiền.<RoughUnderline size={230} seedKey="finance-detail:underline" />
+          <RoughBurst className="finance-detail-rays finance-detail-rays--right" size={35} accent="ink" seedKey="finance-detail:right" /></span></>}
+      description={user.userType === 'FREELANCER'
+        ? 'Theo dõi release, chi trả và chứng từ của công việc này.'
+        : 'Theo dõi dòng tiền của một công việc, từ thanh toán đến chứng từ thuế.'} />
+    <div className="finance-detail-back"><Link to="/finance"><ArrowLeft size={22} aria-hidden="true" />
+      {user.userType === 'FREELANCER' ? 'Lịch sử thu nhập' : 'Danh sách thanh toán'}</Link></div>
     {job.contract && <ContractEvidence initialJob={job} />}
     {!payment && !job.contract && <StatePanel kind="error" title="Chưa thể đọc trạng thái thanh toán"
       body={paymentError || 'Marketplace chưa trả dữ liệu.'} action={{ label: 'Tải lại', onClick: retry }} />}
     {payment && <>
-      <section className="finance-statement" aria-label="Tóm tắt tài chính">
-        <div className="finance-statement-top"><span>BẢN GHI TÀI CHÍNH / MARKETPLACE</span>
-          {payment.simulation === true && <strong className="simulation-mark">Mô phỏng</strong>}
-          {payment.network?.toLowerCase() === 'devnet' && <strong className="network-mark">DEVNET</strong>}</div>
-        <h2>{user.userType === 'CLIENT' ? checkoutLabel(payment.checkoutOrderStatus) : offRampLabel(payment.offRampStatus)}</h2>
-        <p>{payment.simulation === true
-          ? 'Đây là luồng mô phỏng. Trạng thái hoàn tất không xác nhận tiền đã chuyển vào ngân hàng thật.'
-          : 'Các chặng bên dưới là trạng thái do Marketplace trả về; công việc hoàn thành không đồng nghĩa mọi chặng chi trả đã hoàn tất.'}</p>
-        <div className="finance-outcomes">
-          <div><span>Giá trị công việc</span><strong>{money(job.budgetUsd)}</strong></div>
-          <div><span>USDC đã xác nhận</span><strong>{payment.amountUsdcReceived == null ? 'Chưa có dữ liệu' : usdc(payment.amountUsdcReceived)}</strong></div>
-          <div><span>VND dự kiến</span><strong>{payment.estimatedAmountVnd == null ? 'Chưa có ước tính' : vnd(payment.estimatedAmountVnd)}</strong></div>
-        </div>
-      </section>
-      <StageRail stages={paymentStages(payment, tax)} />
-      <section className="finance-support" aria-label="Chi tiết chi trả">
-        <h2>Dữ liệu hỗ trợ</h2>
+      <FinanceJobStatement job={job} payment={payment} tax={tax} />
+      <div className="finance-case-layout"><div className="finance-case-main">
+      <MoneySpine stages={stages} />
+      {taxError && <p className="finance-inline-error" role="alert">Chưa thể đọc chứng từ: {taxError}</p>}
+      <TechnicalEvidence payment={payment} tax={tax} />
+      <details className="finance-support" aria-label="Chi tiết chi trả">
+        <summary>Dữ liệu chi trả & tỷ giá</summary>
         <dl>
           <div><dt>Checkout Client</dt><dd>{checkoutLabel(payment.checkoutOrderStatus)}</dd></div>
           <div><dt>Thanh toán on-chain</dt><dd>{clientPaymentLabel(payment.clientPaymentStatus)}
@@ -389,27 +561,36 @@ function JobEvidence({ jobId, user }: { jobId: string; user: User }) {
           <div><dt>Ngày mô phỏng chi trả</dt><dd>{stamp(payment.simulatedPayoutAt)}</dd></div>
           <div><dt>Ngày hoàn tất bản ghi</dt><dd>{stamp(payment.offRampCompletedAt)}</dd></div>
         </dl>
-      </section>
-      {taxError && <p className="finance-inline-error" role="alert">Chưa thể đọc chứng từ: {taxError}</p>}
+      </details>
+      </div><FinancialCaseSummary job={job} payment={payment} stages={stages} tax={tax} refresh={retry}>
       <section className="finance-tax-callout" aria-label="Chứng từ thuế">
         <div><span className="finance-category">Chứng từ thuế</span>
-          <h2>{tax ? tax.statusLabel || tax.status : 'Chưa có chứng từ'}</h2>
-          <p>{tax ? 'Trạng thái chứng từ được trả về từ Marketplace/MISA.' :
+          <h2>{tax ? tax.statusLabel || tax.status : taxError ? 'Chưa đọc được chứng từ' : 'Chưa có chứng từ'}</h2>
+          <p>{tax ? 'Trạng thái chứng từ được trả về từ Marketplace/MISA.' : taxError ? 'Marketplace chưa trả được bằng chứng chứng từ.' :
             'Không có bản ghi chứng từ cho công việc này; điều đó không xác nhận miễn thuế.'}</p></div>
-        {tax ? <Link className="button" to={'/finance/tax-records/' + tax.id}>Xem chứng từ</Link> :
-          <Link className="button button-secondary" to="/finance/tax-records">Danh sách chứng từ</Link>}
       </section>
-      <TechnicalEvidence payment={payment} tax={tax} />
-      {paymentError && <p className="finance-inline-error" role="alert">Không thể cập nhật: {paymentError}</p>}
-      <button className="text-button finance-refresh" type="button" onClick={retry}>Làm mới từ Marketplace</button>
+      </FinancialCaseSummary></div>
     </>}
-  </>;
+  </article>;
 }
 
 export function FinanceHome({ user }: { user: User }) {
   const [params] = useSearchParams();
   const jobId = params.get('jobId');
   return jobId ? <JobEvidence key={jobId} jobId={jobId} user={user} /> : <FinanceList user={user} />;
+}
+
+function TaxStatus({ record }: { record: TaxRecord }) {
+  const { tone, label } = taxPresentation(record);
+  const Icon = tone === 'accepted' ? CircleCheck : tone === 'error' || tone === 'attention' ? CircleAlert : tone === 'closed' ? FileText : Clock3;
+  return <span className={'tax-status tax-tone-' + tone}><Icon size={20} aria-hidden="true" />{label}</span>;
+}
+
+function TaxHeading({ detail = false }: { detail?: boolean }) {
+  return <PageHeading eyebrow="Tài chính / Chứng từ thuế"
+    title={<>{detail ? 'Hồ sơ' : 'Chứng từ'} <span className="tax-title-emphasis">{detail ? 'chứng từ.' : 'theo công việc.'}<RoughUnderline /></span></>}
+    description={detail ? 'Đối chiếu số liệu thuế, trạng thái chứng từ và bằng chứng từ Marketplace.'
+      : 'Theo dõi từng hồ sơ thuế. Kết quả xuất sang MISA và trạng thái cơ quan thuế được ghi nhận riêng.'} />;
 }
 
 export function TaxRecordsPage() {
@@ -428,29 +609,31 @@ export function TaxRecordsPage() {
     );
     return () => { active = false; };
   }, [page, attempt]);
-  return <>
-    <PageHeading eyebrow="Tài chính / Thuế" title="Chứng từ theo công việc."
-      description="Bản ghi thuế được lấy từ Marketplace. Trạng thái của chứng từ khác với trạng thái thanh toán." />
+  return <article className="tax-page tax-ledger-page">
+    <TaxHeading />
     <FinanceNav />
     {loading && <StatePanel kind="loading" title="Đang tải chứng từ" body="Marketplace đang trả danh sách chứng từ của tài khoản." />}
     {!loading && error && <StatePanel kind="error" title="Không thể tải chứng từ" body={error}
       action={{ label: 'Thử lại', onClick: () => setAttempt(value => value + 1) }} />}
     {!loading && !error && result && <>
       {result.data.length === 0 ? <StatePanel kind="empty" title="Chưa có chứng từ trên trang này"
-        body="Chứng từ chỉ xuất hiện khi quá trình chi trả và xuất thuế tạo được bản ghi." /> :
-        <div className="tax-list">{result.data.map(record => <article key={record.id} className="tax-list-row">
-          <div><span className="finance-category">Hồ sơ thuế / công việc</span>
+        body="Chưa có bản ghi chứng từ trên trang này. Điều đó không xác nhận công việc được miễn thuế." /> :
+        <section aria-label="Sổ chứng từ thuế"><header className="tax-ledger-heading"><h2>Sổ chứng từ thuế</h2><span>{result.data.length} hồ sơ trên trang này</span></header>
+        <div className="tax-ledger-columns" aria-hidden="true"><span>Công việc / chứng từ</span><span>Trạng thái chứng từ</span><span>Thu nhập chịu thuế</span><span>Hồ sơ</span></div>
+        <div className="tax-list">{result.data.map(record => <article key={record.id} className={'tax-list-row tax-tone-' + taxPresentation(record).tone}>
+          <div className="tax-ledger-identity"><span className="tax-document-mark" aria-hidden="true"><FileText size={42} /></span><div><span className="finance-category">Hồ sơ thuế / công việc</span>
             <h2><Link to={'/finance/tax-records/' + record.id}>{record.jobTitle || 'Công việc ' + record.jobId.slice(0, 8)}</Link></h2>
-            <span>Tạo {date(record.createdAt)}</span></div>
-          <div><span className="cell-label">Trạng thái MISA</span><strong>{record.statusLabel || record.status}</strong></div>
-          <div><span className="cell-label">Thu nhập chịu thuế</span><strong>{vnd(record.taxableIncomeVnd)}</strong></div>
-          <Link className="finance-row-link" to={'/finance/tax-records/' + record.id}>Xem chi tiết →</Link>
-        </article>)}</div>}
+            <span className="tax-ledger-date">Tạo {date(record.createdAt)}</span>
+            {record.certificateNumber && <span className="tax-certificate-number">Số chứng từ: {record.certificateNumber}</span>}</div></div>
+          <div className="tax-ledger-state"><TaxStatus record={record} /></div>
+          <div className="tax-ledger-amount"><span className="cell-label">Thu nhập chịu thuế</span><strong>{vnd(record.taxableIncomeVnd)}</strong></div>
+          <Link className="tax-record-link" to={'/finance/tax-records/' + record.id}>Xem chi tiết <ArrowUpRight size={20} aria-hidden="true" /></Link>
+        </article>)}</div></section>}
       <nav className="pagination" aria-label="Phân trang chứng từ"><span>{result.totalElements} chứng từ · Trang {result.totalPages ? page + 1 : 0}/{result.totalPages}</span>
         <div><button className="button button-secondary" disabled={page <= 0} onClick={() => setPage(page - 1)}>Trang trước</button>
           <button className="button button-secondary" disabled={page >= result.totalPages - 1} onClick={() => setPage(page + 1)}>Trang sau</button></div></nav>
     </>}
-  </>;
+  </article>;
 }
 
 export function TaxRecordDetail() {
@@ -471,6 +654,7 @@ export function TaxRecordDetail() {
     let active = true;
     setLoading(true);
     setError('');
+    setPayment(null);
     api.taxRecord(taxRecordId).then(async data => {
       if (!active) return;
       setRecord(data);
@@ -481,7 +665,7 @@ export function TaxRecordDetail() {
         if (active) { setPayment(null); setPaymentError(message(cause)); }
       }
       if (active) setLoading(false);
-    }, cause => { if (active) { setError(message(cause)); setLoading(false); } });
+    }, cause => { if (active) { setRecord(null); setError(message(cause)); setLoading(false); } });
     return () => { active = false; };
   }, [taxRecordId, attempt]);
 
@@ -532,19 +716,20 @@ export function TaxRecordDetail() {
   const payoutComplete = payment?.offRampStatus === 'COMPLETED';
   const canSync = payoutComplete && !!record.misaCertificateId && syncableTaxStatuses.has(record.status);
   const canRetry = payoutComplete && record.status === 'EXPORT_FAILED';
-  return <>
-    <PageHeading eyebrow="Tài chính / Chứng từ" title={record.jobTitle || 'Chứng từ theo công việc'}
-      description="Trạng thái và số liệu thuế do Marketplace trả về. Số thu nhập chịu thuế dùng tỷ giá USD/VND riêng."
-      aside={record.statusLabel || record.status} />
+  return <article className="tax-page tax-case-page">
+    <TaxHeading detail />
     <FinanceNav />
     <div className="finance-back"><Link to="/finance/tax-records">← Danh sách chứng từ</Link>
       <Link to={financePath(record.jobId)}>Bằng chứng thanh toán</Link></div>
-    <section className="tax-statement" aria-label="Tình trạng chứng từ">
-      <span className="finance-category">Trạng thái MISA</span>
-      <h2>{record.statusLabel || record.status}</h2>
+    <section className={'tax-statement tax-tone-' + taxPresentation(record).tone} aria-label="Tình trạng chứng từ">
+      <div className="tax-statement-identity"><span className="tax-case-document" aria-hidden="true"><FileText size={68} /></span><div><span className="finance-category">Hồ sơ thuế / công việc</span>
+      <h2>{record.jobTitle || 'Công việc ' + record.jobId.slice(0, 8)}</h2>
+      <TaxStatus record={record} /></div></div>
       {payment?.simulation === true && <p className="simulation-mark">Mô phỏng · luồng chi trả; chứng từ phản ánh dữ liệu hệ thống.</p>}
       <div className="tax-amounts"><div><span>Thu nhập chịu thuế</span><strong>{vnd(record.taxableIncomeVnd)}</strong></div>
         <div><span>Thuế đã khấu trừ</span><strong>{vnd(record.taxWithheldVnd)}</strong></div></div>
+    </section>
+    <div className="tax-case-layout"><section className="tax-fact-ledger" aria-label="Số liệu hồ sơ thuế"><h2>Số liệu và mốc chứng từ</h2><p>Thu nhập chịu thuế và thuế đã khấu trừ là hai giá trị riêng. Tỷ giá dưới đây dùng cho bản ghi thuế.</p>
       <dl className="tax-facts">
         <div><dt>Giá trị công việc</dt><dd>{record.amountUsd == null ? '—' : money(Number(record.amountUsd))}</dd></div>
         <div><dt>Tỷ giá USD/VND dùng cho thuế</dt><dd>{record.usdToVndRate == null ? '—' : decimal(record.usdToVndRate, 4)}
@@ -555,22 +740,24 @@ export function TaxRecordDetail() {
         <div><dt>Đồng bộ gần nhất</dt><dd>{stamp(record.lastSyncedAt)}</dd></div>
       </dl>
     </section>
-    {paymentError && <p className="finance-inline-error" role="alert">Chưa xác minh được trạng thái chi trả; thao tác đồng bộ/lập lại tạm khóa: {paymentError}</p>}
-    <section className="tax-actions" aria-label="Tác vụ chứng từ">
-      <div><h2>Chứng từ và trạng thái</h2>
-        <p>Đồng bộ khi chứng từ có mã MISA và chi trả đã hoàn tất; lập lại chỉ khi xuất chứng từ thất bại.</p></div>
+    <section className={'tax-actions tax-tone-' + taxPresentation(record).tone} aria-label="Tác vụ chứng từ">
+      <div><h2><FileText size={26} aria-hidden="true" />Chứng từ và trạng thái</h2>
+        <p>Mã chứng từ không xác nhận cơ quan thuế đã chấp nhận. Trạng thái trên hồ sơ là căn cứ đối chiếu.</p></div>
+      {paymentError && <p className="finance-inline-error" role="alert">Chưa xác minh được trạng thái chi trả; thao tác đồng bộ/lập lại tạm khóa: {paymentError}</p>}
+      {loading && <p role="status">Đang đối chiếu trạng thái chi trả từ Marketplace.</p>}
       <div className="tax-action-buttons">
-        {canSync && <button className="button button-secondary" type="button" disabled={busy} onClick={() => void act('sync')}>Đồng bộ trạng thái</button>}
-        {canRetry && <button className="button button-secondary" type="button" disabled={busy} onClick={() => void act('retry')}>Lập lại chứng từ</button>}
+        {canSync && <button className="button button-secondary" type="button" disabled={busy || loading} onClick={() => void act('sync')}>Đồng bộ trạng thái</button>}
+        {canRetry && <button className="button button-secondary" type="button" disabled={busy || loading} onClick={() => void act('retry')}>Lập lại chứng từ</button>}
         {record.misaCertificateId && <>
           <button className="button" type="button" disabled={busy} onClick={() => void download('pdf')}>Tải PDF</button>
           <button className="button button-secondary" type="button" disabled={busy} onClick={() => void download('xml')}>Tải XML</button>
         </>}
         {!canSync && !canRetry && !record.misaCertificateId && <span>Chưa có tệp chứng từ để tải.</span>}
       </div>
+      <p className="tax-action-context">Đồng bộ khi chứng từ có mã MISA và chi trả đã hoàn tất; lập lại chỉ khi xuất chứng từ thất bại.</p>
       {notice && <p className="lifecycle-success" role="status">{notice}</p>}
       {actionError && <p className="finance-inline-error" role="alert">{actionError}</p>}
-    </section>
+    </section></div>
     <details className="technical-evidence"><summary>Chi tiết kỹ thuật chứng từ</summary>
       <dl className="tax-technical">
         {([['Tax record ID', record.id], ['Job ID', record.jobId], ['MISA certificate ID', record.misaCertificateId],
@@ -581,6 +768,6 @@ export function TaxRecordDetail() {
           .map(([label, value]) => <div key={label}><dt>{label}</dt><dd><code>{value}</code></dd></div>)}
       </dl>
     </details>
-    <button className="text-button finance-refresh" type="button" onClick={() => setAttempt(value => value + 1)}>Làm mới từ Marketplace</button>
-  </>;
+    <button className="text-button finance-refresh" type="button" disabled={busy || loading} onClick={() => setAttempt(value => value + 1)}><RefreshCw size={18} aria-hidden="true" />Làm mới từ Marketplace</button>
+  </article>;
 }

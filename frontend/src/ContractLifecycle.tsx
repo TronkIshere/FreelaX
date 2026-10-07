@@ -11,9 +11,21 @@ import { financialCopy, financialMoneyTone, settlementMoneyLabel, settlementNeed
 import { disputeLabel, submissionLabel } from './status';
 import { attemptScope, clearAttempt, httpsUrl, localInstant, readAttempt, saveAttempt, smallReview, validateSubmission } from './workflowContracts';
 import type { Dispute, ContractSettlement, ContractSubmission, ContractSummary, Job, Requirement, ReviewDecision, SubmissionPayload, User } from './types';
+import { ArrowRight, ClipboardCheck } from 'lucide-react';
 
 type SubmissionAttempt = { key: string; payload: SubmissionPayload; baselineVersion: number };
 type DraftEvidence = Record<string, { selected: boolean; url: string; text: string }>;
+// Presentation only; ContractReviews owns eligibility and the parent supplies participant-derived copy.
+export function CompletedReviewCallout({ counterpart }: { counterpart: 'Client' | 'Freelancer' }) {
+  return <section className="completed-review-callout" aria-labelledby="completed-review-title">
+    <div className="completed-review-plate" aria-hidden="true"><ClipboardCheck size={34} /><span /></div>
+    <div className="completed-review-copy"><span className="completed-review-stamp">CÔNG VIỆC ĐÃ HOÀN THÀNH</span>
+      <h2 id="completed-review-title">Chia sẻ đánh giá về {counterpart}.</h2>
+      <p>{counterpart === 'Freelancer' ? 'Marketplace đã xác nhận công việc và release đủ điều kiện đánh giá. Bạn có thể chia sẻ trải nghiệm làm việc để bổ sung uy tín hợp đồng.' : 'Marketplace đã mở lời mời đánh giá cho hợp đồng đã hoàn tất. Bạn có thể chia sẻ trải nghiệm làm việc với Client.'}</p>
+    </div>
+    <a className="button completed-review-cta" href="#contract-reviews">Đánh giá {counterpart}<ArrowRight size={20} aria-hidden="true" /></a>
+  </section>;
+}
 const errorText = (cause: unknown) => cause instanceof ApiError && cause.code === 4026 ? 'Lần gửi trước có xung đột nội dung. Đối chiếu lại lịch sử; không đổi payload hoặc key.'
   : cause instanceof ApiError && cause.status === 409 ? 'Trạng thái đã thay đổi. Đang tải lại bản mới nhất trước khi tiếp tục.'
   : 'Chưa xác nhận được thao tác. Hãy đối chiếu trạng thái từ Marketplace trước khi thử lại.';
@@ -89,6 +101,11 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
   const [settlementError, setSettlementError] = useState('');
   const [settlementTick, setSettlementTick] = useState(0);
   const [settlementAttempt, setSettlementAttempt] = useState(0);
+  const reviewScope = job.id + ':' + contract.id + ':' + user.id;
+  const [reviewEntry, setReviewEntry] = useState<{ scope: string; available: boolean } | null>(null);
+  const onReviewOpportunityChange = useCallback((available: boolean) => {
+    setReviewEntry(previous => previous?.scope === reviewScope && previous.available === available ? previous : { scope: reviewScope, available });
+  }, [reviewScope]);
   const lock = useRef(false);
   const alive = useRef(true);
   const recovery = useRef<SubmissionAttempt | null>(null);
@@ -290,6 +307,7 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
       {latest && <a className="text-link" href="#latest-submission">{latest.reviewerFeedback && contract.status === 'REVISION' ? 'Xem phản hồi ↓' : 'Xem bản bàn giao ↓'}</a>}
       {releaseRelevant && <Link className="text-link" to={'/finance?jobId=' + encodeURIComponent(job.id)}>Xem trạng thái tài chính →</Link>}
     </ActionGroup></section>
+    {reviewEntry?.scope === reviewScope && reviewEntry.available && <CompletedReviewCallout counterpart={user.id === job.clientUserId ? 'Freelancer' : 'Client'} />}
     {children}
     {job.status === 'AWAITING_PAYMENT' && !cancelled && <FundingPanel job={job} user={user} onJobUpdated={onJobUpdated}
       blocked={!workAllowed || busy} operationLock={lock} onMutationChange={setFundingBusy} />}
@@ -351,7 +369,7 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
       {list.slice(1).map(item => <details className="ledger-row" key={item.id}><summary><strong>#{item.version}</strong><span>{submissionLabel(item.status)}</span><time>{localInstant(item.submittedAt)}</time></summary><div className="ledger-body"><EvidenceRecord submission={item} contract={contract} /></div></details>)}
     </section>
     {footer}
-    {completed && (client || freelancer) && <ContractReviews key={'reviews:' + contract.id + ':' + user.id} job={job} user={user} settlement={settlement} blocked={!cancellation.ready || cancellation.uncertain || refundPending || cancelled || !!settlementError} />}
+    {completed && (client || freelancer) && <ContractReviews key={'reviews:' + contract.id + ':' + user.id} job={job} user={user} settlement={settlement} blocked={!cancellation.ready || cancellation.uncertain || refundPending || cancelled || disputed || !!settlementError} onOpportunityChange={onReviewOpportunityChange} />}
     {list.length > 0 && <EvidenceDisclosure summary="Tham chiếu bàn giao"><dl className="reference-list">{list.map(item => <div key={item.id}><dt>Bản #{item.version}</dt><dd><code>{item.id}</code>{item.disputeId && <p>Dispute: <code>{item.disputeId}</code></p>}</dd></div>)}</dl></EvidenceDisclosure>}
   </div>;
 }

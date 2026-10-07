@@ -5,7 +5,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError, api } from './api';
 import { MyWork, WorkLifecycle, safeDeliverableUrl } from './WorkLifecycle';
-import type { Job, JobSubmission, User } from './types';
+import type { ContractSummary, Job, JobSubmission, User } from './types';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 const client: User = { id: 'client-1', email: 'client@example.test', displayName: 'Client', userType: 'CLIENT' };
@@ -211,6 +211,145 @@ describe('P05.3 work lifecycle', () => {
     expect(host.textContent).toContain('Editorial work');
     expect(host.textContent).toContain('Đang thực hiện');
     expect(host.querySelector('a[href="/work/job-1"]')).not.toBeNull();
+  });
+});
+
+const workContract: ContractSummary = { id: 'contract-1', status: 'ACTIVE', milestoneId: 'milestone-1',
+  milestoneStatus: 'IN_PROGRESS', amount: '300.00', currency: 'USD', deliveryDueAt: '2026-10-15T12:00:00Z',
+  reviewWindowHours: 48, maxRevisions: 2, revisionsUsed: 1, deliverables: [], acceptanceCriteria: [] };
+
+describe('VP.5 assigned work tracker', () => {
+  function jobs(data: Job[], totalElements = data.length) {
+    return vi.spyOn(api, 'myJobs').mockResolvedValue({ currentPage: 0, pageSize: 10,
+      totalPages: Math.ceil(totalElements / 10), totalElements, data });
+  }
+
+  it('uses the real server total, preserving record order and pagination rather than page-derived counts', async () => {
+    const load = jobs([completed, { ...revision, id: 'job-2', title: 'Second server record' }], 23);
+    await render(<MyWork />);
+    expect(load).toHaveBeenCalledExactlyOnceWith(0);
+    expect(host.querySelector('.my-work-results-heading p')?.textContent).toBe('23 công việc được giao');
+    expect([...host.querySelectorAll('.my-work-ledger h3')].map(node => node.textContent))
+      .toEqual(['Editorial work', 'Second server record']);
+    expect(host.querySelector('.my-work-primary-record')?.classList.contains('ku-surface--mint')).toBe(true);
+    await click('Trang sau');
+    expect(load).toHaveBeenLastCalledWith(1);
+    expect(load).toHaveBeenCalledTimes(2);
+    expect(host.querySelectorAll('input, select')).toHaveLength(0);
+    expect(host.textContent).not.toMatch(/đang làm\s*\d|ưu tiên|khẩn cấp|Recommended|PROGRESS_PERCENT/i);
+  });
+
+  it('reuses category-first thumbnails and actual skills without title-derived tags', async () => {
+    jobs([{ ...working, category: 'BACKEND_API', skills: ['Java', 'REST API'] },
+      { ...working, id: 'job-2', title: 'React landing page', category: 'OTHER', skills: [] }]);
+    await render(<MyWork />);
+    expect([...host.querySelectorAll('.job-family-art')].map(node => node.getAttribute('data-family')))
+      .toEqual(['backend', 'web']);
+    expect([...host.querySelectorAll('.my-work-skills li')].map(node => node.textContent)).toEqual(['Java', 'REST API']);
+    expect(host.querySelector('.my-work-ledger-row .my-work-skills')).toBeNull();
+  });
+
+  it.each([
+    ['AWAITING_PAYMENT', 'cream', 'Xem trạng thái', 'Đang chờ Client hoàn tất funding'],
+    ['IN_PROGRESS', 'cobalt', 'Tiếp tục công việc', 'Bạn có thể tiếp tục chuẩn bị'],
+    ['SUBMITTED_FOR_REVIEW', 'acid', 'Xem bàn giao', 'Bàn giao đang chờ Client phản hồi'],
+    ['REVISION_REQUESTED', 'vermilion', 'Xem phản hồi', 'Client đã yêu cầu chỉnh sửa'],
+    ['COMPLETED', 'mint', 'Xem hồ sơ', 'Phần công việc đã hoàn tất'],
+    ['CANCELLED', 'cream', 'Xem hồ sơ', 'Công việc đã được hủy'],
+  ])('presents %s with its real next destination and %s treatment', async (status, surface, action, copy) => {
+    jobs([{ ...working, status }]);
+    await render(<MyWork />);
+    const card = host.querySelector('.my-work-primary-record')!;
+    expect(card.classList.contains('ku-surface--' + surface)).toBe(true);
+    expect(card.querySelector('a')?.textContent?.trim()).toBe(action);
+    expect(card.querySelector('a')?.getAttribute('href')).toBe('/work/job-1');
+    expect(card.textContent).toContain(copy);
+    expect(card.textContent).not.toMatch(/Đã thanh toán|Tiền đã về|số dư|trễ \d|còn \d|Fund milestone|Thanh toán ngay/);
+    expect(card.querySelectorAll('a')).toHaveLength(1);
+    expect(card.querySelectorAll('button, form')).toHaveLength(0);
+  });
+
+  it('renders real contract deadline and revision usage, omitting absent values', async () => {
+    jobs([{ ...working, deliveryDueAt: '2026-10-10T12:00:00Z', contract: workContract },
+      { ...working, id: 'job-2', maxRevisions: 2 }]);
+    await render(<MyWork />);
+    expect(host.querySelector('time')?.getAttribute('dateTime')).toBe(workContract.deliveryDueAt);
+    expect(host.querySelector('time')?.textContent).toBe('2026-10-15');
+    expect(host.querySelector('.my-work-facts')?.textContent).toContain('Chỉnh sửa 1 / 2');
+    expect(host.querySelector('.my-work-ledger-row .my-work-facts')?.textContent).toBe('');
+    expect(host.textContent).not.toMatch(/còn \d|trễ \d|reviewWindowHours|contract-1|milestone-1/);
+  });
+
+  it('shows a real legacy job deadline without inventing revision usage', async () => {
+    jobs([{ ...working, deliveryDueAt: '2026-10-20T12:00:00Z', maxRevisions: 2 }]);
+    await render(<MyWork />);
+    expect(host.querySelector('time')?.textContent).toBe('2026-10-20');
+    expect(host.textContent).not.toContain('Chỉnh sửa');
+  });
+
+  it.each([
+    ['RELEASE_PENDING', 'UNDER_REVIEW', 'Đã duyệt · đang xử lý tiền', 'Phần bàn giao đã được duyệt; xử lý tiền chưa hoàn tất.'],
+    ['REFUND_PENDING', 'ACTIVE', 'Đang đối soát hoàn tiền', 'Hoàn tiền đang được xử lý, chưa được xác nhận hoàn tất.'],
+    ['DISPUTED', 'DISPUTED', 'Hợp đồng đang tranh chấp', 'Mở công việc để xem hồ sơ tranh chấp và trạng thái xử lý.'],
+    ['REFUNDED', 'CANCELLED', 'Hợp đồng đã hủy', 'Mở hồ sơ để xem bằng chứng và trạng thái tài chính riêng.'],
+  ])('keeps %s contract truth distinct from stale job state', async (milestoneStatus, status, context, copy) => {
+    jobs([{ ...working, contract: { ...workContract, status, milestoneStatus } }]);
+    await render(<MyWork />);
+    expect(host.textContent).toContain(context);
+    expect(host.textContent).toContain(copy);
+    expect(host.textContent).not.toContain('Bạn có thể tiếp tục chuẩn bị');
+    expect(host.textContent).not.toMatch(/Đã thanh toán|Đã hoàn tiền|Tiền đã về/);
+    expect(host.querySelector('a')?.textContent).not.toContain('Tiếp tục công việc');
+  });
+
+  it('honors disputed contract status even when milestone remains IN_PROGRESS', async () => {
+    jobs([{ ...working, contract: { ...workContract, status: 'DISPUTED' } }]);
+    await render(<MyWork />);
+    expect(host.textContent).toContain('Hợp đồng đang tranh chấp');
+    expect(host.querySelector('a')?.textContent?.trim()).toBe('Xem tranh chấp');
+  });
+
+  it('keeps completed budget labelled as job value without claiming settlement', async () => {
+    jobs([{ ...completed, contract: { ...workContract, status: 'COMPLETED', milestoneStatus: 'RELEASED' } }]);
+    await render(<MyWork />);
+    expect(host.querySelector('.my-work-budget')?.textContent).toBe('Ngân sách $300.00');
+    expect(host.textContent).toContain('Phần công việc đã hoàn tất');
+    expect(host.textContent).not.toMatch(/Đã thanh toán|Tiền đã về|Đã nhận|số dư/i);
+  });
+
+  it('offers existing Applications and Explore destinations in the truthful empty state', async () => {
+    jobs([]);
+    await render(<MyWork />);
+    expect(host.textContent).toContain('Chưa có công việc được giao');
+    expect(host.querySelector('a[href="/work/applications"]')?.textContent).toContain('Xem ứng tuyển');
+    expect(host.querySelector('a[href="/work"]')?.textContent).toContain('Khám phá công việc');
+    expect(host.querySelector('.my-work-ledger')).toBeNull();
+    expect(host.querySelector('.my-work-results-heading p')?.textContent).toBe('0 công việc được giao');
+  });
+
+  it('keeps the hero during loading/error and retries the existing read', async () => {
+    let reject!: (cause: Error) => void;
+    const load = vi.spyOn(api, 'myJobs').mockImplementationOnce(() => new Promise((_resolve, failure) => { reject = failure; }))
+      .mockResolvedValueOnce({ currentPage: 0, pageSize: 10, totalPages: 1, totalElements: 1, data: [working] });
+    await render(<MyWork />);
+    expect(host.querySelector('[role="status"]')?.textContent).toContain('Đang tải công việc');
+    expect(host.querySelector('h1')?.textContent).toContain('Công việc của bạn.');
+    expect(host.querySelector('.my-work-results')?.getAttribute('aria-busy')).toBe('true');
+    await act(async () => reject(new Error('Marketplace tạm thời chưa phản hồi')));
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain('Marketplace tạm thời chưa phản hồi');
+    expect(host.querySelector('.my-work-results-heading p')).toBeNull();
+    await click('Thử lại');
+    expect(load).toHaveBeenCalledTimes(2);
+    expect(host.querySelector('.my-work-primary-record')?.textContent).toContain(working.title);
+  });
+
+  it('inherits reduced-motion handling for primary, ledger and action nodes', async () => {
+    vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() })));
+    jobs([working, { ...completed, id: 'job-2' }]);
+    await render(<MyWork />);
+    expect(host.querySelector('.my-work-primary-record')?.getAttribute('data-motion')).toBe('off');
+    expect(host.querySelector('.my-work-ledger-row')?.getAttribute('data-motion')).toBe('off');
+    expect([...host.querySelectorAll('.my-work-page [data-motion]')].every(node => node.getAttribute('data-motion') === 'off')).toBe(true);
   });
 });
 

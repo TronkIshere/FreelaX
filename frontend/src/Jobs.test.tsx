@@ -7,6 +7,7 @@ import { ClientJobs, FreelancerDiscovery, Pagination } from './Jobs';
 import { api } from './api';
 import { StatePanel } from './components';
 import type { DiscoverJob, Job, Page } from './types';
+import { jobVisualIdentity } from './ui/job-thumbnails/jobFamily';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -23,6 +24,7 @@ afterEach(() => {
   act(() => root.unmount());
   host.remove();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 const job: Job = { id: 'job-test', title: 'Thiết kế tài liệu', description: 'A long brief from the server.',
@@ -37,8 +39,9 @@ async function render(element: React.ReactNode) {
     {element}</MemoryRouter>));
 }
 function edit(label: string, value: string) {
-  const field = [...host.querySelectorAll('.filter-panel label')].find(item => item.textContent?.startsWith(label))!
-    .querySelector('input, select') as HTMLInputElement | HTMLSelectElement;
+  const controlLabel = [...host.querySelectorAll<HTMLLabelElement>('.filter-panel label')]
+    .find(item => item.textContent?.startsWith(label))!;
+  const field = (controlLabel.control ?? controlLabel.querySelector('input, select')) as HTMLInputElement | HTMLSelectElement;
   const prototype = field instanceof HTMLSelectElement ? HTMLSelectElement.prototype : HTMLInputElement.prototype;
   act(() => {
     Object.getOwnPropertyDescriptor(prototype, 'value')!.set!.call(field, value);
@@ -58,25 +61,25 @@ describe('P06.3 Jobs and Discovery', () => {
         reviewWindowHours: 48, maxRevisions: 0, revisionsUsed: 0, deliverables: [], acceptanceCriteria: [] },
     }]));
     await render(<ClientJobs />);
-    const row = host.querySelector('.job-row')!;
-    expect(row.querySelector('h3 a')?.getAttribute('href')).toBe('/work/job-test');
-    expect(row.querySelector('.amount')?.textContent).toBe('$525.00');
-    expect(row.querySelectorAll('.state-mark')).toHaveLength(1);
+    const row = host.querySelector('.client-job-primary-record')!;
+    expect(row.querySelector('h3')?.textContent).toBe(job.title);
+    expect(row.querySelector('.client-job-budget strong')?.textContent).toBe('$525.00');
+    expect(row.querySelectorAll('.client-job-status')).toHaveLength(1);
     expect(row.textContent?.match(/Đang tuyển/g)).toHaveLength(1);
-    expect(row.querySelector('.job-terms')?.textContent).toContain('2026-10-18');
-    expect(row.querySelector('.job-terms')?.textContent).toContain('0/0 lần');
+    expect(row.querySelector('.client-job-facts')?.textContent).toContain('2026-10-18');
+    expect(row.querySelector('.client-job-facts')?.textContent).toContain('0/0 lần');
     expect(row.querySelector('.button')?.getAttribute('href')).toBe('/work/job-test/applications');
   });
 
   it.each([
-    ['SUBMITTED_FOR_REVIEW', 'Duyệt bàn giao'], ['AWAITING_PAYMENT', 'Xem công việc'],
-    ['COMPLETED', 'Xem công việc'],
+    ['SUBMITTED_FOR_REVIEW', 'Duyệt bàn giao'], ['AWAITING_PAYMENT', 'Xem trạng thái'],
+    ['COMPLETED', 'Xem hồ sơ'],
   ])('keeps the existing detail destination for Client %s', async (status, label) => {
     vi.spyOn(api, 'clientJobs').mockResolvedValue(page([{ ...job, status }]));
     await render(<ClientJobs />);
-    expect(host.querySelector('.job-row .button')?.textContent).toContain(label);
-    expect(host.querySelector('.job-row .button')?.getAttribute('href')).toBe('/work/job-test');
-    expect(host.querySelector('.job-terms')).toBeNull();
+    expect(host.querySelector('.client-job-primary-record .button')?.textContent).toContain(label);
+    expect(host.querySelector('.client-job-primary-record .button')?.getAttribute('href')).toBe('/work/job-test');
+    expect(host.querySelector('time')).toBeNull();
   });
 
   it.each([
@@ -89,8 +92,8 @@ describe('P06.3 Jobs and Discovery', () => {
   ])('keeps server application context (%s/%s) and uses detail before applying', async (hasApplied, applicationStatus, context, action) => {
     vi.spyOn(api, 'discoverJobs').mockResolvedValue(page([{ ...discovered, hasApplied, applicationStatus }]));
     await render(<FreelancerDiscovery />);
-    expect(host.querySelector('.job-row-next')?.textContent).toContain(context);
-    expect(host.querySelector('.job-row-next')?.textContent).toContain('Client identity');
+    expect(host.querySelector('.explore-job-row')?.textContent).toContain(context);
+    expect(host.querySelector('.explore-job-row')?.textContent).toContain('Client identity');
     expect(host.querySelector('.job-row .button')?.textContent).toContain(action);
     expect(host.querySelector('.job-row .button')?.getAttribute('href')).toBe('/work/job-test');
     expect(host.querySelector('.job-terms')).toBeNull();
@@ -99,15 +102,15 @@ describe('P06.3 Jobs and Discovery', () => {
   it('preserves draft/apply filters, page semantics and page reset after a filter change', async () => {
     const discover = vi.spyOn(api, 'discoverJobs').mockImplementation(async requested => page([discovered], requested));
     await render(<FreelancerDiscovery />);
-    edit('Từ khóa', 'editorial'); edit('USD từ', '100'); edit('USD đến', '900');
-    edit('Sắp xếp', 'BUDGET_DESC'); edit('Ứng tuyển', 'NOT_APPLIED');
+    edit('Từ khóa', 'editorial'); edit('Tối thiểu', '100'); edit('Tối đa', '900');
+    edit('Sắp xếp', 'BUDGET_DESC'); edit('Trạng thái ứng tuyển', 'NOT_APPLIED');
     expect(discover).toHaveBeenCalledTimes(1);
     await apply();
     const filters = { keyword: 'editorial', minBudgetUsd: '100', maxBudgetUsd: '900', sort: 'BUDGET_DESC', application: 'NOT_APPLIED' };
     expect(discover).toHaveBeenLastCalledWith(0, filters);
     await act(async () => (host.querySelectorAll('.pagination button')[1] as HTMLButtonElement).click());
     expect(discover).toHaveBeenLastCalledWith(1, filters);
-    edit('Sắp xếp', 'BUDGET_ASC'); edit('Ứng tuyển', 'APPLIED');
+    edit('Sắp xếp', 'BUDGET_ASC'); edit('Trạng thái ứng tuyển', 'APPLIED');
     await apply();
     expect(discover).toHaveBeenLastCalledWith(0, { ...filters, sort: 'BUDGET_ASC', application: 'APPLIED' });
   });
@@ -115,10 +118,10 @@ describe('P06.3 Jobs and Discovery', () => {
   it('rejects reversed budgets locally and preserves editable filter values', async () => {
     const discover = vi.spyOn(api, 'discoverJobs').mockResolvedValue(page([discovered]));
     await render(<FreelancerDiscovery />);
-    edit('USD từ', '800'); edit('USD đến', '100'); await apply();
+    edit('Tối thiểu', '800'); edit('Tối đa', '100'); await apply();
     expect(host.querySelector('[role="alert"]')?.textContent).toContain('tối thiểu');
     expect(discover).toHaveBeenCalledOnce();
-    edit('USD đến', '900'); await apply();
+    edit('Tối đa', '900'); await apply();
     expect(host.querySelector('[role="alert"]')).toBeNull();
     expect(discover).toHaveBeenLastCalledWith(0, expect.objectContaining({ minBudgetUsd: '800', maxBudgetUsd: '900' }));
   });
@@ -135,6 +138,142 @@ describe('P06.3 Jobs and Discovery', () => {
     expect(host.querySelector('[role="alert"]')?.textContent).toContain('Marketplace unavailable');
     await act(async () => (host.querySelector('[role="alert"] button') as HTMLButtonElement).click());
     expect(host.querySelector('.job-row')).not.toBeNull();
+  });
+});
+
+describe('Client Work C1 control board', () => {
+  const contract = { id: 'contract-1', status: 'ACTIVE', milestoneId: 'milestone-1',
+    milestoneStatus: 'IN_PROGRESS', amount: 525, currency: 'USD', deliveryDueAt: '2026-10-20',
+    reviewWindowHours: 48, maxRevisions: 2, revisionsUsed: 1, deliverables: [], acceptanceCriteria: [] };
+
+  it('keeps server order, exact page reads, real total and existing pagination without fake controls/counts', async () => {
+    const load = vi.spyOn(api, 'clientJobs').mockImplementation(async requested => page([
+      { ...job, id: 'server-first', status: 'COMPLETED', title: 'First returned record' },
+      { ...job, id: 'server-second', title: 'Second returned record' },
+    ], requested));
+    await render(<ClientJobs />);
+    expect(load).toHaveBeenCalledExactlyOnceWith(0);
+    expect(host.querySelector('.client-work-results-heading p')?.textContent).toBe('12 công việc');
+    expect([...host.querySelectorAll('.client-work-ledger h3')].map(node => node.textContent))
+      .toEqual(['First returned record', 'Second returned record']);
+    expect(host.querySelector('.client-job-primary-record')?.classList.contains('ku-surface--mint')).toBe(true);
+    expect(host.querySelectorAll('input, select, form')).toHaveLength(0);
+    expect(host.textContent).not.toMatch(/\d+ ứng viên|ưu tiên|Recommended|Featured|Hot|khẩn cấp/i);
+    await act(async () => (host.querySelectorAll('.pagination button')[1] as HTMLButtonElement).click());
+    expect(load).toHaveBeenLastCalledWith(1);
+    expect(load).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([
+    ['OPEN', 'vermilion', 'Xem ứng viên', '/applications'],
+    ['AWAITING_PAYMENT', 'cream', 'Xem funding', ''],
+    ['IN_PROGRESS', 'cobalt', 'Theo dõi công việc', ''],
+    ['SUBMITTED_FOR_REVIEW', 'acid', 'Duyệt bàn giao', ''],
+    ['REVISION_REQUESTED', 'vermilion', 'Xem tiến độ chỉnh sửa', ''],
+    ['COMPLETED', 'mint', 'Xem hồ sơ', ''],
+    ['CANCELLED', 'cream', 'Xem hồ sơ', ''],
+  ])('maps real %s to %s and the existing Client destination', async (status, surface, action, suffix) => {
+    vi.spyOn(api, 'clientJobs').mockResolvedValue(page([{ ...job, status, contract }]));
+    await render(<ClientJobs />);
+    const record = host.querySelector('.client-job-primary-record')!;
+    expect(record.classList.contains('ku-surface--' + surface)).toBe(true);
+    expect(record.querySelector('a')?.textContent).toBe(action);
+    expect(record.querySelector('a')?.getAttribute('href')).toBe('/work/job-test' + suffix);
+    expect(record.querySelectorAll('button, form')).toHaveLength(0);
+    expect(record.querySelector('.client-job-budget')?.textContent).toBe('Ngân sách $525.00');
+    expect(record.textContent).not.toMatch(/Đã thanh toán|Đã chi|Đã release|Tiền đã về/);
+  });
+
+  it('reuses the exact stable thumbnail identity and real skills, omitting empty tags', async () => {
+    const rich = { ...job, category: 'WEB_FRONTEND' as const, skills: ['HTML', 'CSS'], title: 'Misleading backend title' };
+    vi.spyOn(api, 'clientJobs').mockResolvedValue(page([rich, { ...job, id: 'legacy', category: 'OTHER', title: 'SEO audit', skills: [] }]));
+    await render(<ClientJobs />);
+    const identity = jobVisualIdentity(rich);
+    const thumb = host.querySelector('.job-family-art')!;
+    expect(thumb.getAttribute('data-family')).toBe('web');
+    expect(thumb.getAttribute('data-visual-key')).toBe(identity.visualKey);
+    expect(thumb.getAttribute('data-rough-key')).toBe(identity.roughKey);
+    expect([...host.querySelectorAll('.client-job-skills li')].map(node => node.textContent)).toEqual(['HTML', 'CSS']);
+    expect(host.querySelector('.client-job-ledger-row .client-job-skills')).toBeNull();
+    expect(host.querySelector('.client-job-ledger-row .job-family-art')?.getAttribute('data-family')).toBe('seo');
+  });
+
+  it('shows real assignment and snapshot deadline/revision usage without fabricated names or terms', async () => {
+    vi.spyOn(api, 'clientJobs').mockResolvedValue(page([{ ...job, freelancerId: 'private-id', contract, deliveryDueAt: '2026-10-10' },
+      { ...job, id: 'legacy', maxRevisions: 2 }]));
+    await render(<ClientJobs />);
+    expect(host.querySelector('.client-job-primary-record')?.textContent).toContain('Đã giao Freelancer');
+    expect(host.querySelector('time')?.getAttribute('dateTime')).toBe(contract.deliveryDueAt);
+    expect(host.querySelector('.client-job-facts')?.textContent).toContain('Chỉnh sửa 1/2 lần');
+    expect(host.querySelector('.client-job-ledger-row')?.textContent).toContain('Chưa giao Freelancer');
+    expect(host.querySelector('.client-job-ledger-row time')).toBeNull();
+    expect(host.querySelector('.client-job-ledger-row .client-job-facts')?.textContent).not.toContain('Chỉnh sửa');
+    expect(host.textContent).not.toMatch(/private-id|contract-1|milestone-1|còn \d|trễ hạn|Mã công việc/);
+  });
+
+  it('uses a real legacy deadline when no snapshot exists', async () => {
+    vi.spyOn(api, 'clientJobs').mockResolvedValue(page([{ ...job, deliveryDueAt: '2026-10-15' }]));
+    await render(<ClientJobs />);
+    expect(host.querySelector('time')?.textContent).toBe('2026-10-15');
+    expect(host.textContent).not.toContain('Chỉnh sửa');
+  });
+
+  it.each([
+    ['RELEASE_PENDING', 'Đã duyệt · đang xử lý tiền', 'Xem trạng thái'],
+    ['REFUND_PENDING', 'Đang đối soát hoàn tiền', 'Xem trạng thái'],
+    ['DISPUTED', 'Hợp đồng đang tranh chấp.', 'Xem tranh chấp'],
+  ])('keeps %s money/contract truth separate from the job state', async (milestoneStatus, context, action) => {
+    vi.spyOn(api, 'clientJobs').mockResolvedValue(page([{ ...job, status: 'COMPLETED', contract: { ...contract, milestoneStatus } }]));
+    await render(<ClientJobs />);
+    expect(host.querySelector('.client-job-context')?.textContent).toBe(context);
+    expect(host.querySelector('.client-job-primary-record a')?.textContent).toBe(action);
+    expect(host.textContent).not.toMatch(/Đã thanh toán|Đã hoàn tiền|Đã chi|Đã release/);
+  });
+
+  it('keeps a real create destination in the empty state', async () => {
+    vi.spyOn(api, 'clientJobs').mockResolvedValue({ ...page([]), totalElements: 0, totalPages: 0 });
+    await render(<ClientJobs />);
+    expect(host.textContent).toContain('Bạn chưa có công việc nào');
+    expect(host.querySelector('a[href="/work/new"]')?.textContent).toContain('Đăng công việc');
+    expect(host.querySelector('.client-work-ledger')).toBeNull();
+    expect(host.querySelector('.client-work-results-heading p')?.textContent).toBe('0 công việc');
+  });
+
+  it('preserves the hero/create action through loading/error and retries the same read', async () => {
+    let reject!: (cause: Error) => void;
+    const load = vi.spyOn(api, 'clientJobs').mockImplementationOnce(() => new Promise((_resolve, fail) => { reject = fail; }))
+      .mockResolvedValueOnce(page([job]));
+    await render(<ClientJobs />);
+    expect(host.querySelector('[role="status"]')?.textContent).toContain('Đang tải công việc');
+    expect(host.querySelector('.client-work-results')?.getAttribute('aria-busy')).toBe('true');
+    await act(async () => reject(new Error('Marketplace tạm thời chưa phản hồi')));
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain('Marketplace tạm thời chưa phản hồi');
+    expect(host.querySelector('h1')?.textContent).toBe('Quản lý công việc của bạn.');
+    expect(host.querySelector('a[href="/work/new"]')).not.toBeNull();
+    expect(host.querySelector('.client-work-results-heading p')).toBeNull();
+    await act(async () => (host.querySelector('[role="alert"] button') as HTMLButtonElement).click());
+    expect(load).toHaveBeenCalledTimes(2);
+    expect(load).toHaveBeenLastCalledWith(0);
+    expect(host.querySelector('.client-job-primary-record')).not.toBeNull();
+  });
+
+  it('retains page recovery when a later server page becomes empty', async () => {
+    const load = vi.spyOn(api, 'clientJobs').mockImplementation(async requested => page(requested === 0 ? [job] : [], requested));
+    await render(<ClientJobs />);
+    await act(async () => (host.querySelectorAll('.pagination button')[1] as HTMLButtonElement).click());
+    expect(host.textContent).toContain('Trang này không còn công việc');
+    await act(async () => (host.querySelector('[role="status"] button') as HTMLButtonElement).click());
+    expect(load).toHaveBeenLastCalledWith(0);
+    expect(host.querySelector('.client-job-primary-record')).not.toBeNull();
+  });
+
+  it('honors reduced-motion on record, ledger and arrow elements', async () => {
+    vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() })));
+    vi.spyOn(api, 'clientJobs').mockResolvedValue(page([job, { ...job, id: 'second' }]));
+    await render(<ClientJobs />);
+    expect(host.querySelector('.client-job-primary-record')?.getAttribute('data-motion')).toBe('off');
+    expect(host.querySelector('.client-job-ledger-row')?.getAttribute('data-motion')).toBe('off');
+    expect([...host.querySelectorAll('.client-work-page [data-motion]')].every(node => node.getAttribute('data-motion') === 'off')).toBe(true);
   });
 });
 
@@ -168,5 +307,149 @@ describe('job list controls', () => {
     expect(host.querySelector('[role="alert"]')).not.toBeNull();
     act(() => host.querySelector('button')!.click());
     expect(retry).toHaveBeenCalledOnce();
+  });
+});
+
+describe('B1 Freelancer Explore', () => {
+  it('keeps the exact category taxonomy, accessible native selects and both decorative heading rays', async () => {
+    vi.spyOn(api, 'discoverJobs').mockResolvedValue(page([discovered]));
+    await render(<FreelancerDiscovery />);
+    expect([...host.querySelectorAll('.explore-filters select:first-of-type option')].slice(0, 10).map(el => el.getAttribute('value')))
+      .toEqual(['', 'WEB_FRONTEND', 'BACKEND_API', 'SEO_CONTENT', 'MOBILE_APP', 'UI_UX_DESIGN', 'ECOMMERCE', 'DATA_ANALYTICS', 'BRANDING_GRAPHIC', 'OTHER']);
+    expect(host.querySelectorAll('h1 .explore-title-rays')).toHaveLength(2);
+    expect([...host.querySelectorAll('h1 svg')].every(el => el.getAttribute('aria-hidden') === 'true')).toBe(true);
+    expect(host.querySelector('.explore-results-heading select')).not.toBeNull();
+    expect(host.querySelector('.explore-filters')?.textContent).toContain('Áp dụng bộ lọc');
+  });
+
+  it('adds skills with Enter/comma without applying, removes with Backspace/button, then submits exact strings', async () => {
+    const discover = vi.spyOn(api, 'discoverJobs').mockResolvedValue(page([discovered]));
+    await render(<FreelancerDiscovery />);
+    const press = (key: string) => act(() => host.querySelector('#explore-skill-entry')!
+      .dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true })));
+    edit('Kỹ năng', ' React '); press('Enter');
+    edit('Kỹ năng', 'CSS'); press(',');
+    expect([...host.querySelectorAll('.explore-skill-tokens li > span')].map(el => el.textContent)).toEqual(['React', 'CSS']);
+    expect(discover).toHaveBeenCalledOnce();
+    press('Backspace');
+    expect(host.querySelector('.explore-skill-tokens')?.textContent).toBe('React');
+    edit('Kỹ năng', 'Java'); press('Enter');
+    await act(async () => (host.querySelector('[aria-label="Xóa kỹ năng React"]') as HTMLButtonElement).click());
+    await apply();
+    expect(discover).toHaveBeenLastCalledWith(0, expect.objectContaining({ skills: ['Java'] }));
+    expect((host.querySelector('#explore-skill-entry') as HTMLInputElement).value).toBe('');
+  });
+
+  it('handles pasted delimiters and pending text on Apply without a fake skill taxonomy', async () => {
+    const discover = vi.spyOn(api, 'discoverJobs').mockResolvedValue(page([discovered]));
+    await render(<FreelancerDiscovery />);
+    edit('Kỹ năng', ' Vue, TypeScript, CSS ');
+    expect([...host.querySelectorAll('.explore-skill-tokens li > span')].map(el => el.textContent)).toEqual(['Vue', 'TypeScript']);
+    await apply();
+    expect(discover).toHaveBeenLastCalledWith(0, expect.objectContaining({ skills: ['Vue', 'TypeScript', 'CSS'] }));
+    await act(async () => (host.querySelector('.explore-clear') as HTMLButtonElement).click());
+    expect(host.querySelector('.explore-skill-tokens')).toBeNull();
+    expect((host.querySelector('#explore-skill-entry') as HTMLInputElement).value).toBe('');
+    expect(discover).toHaveBeenLastCalledWith(0, expect.not.objectContaining({ skills: expect.anything() }));
+  });
+
+  it.each([
+    ['X', '2–40'], ['x'.repeat(41), '2–40'], ['React, react', 'trùng'],
+    [Array.from({ length: 11 }, (_, i) => 'Skill ' + i).join(', '), '10'],
+    ['React,,CSS', '2–40'],
+  ])('rejects invalid token input before querying: %s', async (input, message) => {
+    const discover = vi.spyOn(api, 'discoverJobs').mockResolvedValue(page([discovered]));
+    await render(<FreelancerDiscovery />);
+    edit('Kỹ năng', input); await apply();
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain(message);
+    expect(discover).toHaveBeenCalledOnce();
+    expect((host.querySelector('#explore-skill-entry') as HTMLInputElement).value).not.toBe('');
+  });
+
+  it('does not tokenize Enter during IME composition or delete a token while text remains', async () => {
+    vi.spyOn(api, 'discoverJobs').mockResolvedValue(page([discovered]));
+    await render(<FreelancerDiscovery />);
+    edit('Kỹ năng', 'TypeScript');
+    act(() => host.querySelector('#explore-skill-entry')!.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'Enter', isComposing: true, bubbles: true, cancelable: true,
+    })));
+    expect(host.querySelector('.explore-skill-tokens')).toBeNull();
+    await apply(); edit('Kỹ năng', 'CSS');
+    act(() => host.querySelector('#explore-skill-entry')!.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'Backspace', bubbles: true, cancelable: true,
+    })));
+    expect(host.querySelector('.explore-skill-tokens')?.textContent).toBe('TypeScript');
+  });
+
+  it('applies real category/ANY-skill filters with pagination, resets them, and renders actual skill tags', async () => {
+    const discover = vi.spyOn(api, 'discoverJobs').mockImplementation(async requested => page([
+      { ...discovered, category: 'BACKEND_API', skills: ['Spring', 'Java'], title: 'Landing page ambiguous title' },
+    ], requested));
+    await render(<FreelancerDiscovery />);
+    edit('Danh mục', 'BACKEND_API'); edit('Kỹ năng', ' Spring, Java ');
+    expect(discover).toHaveBeenCalledOnce(); await apply();
+    expect(discover).toHaveBeenLastCalledWith(0, expect.objectContaining({ category: 'BACKEND_API', skills: ['Spring', 'Java'] }));
+    expect([...host.querySelectorAll('.skill-tag')].map(el => el.textContent)).toEqual(['Spring', 'Java']);
+    expect(host.querySelector('.job-family-art')?.getAttribute('data-family')).toBe('backend');
+    await act(async () => (host.querySelectorAll('.pagination button')[1] as HTMLButtonElement).click());
+    expect(discover).toHaveBeenLastCalledWith(1, expect.objectContaining({ category: 'BACKEND_API', skills: ['Spring', 'Java'] }));
+    await act(async () => (host.querySelector('.explore-clear') as HTMLButtonElement).click());
+    expect(discover).toHaveBeenLastCalledWith(0, { keyword: '', minBudgetUsd: '', maxBudgetUsd: '', sort: 'NEWEST', application: 'ALL' });
+    expect((host.querySelector('.explore-filters select') as HTMLSelectElement).value).toBe('');
+    expect(host.textContent).not.toMatch(/Remote|Hybrid|Onsite|Hình thức làm việc/);
+  });
+  it('rejects invalid selected skills without querying or losing the filter draft', async () => {
+    const discover = vi.spyOn(api, 'discoverJobs').mockResolvedValue(page([discovered]));
+    await render(<FreelancerDiscovery />);
+    edit('Kỹ năng', 'React, react'); await apply();
+    expect(discover).toHaveBeenCalledOnce(); expect(host.querySelector('[role="alert"]')?.textContent).toContain('trùng');
+  });
+  it('renders a real editorial ledger, semantic thumbnails, counts and detail actions without invented skills', async () => {
+    vi.spyOn(api, 'discoverJobs').mockResolvedValue(page([
+      { ...discovered, title: 'Landing page redesign' },
+      { ...discovered, id: 'api-job', title: 'Viết REST API cho module giao dịch', hasApplied: true },
+      { ...discovered, id: 'generic-job', title: 'P04 full E2E 1790721570419', createdAt: null },
+    ]));
+    await render(<FreelancerDiscovery />);
+    expect(host.querySelector('h1')?.textContent).toBe('Tìm công việc phù hợp.');
+    expect(host.querySelector('.explore-results-heading')?.textContent).toContain('12 công việc phù hợp');
+    expect([...host.querySelectorAll('.job-family-art')].map(el => el.getAttribute('data-family')))
+      .toEqual(['web', 'backend', 'development']);
+    expect(host.querySelectorAll('ul.explore-ledger > li')).toHaveLength(3);
+    expect(host.querySelector('.explore-excerpt')?.textContent).toBe(discovered.description);
+    expect(host.querySelector('.explore-budget strong')?.textContent).toBe('$525.00');
+    expect(host.textContent).toContain('Ngày đăng chưa có');
+    expect(host.querySelectorAll('.skill-tag')).toHaveLength(0);
+    expect([...host.querySelectorAll('.explore-job-action')].map(el => el.getAttribute('href')))
+      .toEqual(['/work/job-test', '/work/api-job', '/work/generic-job']);
+    expect(host.querySelector('.explore-search svg')?.getAttribute('aria-hidden')).toBe('true');
+  });
+  it('clears all filters and resets the real server request from an empty result', async () => {
+    const discover = vi.spyOn(api, 'discoverJobs').mockResolvedValue({ ...page<DiscoverJob>([]), totalPages: 0, totalElements: 0 });
+    await render(<FreelancerDiscovery />);
+    edit('Từ khóa', 'No matching job'); edit('Tối thiểu', '500'); edit('Sắp xếp', 'BUDGET_DESC');
+    edit('Trạng thái ứng tuyển', 'NOT_APPLIED'); await apply();
+    expect(host.querySelector('.state-empty h2')?.textContent).toBe('Không tìm thấy công việc phù hợp.');
+    await act(async () => (host.querySelector('.state-empty button') as HTMLButtonElement).click());
+    expect(discover).toHaveBeenLastCalledWith(0, { keyword: '', minBudgetUsd: '', maxBudgetUsd: '', sort: 'NEWEST', application: 'ALL' });
+    expect((host.querySelector('input[type="search"]') as HTMLInputElement).value).toBe('');
+  });
+  it('retains the page-reset recovery for a server page that no longer exists', async () => {
+    const discover = vi.spyOn(api, 'discoverJobs').mockImplementation(async index => page(index ? [] : [discovered], index));
+    await render(<FreelancerDiscovery />);
+    await act(async () => (host.querySelectorAll('.pagination button')[1] as HTMLButtonElement).click());
+    expect(host.textContent).toContain('Trang này không còn công việc');
+    await act(async () => (host.querySelector('.state-empty button') as HTMLButtonElement).click());
+    expect(discover).toHaveBeenLastCalledWith(0, expect.any(Object));
+    expect(host.querySelector('.explore-job-row')).not.toBeNull();
+  });
+  it('keeps ledger, arrows and heading static for reduced motion', async () => {
+    vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
+    vi.spyOn(api, 'discoverJobs').mockResolvedValue(page([discovered]));
+    await render(<FreelancerDiscovery />);
+    expect(host.querySelector('.explore-job-row')?.getAttribute('data-motion')).toBe('off');
+    expect([...host.querySelectorAll('.ku-action-arrow')].every(el => el.getAttribute('data-motion') === 'off')).toBe(true);
+    expect(host.querySelector('.explore-filters .ku-label')?.getAttribute('data-motion')).toBe('off');
+    expect(host.querySelector('.ku-moving-underline')?.getAttribute('style')).not.toContain('scaleX(0.65)');
   });
 });

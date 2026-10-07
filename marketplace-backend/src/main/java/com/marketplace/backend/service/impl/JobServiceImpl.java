@@ -33,6 +33,7 @@ import com.marketplace.backend.repository.MilestoneRepository;
 import com.marketplace.backend.repository.WorkContractRepository;
 import com.marketplace.backend.repository.UserRepository;
 import com.marketplace.backend.service.JobService;
+import com.marketplace.backend.service.JobSkills;
 import com.marketplace.backend.service.NotificationService;
 import com.marketplace.backend.service.PayoutService;
 import lombok.AccessLevel;
@@ -86,6 +87,8 @@ public class JobServiceImpl implements JobService {
     @Transactional
     public JobResponse create(UUID clientUserId, CreateJobRequest request) {
         requireUserType(clientUserId, UserType.CLIENT);
+        JobCategory category = JobCategory.require(request.getCategory());
+        List<String> skills = JobSkills.normalize(request.getSkills());
         if (request.getDeliveryDueAt() != null
                 && request.getDeliveryDueAt().isBefore(Instant.now().plus(Duration.ofHours(24)))) {
             throw new ApplicationException(ErrorCode.JOB_DEADLINE_TOO_SOON);
@@ -94,6 +97,8 @@ public class JobServiceImpl implements JobService {
         job.setClientUserId(clientUserId);
         job.setTitle(request.getTitle());
         job.setDescription(request.getDescription());
+        job.setCategory(category);
+        job.setSkills(skills);
         job.setBudgetUsd(request.getBudgetUsd());
         job.setStatus(JobStatus.OPEN);
         job.setDeliveryDueAt(request.getDeliveryDueAt());
@@ -213,6 +218,7 @@ public class JobServiceImpl implements JobService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public PageResponse<JobResponse> listForUser(UUID userId, int page, int size) {
         int safePage = Math.max(page, 0);
         int safeSize = size <= 0 ? 10 : Math.min(size, 100);
@@ -230,16 +236,20 @@ public class JobServiceImpl implements JobService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public PageResponse<DiscoverJobResponse> discover(UUID freelancerId, int page, int size, String keyword,
                                                        BigDecimal minBudgetUsd, BigDecimal maxBudgetUsd,
-                                                       String sort, String application) {
+                                                       String sort, String application, String category, List<String> skills) {
         requireUserType(freelancerId, UserType.FREELANCER);
         validateBudgetRange(minBudgetUsd, maxBudgetUsd);
         String applicationFilter = normalizeApplicationFilter(application);
         Pageable pageable = PageRequest.of(safePage(page), safeSize(size), discoverySort(sort));
         String normalizedKeyword = StringUtils.hasText(keyword) ? keyword.trim() : null;
+        JobCategory categoryFilter = category == null || category.isEmpty() ? null : JobCategory.require(category);
+        List<String> skillFilter = JobSkills.normalize(skills).stream().map(skill -> skill.toLowerCase(Locale.ROOT)).toList();
         Page<Job> jobs = jobRepository.discover(freelancerId, normalizedKeyword, minBudgetUsd,
-                maxBudgetUsd, applicationFilter, pageable);
+                maxBudgetUsd, applicationFilter, categoryFilter, !skillFilter.isEmpty(),
+                skillFilter.isEmpty() ? List.of("") : skillFilter, pageable);
 
         List<UUID> jobIds = jobs.getContent().stream().map(Job::getId).toList();
         Map<UUID, JobApplication> applications = jobIds.isEmpty() ? Map.of()
@@ -259,6 +269,7 @@ public class JobServiceImpl implements JobService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public PageResponse<MyApplicationResponse> listMyApplications(UUID freelancerId, int page, int size,
                                                                    JobApplicationStatus status) {
         requireUserType(freelancerId, UserType.FREELANCER);
@@ -281,6 +292,7 @@ public class JobServiceImpl implements JobService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public JobResponse getByIdForParticipant(UUID userId, UUID jobId) {
         return toResponse(getParticipantOrThrow(userId, jobId));
     }
@@ -299,6 +311,10 @@ public class JobServiceImpl implements JobService {
             throw new ApplicationException(ErrorCode.JOB_BUDGET_IMMUTABLE);
         }
 
+        JobCategory category = request.getCategory() == null ? null : JobCategory.require(request.getCategory());
+        List<String> skills = request.getSkills() == null ? null : JobSkills.normalize(request.getSkills());
+        if (category != null) job.setCategory(category);
+        if (skills != null) job.setSkills(skills);
         if (request.getTitle() != null) {
             job.setTitle(request.getTitle());
         }
@@ -644,6 +660,8 @@ public class JobServiceImpl implements JobService {
                 .id(job.getId())
                 .title(job.getTitle())
                 .description(job.getDescription())
+                .category(job.getCategory() == null ? JobCategory.OTHER : job.getCategory())
+                .skills(job.getSkills() == null ? List.of() : List.copyOf(job.getSkills()))
                 .budgetUsd(job.getBudgetUsd())
                 .status(job.getStatus().name())
                 .client(JobClientSummaryResponse.builder()
@@ -677,6 +695,8 @@ public class JobServiceImpl implements JobService {
                         .id(job.getId())
                         .title(job.getTitle())
                         .description(job.getDescription())
+                        .category(job.getCategory() == null ? JobCategory.OTHER : job.getCategory())
+                        .skills(job.getSkills() == null ? List.of() : List.copyOf(job.getSkills()))
                         .budgetUsd(job.getBudgetUsd())
                         .status(job.getStatus().name())
                         .clientDisplayName(client != null ? client.getDisplayName() : null)
@@ -772,6 +792,8 @@ public class JobServiceImpl implements JobService {
                 .id(job.getId())
                 .title(job.getTitle())
                 .description(job.getDescription())
+                .category(job.getCategory() == null ? JobCategory.OTHER : job.getCategory())
+                .skills(job.getSkills() == null ? List.of() : List.copyOf(job.getSkills()))
                 .budgetUsd(job.getBudgetUsd())
                 .clientUserId(job.getClientUserId())
                 .freelancerId(job.getFreelancerId())

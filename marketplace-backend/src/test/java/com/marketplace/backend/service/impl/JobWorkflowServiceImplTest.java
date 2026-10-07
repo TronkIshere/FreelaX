@@ -225,6 +225,7 @@ class JobWorkflowServiceImplTest {
         });
         CreateJobRequest request = new CreateJobRequest();
         request.setTitle("Demo job");
+        request.setCategory("OTHER");
         request.setDescription("Work");
         request.setBudgetUsd(new BigDecimal("500"));
         service.create(clientId, request);

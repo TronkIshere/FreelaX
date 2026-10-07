@@ -15,6 +15,8 @@ public class DiscoverJobResponse {
     UUID id;
     String title;
     String description;
+    com.marketplace.backend.entity.JobCategory category;
+    List<String> skills;
     BigDecimal budgetUsd;
     String status;
     JobClientSummaryResponse client;

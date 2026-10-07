@@ -113,7 +113,7 @@ class JobAccessAndDiscoveryServiceImplTest {
         JobApplication application = application(job.getId(), freelancer.getId(), JobApplicationStatus.PENDING);
         when(userRepository.findById(freelancer.getId())).thenReturn(Optional.of(freelancer));
         when(jobRepository.discover(eq(freelancer.getId()), eq("solana"), eq(new BigDecimal("50")),
-                eq(new BigDecimal("200")), eq("ALL"), any(Pageable.class)))
+                eq(new BigDecimal("200")), eq("ALL"), org.mockito.ArgumentMatchers.isNull(), eq(false), eq(List.of("")), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(job)));
         when(applicationRepository.findByFreelancerIdAndJobIdIn(freelancer.getId(), List.of(job.getId())))
                 .thenReturn(List.of(application));
@@ -203,6 +203,93 @@ class JobAccessAndDiscoveryServiceImplTest {
         verify(milestoneRepository).save(org.mockito.ArgumentMatchers.argThat(milestone ->
                 milestone.getStatus() == MilestoneStatus.PENDING_FUNDING
                         && "USD".equals(milestone.getCurrency())));
+    }
+
+    @Test
+    void createPersistsExplicitCategoryAndNormalizedJobSkillsWithoutCharging() {
+        User client = user(UserType.CLIENT);
+        when(userRepository.findById(client.getId())).thenReturn(Optional.of(client));
+        when(jobRepository.save(any(Job.class))).thenAnswer(invocation -> {
+            Job saved = invocation.getArgument(0); saved.setId(UUID.randomUUID()); return saved;
+        });
+        CreateJobRequest request = createRequest();
+        request.setSkills(List.of(" React ", "CSS"));
+        var result = service.create(client.getId(), request);
+        assertThat(result.getCategory()).isEqualTo(com.marketplace.backend.entity.JobCategory.WEB_FRONTEND);
+        assertThat(result.getSkills()).containsExactly("React", "CSS");
+        verify(jobRepository).save(org.mockito.ArgumentMatchers.argThat(row ->
+                row.getCategory() == com.marketplace.backend.entity.JobCategory.WEB_FRONTEND && row.getSkills().equals(List.of("React", "CSS"))));
+        verifyNoInteractions(paymentBackendClient);
+    }
+
+    @Test
+    void invalidCategoryAndSkillsAreRejectedBeforePersistence() {
+        User client = user(UserType.CLIENT);
+        when(userRepository.findById(client.getId())).thenReturn(Optional.of(client));
+        for (String category : java.util.Arrays.asList(null, "", "UNKNOWN", "Remote", "web_frontend")) {
+            CreateJobRequest request = createRequest(); request.setCategory(category);
+            assertThatThrownBy(() -> service.create(client.getId(), request)).isInstanceOf(ApplicationException.class);
+        }
+        List<List<String>> invalid = List.of(List.of(""), List.of("   "), List.of("a"), List.of("x".repeat(41)),
+                List.of("React", " react "), java.util.Arrays.asList((String) null),
+                java.util.stream.IntStream.range(0, 11).mapToObj(i -> "Skill " + i).toList());
+        for (List<String> skills : invalid) {
+            CreateJobRequest request = createRequest(); request.setSkills(skills);
+            assertThatThrownBy(() -> service.create(client.getId(), request)).isInstanceOf(ApplicationException.class);
+        }
+        verify(jobRepository, org.mockito.Mockito.never()).save(any());
+    }
+
+    @Test
+    void updateChangesOnlySuppliedCategorySkillsAndRejectsInvalidInputBeforeMutation() {
+        User client = user(UserType.CLIENT);
+        Job row = job(client.getId(), JobStatus.OPEN);
+        when(userRepository.findById(client.getId())).thenReturn(Optional.of(client));
+        when(jobRepository.findById(row.getId())).thenReturn(Optional.of(row));
+        var request = new com.marketplace.backend.dto.request.job.UpdateJobRequest();
+        request.setCategory("BACKEND_API"); request.setSkills(List.of(" Spring ", "Java"));
+        var result = service.update(client.getId(), row.getId(), request);
+        assertThat(result.getCategory()).isEqualTo(com.marketplace.backend.entity.JobCategory.BACKEND_API);
+        assertThat(result.getSkills()).containsExactly("Spring", "Java");
+        assertThat(row.getTitle()).isEqualTo("Solana job");
+        assertThat(row.getBudgetUsd()).isEqualByComparingTo("100");
+        request.setCategory("MOBILE_APP"); request.setSkills(List.of("Flutter", "flutter"));
+        assertThatThrownBy(() -> service.update(client.getId(), row.getId(), request)).isInstanceOf(ApplicationException.class);
+        assertThat(row.getCategory()).isEqualTo(com.marketplace.backend.entity.JobCategory.BACKEND_API);
+        assertThat(row.getSkills()).containsExactly("Spring", "Java");
+        verify(jobRepository, times(1)).save(row);
+    }
+
+    @Test
+    void discoveryComposesCategorySkillsBudgetsSearchAndApplicationAndReturnsLegacyDefaults() {
+        User freelancer = user(UserType.FREELANCER);
+        Job row = job(UUID.randomUUID(), JobStatus.OPEN); row.setCategory(null);
+        when(userRepository.findById(freelancer.getId())).thenReturn(Optional.of(freelancer));
+        when(jobRepository.discover(eq(freelancer.getId()), eq("API"), eq(new BigDecimal("50")),
+                eq(new BigDecimal("200")), eq("NOT_APPLIED"), eq(com.marketplace.backend.entity.JobCategory.BACKEND_API),
+                eq(true), eq(List.of("spring", "java")), any(Pageable.class))).thenReturn(new PageImpl<>(List.of(row)));
+        var result = service.discover(freelancer.getId(), 0, 10, " API ", new BigDecimal("50"), new BigDecimal("200"),
+                "BUDGET_ASC", "NOT_APPLIED", "BACKEND_API", List.of(" Spring ", "Java"));
+        assertThat(result.getData().get(0).getCategory()).isEqualTo(com.marketplace.backend.entity.JobCategory.OTHER);
+        assertThat(result.getData().get(0).getSkills()).isEmpty();
+    }
+
+    @Test
+    void discoveryRejectsInvalidCategoryOrSkillsBeforeQuerying() {
+        User freelancer = user(UserType.FREELANCER);
+        when(userRepository.findById(freelancer.getId())).thenReturn(Optional.of(freelancer));
+        assertThatThrownBy(() -> service.discover(freelancer.getId(), 0, 10, null, null, null,
+                "NEWEST", "ALL", "REMOTE", List.of())).isInstanceOf(ApplicationException.class);
+        assertThatThrownBy(() -> service.discover(freelancer.getId(), 0, 10, null, null, null,
+                "NEWEST", "ALL", null, List.of("Java", "java"))).isInstanceOf(ApplicationException.class);
+        verifyNoInteractions(jobRepository);
+    }
+
+    private CreateJobRequest createRequest() {
+        CreateJobRequest request = new CreateJobRequest(); request.setTitle("Work"); request.setDescription("Brief");
+        request.setBudgetUsd(new BigDecimal("100")); request.setCategory("WEB_FRONTEND");
+        request.setDeliveryDueAt(java.time.Instant.now().plus(java.time.Duration.ofDays(5)));
+        return request;
     }
 
     private User user(UserType type) {

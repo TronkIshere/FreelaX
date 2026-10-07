@@ -18,6 +18,8 @@ public class JobResponse {
     UUID id;
     String title;
     String description;
+    com.marketplace.backend.entity.JobCategory category;
+    List<String> skills;
     BigDecimal budgetUsd;
     UUID clientUserId;
     UUID freelancerId;

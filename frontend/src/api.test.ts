@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiError, hasAuthority, MarketplaceApi, serverPage, trustedUser } from './api';
-import type { DiscoveryFilters } from './types';
+import type { CreateJobInput, DiscoveryFilters } from './types';
 
 const user = { id: 'user-client', email: 'client@example.test', displayName: 'Client One', userType: 'CLIENT' };
 const page = { currentPage: 1, pageSize: 10, totalPages: 3, totalElements: 21, data: [
@@ -13,6 +13,39 @@ function response(data: unknown, status = 200) {
 }
 
 afterEach(() => vi.unstubAllGlobals());
+
+describe('job discovery data foundation contracts', () => {
+  it('serializes category and repeated skills server-side alongside existing filters', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(response({ accessToken: 'test' })).mockResolvedValueOnce(response(user))
+      .mockResolvedValueOnce(response({ ...page, data: [{ ...page.data[0], category: 'BACKEND_API', skills: ['Spring', 'Java'] }] }));
+    vi.stubGlobal('fetch', fetchMock); const api = new MarketplaceApi(); await api.restore();
+    const result = await api.discoverJobs(1, { keyword: 'api', minBudgetUsd: '100', maxBudgetUsd: '500', sort: 'BUDGET_ASC',
+      application: 'NOT_APPLIED', category: 'BACKEND_API', skills: ['Spring', 'Java'] });
+    const url = new URL(fetchMock.mock.calls[2][0], 'http://localhost');
+    expect(url.pathname).toBe('/api/v1/marketplace/jobs/discover');
+    expect(Object.fromEntries(url.searchParams)).toMatchObject({ page: '1', keyword: 'api', minBudgetUsd: '100', maxBudgetUsd: '500',
+      application: 'NOT_APPLIED', sort: 'BUDGET_ASC', category: 'BACKEND_API' });
+    expect(url.searchParams.getAll('skills')).toEqual(['Spring', 'Java']);
+    expect(url.searchParams.has('workMode')).toBe(false);
+    expect(result.data[0].skills).toEqual(['Spring', 'Java']); expect(result.data[0].category).toBe('BACKEND_API');
+  });
+  it('sends exact creation/edit fields to Marketplace without profile skills or work mode', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(response({ accessToken: 'test' })).mockResolvedValueOnce(response(user))
+      .mockImplementation(async () => response(page.data[0]));
+    vi.stubGlobal('fetch', fetchMock); const api = new MarketplaceApi(); await api.restore();
+    const input: CreateJobInput = { title: 'REST API', description: 'Scope', category: 'BACKEND_API', skills: ['Spring'],
+      budgetUsd: 100, deliveryDueAt: '2030-01-01T00:00:00Z', reviewWindowHours: 72, maxRevisions: 2,
+      deliverables: [{ title: 'API', description: 'Source and documentation', required: true }],
+      acceptanceCriteria: [{ description: 'Pass documented tests', required: true }] };
+    await api.createJob(input);
+    await api.updateJob('job/one', { title: input.title, description: input.description, category: input.category, skills: [] });
+    expect(fetchMock.mock.calls[2][0]).toBe('/api/v1/marketplace/jobs');
+    expect(fetchMock.mock.calls[2][1].method).toBe('POST'); expect(JSON.parse(fetchMock.mock.calls[2][1].body)).toEqual(input);
+    expect(fetchMock.mock.calls[3][0]).toBe('/api/v1/marketplace/jobs/job%2Fone');
+    expect(fetchMock.mock.calls[3][1].method).toBe('PATCH');
+    expect(JSON.parse(fetchMock.mock.calls[3][1].body)).toEqual({ title: 'REST API', description: 'Scope', category: 'BACKEND_API', skills: [] });
+  });
+});
 
 describe('P0 settlement and cancellation Marketplace contracts', () => {
   it('reads nullable settlement/cancellation envelopes and preserves distinct amount serializations', async () => {

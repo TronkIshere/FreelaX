@@ -28,6 +28,12 @@ public class CreateJobRequest {
 
     String description;
 
+    @NotBlank(message = "Danh mục công việc là bắt buộc")
+    String category;
+
+    @Size(max = 10, message = "Tối đa 10 kỹ năng công việc")
+    List<String> skills = List.of();
+
     @NotNull(message = "Ngân sách không được để trống")
     @Positive(message = "Ngân sách phải lớn hơn 0")
     BigDecimal budgetUsd;

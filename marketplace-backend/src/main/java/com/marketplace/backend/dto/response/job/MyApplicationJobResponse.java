@@ -13,6 +13,8 @@ public class MyApplicationJobResponse {
     UUID id;
     String title;
     String description;
+    com.marketplace.backend.entity.JobCategory category;
+    java.util.List<String> skills;
     BigDecimal budgetUsd;
     String status;
     String clientDisplayName;

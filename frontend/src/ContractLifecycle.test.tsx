@@ -5,10 +5,10 @@ import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { api, ApiError } from './api';
 import { WorkLifecycle } from './WorkLifecycle';
-import { ReviewTiming } from './ContractLifecycle';
+import { ContractLifecycle, ReviewTiming } from './ContractLifecycle';
 import { FinanceHome } from './Finance';
 import { attemptScope, localInstant, saveAttempt, smallReview, validateSubmission } from './workflowContracts';
-import type { ContractSubmission, ContractSummary, Job, SubmissionPayload, User } from './types';
+import type { ContractCancellationRecord, ContractSettlement, ContractSubmission, ContractSummary, Job, Review, SubmissionPayload, User } from './types';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 const client: User = { id: 'client', displayName: 'Client', email: 'c@example.test', userType: 'CLIENT' };
@@ -140,5 +140,109 @@ describe('P06.4C server review timing', () => {
     vi.useFakeTimers(); vi.setSystemTime(new Date('2026-10-05T00:00:00Z'));
     vi.mocked(api.contractSubmissions).mockResolvedValue([{ ...v1, reviewDueAt: '2026-10-04T00:00:00Z', reviewGraceDueAt: '2026-10-05T00:00:05Z' }]); vi.mocked(api.job).mockResolvedValue(review);
     await mount(review, client); await act(async () => { await vi.advanceTimersByTimeAsync(6000); }); expect(api.job).toHaveBeenCalledTimes(2); expect(host.textContent).toContain('Đang chờ máy chủ xử lý');
+  });
+});
+
+const completedJob: Job = { ...working, status: 'COMPLETED', contract: { ...contract, status: 'COMPLETED', milestoneStatus: 'RELEASED' } };
+const confirmedRelease: ContractSettlement = { contractId: 'contract', jobId: 'job', milestoneId: 'milestone', amount: 500, currency: 'USD', moneyStatus: 'SUCCEEDED', simulation: true, onChainStatus: 'NOT_STARTED', offRampStatus: 'NOT_STARTED', taxStatus: 'NOT_STARTED', retryable: false, releaseReference: 'release', onChainReference: null, offRampReference: null, taxReference: null, lastError: null, onChainError: null, offRampError: null, taxError: null, createdAt: '2026-10-07T00:00:00Z', updatedAt: '2026-10-07T00:00:00Z' };
+const invitation: Review = { id: 'invitation', contractId: 'contract', reviewerId: client.id, revieweeId: freelancer.id, submitted: false, contentHidden: false, reported: false };
+const cancellationRecord: ContractCancellationRecord = { cancellationId: 'cancellation', contractId: 'contract', milestoneId: 'milestone', cancellationStatus: 'REFUND_PENDING', refundStatus: 'PROCESSING', refundReference: null, simulation: true, requestedBy: client.id, decidedBy: freelancer.id, reasonCode: 'MUTUAL_CANCELLATION', reason: 'Real reason', amount: '500', currency: 'USD', requestedAt: '2026-10-07T00:00:00Z', decidedAt: null, updatedAt: '2026-10-07T00:00:00Z', retryable: false, lastError: null, allowedActions: [] };
+function reviewReads(user = client) {
+  vi.mocked(api.job).mockResolvedValue(completedJob); vi.mocked(api.settlement).mockResolvedValue(confirmedRelease);
+  vi.mocked(api.contractSubmissions).mockResolvedValue([{ ...v1, status: 'APPROVED' }]);
+  vi.mocked(api.contractReviews).mockResolvedValue([{ ...invitation, reviewerId: user.id, revieweeId: user.id === client.id ? freelancer.id : client.id }]);
+}
+const callout = () => host.querySelector('.completed-review-callout');
+async function fillRating(user = client) {
+  const labels = ['Tổng thể', 'Giao tiếp', user.id === client.id ? 'Chất lượng bàn giao' : 'Độ rõ ràng của yêu cầu', 'Đúng hạn'];
+  for (const label of labels) {
+    const el = host.querySelector('select[aria-label="' + label + '"]')!;
+    await act(async () => { Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')!.set!.call(el, '4'); el.dispatchEvent(new Event('change', { bubbles: true })); });
+  }
+  await input('.review-composer textarea', 'Optional post-completion feedback');
+}
+
+describe('Pre-P06.7 completed Job review entry point', () => {
+  it.each([client, freelancer])('surfaces one eligible $userType entry point high in the completed workflow', async user => {
+    reviewReads(user); await mount(completedJob, user);
+    const counterpart = user.id === client.id ? 'Freelancer' : 'Client';
+    expect(callout()?.textContent).toContain('Chia sẻ đánh giá về ' + counterpart); expect(callout()?.textContent).toContain('Bạn có thể');
+    expect(callout()?.querySelector('a')?.textContent).toContain('Đánh giá ' + counterpart); expect(callout()?.querySelector('a')?.getAttribute('href')).toBe('#contract-reviews');
+    expect(callout()?.previousElementSibling?.className).toBe('ownership-band'); expect(host.querySelectorAll('#contract-reviews')).toHaveLength(1); expect(host.querySelectorAll('.review-composer')).toHaveLength(1);
+    expect(host.querySelector('select[aria-label="' + (user.id === client.id ? 'Chất lượng bàn giao' : 'Độ rõ ràng của yêu cầu') + '"]')).toBeTruthy();
+    expect(api.contractReviews).toHaveBeenCalledExactlyOnceWith('contract'); expect(callout()?.querySelectorAll('img')).toHaveLength(0);
+    expect(callout()?.textContent).not.toMatch(/Đánh giá để hoàn tất|Cần đánh giá để nhận tiền|Bắt buộc|5.star/);
+  });
+  it('does not advertise an opportunity before review rows load', async () => {
+    reviewReads(); let resolve!: (rows: Review[]) => void; vi.mocked(api.contractReviews).mockReturnValue(new Promise(r => { resolve = r; }));
+    await mount(completedJob, client); expect(callout()).toBeNull(); expect(host.querySelector('.review-composer')).toBeNull();
+    await act(async () => resolve([invitation])); expect(callout()).toBeTruthy(); expect(api.contractReviews).toHaveBeenCalledOnce();
+  });
+  it('does not infer invitation from completion/release/settlement success', async () => {
+    reviewReads(); vi.mocked(api.contractReviews).mockResolvedValue([]); await mount(completedJob, client); expect(callout()).toBeNull(); expect(host.textContent).toContain('Chưa có lời mời đánh giá');
+  });
+  it.each([
+    ['job', { ...completedJob, status: 'IN_PROGRESS' }],
+    ['contract', { ...completedJob, contract: { ...completedJob.contract!, status: 'ACTIVE' } }],
+    ['milestone', { ...completedJob, contract: { ...completedJob.contract!, milestoneStatus: 'RELEASE_PENDING' } }],
+  ])('does not infer readiness without completed %s truth', async (_, current) => {
+    reviewReads(); await mount(current as Job, client); expect(callout()).toBeNull(); expect(host.querySelector('.review-composer')).toBeNull();
+  });
+  it('does not infer valid settlement from RELEASED alone', async () => {
+    reviewReads(); vi.mocked(api.settlement).mockResolvedValue(null); await mount(completedJob, client); expect(callout()).toBeNull();
+  });
+  it.each(['PENDING', 'PROCESSING', 'FAILED_RETRYABLE', 'FAILED', 'UNKNOWN'] as const)('withholds entry point when release moneyStatus is %s', async moneyStatus => {
+    reviewReads(); vi.mocked(api.settlement).mockResolvedValue({ ...confirmedRelease, moneyStatus }); await mount(completedJob, client); expect(callout()).toBeNull(); expect(host.querySelector('.review-composer')).toBeNull();
+  });
+  it.each(['contractId', 'jobId', 'milestoneId'] as const)('withholds entry point for mismatched settlement %s', async field => {
+    reviewReads(); vi.mocked(api.settlement).mockResolvedValue({ ...confirmedRelease, [field]: 'other' }); await mount(completedJob, client); expect(callout()).toBeNull();
+  });
+  it.each(['REFUND_PENDING', 'CANCELLED'] as const)('blocks invitation during %s cancellation state', async cancellationStatus => {
+    reviewReads(); vi.mocked(api.cancellation).mockResolvedValue({ ...cancellationRecord, cancellationStatus }); await mount(completedJob, client); expect(callout()).toBeNull(); expect(host.querySelector('.review-composer')).toBeNull();
+  });
+  it('blocks review entry point and existing composer during an active dispute', async () => {
+    reviewReads(); vi.mocked(api.dispute).mockResolvedValue({ disputeId: 'dispute', contractId: 'contract', milestoneId: 'milestone', jobId: 'job', submissionId: 'v1', openedBy: client.id, reasonCode: 'QUALITY', description: 'Real dispute', status: 'OPEN', openedAt: '2026-10-07', claimedBy: null, claimedAt: null, resolvedBy: null, decisionAt: null, resolvedAt: null, resolutionReason: null, refundStatus: null, refundReference: null, evidence: [] });
+    await mount(completedJob, client); expect(callout()).toBeNull(); expect(host.querySelector('.review-composer')).toBeNull();
+  });
+  it.each(['settlement', 'contractReviews', 'cancellation'] as const)('does not claim eligibility after %s read failure', async read => {
+    reviewReads(); vi.mocked(api[read]).mockRejectedValue(new ApiError('Unavailable', 503)); await mount(completedJob, client); expect(callout()).toBeNull(); expect(host.querySelector('.review-composer')).toBeNull();
+  });
+  it('does not advertise participant review to Admin', async () => {
+    reviewReads(); await mount(completedJob, { ...client, authorities: ['ROLE_ADMIN'] }); expect(callout()).toBeNull();
+  });
+  it('does not advertise review to an unrelated user named in a malformed invitation', async () => {
+    const outsider = { ...client, id: 'outsider' }; reviewReads(outsider); await mount(completedJob, outsider); expect(callout()).toBeNull(); expect(api.contractReviews).not.toHaveBeenCalled();
+  });
+  it('does not use visual userType to offer an action to the wrong participant', async () => {
+    reviewReads(); await mount(completedJob, { ...client, userType: 'FREELANCER' }); expect(callout()).toBeNull(); expect(api.contractReviews).not.toHaveBeenCalled();
+  });
+  it('does not show a callout for an already-submitted own review even before publication', async () => {
+    reviewReads(); vi.mocked(api.contractReviews).mockResolvedValue([{ ...invitation, submitted: true, publishedAt: null, overall: 4 }]); await mount(completedJob, client); expect(callout()).toBeNull(); expect(host.querySelector('.review-composer')).toBeNull(); expect(host.textContent).toContain('Đã gửi; chưa công bố');
+  });
+  it('removes the entry point only after authoritative submit response, preserving payload/publication semantics', async () => {
+    reviewReads(); let resolve!: (row: Review) => void;
+    const post = vi.spyOn(api, 'submitReview').mockReturnValue(new Promise(r => { resolve = r; }));
+    await mount(completedJob, client); await fillRating(); await submit('.review-composer'); expect(callout()).toBeTruthy();
+    expect(post).toHaveBeenCalledExactlyOnceWith('contract', { overall: 4, dimensions: { communication: 4, requirementsOrQuality: 4, timeliness: 4 }, comment: 'Optional post-completion feedback' });
+    const saved = { ...invitation, submitted: true, overall: 4, publishedAt: null };
+    vi.mocked(api.contractReviews).mockResolvedValue([saved]); await act(async () => resolve(saved));
+    expect(callout()).toBeNull(); expect(host.querySelector('.review-composer')).toBeNull(); expect(host.textContent).toContain('Nội dung công khai theo trạng thái công bố của máy chủ'); expect(api.contractReviews).toHaveBeenCalledTimes(2);
+    expect(host.querySelector('.ownership-band')?.textContent).toContain('Đã xác nhận release mô phỏng');
+  });
+  it('keeps uncertain unsaved review opportunity without changing completion or payment truth', async () => {
+    reviewReads(); const post = vi.spyOn(api, 'submitReview').mockRejectedValue(new ApiError('Timeout', 0));
+    await mount(completedJob, client); await fillRating(); await submit('.review-composer');
+    expect(callout()).toBeTruthy(); expect(button('Gửi đánh giá')?.disabled).toBe(true); expect(host.textContent).toContain('Chưa xác nhận được kết quả'); expect(post).toHaveBeenCalledOnce(); expect(host.textContent).not.toContain('Đã gửi đánh giá');
+    expect(host.querySelector('.ownership-band')?.textContent).toContain('Đã xác nhận release mô phỏng'); expect(api.contractReviews).toHaveBeenCalledTimes(2);
+  });
+  it('removes the callout when uncertain submit is reconciled as already saved', async () => {
+    reviewReads(); vi.spyOn(api, 'submitReview').mockImplementation(async () => { vi.mocked(api.contractReviews).mockResolvedValue([{ ...invitation, submitted: true, publishedAt: null }]); throw new ApiError('Timeout', 0); });
+    await mount(completedJob, client); await fillRating(); await submit('.review-composer'); expect(callout()).toBeNull(); expect(host.textContent).toContain('Máy chủ đã có đánh giá của bạn');
+  });
+  it('does not carry the prior contract opportunity into a new contract read', async () => {
+    reviewReads(); await act(async () => root.render(<MemoryRouter><ContractLifecycle job={completedJob} user={client} onJobUpdated={vi.fn()} /></MemoryRouter>)); expect(callout()).toBeTruthy();
+    vi.mocked(api.contractReviews).mockReturnValue(new Promise(() => {}));
+    const otherJob = { ...completedJob, id: 'other-job', contract: { ...completedJob.contract!, id: 'other-contract' } };
+    await act(async () => root.render(<MemoryRouter><ContractLifecycle job={otherJob} user={client} onJobUpdated={vi.fn()} /></MemoryRouter>)); expect(callout()).toBeNull(); expect(api.contractReviews).toHaveBeenLastCalledWith('other-contract');
   });
 });
