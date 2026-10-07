@@ -2,8 +2,8 @@
 
 ## LOCKED VISUAL SYSTEM V2 — 2026-10-07
 
-Authority: `UI_VISUAL_POLISH_HANDOFF_20261006.md`; branch `feat/ui-visual-polish-20261006`; latest frozen source `1b2ee56ac9c202994747d60739eee9e6c84f7c49` (P06.5C Tax visual emphasis; P06.5A/P06.5B and earlier locks remain authoritative).
-Client/Freelancer Overview remains FROZEN; Client Work C1/C2/C3 are PASS / FROZEN. Freelancer Explore/Applications/My Work are RE-FROZEN after the approved narrow row-identity override. Stable Job Visual Identity and Global Row Identity / State Rail / Category Plate are LOCKED. P06.5A Finance list is PASS / FROZEN. Current: P06.5C TAX / CHỨNG TỪ THUẾ — PASS / FROZEN. Source `1b2ee56ac9c202994747d60739eee9e6c84f7c49`. Tax Evidence Ledger and Certificate Case File use server TaxRecord truth, unchanged payout/action gates and authenticated Marketplace blobs. Client/Freelancer 1440 and Freelancer 1024 runtime layout checks PASS. P06.5A/P06.5B remain FROZEN and unchanged. Next: P06.5D — ACTIVITY / EDITORIAL EVENT LEDGER — NOT_STARTED. Stop after this freeze. Historical guidance below remains useful; conflicting visual/baseline notes are superseded here.
+Authority: `UI_VISUAL_POLISH_HANDOFF_20261006.md`; branch `feat/ui-visual-polish-20261006`; latest frozen source `926c8fc64c2f8767165b5f69f15293abf91c86b2` (P06.5D Activity; P06.5A/B/C and earlier locks remain authoritative).
+Client/Freelancer Overview remains FROZEN; Client Work C1/C2/C3 are PASS / FROZEN. Freelancer Explore/Applications/My Work are RE-FROZEN after the approved narrow row-identity override. Stable Job Visual Identity and Global Row Identity / State Rail / Category Plate are LOCKED. P06.5A Finance list is PASS / FROZEN. Current: P06.5D ACTIVITY / EDITORIAL EVENT LEDGER — PASS / FROZEN. Source `926c8fc64c2f8767165b5f69f15293abf91c86b2`. Real Marketplace account notifications, type-driven editorial plates/rails, independent reading state and unchanged routing/pagination. Client/Freelancer 1440/1024 runtime QA, screenshots, focus and console 0 PASS; 138/138 focused tests, production build and diff check PASS. P06.5A/B/C remain FROZEN and unchanged. Next: P06.6 — ACCOUNT / PROFILE — NOT_STARTED. Stop after this freeze. Historical guidance below remains useful; conflicting visual/baseline notes are superseded here.
 
 **KINETIC EDITORIAL BRUTALISM**: Cream `#FFF7E8`, Ink `#17212B`, Vermilion `#F15A3D`, Acid `#F5D12F`, Fresh Mint `#B8DFC4`, Cobalt `#3567E8`.
 
@@ -28,7 +28,7 @@ Semantic job thumbnails:
 | BRANDING_GRAPHIC | Logo/typography/color swatches |
 | OTHER | Legacy skills → title → Generic Development (decorative only) |
 
-Authority: `UI_VISUAL_POLISH_HANDOFF_20261006.md`; branch `feat/ui-visual-polish-20261006`; latest frozen source `1b2ee56ac9c202994747d60739eee9e6c84f7c49` (P06.5C Tax visual emphasis; P06.5A/P06.5B and earlier locks remain authoritative).
+Authority: `UI_VISUAL_POLISH_HANDOFF_20261006.md`; branch `feat/ui-visual-polish-20261006`; latest frozen source `926c8fc64c2f8767165b5f69f15293abf91c86b2` (P06.5D Activity; P06.5A/B/C and earlier locks remain authoritative).
 
 Stable identity: `variant = stableHash(job.id) % 3`, `visualKey = family + ':' + variant`; missing ID uses variant 0. WEB_FRONTEND + job A/B may choose different browser variants 0/1/2, but both remain Web/Frontend. Rough decoration uses stable family + job identity; no random/time/order dependence, stable rerender/remount. Reuse the same JobThumbnail for Explore, Applications, My Work and future Client Work. No page-specific thumbnails, database thumbnail ID or upload.
 
@@ -81,7 +81,7 @@ Application state, not Job state, determines Application progress colors. Do not
 
 Plate: rectangular editorial label, hard Ink border, saturated locked palette, small hard offset allowed; no rounded SaaS pill or translucent/pastel treatment. Plate and thumbnail backing reuse `jobFamily` from `frontend/src/ui/job-thumbnails/jobFamily.ts`, the same resolver used by JobThumbnail. No duplicated keyword classifier.
 
-Authority: `UI_VISUAL_POLISH_HANDOFF_20261006.md`; branch `feat/ui-visual-polish-20261006`; latest frozen source `1b2ee56ac9c202994747d60739eee9e6c84f7c49` (P06.5C Tax visual emphasis; P06.5A/P06.5B and earlier locks remain authoritative).
+Authority: `UI_VISUAL_POLISH_HANDOFF_20261006.md`; branch `feat/ui-visual-polish-20261006`; latest frozen source `926c8fc64c2f8767165b5f69f15293abf91c86b2` (P06.5D Activity; P06.5A/B/C and earlier locks remain authoritative).
 
 ### Client Work C1 — PASS / FROZEN
 
@@ -155,7 +155,7 @@ Source: `96cafbe985c68c4fdcc0e53a52141375335ca387` — `feat(frontend): finalize
 
 Accepted implementation validation (tests/build not rerun during freeze): Finance focused tests **30/30 PASS** after folder tabs; earlier Finance visual gate **36/36 PASS**; type-check PASS; accepted production build PASS; `git diff --check` PASS; Client 1440 PASS, Freelancer 1440 PASS, Client 1024 PASS; console errors **0**; keyboard focus PASS; reduced motion preserved.
 
-Current: P06.5C TAX / CHỨNG TỪ THUẾ — PASS / FROZEN. Source `1b2ee56ac9c202994747d60739eee9e6c84f7c49`. Tax Evidence Ledger and Certificate Case File use server TaxRecord truth, unchanged payout/action gates and authenticated Marketplace blobs. Client/Freelancer 1440 and Freelancer 1024 runtime layout checks PASS. P06.5A/P06.5B remain FROZEN and unchanged. Next: P06.5D — ACTIVITY / EDITORIAL EVENT LEDGER — NOT_STARTED. Stop after this freeze.
+Current: P06.5D ACTIVITY / EDITORIAL EVENT LEDGER — PASS / FROZEN. Source `926c8fc64c2f8767165b5f69f15293abf91c86b2`. Real Marketplace account notifications, type-driven editorial plates/rails, independent reading state and unchanged routing/pagination. Client/Freelancer 1440/1024 runtime QA, screenshots, focus and console 0 PASS; 138/138 focused tests, production build and diff check PASS. P06.5A/B/C remain FROZEN and unchanged. Next: P06.6 — ACCOUNT / PROFILE — NOT_STARTED. Stop after this freeze.
 
 ## Historical P06 hierarchy guidance
 
@@ -530,3 +530,52 @@ Runtime evidence: Client / Nguyen Huu Trong Tax ledger 1440 contains real SEO EX
 Two new 1440 screenshots are saved outside Git: Client Tax Evidence Ledger and Freelancer Tax Certificate Case File. Screenshot data/amounts/statuses are real runtime values; no fabricated references/timestamps and no secrets or screenshots committed.
 
 **P06.5C TAX / CHỨNG TỪ THUẾ — VISUAL EMPHASIS PATCH — FROZEN.** This section supersedes earlier weaker Tax typography/tone styling. P06.5A/P06.5B and all earlier frozen surfaces remain locked. **NEXT: P06.5D — ACTIVITY / EDITORIAL EVENT LEDGER — NOT_STARTED. STOP.**
+
+## P06.5D Activity runtime recovery / final freeze — 2026-10-07
+
+Source commit: `926c8fc64c2f8767165b5f69f15293abf91c86b2` — `feat(frontend): finalize editorial activity ledger`. Resume authority: `d71dfd10bc87e4741ccdbe97f89e51a379ac5ea3`; only the four intended Activity files were dirty.
+
+- **P06.5D ACTIVITY / EDITORIAL EVENT LEDGER — FROZEN.** Marketplace notifications for the authenticated account are the source of truth. This is not a complete system audit log; editorial ledger names the presentation only. The existing truthful disclaimer remains.
+- `activityPresentation.ts` preserves all 21 human labels and resolves visual family/tone from explicit `Notification.type` only. Unknown/future/prototype-key types safely use neutral Cream/Ink and “Cập nhật từ Marketplace”; server title/message remain React text, never HTML. The mapping below is presentation, not new backend statuses.
+- Type-based document plates use Lucide family icons, Cream paper layers, Ink outlines/hard shadows and small tone-linked tape; no fake Job/category/avatar imagery. Visual Emphasis v1: readable 24px/22px titles at 1440/1024, 16px messages, 15px type/action and 14px metadata; 70x76px/56x64px plate, 7px semantic rail. At most two strong related zones; Cream row base, no rainbow fills.
+- Read/unread is independent of event outcome. `read=true` never means resolved; confirmed/error/cancelled meaning stays type-derived. “Chưa đọc” is a restrained Acid-tint reading stamp; “Đã đọc” is neutral. Runtime exposed an inherited legacy unread Vermilion marker background; a single Activity-scoped selector override removes it. No redesign or resolver rewrite during recovery.
+- Current-page unread count comes only from loaded records; account total comes from `totalElements`. No account-wide unread inference, fake KPI, timeline progression or fabricated event data. `createdAt` and server order remain unchanged.
+- `Notification.amount` is omitted because its DTO has no currency/unit discriminator. `PayoutServiceImpl.notifyPayoutSimulated` supplies `amountVndEstimated` for PAYMENT_RECEIVED, while other notification producers omit amounts. Existing server message text is preserved, including its own explicitly stated simulation/units; no USD/VND/USDC unit is guessed for the separate numeric field.
+- Mark-read retains Marketplace PATCH, synchronous duplicate lock, pending/error states, and the returned notification object as truth; no optimistic success or invented mark-all. Existing `freelax:rating-update` / `freelax:review-update` dispatches remain. Runtime history was not mutated; mark-read outcomes are covered by focused tests.
+- Destinations unchanged: RELEASE_CONFIRMED/REFUND_PENDING/REFUND_CONFIRMED → Finance detail; rating events → Job `#contract-reviews`; other Job-linked events → Job detail; no jobId → no invented link. No speculative PAYMENT/TAX rerouting. Server pagination `notifications(page, 10)` remains; no fetch-all or infinite scroll. Loading/read-error/retry/empty/action-error semantics are retained.
+- Recovery: browser integration still failed with `setup refresh had errors`; existing bundled Playwright + installed Chrome successfully rendered the real product. Existing Vite was restarted at localhost:3000; Marketplace returned HTTP 401 at 127.0.0.1:9191 before login. Ports/proxy and application runtime configuration were not changed.
+- Real sessions verified from `/auth/me`, including reload/session restoration: CLIENT / Nguyen Huu Trong has 7 total, 7 loaded, 7 unread on page 1; FREELANCER / Freelancer Seed has 13 total, 10 loaded, 10 unread on page 1. Active nav is Hoạt động for both. Notifications are account-scoped responses; no cross-role injection, seeding or financial/business mutation.
+- Client/Freelancer 1440 and 1024 visual + DOM/layout QA PASS at 100% zoom: no horizontal overflow, clipped content or action collision; visible plates/text and desktop navigation, no hamburger. Freelancer page 1 → page 2 → page 1 exercises real pagination; Client is a real single-page result. All visible runtime records are unread; read=true and missing families are verified by automated tests, not fabricated screenshots.
+- Keyboard destination and mark-read traversal PASS, visible 3px Cobalt focus; decorative icons/marks aria-hidden. Event labels/body and reading-state text carry meaning beyond color. 160ms micro-feedback only, no loops; reduced-motion transition is 0s. Activity console errors and page errors = 0 for both roles.
+- Screenshots captured outside Git: `client-activity-1440.png`, `freelancer-activity-1440.png`, `client-activity-1024.png`, `freelancer-activity-1024.png`. Real account/notification content, no accidental focus outline or credential screenshots. Runtime report and browser scripts are external artifacts, not repository additions.
+- Final validation: **138/138 focused tests PASS** (Polish 57, Finance 81); TypeScript + Vite production build PASS after the proven CSS fix; known >500 kB bundle warning non-blocking; `git diff --check` PASS. Frozen CSS prefix compares identical; P06.5A/B/C source/API/business semantics unchanged. No backend, API, dependency or auth changes.
+
+**NEXT: P06.6 — ACCOUNT / PROFILE — NOT_STARTED. STOP.** Earlier P06.5D NOT_STARTED checkpoints are historical and superseded by this freeze; do not reopen frozen surfaces for general polish.
+
+### Locked NotificationType presentation mapping
+
+| Backend NotificationType | Preserved human label | Visual family | Presentation tone |
+| --- | --- | --- | --- |
+| JOB_ASSIGNED | Được giao việc | work | success |
+| JOB_CANCELLED | Công việc đã hủy | work | closed |
+| WORK_SUBMITTED | Có bản bàn giao | work | active |
+| REVISION_REQUESTED | Yêu cầu chỉnh sửa | work | attention |
+| WORK_APPROVED | Bàn giao được duyệt | work | success |
+| FUNDING_CONFIRMED | Funding đã xác nhận | finance | success |
+| RELEASE_CONFIRMED | Bản ghi release đã xác nhận | finance | success |
+| CANCELLATION_REQUESTED | Đề nghị hủy — công việc tiếp tục | refund | attention |
+| CANCELLATION_REJECTED | Đề nghị hủy bị từ chối — công việc tiếp tục | refund | neutral |
+| REFUND_PENDING | Hoàn tiền đang đối soát | refund | active |
+| REFUND_CONFIRMED | Bản ghi hoàn tiền đã xác nhận | refund | success |
+| REVIEW_GRACE_STARTED | Gia hạn review | review | attention |
+| REVIEW_AUTO_APPROVED | Máy chủ tự duyệt | review | success |
+| DISPUTE_OPENED | Đã mở tranh chấp | dispute | attention |
+| DISPUTE_DECIDED | Admin đã quyết định tranh chấp | dispute | neutral |
+| REVIEW_INVITED | Mời đánh giá hợp đồng | review | attention |
+| REVIEW_PUBLISHED | Đánh giá đã công bố | review | success |
+| PAYMENT_SENT | Thanh toán Client | finance | neutral |
+| PAYMENT_RECEIVED | Chi trả mô phỏng | finance | success |
+| TAX_EXPORT_FAILED | Chứng từ thuế | tax | error |
+| PAYOUT_FAILED | Chi trả cần xử lý | finance | error |
+
+Unknown → Cập nhật từ Marketplace / neutral / neutral. Semantic tones describe the notification meaning, not payout finality or read state.
