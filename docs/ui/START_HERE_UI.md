@@ -12,6 +12,10 @@ Start with [FreelaX Final Freeze / Handoff](./FREELAX_FINAL_FREEZE_HANDOFF_20261
 - P06.8 documentation authority: the commit `docs: finalize P06.8 FreelaX handoff` containing this update. Resolve its exact SHA with `git log -1 --format=%H --grep='^docs: finalize P06.8 FreelaX handoff$'`; the final delivery report records it. A documentation commit does not create newer product source.
 - NEXT: **NONE WITHIN P06**. Future product work requires a new explicitly approved track/branch.
 
+## Business reading — documentation addendum
+
+For product workflow, system story, the business role of Solana and incident/fix history, read the [business documentation index](../business/README.md). UI-specific authority and all frozen P06 surfaces remain unchanged.
+
 ## Current authority — 2026-10-08
 
 Repository: `TronkIshere/FreelaX`. Branch: `feat/ui-visual-polish-20261006`.

@@ -6,6 +6,10 @@ FreelaX là marketplace hai phía dành cho Client và Freelancer, ghi nhận ph
 
 Điểm bắt đầu hiện tại: [Final Freeze / Handoff — 2026-10-08](docs/ui/FREELAX_FINAL_FREEZE_HANDOFF_20261008.md). Product/source authority: `7fc31555b9cd3f50a23872401968ee67c5275f30`. P06.7 docs authority: `44987c7e16dcc785845adbf8d05df6be44bf25cd`. Các docs commit sau đó không thay đổi source authority này.
 
+## Tài liệu nghiệp vụ & bàn giao
+
+Đọc [Business documentation](docs/business/README.md) để hiểu hệ thống, luồng Client/Freelancer, contract/funding/review, vai trò Solana, các lỗi đã gặp và cách xử lý, cùng source path traceability. Bộ tài liệu diễn giải baseline P06 frozen, không mở thêm phạm vi sản phẩm.
+
 ## 1. Sản phẩm hiện đã triển khai — CURRENTLY IMPLEMENTED
 
 Marketplace quyết định vai trò, quyền tham gia và trạng thái. UI dùng dữ liệu thật từ API; tính năng dưới đây chỉ khả dụng khi role, ownership và server state cho phép.

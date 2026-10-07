@@ -20,6 +20,10 @@ Resolve final docs SHA with `git log -1 --format=%H --grep='^docs: finalize P06.
 
 The accepted source chain is preserved in [visual handoff](UI_VISUAL_POLISH_HANDOFF_20261006.md); detailed dated gates in [session log](UI_VISUAL_POLISH_SESSION_LOG_20261006.md). Current-truth overview: [README](../../README.md). [START HERE](START_HERE_UI.md), [memory](UI_DEVELOPMENT_MEMORY.md), [progress](UI_IMPLEMENTATION_PROGRESS.md), [visual spec](UI_POLISH_SPEC.md) retain detailed locks/history.
 
+### Business documentation
+
+Business-first reading: [index](../business/README.md) → [system/business flow](../business/FREELAX_SYSTEM_BUSINESS_FLOW_20261008.md) → [Solana business role](../business/FREELAX_SOLANA_BUSINESS_ROLE_20261008.md) → [issues/fixes](../business/FREELAX_IMPLEMENTATION_ISSUES_FIXES_20261008.md) → [source path index](../business/FREELAX_SOURCE_PATH_INDEX_20261008.md). This documentation addendum does not change product/source authority, runtime evidence or the P06 freeze.
+
 ## 3. Frozen scope
 
 | Role | Surface | Status |

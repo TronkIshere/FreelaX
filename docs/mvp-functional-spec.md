@@ -1,5 +1,7 @@
 # FreelaX MVP Functional Specification
 
+> **HISTORICAL DESIGN / SPEC REFERENCE — 2026-10-08:** Tài liệu bắt đầu là thiết kế/spec MVP và còn chứa đề xuất, kiến trúc đích cùng quyết định lịch sử. Không coi mọi phần Draft bên dưới là API/triển khai hiện hành. Đọc [business documentation](business/README.md) và [Final Freeze / Handoff](ui/FREELAX_FINAL_FREEZE_HANDOFF_20261008.md) để biết CURRENT implemented product/business truth; khi khác biệt, source/API hiện tại quyết định. Nội dung lịch sử được giữ nguyên.
+
 > Trạng thái: Draft 0.1 để chốt quyết định sản phẩm trước khi triển khai.
 >
 > Tài liệu này đặc tả phạm vi MVP trong `README.md`. Các giá trị ghi **Đề xuất** có thể đổi sau khi review; các mục **Cần chốt** chưa được coi là yêu cầu cuối cùng.
