@@ -5,7 +5,7 @@
 - Repository: `TronkIshere/FreelaX`.
 - Active branch: `feat/ui-visual-polish-20261006`.
 - Integrated MVP ancestor: `35ba34e9b68be67b9405d3407159a2fde010911c`.
-- Frozen last product/source implementation commit: `837bcf02f7321a72ce597693660c4f63bc224be3` (P06.5B shared Finance Detail; Client/Freelancer 1440/1024 fully frozen 2026-10-07 with zero responsive source changes; earlier frozen surfaces preserved).
+- Frozen last product/source implementation commit: `304dd195cd56fcab7ac92158e7264f0acea8e6e8` (P06.5C Tax evidence; P06.5A/P06.5B and earlier locks preserved).
 
 Accepted source chain, oldest first:
 
@@ -23,8 +23,9 @@ Accepted source chain, oldest first:
 | `96cafbe` | P06.5A role-based Finance list + editorial folder tabs |
 | `9c76ffb` | P06.5B Client Finance Detail + current-vs-processing guard; Client 1440 |
 | `837bcf0` | P06.5B Freelancer Finance Detail 1440; shared grammar and role-correct copy |
+| `304dd19` | P06.5C Tax Evidence Ledger / Certificate Case File |
 
-A later documentation commit may be branch HEAD. It does not replace `837bcf0` as the latest frozen source implementation baseline; `9c76ffb` remains the Client 1440 source authority. Read the current HEAD with Git; do not mistake a docs-only HEAD for new product implementation. Current source wins over older conflicting documentation. Explicit Product Owner instructions remain authoritative.
+A later documentation commit may be branch HEAD. It does not replace `304dd19` as the latest frozen source implementation baseline; `9c76ffb` remains the Client 1440 source authority. Read the current HEAD with Git; do not mistake a docs-only HEAD for new product implementation. Current source wins over older conflicting documentation. Explicit Product Owner instructions remain authoritative.
 
 ## Current UI progress matrix
 
@@ -47,7 +48,8 @@ Statuses below refer to this visual stream, not to absence of existing functiona
 | Client Work C3 — Applicants (`/work/:jobId/applications`) | PASS / FROZEN |
 | P06.5A Finance list | PASS / FROZEN; `96cafbe` |
 | P06.5B Finance detail / Money Evidence Spine | FULLY FROZEN; Client/Freelancer 1440/1024 PASS; Client source `9c76ffb`, shared source `837bcf0`; zero responsive source changes |
-| Remaining Tax / Activity visual polish | NOT_STARTED; existing shared Finance tabs are frozen |
+| P06.5C Tax / Chứng từ thuế | PASS / FROZEN; `304dd19` |
+| P06.5D Activity / Editorial Event Ledger | NOT_STARTED |
 | Account / Profile | Later unless explicitly reprioritized |
 
 ## Locked visual direction
@@ -459,7 +461,7 @@ Source: `96cafbe985c68c4fdcc0e53a52141375335ca387` — `feat(frontend): finalize
 
 Accepted implementation validation (tests/build not rerun during freeze): Finance focused tests **30/30 PASS** after folder tabs; earlier Finance visual gate **36/36 PASS**; type-check PASS; accepted production build PASS; `git diff --check` PASS; Client 1440 PASS, Freelancer 1440 PASS, Client 1024 PASS; console errors **0**; keyboard focus PASS; reduced motion preserved.
 
-Current: P06.5B FINANCE DETAIL — FULLY FROZEN at `/finance?jobId=...`: Client 1440, Freelancer 1440, Client 1024 and Freelancer 1024. Client source `9c76ffb6c7a03db7a876ed8d871043b14e13d6c2`; latest shared source `837bcf02f7321a72ce597693660c4f63bc224be3`. Both 1024 targets passed with zero source changes. Next: P06.5C — TAX / CHỨNG TỪ THUẾ — NOT_STARTED. Tax/Activity implementation has not begun. Stop after this freeze.
+Current: P06.5C TAX / CHỨNG TỪ THUẾ — PASS / FROZEN. Source `304dd195cd56fcab7ac92158e7264f0acea8e6e8`. Tax Evidence Ledger and Certificate Case File use server TaxRecord truth, unchanged payout/action gates and authenticated Marketplace blobs. Client/Freelancer 1440 and Freelancer 1024 runtime layout checks PASS. P06.5A/P06.5B remain FROZEN and unchanged. Next: P06.5D — ACTIVITY / EDITORIAL EVENT LEDGER — NOT_STARTED. Stop after this freeze.
 
 ## Next phase — NOT_STARTED
 
@@ -521,3 +523,27 @@ Financial semantics remain LOCKED: **CURRENT != PROCESSING**. `Chờ bằng ch�
 Final gate: **51/51 focused Finance tests PASS**, production frontend build **PASS** (run once; known >500 kB warning non-blocking), `git diff --check` **PASS**. P06.5A, both 1440 baselines, backend/API/database/proxy/ports remain unchanged. Mobile optimization is deferred. Current MVP delivery target is desktop/laptop, validated at 1440px and 1024px; no mobile implementation or validation was added.
 
 **NEXT: P06.5C — TAX / CHỨNG TỪ THUẾ — NOT_STARTED.** P06.5C/Tax/Activity were not started during this freeze. Stop here; do not reopen P06.5B for general polish.
+
+## P06.5C TAX / CHỨNG TỪ THUẾ — FROZEN — 2026-10-07
+
+Source: `304dd195cd56fcab7ac92158e7264f0acea8e6e8` — `feat(frontend): finalize tax evidence experience`.
+Input gate: branch `feat/ui-visual-polish-20261006`, HEAD `1b4f4cdfc495ab96c0933d14b8817ef7161c26d0`, clean worktree.
+
+- **Tax Evidence Ledger**: `/finance/tax-records`; real paginated rows, current-page count, Job title/reference, optional certificate number, status and taxable income. Document markers only; no N+1 Job enrichment or inferred category artwork.
+- **Certificate Case File**: `/finance/tax-records/:taxRecordId`; status statement, distinct taxable/withheld amounts, tax fact ledger, action/document zone, technical disclosure and server refresh. Reuses frozen 01/02 folder tabs; 02 active on both Tax routes.
+- TaxRecord/API is authoritative. `payment.taxExportStatus=SUCCESS` means export success, never authority acceptance. Certificate existence also does not imply acceptance. Only explicit `record.status=ACCEPTED` receives accepted treatment.
+- ACCEPTED → Mint/Strong Green; EXPORT_FAILED/REJECTED → error/Vermilion; CORRECTION_REQUIRED (`Cần điều chỉnh`) → attention/Acid; CANCELLED/REPLACED → restrained closed; pending and unknown future statuses → pending/neutral. Display exact server `statusLabel || status`; never infer a final state.
+- Sync gate unchanged: off-ramp `COMPLETED` + certificate ID + DRAFT/SIGNED/SUBMITTING/SUBMITTED/CORRECTION_REQUIRED. Retry gate unchanged: off-ramp `COMPLETED` + EXPORT_FAILED. Existing duplicate locking retained; returned TaxRecord owns mutation results, with no optimistic ACCEPTED.
+- PDF/XML controls require `misaCertificateId`. Existing authenticated Marketplace Blob download/session behavior remains unchanged; no binary-to-JSON parsing or client-generated certificate.
+- `amountUsd`, `taxableIncomeVnd`, `taxWithheldVnd` and `usdToVndRate` remain distinct; source/rate observation and real timestamps are retained. Null is `—`, not zero; no derived official percentage. Missing TaxRecord does not imply tax exemption.
+- Payment support read failure keeps the loaded TaxRecord, reports a separate error and locks sync/retry. Primary TaxRecord refresh failure shows error/retry rather than stale evidence. Refresh disables overlapping mutations; server authority is preserved.
+- Simulation is explicit only when returned `payment.simulation=true`. Technical evidence stays allowlisted and collapsed: record/Job/certificate/payout IDs, certificate number/symbol, lookup code, transaction/submission/authority refs. No arbitrary payload fields, private credentials or full bank numbers.
+- Client and Freelancer share the same participant Tax evidence model; trusted session and backend ownership remain unchanged. No role switch, wallet, payment, authority-approval or unsupported controls.
+
+Validation: **77/77 focused Finance tests PASS** (51 preserved + 26 Tax tests); production build PASS after correcting a TypeScript-rejected RoughUnderline prop; one completed Vite production build, known >500 kB warning non-blocking; `git diff --check` PASS. Runtime Client / Nguyen Huu Trong and Freelancer / Freelancer Seed list/detail at 1440 PASS. Freelancer 1024 live DOM/layout QA PASS: no overflow, clipped cells or column collisions, horizontal tabs, readable amounts/facts, keyboard disclosure and 3px Cobalt focus. Console errors **0**. Reduced-motion safe CSS, no looping animation.
+
+Real QA records: SEO TaxRecord `02241f4d-e683-403e-a46e-9e08d45d7e74` = EXPORT_FAILED, taxable income 7,779,918 VND, withheld amount absent; P04 TaxRecord `5bb07cf8-4eae-41b6-8676-b2366f17c209` = ACCEPTED, certificate `00000001`, taxable 2,591,743 VND, withheld 259,174 VND. These are runtime observations, not defaults/fixtures. Existing ACCEPTED PDF/XML visibility PASS; an optional PDF download event capture timed out in the browser tool, so actual file completion is not asserted by this pass. No financial/tax data mutation.
+
+Two representative 1440 screenshots saved outside Git: Client Tax ledger and Freelancer SEO case file. Screenshots are never committed. P06.5A and P06.5B source/semantics preserved; all new CSS is Tax-specific. Backend/API/database/dependencies/proxy/ports unchanged. Mobile optimization is deferred; today's target is desktop/laptop. No Activity implementation.
+
+**NEXT: P06.5D — ACTIVITY / EDITORIAL EVENT LEDGER — NOT_STARTED.** Earlier P06.5C NOT_STARTED checkpoints are historical and superseded by this freeze. Do not reopen frozen Finance/Tax surfaces for general polish.
