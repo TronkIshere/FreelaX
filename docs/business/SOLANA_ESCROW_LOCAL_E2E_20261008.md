@@ -2,6 +2,8 @@
 
 **Phạm vi:** Mock USDC trên `solana-test-validator`; Marketplace, Solana Gateway và Anchor chạy bằng code của working tree `feat/solana-milestone-escrow`. Đây là kiểm thử local, không phải devnet hay tiền thật. Các Job bên dưới được tạo qua API Marketplace, không tạo trạng thái nghiệp vụ bằng SQL.
 
+**Ý nghĩa nghiệp vụ:** các ca dưới đây chỉ chứng minh mock token vào/ra vault và Job đổi trạng thái sau đối soát chain. Chúng **không** chứng minh Client đã nộp USD cho đối tác, Freelancer đã nhận VND ngân hàng, màn hình đối soát tổng ký quỹ hoặc phí FreelaX 3%. Quy tắc USD→VND và phí đã chốt nhưng chưa triển khai nằm ở [tài liệu luồng đối tác](PARTNER_ESCROW_BUSINESS_GAP_20261008.md).
+
 ## Kết quả đã xác minh
 
 | Luồng | Bằng chứng | Kết quả |

@@ -8,9 +8,11 @@
 
 Sau khi chốt baseline P06, track `feat/solana-milestone-escrow` đã bổ sung implementation escrow theo Milestone trên Solana và nối vào Gateway, Marketplace, frontend. Phạm vi code gồm vault PDA, funding có chữ ký Client, submission hash, review/revision, gia hạn một lần, dispute, mutual refund và release sau hạn review; Marketplace chỉ hoàn tất Job/refund sau khi xác minh chuyển token. Rail `SOLANA_ESCROW` có persistence và trạng thái riêng, tách khỏi ledger mô phỏng.
 
-**Implementation đã có trong working tree; chưa hoàn tất kiểm chứng E2E.** Local-validator E2E đã xác minh Client duyệt rồi release, mutual refund và permissionless release kèm Marketplace reconcile. Scheduler Marketplace tự khởi tạo timeout release, Admin dispute refund xuyên Marketplace, browser UI E2E và devnet demo vẫn mở. Vì vậy chưa tuyên bố đã deploy hoặc đang nhận tiền thật. Chi tiết: [Solana escrow implementation plan](SOLANA_ESCROW_IMPLEMENTATION_PLAN.md) và [kết quả E2E local](SOLANA_ESCROW_LOCAL_E2E_20261008.md).
+**Quyết định nghiệp vụ mới:** thêm luồng mục tiêu đối tác nhận/giữ USD, đổi và chi VND trực tiếp cho Freelancer hoặc hoàn USD cho Client. MVP sẽ mock đối tác và đối soát; luồng này **chưa có code** và không trộn tiền với vault Solana. Phí FreelaX **3% giá Job, do Freelancer chịu, chỉ ghi nhận khi giải ngân thành công**; hoàn trước giải ngân không thu phí. Tỷ giá khóa lúc tạo lệnh chi, phí đối tác bằng 0 trong mock. Toàn bộ công thức và trạng thái ở [tài liệu luồng đối tác](PARTNER_ESCROW_BUSINESS_GAP_20261008.md).
 
-Các mục bên dưới ghi “hiện tại/chưa có” là mô tả **baseline P06 tại thời điểm đánh giá**, không phản ánh implementation trên nhánh escrow. Các giới hạn về đối tác fiat, quyền giữ khóa, vận hành production và nghĩa vụ pháp lý vẫn cần được xử lý trước khi dùng tiền thật.
+**Implementation đã có trên nhánh escrow; chưa hoàn tất kiểm chứng E2E.** Local-validator E2E đã xác minh Client duyệt rồi release, mutual refund và permissionless release kèm Marketplace reconcile. Scheduler Marketplace tự khởi tạo timeout release, Admin dispute refund xuyên Marketplace, browser UI E2E và devnet demo vẫn mở. Vì vậy chưa tuyên bố đã deploy hoặc đang nhận tiền thật. Chi tiết: [Solana escrow implementation plan](SOLANA_ESCROW_IMPLEMENTATION_PLAN.md) và [kết quả E2E local](SOLANA_ESCROW_LOCAL_E2E_20261008.md).
+
+Các mục bên dưới ghi “hiện tại/chưa có” là mô tả **baseline P06 tại thời điểm đánh giá**, không phản ánh implementation trên nhánh escrow. Đề xuất P06 chuyển USD thành USDC ở mục 1–3 là một hướng lịch sử, **khác luồng đối tác giữ USD→chi VND hiện được chọn để mô phỏng**. Các giới hạn về đối tác fiat, quyền giữ khóa, vận hành production và nghĩa vụ pháp lý vẫn cần được xử lý trước khi dùng tiền thật.
 
 ## Đọc nhanh: tiền ở đâu, ai giữ khóa, ai quyết định trả tiền?
 
@@ -62,7 +64,7 @@ Anchor test được chạy lại khi đánh giá: `anchor test --validator lega
 
 Không coi `moneyStatus=SUCCEEDED` của primary release mô phỏng tại baseline P06 là bằng chứng Freelancer đã nhận token on-chain hoặc tiền ngân hàng. Tại thời điểm đóng baseline đó, track escrow chưa được triển khai hoặc phê duyệt; implementation được bổ sung sau P06 được theo dõi riêng trong kế hoạch ở trên.
 
-## 4. Quyết định sản phẩm cho ba khoảng trống còn lại
+## 4. Quyết định sản phẩm cho ba khoảng trống của track Solana
 
 Các quyết định dưới đây xác định hành vi đích của track nâng cấp. Chúng **không mô tả tính năng đã triển khai** trong baseline P06.
 
@@ -86,3 +88,9 @@ Lưu ý triển khai gia hạn: yêu cầu và quyết định phải được l
 4. **Kiểm thử và demo:** test signer sai, mint/amount sai, fund/release/refund lặp, tranh chấp, giao trễ sau gia hạn, RPC timeout và restart; chạy Job mới qua UI/API trên local validator, sau đó devnet. Dùng hai Job để chứng minh riêng nhánh release và refund, cùng signature và số dư vault trước/sau.
 
 **Quyết định cho Client im lặng:** review deadline nằm trong Escrow account, được tính từ submission đã xác nhận on-chain. Sau hạn, instruction release không cần Client ký và chỉ thành công nếu không có revision/dispute on-chain. Solana không tự chạy instruction theo đồng hồ: backend scheduler hoặc Freelancer phải gửi giao dịch và trả phí. Chỉ công bố "đã giải ngân" sau khi đối soát giao dịch và số dư vault. Một dispute mới ghi ở database nhưng chưa lên chain không thể chặn giao dịch release; giao diện phải hiển thị rủi ro này. Chính sách hiện tại là review window do Job cấu hình (mặc định 72 giờ), cộng 24 giờ nếu milestone trên 500 USD.
+
+## 6. Hướng cập nhật nghiệp vụ qua đối tác (chưa triển khai)
+
+Luồng USD→VND qua đối tác là **rail riêng** cho một Job/Milestone: (1) chốt yêu cầu nghiệm thu và phí 3% trước khi nhận việc; (2) Client nộp đủ USD, đối tác mock xác nhận và FreelaX đối soát rồi mới cho Freelancer làm; (3) sau bàn giao hợp lệ, Client duyệt hoặc hệ thống tự duyệt theo chính sách được công bố; (4) đối tác chốt tỷ giá khi nhận lệnh, chi phần Freelancer bằng VND và ghi nhận phí FreelaX; (5) nếu hoàn trước chi, trả đủ USD cho Client và phí FreelaX bằng 0. `RELEASE_PENDING`/`REFUND_PENDING` không đồng nghĩa `PAID`/`REFUNDED`.
+
+Màn hình Admin cần so sánh sao kê đối tác mock với tổng nghĩa vụ ledger theo USD và hiển thị khoản lệch, khoản chờ, thời điểm cập nhật. Bằng chứng Solana không thay sao kê đối tác. **Chưa triển khai** lệnh nhận/chi/hoàn của đối tác, phí 3%, đối soát tổng, ngày làm việc cho tự duyệt, thời hạn thương lượng/điều phối và nhiều milestone. Các mốc 3 ngày tự duyệt, 2 lần nhắc, 3 ngày thương lượng, 5 ngày điều phối vẫn là đề xuất; 2 vòng sửa đang được Job hỗ trợ. Xem [đối chiếu chi tiết](PARTNER_ESCROW_BUSINESS_GAP_20261008.md).

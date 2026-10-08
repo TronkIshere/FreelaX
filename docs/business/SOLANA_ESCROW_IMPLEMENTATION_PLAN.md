@@ -2,7 +2,9 @@
 
 Branch: `feat/solana-milestone-escrow`. Scope: one milestone per Job, one configured six-decimal token mint, full release or full refund. The existing simulated payment rail remains separate.
 
-**Status:** implementation is present across Anchor, Solana Gateway, Marketplace and frontend in the current working tree. This is beyond the frozen P06 baseline. Selected local-validator E2E paths have passed, while the full E2E gate and devnet demo remain open. A checked item means implementation exists; it does not mean that every flow passed E2E or is deployed.
+**Business boundary (2026-10-08 update):** this plan covers **token custody in a Solana vault**. It does not implement the newly agreed partner-held USD → bank-paid VND flow. That target flow uses a separate mock partner statement and a **3% FreelaX fee charged to the Freelancer only after confirmed payout**; a pre-payout refund returns the full deposited USD and charges no FreelaX fee. The current Solana settle instruction transfers the full token amount and must not be presented as implementing that fee or a bank payout. See [partner flow and business rules](PARTNER_ESCROW_BUSINESS_GAP_20261008.md).
+
+**Status:** implementation is present across Anchor, Solana Gateway, Marketplace and frontend on the current branch. This is beyond the frozen P06 baseline. Selected local-validator E2E paths have passed, while the full E2E gate and devnet demo remain open. A checked item means implementation exists; it does not mean that every flow passed E2E or is deployed.
 
 **Local E2E update (2026-10-08):** [release, refund and timeout reconciliation results](SOLANA_ESCROW_LOCAL_E2E_20261008.md). Client-approved release and mutual refund passed through Marketplace → Gateway → Anchor with verified token balances. Permissionless timeout release and Marketplace reconciliation passed after a direct Gateway claim. Marketplace scheduler initiation, Admin dispute refund, browser UI E2E and devnet remain open, so the full verification gate below stays unchecked.
 
@@ -38,6 +40,8 @@ Branch: `feat/solana-milestone-escrow`. Scope: one milestone per Job, one config
 
 - [ ] Run Anchor, Gateway, Marketplace and frontend checks. Exercise two new Jobs end-to-end on local validator: one timeout release after Client silence and one dispute refund. Verify transaction signatures and vault/token balances before and after.
 - [ ] Repeat on devnet using the deployed Program ID and configured mock token; label demo assets accurately. Record compute units, signatures and account state. Deployment and use of externally controlled funds require separate explicit authorization.
+
+The partner-held USD MVP needs its **own** end-to-end gate: Client funding is confirmed from an independent mock partner statement before work starts; payout confirms VND to the Freelancer and records the 3% fee only once; refund restores the full USD with zero FreelaX fee; the admin reconciliation shows both a matching balance and an intentional mismatch. None of the Solana checks above satisfy this gate.
 
 ## Rules for ambiguous states
 

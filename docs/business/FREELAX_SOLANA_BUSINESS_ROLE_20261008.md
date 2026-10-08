@@ -2,7 +2,17 @@
 
 **Mục tiêu tài liệu:** giải thích vai trò của Solana theo góc nhìn sản phẩm/nghiệp vụ, hạn chế đi sâu vào code.
 
-**Trạng thái:** phần dưới mô tả kiến trúc và giới hạn đã kiểm chứng ở P06.7/P06.8. Track escrow sau P06 có implementation riêng trên `feat/solana-milestone-escrow`; xem [kế hoạch và trạng thái kiểm chứng](SOLANA_ESCROW_IMPLEMENTATION_PLAN.md). Chưa có local-validator E2E hoặc devnet demo hoàn tất.
+**Trạng thái:** phần 1–9 dưới đây chủ yếu mô tả kiến trúc và giới hạn **baseline P06.7/P06.8**. Track escrow sau P06 có implementation riêng trên `feat/solana-milestone-escrow`; một số ca local-validator E2E đã qua, toàn bộ gate và devnet chưa xong. Xem [kế hoạch](SOLANA_ESCROW_IMPLEMENTATION_PLAN.md) và [kết quả E2E](SOLANA_ESCROW_LOCAL_E2E_20261008.md).
+
+## Bản đồ vai trò Solana và luồng đối tác USD→VND
+
+| Luồng | Vai trò Solana | Quyết định tiền cuối cùng |
+| --- | --- | --- |
+| P06 simulation | Bằng chứng/downstream stablecoin được theo dõi riêng sau primary settlement mô phỏng; không có vault Job ở baseline | Payment Backend xác nhận ledger mô phỏng. |
+| `SOLANA_ESCROW` trên nhánh hiện tại | Vault PDA giữ mock token của **một Milestone/Job**, ghi submission, review, revision, dispute và chuyển token release/refund | Trạng thái vault và giao dịch chuyển token đã xác minh. Đây không phải USD ngân hàng hoặc payout VND. |
+| Đối tác giữ USD → chi VND, mục tiêu MVP | **Không tham gia khoản tiền của luồng này**; không được tính cùng một khoản ở vault Solana và sổ đối tác | Sao kê/xác nhận của đối tác mock; khi có đối tác thật phải tích hợp và đối soát riêng. |
+
+Quy tắc phí **FreelaX 3% chỉ khi giải ngân thành công** thuộc luồng đối tác USD→VND đã chốt về nghiệp vụ, **chưa có code**. Instruction release của rail Solana hiện chuyển toàn bộ token cho Freelancer và không thực hiện phép trừ 3%. Xem [luồng đối tác](PARTNER_ESCROW_BUSINESS_GAP_20261008.md).
 
 ## 1. Vấn đề nghiệp vụ trước khi có lớp Solana
 
@@ -13,7 +23,7 @@ Một marketplace xuyên biên giới không chỉ cần biết “Client đã b
 - Nếu hệ thống downstream lỗi, có thể đối soát lại mà không làm mất trạng thái business hay không?
 - Làm sao tách rõ “Client đã approve”, “Marketplace đã release”, “đã có on-chain evidence”, “đã off-ramp” và “đã có chứng từ thuế”?
 
-FreelaX dùng Solana như **một lớp bằng chứng/reconciliation cho rail stablecoin**, không phải như nơi quyết định toàn bộ nghiệp vụ marketplace.
+Trong baseline P06, FreelaX dùng Solana như **một lớp bằng chứng/reconciliation cho rail stablecoin**. Trên nhánh `SOLANA_ESCROW`, vault Solana còn giữ và chuyển mock token theo quy tắc escrow; Marketplace vẫn quản lý Job, điều khoản và bằng chứng nghiệm thu.
 
 ## 2. Vai trò nghiệp vụ của Solana trong FreelaX
 
@@ -66,11 +76,13 @@ Business value hướng tới:
 - giữ bằng chứng riêng cho on-chain và off-ramp;
 - dễ retry/reconcile từng chặng thay vì rollback cả hợp đồng.
 
-### 2.4 Không để lỗi blockchain phá hủy business truth
+### 2.4 Không để lỗi blockchain phá hủy business truth ở baseline P06
 
 Một quyết định quan trọng của FreelaX là:
 
-> **Payment/primary settlement success là mốc tiền chính của MVP; lỗi Solana/MISA downstream không được biến một release đã xác nhận thành thất bại nghiệp vụ.**
+> **Ở rail P06 simulation**, Payment/primary settlement success là mốc tiền mô phỏng chính; lỗi Solana/MISA downstream không được biến một release đã xác nhận thành thất bại nghiệp vụ.
+
+Với `SOLANA_ESCROW`, kết luận tiền đảo chiều: Marketplace **chưa** được đánh dấu release/refund thành công cho đến khi chuyển token từ vault được xác minh. Với luồng đối tác USD→VND mục tiêu, cần xác nhận chi/hoàn từ đối tác trước khi đánh dấu `PAID`/`REFUNDED`.
 
 Điều này giải quyết bài toán reliability:
 
@@ -81,7 +93,7 @@ Một quyết định quan trọng của FreelaX là:
 
 ## 3. Solana KHÔNG giải quyết những gì
 
-Solana không phải business authority cho các việc sau:
+Với **baseline P06**, Solana không phải business authority cho các việc sau:
 
 - không quyết định Client/Freelancer nào được assign;
 - không quyết định submission đạt hay không;
@@ -93,9 +105,9 @@ Solana không phải business authority cho các việc sau:
 - không thay thế Marketplace authorization;
 - không làm Job completed chỉ vì có một transaction on-chain.
 
-Các quyết định đó vẫn thuộc Marketplace business rules và server state.
+Các quyết định về chất lượng bàn giao, ai được giao việc và review vẫn thuộc Marketplace business rules. Rail escrow hiện tại có thêm điều kiện on-chain cho submission, revision, dispute và chuyển token; câu “Solana không quyết định revision/dispute” ở danh sách trên chỉ mô tả P06, không áp dụng nguyên xi cho track escrow. Solana cũng không chứng minh đối tác đã nhận USD hoặc Freelancer đã nhận VND ngân hàng.
 
-## 4. Luồng business có Solana
+## 4. Luồng business có Solana trong baseline P06
 
 ```text
 Client funding Milestone
@@ -181,7 +193,7 @@ Stablecoin/on-chain có thể trở thành rail chuyển giá trị; off-ramp v�
 
 ## 7. Cách nói ngắn khi thuyết trình
 
-> FreelaX dùng Solana không phải để biến marketplace thành một ứng dụng crypto. Solana được đặt ở lớp thanh toán/bằng chứng để tạo dấu vết on-chain cho rail stablecoin và giúp đối soát giao dịch. Marketplace vẫn quyết định Job, Contract, submission, approve, dispute và review. Khi một bước on-chain hoặc off-ramp chưa hoàn tất, hệ thống không giả vờ đã xong mà hiển thị trạng thái độc lập để retry và reconciliation. Nhờ vậy nghiệp vụ công việc không bị phụ thuộc cứng vào một RPC hoặc một giao dịch blockchain.
+> FreelaX có rail escrow Solana giữ mock token cho từng Milestone, với bằng chứng funding, release và refund on-chain. Đây là luồng token riêng, chưa phải tài khoản USD của đối tác hay chuyển khoản VND. Luồng đối tác USD→VND cho MVP sẽ được mô phỏng và đối soát bằng sao kê riêng; phí FreelaX 3% chỉ phát sinh khi giải ngân thành công. Các màn hình phải nói đúng tiền đang nằm ở rail nào và bước nào đã được xác nhận.
 
 ## 8. Source paths liên quan
 
@@ -196,12 +208,11 @@ Stablecoin/on-chain có thể trở thành rail chuyển giá trị; off-ramp v�
 
 ## 9. Lưu ý khi đọc tài liệu Solana cũ
 
-`solana-stablecoin-payout/docs/bao-cao-tich-hop-freelax-solana.md` chứa cả đánh giá lịch sử và kiến trúc đích ở thời điểm trước. Khi nội dung cũ mâu thuẫn với final frozen system, ưu tiên:
+`solana-stablecoin-payout/docs/bao-cao-tich-hop-freelax-solana.md` chứa cả đánh giá lịch sử và kiến trúc đích ở thời điểm trước. Khi nội dung cũ mâu thuẫn với hiện trạng hoặc quy tắc đã chốt, đọc theo phạm vi:
 
-1. source hiện tại;
-2. `docs/ui/FREELAX_FINAL_FREEZE_HANDOFF_20261008.md`;
-3. [business documentation index](README.md) diễn giải baseline hiện hành;
-4. `docs/mvp-functional-spec.md` và tài liệu integration cũ dùng làm historical/technical reference; không mặc định mọi đề xuất là contract hiện hành.
+1. Source trên nhánh hiện tại cùng [báo cáo E2E local](SOLANA_ESCROW_LOCAL_E2E_20261008.md) quyết định điều **đã triển khai/kiểm chứng**.
+2. [Luồng đối tác](PARTNER_ESCROW_BUSINESS_GAP_20261008.md) quyết định nghiệp vụ **đã chốt nhưng chưa triển khai** cho phí 3% và USD→VND.
+3. `docs/ui/FREELAX_FINAL_FREEZE_HANDOFF_20261008.md` và `docs/mvp-functional-spec.md` là bằng chứng/thiết kế **lịch sử P06**, không ghi đè track sau P06.
 
 ## 10. Skill Verification / Solana Attestation — tách khỏi hiện tại
 
