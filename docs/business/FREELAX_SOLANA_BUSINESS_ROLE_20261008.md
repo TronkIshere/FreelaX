@@ -2,7 +2,7 @@
 
 **Mục tiêu tài liệu:** giải thích vai trò của Solana theo góc nhìn sản phẩm/nghiệp vụ, hạn chế đi sâu vào code.
 
-**Trạng thái:** mô tả current frozen architecture + giới hạn đã được kiểm chứng ở P06.7/P06.8.
+**Trạng thái:** phần dưới mô tả kiến trúc và giới hạn đã kiểm chứng ở P06.7/P06.8. Track escrow sau P06 có implementation riêng trên `feat/solana-milestone-escrow`; xem [kế hoạch và trạng thái kiểm chứng](SOLANA_ESCROW_IMPLEMENTATION_PLAN.md). Chưa có local-validator E2E hoặc devnet demo hoàn tất.
 
 ## 1. Vấn đề nghiệp vụ trước khi có lớp Solana
 

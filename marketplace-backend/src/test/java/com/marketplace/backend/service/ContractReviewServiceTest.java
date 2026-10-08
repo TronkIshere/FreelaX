@@ -32,6 +32,7 @@ class ContractReviewServiceTest {
     @Autowired MilestoneRepository milestones;
     @Autowired JobRepository jobs;
     @Autowired ContractSettlementRepository settlements;
+    @Autowired EscrowContractRepository escrows;
     @Autowired ContractCancellationRepository cancellations;
     @Autowired ContractReviewRepository reviews;
     @Autowired ReviewAuditRepository audit;
@@ -48,7 +49,7 @@ class ContractReviewServiceTest {
     @BeforeEach
     void setUp() {
         notifications = mock(NotificationService.class);
-        service = new ContractReviewService(contracts, milestones, jobs, settlements,
+        service = new ContractReviewService(contracts, milestones, jobs, settlements, escrows,
                 cancellations, reviews, audit, users, notifications);
         client = UUID.randomUUID(); freelancer = UUID.randomUUID();
         Job job = new Job(); job.setTitle("Contract work"); job.setClientUserId(client);

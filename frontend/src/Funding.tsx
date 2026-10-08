@@ -4,13 +4,27 @@ import { ActionGroup, EvidenceDisclosure, SectionHeading } from './components';
 import { fundingLabel } from './status';
 import { attemptScope, clearAttempt, contractAmount, fundingUnresolved, readAttempt, retryDelay, saveAttempt } from './workflowContracts';
 import type { BankCode, ClientBankAccount, FundingResponse, Job, User } from './types';
+import { EscrowFundingPanel } from './EscrowFunding';
+import { WalletLinkPanel } from './WalletLink';
 
 const banks: BankCode[] = ['VIETCOMBANK', 'VIETINBANK', 'BIDV', 'AGRIBANK', 'TECHCOMBANK', 'MBBANK', 'ACB', 'VPBANK', 'SACOMBANK', 'TPBANK'];
 type FundingAttempt = { key: string; amount: string; currency: string };
 
-export function FundingPanel({ job, user, onJobUpdated, blocked = false, operationLock, onMutationChange }: {
+export function FundingPanel(props: {
   job: Job; user: User; onJobUpdated: (job: Job) => void; blocked?: boolean;
   operationLock?: MutableRefObject<boolean>; onMutationChange?: (busy: boolean) => void;
+}) {
+  const [chooseEscrow, setChooseEscrow] = useState(false);
+  if (props.job.contract?.paymentRail === 'SOLANA_ESCROW' || chooseEscrow) {
+    return <><WalletLinkPanel /><EscrowFundingPanel {...props} onChooseBack={() => setChooseEscrow(false)} /></>;
+  }
+  return <><WalletLinkPanel /><SimulatedFundingPanel {...props} onChooseEscrow={() => setChooseEscrow(true)} /></>;
+}
+
+function SimulatedFundingPanel({ job, user, onJobUpdated, blocked = false, operationLock, onMutationChange, onChooseEscrow }: {
+  job: Job; user: User; onJobUpdated: (job: Job) => void; blocked?: boolean;
+  operationLock?: MutableRefObject<boolean>; onMutationChange?: (busy: boolean) => void;
+  onChooseEscrow: () => void;
 }) {
   const contract = job.contract;
   const owner = user.userType === 'CLIENT' && job.clientUserId === user.id;
@@ -137,6 +151,7 @@ export function FundingPanel({ job, user, onJobUpdated, blocked = false, operati
         <ActionGroup><button className="button" disabled={blocked || busy}>{busy ? 'Đang lưu…' : 'Lưu ngân hàng'}</button><button className="button button-secondary" type="button" disabled={busy} onClick={() => { setNumber(''); setHolder(''); setEditingBank(false); }}>Quay lại</button></ActionGroup>
       </form>}
       {eligible && !editingBank && !confirm && <ActionGroup><button className="button" disabled={blocked || busy || loading || !initialized.current || !bank?.ready || fundingUnresolved(funding?.fundingStatus) || funding?.fundingStatus === 'SUCCEEDED'} onClick={() => setConfirm(true)}>{funding?.fundingStatus === 'FAILED' ? 'Thử funding lại' : attempt.current ? 'Tiếp tục lần funding trước' : 'Funding mô phỏng'}</button></ActionGroup>}
+      {eligible && !loading && !funding && !attempt.current && <button className="text-button" disabled={blocked || busy} onClick={onChooseEscrow}>Chọn ký quỹ Solana</button>}
       {eligible && confirm && <div className="approval-confirm" role="group" aria-label="Xác nhận funding">
         <strong>Xác nhận {amount} {contract.currency} · Mô phỏng</strong><p>Capture mô phỏng theo số tiền hợp đồng đã chốt. Không xác nhận chi trả cho Freelancer.</p>
         <ActionGroup><button className="button" disabled={blocked || busy} onClick={() => void fund()}>Xác nhận funding</button><button className="button button-secondary" disabled={busy} onClick={() => setConfirm(false)}>Quay lại</button></ActionGroup>

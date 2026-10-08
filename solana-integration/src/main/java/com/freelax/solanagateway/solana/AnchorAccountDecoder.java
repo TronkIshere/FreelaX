@@ -2,6 +2,7 @@ package com.freelax.solanagateway.solana;
 
 import com.freelax.solanagateway.api.Responses.ConfigDto;
 import com.freelax.solanagateway.api.Responses.InvoiceDto;
+import com.freelax.solanagateway.api.Responses.EscrowDto;
 import com.freelax.solanagateway.api.Responses.MockOnrampReceiptDto;
 import com.freelax.solanagateway.api.Responses.RateSnapshotDto;
 import com.freelax.solanagateway.api.Responses.WithdrawalDto;
@@ -29,6 +30,20 @@ public class AnchorAccountDecoder {
         String status = enumValue(reader.u8(), "Pending", "Paid", "Cancelled");
         return new InvoiceDto(address, invoiceId, freelancer, client, amount, mint, rateSnapshot,
                 expiresAt, status, reader.i64(), reader.optionI64(), reader.u8());
+    }
+
+    public EscrowDto escrow(String address, byte[] data) {
+        var reader = new BorshReader(data, "MilestoneEscrow");
+        return new EscrowDto(address, reader.uuid16(), reader.publicKey(), reader.publicKey(),
+                reader.publicKey(), reader.publicKey(), reader.u64(), reader.i64(),
+                reader.i64(), reader.i64(),
+                reader.optionI64(), reader.bool(), reader.i64(), reader.optionI64(),
+                reader.optionHash32(), reader.u8(), reader.u8(), reader.u8(),
+                enumValue(reader.u8(), "Funded", "Submitted", "Revision", "Disputed", "Released", "Refunded"),
+                reader.i64(), reader.optionI64(), reader.optionHash32(),
+                reader.optionPublicKey(), reader.optionI64(), reader.optionHash32(),
+                reader.optionHash32(), reader.u8(),
+                null, null);
     }
 
     public RateSnapshotDto rate(String address, byte[] data) {

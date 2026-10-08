@@ -14,6 +14,8 @@ import com.marketplace.backend.dto.response.solana.MockOnrampReceiptResult;
 import com.marketplace.backend.dto.response.solana.SolanaAccountResult;
 import com.marketplace.backend.dto.response.solana.SolanaConfigResult;
 import com.marketplace.backend.dto.response.solana.SolanaInvoiceResult;
+import com.marketplace.backend.dto.response.solana.SolanaEscrowResult;
+import com.marketplace.backend.dto.response.solana.SolanaBuildResult;
 import com.marketplace.backend.dto.response.solana.SolanaOperationResult;
 import com.marketplace.backend.dto.response.solana.SolanaRateResult;
 import com.marketplace.backend.dto.response.solana.SolanaTransactionStatusResult;
@@ -36,6 +38,7 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.Optional;
+import java.util.Map;
 
 @Component
 public class SolanaCprClient {
@@ -155,6 +158,61 @@ public class SolanaCprClient {
                 url, HttpMethod.GET, new HttpEntity<>(jsonHeaders()),
                 new ParameterizedTypeReference<SolanaAccountResult<SolanaInvoiceResult>>() { }));
         return accountData(body);
+    }
+
+    public Optional<SolanaEscrowResult> findEscrow(String milestoneId) {
+        String url = UriComponentsBuilder.fromUriString(properties.getBaseUrl())
+                .path("/api/v1/solana/escrows/{milestoneId}")
+                .queryParam("commitment", properties.getCommitment())
+                .buildAndExpand(milestoneId).toUriString();
+        SolanaAccountResult<SolanaEscrowResult> body = execute("get-escrow", () -> restTemplate.exchange(
+                url, HttpMethod.GET, new HttpEntity<>(jsonHeaders()),
+                new ParameterizedTypeReference<SolanaAccountResult<SolanaEscrowResult>>() { }));
+        return accountData(body);
+    }
+
+    public SolanaBuildResult buildEscrowFund(String milestoneId, Object request) {
+        return buildEscrow("fund-escrow", "/api/v1/solana/escrows/" + milestoneId + "/fund", request);
+    }
+
+    public SolanaBuildResult buildEscrowAction(String milestoneId, String action, Object request) {
+        return buildEscrow("escrow-" + action,
+                "/api/v1/solana/escrows/" + milestoneId + "/actions/" + action, request);
+    }
+
+    public SolanaOperationResult sendEscrowAction(String milestoneId, String action, Object request) {
+        return submitOperation("escrow-" + action,
+                properties.getBaseUrl() + "/api/v1/solana/escrows/" + milestoneId
+                        + "/actions/" + action, request);
+    }
+
+    public SolanaBuildResult buildEscrowMutualRefund(String milestoneId, Object request) {
+        return buildEscrow("escrow-mutual-refund",
+                "/api/v1/solana/escrows/" + milestoneId + "/mutual-refund", request);
+    }
+
+    public String submitEscrowSigned(String buildSessionId, String transactionBase64) {
+        String url = properties.getBaseUrl() + "/api/v1/solana/transactions/submit";
+        Map<String, Object> request = Map.of("buildSessionId", buildSessionId,
+                "transactionBase64", transactionBase64);
+        record SubmitResult(String signature) { }
+        SubmitResult result = execute("submit-escrow", () -> restTemplate.exchange(
+                url, HttpMethod.POST, new HttpEntity<>(request, jsonHeaders()), SubmitResult.class));
+        if (result == null || !StringUtils.hasText(result.signature())) {
+            throw new SolanaCprException("submit-escrow: response thieu signature", false, null);
+        }
+        return result.signature();
+    }
+
+    private SolanaBuildResult buildEscrow(String operation, String path, Object request) {
+        SolanaBuildResult result = execute(operation, () -> restTemplate.exchange(
+                properties.getBaseUrl() + path, HttpMethod.POST,
+                new HttpEntity<>(request, jsonHeaders()), SolanaBuildResult.class));
+        if (result == null || !StringUtils.hasText(result.buildSessionId())
+                || !StringUtils.hasText(result.transactionBase64())) {
+            throw new SolanaCprException(operation + ": response thieu build session", false, null);
+        }
+        return result;
     }
 
     public SolanaOperationResult requestOfframp(RequestOfframpRequest request) {

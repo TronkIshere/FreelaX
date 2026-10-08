@@ -33,6 +33,7 @@ public class FundingService {
     private static final String BANK_ACCOUNT_ON_FILE = "BANK_ACCOUNT_ON_FILE";
     private final FundingTransactionRepository transactions;
     private final WorkContractRepository contracts;
+    private final EscrowContractRepository escrowContracts;
     private final MilestoneRepository milestones;
     private final JobRepository jobs;
     private final UserRepository users;
@@ -68,6 +69,9 @@ public class FundingService {
             Milestone milestone = milestones.findWithLockById(milestoneId)
                     .filter(m -> m.getContractId().equals(contractId))
                     .orElseThrow(() -> new ApplicationException(ErrorCode.FUNDING_NOT_FOUND));
+            if (escrowContracts.existsByContractId(contractId)) {
+                throw new ApplicationException(ErrorCode.FUNDING_INVALID_STATE);
+            }
             FundingTransaction prior = transactions.findByClientUserIdAndIdempotencyKey(clientId, key).orElse(null);
             if (prior != null) {
                 if (!prior.getPayloadHash().equals(hash)) {

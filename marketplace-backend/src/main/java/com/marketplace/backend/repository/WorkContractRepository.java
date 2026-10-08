@@ -7,10 +7,14 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
+import java.util.List;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 public interface WorkContractRepository extends JpaRepository<WorkContract, UUID> {
     Optional<WorkContract> findByJobId(UUID jobId);
+    List<WorkContract> findTop100ByStatusAndCreatedAtBeforeOrderByCreatedAtAsc(
+            ContractStatus status, LocalDateTime createdAt);
     long countByFreelancerIdAndStatus(UUID freelancerId, ContractStatus status);
     long countByClientUserIdAndStatus(UUID clientUserId, ContractStatus status);
     @Query("select count(d) from ContractDispute d, WorkContract c where d.contractId = c.id and c.freelancerId = :userId")

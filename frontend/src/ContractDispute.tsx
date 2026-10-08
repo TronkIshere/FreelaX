@@ -56,9 +56,10 @@ export function DisputeRecord({ dispute }: { dispute: Dispute }) {
   </>;
 }
 type AppendAttempt = { key: string; payload: DisputeEvidenceInput[]; baselineIds: string[] };
-export function ContractDispute({ contractId, user, dispute, ready, eligible, blocked, operationLock, onRefresh, onBusy }: {
+export function ContractDispute({ contractId, user, dispute, ready, eligible, blocked, operationLock, onRefresh, onBusy, onOpenOnChain }: {
   contractId: string; user: User; dispute: Dispute | null; ready: boolean; eligible: boolean; blocked: boolean;
   operationLock: MutableRefObject<boolean>; onRefresh: () => Promise<void>; onBusy: (value: boolean) => void;
+  onOpenOnChain?: (input: OpenDisputeInput) => Promise<void>;
 }) {
   const [opening, setOpening] = useState(false);
   const [reasonCode, setReason] = useState('QUALITY'); const [description, setDescription] = useState('');
@@ -113,7 +114,9 @@ export function ContractDispute({ contractId, user, dispute, ready, eligible, bl
         await api.appendDisputeEvidence(contractId, dispute.disputeId, saved.key, saved.payload);
         clearAttempt(scope); setAttempt(null);
       } else {
-        setOpenIntent(input); await api.openDispute(contractId, input); setOpenIntent(null); setOpening(false);
+        setOpenIntent(input);
+        if (onOpenOnChain) await onOpenOnChain(input);
+        await api.openDispute(contractId, input); setOpenIntent(null); setOpening(false);
       }
       if (!alive.current) return;
       setItems([]); setDescription(''); setNotice(append ? 'Đã ghi nhận bằng chứng.' : 'Đã mở hồ sơ tranh chấp.'); await onRefresh();

@@ -24,6 +24,7 @@ import java.util.function.Supplier;
 @RequiredArgsConstructor
 public class SettlementService {
     private final ContractSettlementRepository settlements;
+    private final EscrowContractRepository escrowContracts;
     private final MilestoneRepository milestones;
     private final WorkContractRepository contracts;
     private final JobRepository jobs;
@@ -162,6 +163,7 @@ public class SettlementService {
 
     private Eligibility eligible(Milestone milestone) {
         WorkContract contract = contracts.findById(milestone.getContractId()).orElseThrow(this::ineligible);
+        if (escrowContracts.existsByContractId(contract.getId())) throw ineligible();
         Job job = jobs.findById(contract.getJobId()).orElseThrow(this::ineligible);
         JobSubmission approved = submissions.findFirstByContractIdOrderByVersionDesc(contract.getId()).orElse(null);
         ContractDispute adminDecision = disputes.findByContractId(contract.getId())

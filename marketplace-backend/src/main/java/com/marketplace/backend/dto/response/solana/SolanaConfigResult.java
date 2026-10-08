@@ -13,6 +13,7 @@ import lombok.experimental.FieldDefaults;
 @JsonIgnoreProperties(ignoreUnknown = true)
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class SolanaConfigResult {
+    String admin;
     String acceptedMint;
     String treasuryAuthority;
     String rateAuthority;

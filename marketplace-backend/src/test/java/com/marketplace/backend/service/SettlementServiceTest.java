@@ -59,6 +59,7 @@ class SettlementServiceTest {
     @Autowired SettlementService service;
     @Autowired ContractSubmissionService reviews;
     @Autowired ContractSettlementRepository settlements;
+    @Autowired EscrowContractRepository escrowContracts;
     @Autowired WorkContractRepository contracts;
     @Autowired MilestoneRepository milestones;
     @Autowired JobRepository jobs;
@@ -68,6 +69,7 @@ class SettlementServiceTest {
     @Autowired TransactionTemplate tx;
     @Autowired ObjectMapper json;
     @MockitoBean PaymentBackendClient payment;
+    @MockitoBean com.marketplace.backend.client.SolanaCprClient solana;
     @MockitoBean NotificationService notifications;
     @MockitoBean SettlementDownstreamService downstream;
     Job job;
@@ -229,7 +231,7 @@ class SettlementServiceTest {
         assertThatThrownBy(() -> service.processMoney(id)).isInstanceOf(IllegalStateException.class);
         assertThat(saved(id).getMoneyStatus()).isEqualTo(SettlementMoneyStatus.PENDING);
         assertThat(jobs.findById(job.getId()).orElseThrow().getStatus()).isEqualTo(JobStatus.SUBMITTED_FOR_REVIEW);
-        SettlementService restarted = new SettlementService(settlements, milestones, contracts, jobs, submissions,
+        SettlementService restarted = new SettlementService(settlements, escrowContracts, milestones, contracts, jobs, submissions,
                 funding, disputes, payment, notifications, tx, downstream);
         restarted.processMoney(id); assertCompleted(id); assertThat(saved(id).getReleaseKey()).isEqualTo(key);
         assertThat(credits.get()).isEqualTo(1); verify(payment, times(1)).createRelease(any());

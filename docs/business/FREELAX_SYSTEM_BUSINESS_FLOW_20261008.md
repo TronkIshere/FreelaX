@@ -1,5 +1,7 @@
 # FreelaX — Hệ thống và luồng nghiệp vụ tổng thể
 
+> Tài liệu này mô tả baseline P06 đã freeze. Track nâng cấp escrow sau P06 đã có implementation trong working tree trên nhánh `feat/solana-milestone-escrow`; local-validator E2E và devnet verification chưa hoàn tất. Xem [trạng thái và checklist escrow](SOLANA_ESCROW_IMPLEMENTATION_PLAN.md).
+
 **Ngày chốt:** 2026-10-08
 
 **Trạng thái:** BUSINESS HANDOFF / SOURCE-BACKED

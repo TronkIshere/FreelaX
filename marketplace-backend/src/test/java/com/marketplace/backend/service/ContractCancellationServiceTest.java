@@ -61,6 +61,7 @@ class ContractCancellationServiceTest {
     @Autowired JobApplicationRepository applications;
     @Autowired com.marketplace.backend.service.impl.JobServiceImpl legacyJobs;
     @Autowired ContractCancellationRepository cancellations;
+    @Autowired EscrowContractRepository escrowContracts;
     @Autowired ContractSettlementRepository settlements;
     @Autowired WorkContractRepository contracts;
     @Autowired MilestoneRepository milestones;
@@ -74,6 +75,7 @@ class ContractCancellationServiceTest {
     @MockitoBean NotificationService notifications;
     @MockitoBean SettlementDownstreamService downstream;
     @MockitoBean com.marketplace.backend.client.MisaBackendClient misa;
+    @MockitoBean com.marketplace.backend.client.SolanaCprClient solana;
     @MockitoBean PayoutService payout;
     @MockitoBean UserRepository users;
     Job job; WorkContract contract; Milestone milestone; FundingTransaction paid;
@@ -229,7 +231,7 @@ class ContractCancellationServiceTest {
         }).when(notifications).notify(any(), eq(NotificationType.REFUND_CONFIRMED), anyString(), anyString(), any());
         var r = propose(); assertThatThrownBy(() -> consent(r.cancellationId())).isInstanceOf(IllegalStateException.class);
         String key = saved().getRefundKey(); assertThat(saved().getRefundStatus()).isEqualTo(SettlementMoneyStatus.PENDING);
-        var restarted = new ContractCancellationService(cancellations, contracts, milestones, funding, settlements, disputes,
+        var restarted = new ContractCancellationService(cancellations, escrowContracts, contracts, milestones, funding, settlements, disputes,
                 submissions, jobs, payment, notifications, tx);
         restarted.process(r.cancellationId()); assertCancelled(); assertThat(saved().getRefundKey()).isEqualTo(key);
         assertThat(credits.get()).isEqualTo(1); verify(payment, times(1)).createRefund(any());

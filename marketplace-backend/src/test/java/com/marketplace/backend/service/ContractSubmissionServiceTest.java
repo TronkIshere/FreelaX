@@ -3,6 +3,7 @@ package com.marketplace.backend.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.marketplace.backend.dto.request.submission.CreateContractSubmissionRequest;
 import com.marketplace.backend.dto.request.submission.ReviewSubmissionRequest;
+import com.marketplace.backend.dto.response.solana.SolanaEscrowResult;
 import com.marketplace.backend.entity.*;
 import com.marketplace.backend.exception.ApplicationException;
 import com.marketplace.backend.exception.ErrorCode;
@@ -31,6 +32,8 @@ class ContractSubmissionServiceTest {
     private DeliverableRequirementRepository requirements;
     private AcceptanceCriterionRepository criteria;
     private FundingTransactionRepository funding;
+    private EscrowContractRepository escrows;
+    private com.marketplace.backend.client.SolanaCprClient solana;
     private ContractDisputeRepository disputes;
     private DisputeAuditRepository disputeAudit;
     private ContractSubmissionService service;
@@ -52,11 +55,14 @@ class ContractSubmissionServiceTest {
         requirements = mock(DeliverableRequirementRepository.class);
         criteria = mock(AcceptanceCriterionRepository.class);
         funding = mock(FundingTransactionRepository.class);
+        escrows = mock(EscrowContractRepository.class);
+        solana = mock(com.marketplace.backend.client.SolanaCprClient.class);
         disputes = mock(ContractDisputeRepository.class);
         disputeAudit = mock(DisputeAuditRepository.class);
         savedEvidence = new ArrayList<>();
         service = new ContractSubmissionService(contracts, milestones, jobs, submissions, evidence,
-                requirements, criteria, funding, disputes, disputeAudit,
+                requirements, criteria, funding, escrows,
+                solana, disputes, disputeAudit,
                 mock(NotificationService.class), new ObjectMapper());
 
         contract = new WorkContract();
@@ -120,6 +126,31 @@ class ContractSubmissionServiceTest {
         assertThat(milestone.getStatus()).isEqualTo(MilestoneStatus.SUBMITTED);
         assertThat(contract.getStatus()).isEqualTo(ContractStatus.UNDER_REVIEW);
         assertThat(job.getStatus()).isEqualTo(JobStatus.SUBMITTED_FOR_REVIEW);
+    }
+
+    @Test
+    void reconstructsSubmissionAfterChainAlreadyReleasedUsingFrozenReviewDeadline() {
+        var draft = request();
+        Instant due = Instant.now().plusSeconds(96 * 3600);
+        milestone.setAmount(new BigDecimal("501.00"));
+        when(escrows.existsByContractId(contract.getId())).thenReturn(true);
+        when(solana.findEscrow(milestone.getId().toString())).thenReturn(Optional.of(
+                new SolanaEscrowResult("escrow", milestone.getId().toString(),
+                        "client", "freelancer", "arbiter", "mint", "501000000", null,
+                        null, null, null, false, "345600", Long.toString(due.getEpochSecond()),
+                        service.escrowPayloadHash(contract.getId(), draft), 1, 0, 2,
+                        "Released", null, null, null, null, null, null, null, 0,
+                        "vault", "0")));
+
+        var result = service.submit(contract.getFreelancerId(), contract.getId(),
+                "escrow-reconcile", draft);
+
+        assertThat(result.getStatus()).isEqualTo("SUBMITTED");
+        assertThat(result.getReviewDueAt()).isEqualTo(due.truncatedTo(java.time.temporal.ChronoUnit.SECONDS));
+        assertThat(result.getSubmittedAt()).isEqualTo(
+                result.getReviewDueAt().minusSeconds(96 * 3600));
+        assertThat(milestone.getStatus()).isEqualTo(MilestoneStatus.SUBMITTED);
+        assertThat(contract.getStatus()).isEqualTo(ContractStatus.UNDER_REVIEW);
     }
 
     @Test

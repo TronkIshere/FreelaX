@@ -29,6 +29,10 @@ public class SolanaAddresses {
         return pda(List.of(seed("config")), programId);
     }
 
+    public PublicKey milestoneEscrow(String milestoneId) {
+        return pda(List.of(seed("milestone_escrow"), SolanaValueCodec.uuid16(milestoneId)), programId);
+    }
+
     public PublicKey invoice(PublicKey freelancer, String invoiceId) {
         return pda(List.of(seed("invoice"), freelancer.toByteArray(),
                 SolanaValueCodec.u64Le(invoiceId, "invoiceId")), programId);

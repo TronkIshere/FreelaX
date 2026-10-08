@@ -12,6 +12,7 @@ import com.freelax.solanagateway.api.Responses.AccountResponse;
 import com.freelax.solanagateway.api.Responses.ConfigDto;
 import com.freelax.solanagateway.api.Responses.DerivedAccounts;
 import com.freelax.solanagateway.api.Responses.InvoiceDto;
+import com.freelax.solanagateway.api.Responses.EscrowDto;
 import com.freelax.solanagateway.api.Responses.MockOnrampReceiptDto;
 import com.freelax.solanagateway.api.Responses.RateSnapshotDto;
 import com.freelax.solanagateway.api.Responses.TokenBalanceResponse;
@@ -57,6 +58,7 @@ public class SolanaGatewayService {
     private static final int WITHDRAWAL_ACCOUNT_SIZE = 296;
     private static final int RECEIPT_ACCOUNT_SIZE = 201;
     private static final int TOKEN_ACCOUNT_SIZE = 165;
+    private static final int ESCROW_ACCOUNT_SIZE = 407;
 
     private final SolanaProperties properties;
     private final SolanaAddresses addresses;
@@ -106,6 +108,31 @@ public class SolanaGatewayService {
         }
         requireProgramOwned(address, account);
         return new AccountResponse<>(true, decoder.invoice(address.toBase58(), account.data()));
+    }
+
+    public AccountResponse<EscrowDto> escrow(String milestoneId, Commitment commitment) {
+        PublicKey address = addresses.milestoneEscrow(milestoneId);
+        SolanaRpcClient.AccountData account = rpc.getAccountInfo(address.toBase58(), commitment);
+        if (account == null) return new AccountResponse<>(false, null);
+        requireProgramOwned(address, account);
+        EscrowDto decoded = decoder.escrow(address.toBase58(), account.data());
+        if (!decoded.milestoneId().equalsIgnoreCase(milestoneId)) {
+            throw new GatewayException(HttpStatus.BAD_GATEWAY, "ESCROW_ID_MISMATCH",
+                    "Escrow PDA contains a different milestone ID");
+        }
+        String vault = addresses.ata(address, key(decoded.mint())).toBase58();
+        String balance = rpc.getTokenAccountBalance(vault, commitment).path("amount").asText(null);
+        if (balance == null) throw new GatewayException(HttpStatus.BAD_GATEWAY,
+                "ESCROW_VAULT_UNAVAILABLE", "Escrow vault token balance is unavailable");
+        return new AccountResponse<>(true, new EscrowDto(decoded.address(), decoded.milestoneId(),
+                decoded.client(), decoded.freelancer(), decoded.arbiter(), decoded.mint(),
+                decoded.amount(), decoded.fundingExpiresAt(), decoded.originalDeliveryDueAt(),
+                decoded.deliveryDueAt(), decoded.requestedDeliveryDueAt(), decoded.extensionUsed(),
+                decoded.reviewWindowSeconds(), decoded.reviewDueAt(), decoded.submissionHash(),
+                decoded.submissionCount(), decoded.revisionsUsed(), decoded.maxRevisions(), decoded.status(),
+                decoded.fundedAt(), decoded.settledAt(), decoded.disputeHash(),
+                decoded.disputedBy(), decoded.disputedAt(), decoded.resolutionHash(),
+                decoded.revisionHash(), decoded.bump(), vault, balance));
     }
 
     public AccountResponse<RateSnapshotDto> rate(String rateId, Commitment commitment) {
@@ -283,6 +310,121 @@ public class SolanaGatewayService {
                 derived(Map.of("config", addresses.config(),
                         "rateSnapshot", addresses.rate(request.rateId()),
                         "invoice", addresses.invoice(freelancer, request.invoiceId()))));
+    }
+
+    public TransactionOperationResponse fundEscrow(String milestoneId, Requests.FundEscrowRequest request) {
+        ConfigDto config = requireConfig(request.commitment());
+        PublicKey client = key(request.client());
+        PublicKey freelancer = key(request.freelancer());
+        PublicKey mint = key(config.acceptedMint());
+        PublicKey admin = key(config.admin());
+        if (signerRegistry.find(admin.toBase58()).isEmpty()) {
+            throw new GatewayException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "MARKETPLACE_SIGNER_UNAVAILABLE", "Escrow funding authority signer is unavailable");
+        }
+        PublicKey escrow = addresses.milestoneEscrow(milestoneId);
+        if (this.escrow(milestoneId, request.commitment()).exists()) {
+            throw conflict("ESCROW_EXISTS", "Milestone escrow already exists");
+        }
+        List<TransactionInstruction> list = new ArrayList<>();
+        addRentSponsor(list, feePayer(client), client, request.commitment(),
+                ESCROW_ACCOUNT_SIZE, TOKEN_ACCOUNT_SIZE);
+        list.add(instructions.fundMilestoneEscrow(client, admin, freelancer, mint, milestoneId,
+                request.amount(), SolanaValueCodec.i64(request.fundingExpiresAt(), "fundingExpiresAt"),
+                SolanaValueCodec.i64(request.deliveryDueAt(), "deliveryDueAt"),
+                request.reviewWindowHours(), request.maxRevisions()));
+        return execute("fund_milestone_escrow", client, request, ExecutionMode.build, list,
+                derived(Map.of("milestoneEscrow", escrow, "escrowVault", addresses.ata(escrow, mint),
+                        "clientAta", addresses.ata(client, mint))));
+    }
+
+    public TransactionOperationResponse escrowAction(String milestoneId, String action,
+            Requests.EscrowActionRequest request) {
+        EscrowDto escrow = requireEscrow(milestoneId, request.commitment());
+        PublicKey actor = key(request.actor());
+        PublicKey mint = key(escrow.mint());
+        PublicKey escrowAddress = addresses.milestoneEscrow(milestoneId);
+        List<TransactionInstruction> list = new ArrayList<>();
+        String instructionName;
+        switch (action) {
+            case "request-extension" -> {
+                requireAddress(escrow.freelancer(), request.actor(), "Freelancer is not assigned to escrow");
+                instructionName = "request_escrow_extension";
+                list.add(instructions.escrowPartyAction(instructionName, actor, milestoneId,
+                        SolanaValueCodec.i64Le(SolanaValueCodec.i64(request.newDueAt(), "newDueAt"))));
+            }
+            case "approve-extension" -> {
+                requireAddress(escrow.client(), request.actor(), "Client is not assigned to escrow");
+                instructionName = "approve_escrow_extension";
+                list.add(instructions.escrowPartyAction(instructionName, actor, milestoneId));
+            }
+            case "submit" -> {
+                requireAddress(escrow.freelancer(), request.actor(), "Freelancer is not assigned to escrow");
+                instructionName = "submit_escrow_work";
+                PublicKey marketplaceAuthority = key(escrow.arbiter());
+                if (signerRegistry.find(marketplaceAuthority.toBase58()).isEmpty()) {
+                    throw new GatewayException(HttpStatus.SERVICE_UNAVAILABLE,
+                            "MARKETPLACE_SIGNER_UNAVAILABLE", "Escrow submission authority signer is unavailable");
+                }
+                list.add(instructions.submitEscrowWork(actor, marketplaceAuthority, milestoneId,
+                        SolanaValueCodec.hash32(request.hash(), "hash", true)));
+            }
+            case "request-revision" -> {
+                requireAddress(escrow.client(), request.actor(), "Client is not assigned to escrow");
+                instructionName = "request_escrow_revision";
+                PublicKey marketplaceAuthority = key(escrow.arbiter());
+                if (signerRegistry.find(marketplaceAuthority.toBase58()).isEmpty()) {
+                    throw new GatewayException(HttpStatus.SERVICE_UNAVAILABLE,
+                            "MARKETPLACE_SIGNER_UNAVAILABLE", "Escrow revision authority signer is unavailable");
+                }
+                list.add(instructions.escrowCoSignedAction(instructionName, actor,
+                        marketplaceAuthority, milestoneId,
+                        SolanaValueCodec.hash32(request.hash(), "hash", true)));
+            }
+            case "open-dispute" -> {
+                if (!actor.toBase58().equals(escrow.client()) && !actor.toBase58().equals(escrow.freelancer())) {
+                    throw new GatewayException(HttpStatus.FORBIDDEN, "SIGNER_MISMATCH", "Actor is not a participant");
+                }
+                instructionName = "open_escrow_dispute";
+                list.add(instructions.escrowPartyAction(instructionName, actor, milestoneId,
+                        SolanaValueCodec.hash32(request.hash(), "hash", true)));
+            }
+            case "release", "claim", "resolve-release", "resolve-refund" -> {
+                boolean release = !action.equals("resolve-refund");
+                if (action.equals("release")) requireAddress(escrow.client(), request.actor(),
+                        "Client is not assigned to escrow");
+                if (action.startsWith("resolve-")) requireAddress(escrow.arbiter(), request.actor(),
+                        "Actor is not escrow arbiter");
+                byte[] hash = action.startsWith("resolve-")
+                        ? SolanaValueCodec.hash32(request.hash(), "hash", true) : new byte[32];
+                PublicKey recipient = key(release ? escrow.freelancer() : escrow.client());
+                if (rpc.getAccountInfo(addresses.ata(recipient, mint).toBase58(), request.commitment()) == null) {
+                    addRentSponsor(list, feePayer(actor), actor, TOKEN_ACCOUNT_SIZE, request.commitment());
+                }
+                instructionName = "settle_milestone_escrow";
+                list.add(instructions.settleMilestoneEscrow(actor, milestoneId, mint,
+                        recipient, release, hash));
+            }
+            default -> throw new IllegalArgumentException("Unknown escrow action: " + action);
+        }
+        return execute(instructionName, actor, request, ExecutionMode.build, list,
+                derived(Map.of("milestoneEscrow", escrowAddress,
+                        "escrowVault", addresses.ata(escrowAddress, mint))));
+    }
+
+    public TransactionOperationResponse refundMutualEscrow(String milestoneId,
+            Requests.EscrowMutualRefundRequest request) {
+        EscrowDto escrow = requireEscrow(milestoneId, request.commitment());
+        requireAddress(escrow.client(), request.client(), "Client is not assigned to escrow");
+        requireAddress(escrow.freelancer(), request.freelancer(), "Freelancer is not assigned to escrow");
+        PublicKey client = key(request.client());
+        PublicKey freelancer = key(request.freelancer());
+        PublicKey mint = key(escrow.mint());
+        PublicKey escrowAddress = addresses.milestoneEscrow(milestoneId);
+        return execute("refund_mutual_escrow", client, request, ExecutionMode.build,
+                List.of(instructions.refundMutualEscrow(client, freelancer, mint, milestoneId)),
+                derived(Map.of("milestoneEscrow", escrowAddress,
+                        "escrowVault", addresses.ata(escrowAddress, mint))));
     }
 
     public TransactionOperationResponse payInvoice(String freelancerValue, String invoiceId,
@@ -522,6 +664,13 @@ public class SolanaGatewayService {
         return response.data();
     }
 
+    private EscrowDto requireEscrow(String milestoneId, Commitment commitment) {
+        AccountResponse<EscrowDto> response = escrow(milestoneId, commitment);
+        if (!response.exists()) throw new GatewayException(HttpStatus.NOT_FOUND,
+                "ESCROW_NOT_FOUND", "Milestone escrow PDA does not exist");
+        return response.data();
+    }
+
     private RateSnapshotDto requireRate(String rateId, Commitment commitment) {
         AccountResponse<RateSnapshotDto> response = rate(rateId, commitment);
         if (!response.exists()) {
@@ -590,7 +739,8 @@ public class SolanaGatewayService {
                 value(values, "invoice"), value(values, "rateSnapshot"),
                 value(values, "withdrawalRecord"), value(values, "mockOnrampReceipt"),
                 value(values, "mockOnrampTreasuryAuthority"), value(values, "mockOnrampTreasuryAta"),
-                value(values, "clientAta"), value(values, "freelancerAta"), value(values, "treasuryAta"));
+                value(values, "clientAta"), value(values, "freelancerAta"), value(values, "treasuryAta"),
+                value(values, "milestoneEscrow"), value(values, "escrowVault"));
     }
 
     private String value(Map<String, PublicKey> values, String key) {

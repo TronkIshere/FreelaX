@@ -60,6 +60,7 @@ class ContractDisputeServiceTest {
     @Autowired JobSubmissionRepository submissions;
     @Autowired TransactionTemplate tx;
     @MockitoBean PaymentBackendClient payment;
+    @MockitoBean com.marketplace.backend.client.SolanaCprClient solana;
     @MockitoBean NotificationService notifications;
     @MockitoBean SettlementDownstreamService downstream;
     Job job; WorkContract contract; Milestone milestone; FundingTransaction paid;

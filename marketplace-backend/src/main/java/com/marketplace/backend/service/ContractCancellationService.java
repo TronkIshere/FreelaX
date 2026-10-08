@@ -28,6 +28,7 @@ import java.util.function.Supplier;
 @Service @RequiredArgsConstructor @Slf4j
 public class ContractCancellationService {
     private final ContractCancellationRepository cancellations;
+    private final EscrowContractRepository escrowContracts;
     private final WorkContractRepository contracts;
     private final MilestoneRepository milestones;
     private final FundingTransactionRepository funding;
@@ -49,6 +50,7 @@ public class ContractCancellationService {
             // No consistent read before this lock: avoid a stale funding/submission snapshot after waiting.
             Milestone m = milestones.findWithLockByContractId(contractId).orElseThrow(this::notFound);
             WorkContract c = participant(actor, contractId);
+            if (escrowContracts.existsByContractId(contractId)) throw ineligible();
             ContractCancellation prior = cancellations.findByContractId(contractId).orElse(null);
             if (prior != null) {
                 if (!hash.equals(prior.getIntentHash())) throw new ApplicationException(ErrorCode.CANCELLATION_CONFLICT);

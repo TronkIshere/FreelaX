@@ -105,6 +105,7 @@ export interface Requirement {
 export interface ContractSummary {
   id: string;
   status: string;
+  paymentRail?: 'SIMULATED' | 'SOLANA_ESCROW';
   milestoneId: string | null;
   milestoneStatus: string | null;
   amount: DecimalValue;
@@ -115,6 +116,38 @@ export interface ContractSummary {
   revisionsUsed: number;
   deliverables: Requirement[];
   acceptanceCriteria: Requirement[];
+}
+
+export interface EscrowFundingView {
+  paymentRail: 'SOLANA_ESCROW'; status: string; settlementStatus: string;
+  escrowAddress: string;
+  clientWallet: string; freelancerWallet: string; mint: string | null;
+  amountBaseUnits: string | null; fundingExpiresAt: string | null;
+  deliveryDueAt: string | null;
+  reviewDueAt: string | null; submissionHash: string | null;
+  submissionCount: number | null; disputeHash: string | null;
+  fundSignature: string | null; releaseSignature: string | null;
+  refundSignature: string | null;
+  resolutionSignature: string | null; vaultAddress: string | null;
+  vaultBalanceBaseUnits: string | null; vaultBalanceStatus: string;
+  requestedDeliveryDueAt: string | null; extensionUsed: boolean;
+}
+
+export interface EscrowFundingBuild {
+  buildSessionId: string; transactionBase64: string; escrowAddress: string;
+  clientWallet: string; freelancerWallet: string; amountBaseUnits: string; mint: string;
+}
+export interface EscrowActionBuild {
+  intentId: string; action: string; buildSessionId: string;
+  transactionBase64: string; escrowAddress: string; actorWallet: string;
+  reviewDueAt: string | null; payloadHash: string | null;
+}
+export interface EscrowActionStatus {
+  intentId: string; action: string; signature: string; chainStatus: string;
+}
+export interface EscrowMutualRefund {
+  intentId: string; buildSessionId: string; originalTransaction: string;
+  partialTransaction: string | null; clientWallet: string; freelancerWallet: string;
 }
 
 export interface ClientBankAccount {

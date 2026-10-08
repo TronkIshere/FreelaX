@@ -889,6 +889,7 @@ public class JobServiceImpl implements JobService {
                 .findByContractIdOrderByOrderAsc(contract.getId());
         return ContractSummaryResponse.builder()
                 .id(contract.getId()).status(contract.getStatus().name())
+                .paymentRail(contract.getPaymentRail() == null ? "SIMULATED" : contract.getPaymentRail())
                 .milestoneId(milestone != null ? milestone.getId() : null)
                 .milestoneStatus(milestone != null ? milestone.getStatus().name() : null)
                 .amount(milestone != null ? milestone.getAmount() : contract.getBudgetUsd())

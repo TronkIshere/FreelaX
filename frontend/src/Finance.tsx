@@ -15,7 +15,7 @@ import { checkoutLabel, clientPaymentLabel, decimal, exportLabel, maskedBank, of
   settlementMoneyLabel, settlementStageLabel, releaseOwned } from './financeStatus';
 import { cancellationLabel, date, fundingLabel, money, refundLabel } from './status';
 import type { ContractFinance } from './financeStatus';
-import type { FundingResponse, Job, JobPaymentStatus, Page, TaxRecord, User } from './types';
+import type { EscrowFundingView, FundingResponse, Job, JobPaymentStatus, Page, TaxRecord, User } from './types';
 
 const POLL_MS = 15000;
 const message = (cause: unknown) => cause instanceof Error ? cause.message : 'Không thể tải dữ liệu từ Marketplace.';
@@ -39,7 +39,7 @@ function FinanceNav() {
   </nav>;
 }
 
-type PaymentEntry = { data: JobPaymentStatus | null; error: string; contract?: ContractFinance };
+type PaymentEntry = { data: JobPaymentStatus | null; error: string; contract?: ContractFinance; escrow?: EscrowFundingView | null };
 
 // The current API has no batch settlement/refund projection. Reads are bounded to the returned page.
 async function readContractFinance(job: Job): Promise<ContractFinance> {
@@ -69,6 +69,13 @@ function FinanceList({ user }: { user: User }) {
       const financial = data.data.filter(job => job.contract || job.status === 'COMPLETED');
       const entries = await Promise.all(financial.map(async job => {
         if (job.contract) {
+          if (job.contract.paymentRail === 'SOLANA_ESCROW') {
+            const escrow = job.contract.milestoneId
+              ? await api.escrowFunding(job.contract.id, job.contract.milestoneId)
+                .then(data => ({ data, error: '' }), cause => ({ data: null, error: message(cause) }))
+              : { data: null, error: 'Thiếu Milestone ID.' };
+            return [job.id, { data: null, error: escrow.error, escrow: escrow.data }] as const;
+          }
           const contract = await readContractFinance(job);
           const downstream = job.checkoutOrderId && contract.settlement?.moneyStatus === 'SUCCEEDED'
             ? await api.paymentStatus(job.id).then(data => ({ data, error: '' }), cause => ({ data: null, error: message(cause) }))
@@ -145,6 +152,9 @@ function FinanceSummary({ count, freelancer }: { count: number; freelancer: bool
 }
 
 function financeRowTone(job: Job, entry?: PaymentEntry) {
+  if (job.contract?.paymentRail === 'SOLANA_ESCROW') {
+    return entry?.escrow?.status === 'Released' ? 'done' : entry?.escrow?.status === 'Refunded' ? 'refund' : 'active';
+  }
   if (entry?.contract?.cancellation?.refundStatus === 'SUCCEEDED') return 'refund';
   // Cancellation without a successful refund must not look like received money.
   if (job.contract?.status === 'CANCELLED' || entry?.contract?.cancellation?.cancellationStatus === 'CANCELLED') return 'neutral';
@@ -177,8 +187,8 @@ function FinanceLedgerRow({ job, entry }: { job: Job; entry?: PaymentEntry }) {
       {status?.amountUsdcReceived != null && <span>{usdc(status.amountUsdcReceived)}</span>}
       {status?.estimatedAmountVnd != null && <span>{vnd(status.estimatedAmountVnd)} dự kiến</span>}</div>
     <div className="finance-ledger-state"><span className="finance-status-badge"><Icon size={19} aria-hidden="true" />
-      {job.contract ? contractFinanceLabel(job, entry?.contract) : status ? checkoutLabel(status.checkoutOrderStatus) : entry?.error || 'Chưa có dữ liệu'}</span>
-      <span className="finance-payout-label">{entry?.contract?.settlement ? 'Chi trả: ' + settlementStageLabel(entry.contract.settlement.offRampStatus)
+      {job.contract?.paymentRail === 'SOLANA_ESCROW' ? 'Solana escrow: ' + (entry?.escrow?.status || 'Đang đối soát') : job.contract ? contractFinanceLabel(job, entry?.contract) : status ? checkoutLabel(status.checkoutOrderStatus) : entry?.error || 'Chưa có dữ liệu'}</span>
+      <span className="finance-payout-label">{job.contract?.paymentRail === 'SOLANA_ESCROW' ? 'Token vault on-chain' : entry?.contract?.settlement ? 'Chi trả: ' + settlementStageLabel(entry.contract.settlement.offRampStatus)
         : status ? offRampLabel(status.offRampStatus) : 'Chưa có dữ liệu chi trả'}</span>
       {(status?.simulation || entry?.contract?.settlement?.simulation || entry?.contract?.cancellation?.simulation) && <b className="simulation-mark">Mô phỏng</b>}
       {(entry?.error || entry?.contract?.error) && <span className="finance-row-error" role="alert">{entry.error || entry.contract?.error}</span>}
@@ -458,6 +468,53 @@ function ContractEvidence({ initialJob }: { initialJob: Job }) {
   </>;
 }
 
+function EscrowFinanceEvidence({ job }: { job: Job }) {
+  const contract = job.contract!;
+  const [escrow, setEscrow] = useState<EscrowFundingView | null>(null);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    if (!contract.milestoneId) return;
+    let active = true;
+    setLoading(true);
+    api.escrowFunding(contract.id, contract.milestoneId)
+      .then(value => { if (active) { setEscrow(value); setError(''); } })
+      .catch(cause => { if (active) setError(message(cause)); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [contract.id, contract.milestoneId, tick]);
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') setTick(value => value + 1);
+    }, 30000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const cluster = import.meta.env.VITE_SOLANA_CLUSTER;
+  const explorer = (signature: string | null) => signature && (cluster === 'devnet' || cluster === 'mainnet-beta')
+    ? 'https://explorer.solana.com/tx/' + encodeURIComponent(signature) + (cluster === 'devnet' ? '?cluster=devnet' : '') : null;
+  const signature = (label: string, value: string | null) => <div><dt>{label}</dt><dd>{value ? <><code>{value}</code>{explorer(value) && <a href={explorer(value)!} target="_blank" rel="noopener noreferrer"> Xem Solana Explorer ↗</a>}</> : 'Chưa có giao dịch'}</dd></div>;
+  return <section className="settlement-document" aria-label="Tài chính escrow Solana">
+    <SectionHeading title="Escrow Solana" aside={cluster || 'Mạng chưa cấu hình'} />
+    <p>Tiền được giữ trong vault Solana. Trạng thái release hoặc refund chỉ được ghi nhận sau khi chain xác nhận.</p>
+    {loading && <p role="status">Đang đối soát escrow…</p>}
+    {error && <p role="alert">{error}</p>}
+    {escrow && <><FactGrid facts={[
+      { label: 'Trạng thái chain', value: escrow.status },
+      { label: 'Trạng thái quyết toán', value: escrow.settlementStatus },
+      { label: 'Escrow PDA', value: escrow.escrowAddress },
+      { label: 'Vault ATA', value: escrow.vaultAddress || 'Chưa xác minh' },
+      { label: 'Số dư vault (base units)', value: escrow.vaultBalanceBaseUnits || 'Chưa xác minh' },
+      { label: 'Token mint', value: escrow.mint || 'Chưa xác minh' },
+      { label: 'Số tiền token', value: escrow.amountBaseUnits ? (Number(escrow.amountBaseUnits) / 1_000_000).toFixed(6) : 'Chưa xác minh' },
+      { label: 'Hạn review on-chain', value: escrow.reviewDueAt ? new Date(Number(escrow.reviewDueAt) * 1000).toLocaleString('vi-VN') : 'Chưa có' },
+    ]} /><dl className="reference-list">{signature('Funding', escrow.fundSignature)}
+      {signature('Release', escrow.releaseSignature)}{signature('Refund', escrow.refundSignature)}
+      {signature('Quyết định tranh chấp', escrow.resolutionSignature)}</dl></>}
+    <button className="text-button" disabled={loading} onClick={() => setTick(value => value + 1)}>Đối soát lại</button>
+  </section>;
+}
+
 function JobEvidence({ jobId, user }: { jobId: string; user: User }) {
   const [job, setJob] = useState<Job | null>(null);
   const [payment, setPayment] = useState<JobPaymentStatus | null>(null);
@@ -535,7 +592,8 @@ function JobEvidence({ jobId, user }: { jobId: string; user: User }) {
         : 'Theo dõi dòng tiền của một công việc, từ thanh toán đến chứng từ thuế.'} />
     <div className="finance-detail-back"><Link to="/finance"><ArrowLeft size={22} aria-hidden="true" />
       {user.userType === 'FREELANCER' ? 'Lịch sử thu nhập' : 'Danh sách thanh toán'}</Link></div>
-    {job.contract && <ContractEvidence initialJob={job} />}
+    {job.contract?.paymentRail === 'SOLANA_ESCROW' && <EscrowFinanceEvidence job={job} />}
+    {job.contract && job.contract.paymentRail !== 'SOLANA_ESCROW' && <ContractEvidence initialJob={job} />}
     {!payment && !job.contract && <StatePanel kind="error" title="Chưa thể đọc trạng thái thanh toán"
       body={paymentError || 'Marketplace chưa trả dữ liệu.'} action={{ label: 'Tải lại', onClick: retry }} />}
     {payment && <>

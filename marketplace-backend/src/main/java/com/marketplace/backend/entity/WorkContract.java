@@ -41,6 +41,10 @@ public class WorkContract extends AbstractEntity<UUID> {
     private int maxRevisions;
     @Column(nullable = false)
     private int revisionsUsed;
+    @Column(name = "payment_rail", length = 30)
+    private String paymentRail;
+    @Column(name = "funding_reminder_sent_at")
+    private Instant fundingReminderSentAt;
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private ContractStatus status;
