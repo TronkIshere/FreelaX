@@ -614,6 +614,8 @@ function UnifiedFinanceEvidence({ job, user }: { job: Job; user: User }) {
             {step.evidenceSource && <p>Nguồn: {step.evidenceSource}</p>}
           </details>}
         </dd></div>)}</dl>
+      {status('VND_PAYOUT')?.status === 'CONFIRMED' && <p>Chứng từ khấu trừ thuế được phát hành qua MISA sau khi đối tác xác nhận chi VND.{' '}
+        <Link className="text-link" to="/finance/tax-records">Xem chứng từ thuế</Link></p>}
       {withdrawal?.vndRate && <p>Quote off-ramp: 1 USDC = {withdrawal.vndRate} VND · phí {withdrawal.feeUsdc} USDC · Freelancer dự kiến nhận {withdrawal.payoutVnd} VND · hết hạn {stamp(withdrawal.quoteExpiresAt)}.</p>}
       {permitted && withdrawal?.status !== 'CONFIRMED' && !withdrawal?.transactionSignature && !build &&
         <button className="button" disabled={busy} onClick={() => void prepare()}>
