@@ -64,6 +64,19 @@ describe('P06.5C tax evidence contract', () => {
     expect(taxPresentation({ ...record, statusLabel: '' }).label).toBe(status);
   });
 
+  it('reads a unified certificate payout from the confirmed VND step, not the legacy payment status', async () => {
+    const unified = { ...tax, status: 'SUBMITTED', rateSource: 'LOCKED_PAYOUT_QUOTE' } as TaxRecord;
+    vi.spyOn(api, 'taxRecord').mockResolvedValue(unified);
+    const legacy = vi.spyOn(api, 'paymentStatus');
+    vi.spyOn(api, 'job').mockResolvedValue({ id: unified.jobId, contract: { id: 'contract-u', milestoneId: 'milestone-u' } } as never);
+    const flow = vi.spyOn(api, 'paymentFlow').mockResolvedValue({ steps: [{ kind: 'VND_PAYOUT', status: 'CONFIRMED' }] } as never);
+    await render(<Routes><Route path="/finance/tax-records/:taxRecordId" element={<TaxRecordDetail />} /></Routes>, '/finance/tax-records/tax-1');
+    expect(flow).toHaveBeenCalledWith('contract-u', 'milestone-u');
+    expect(legacy).not.toHaveBeenCalled();
+    expect(host.textContent).not.toContain('Chưa xác minh được trạng thái chi trả');
+    expect(button('Đồng bộ trạng thái')).toBeTruthy();
+  });
+
   it('does not promote a draft with certificate ID and successful payment export to ACCEPTED', async () => {
     await detail({ ...tax, status: 'DRAFT', statusLabel: 'Đã lập chứng từ, chưa phát hành' });
     expect(host.querySelector('.tax-statement')?.classList.contains('tax-tone-active')).toBe(true);
