@@ -614,6 +614,8 @@ function UnifiedFinanceEvidence({ job, user }: { job: Job; user: User }) {
             {step.evidenceSource && <p>Nguồn: {step.evidenceSource}</p>}
           </details>}
         </dd></div>)}</dl>
+      {status('VND_PAYOUT')?.status === 'CONFIRMED' && <p>Chứng từ khấu trừ thuế được phát hành qua MISA sau khi đối tác xác nhận chi VND.{' '}
+        <Link className="text-link" to="/finance/tax-records">Xem chứng từ thuế</Link></p>}
       {withdrawal?.vndRate && <p>Quote off-ramp: 1 USDC = {withdrawal.vndRate} VND · phí {withdrawal.feeUsdc} USDC · Freelancer dự kiến nhận {withdrawal.payoutVnd} VND · hết hạn {stamp(withdrawal.quoteExpiresAt)}.</p>}
       {permitted && withdrawal?.status !== 'CONFIRMED' && !withdrawal?.transactionSignature && !build &&
         <button className="button" disabled={busy} onClick={() => void prepare()}>
@@ -820,6 +822,7 @@ export function TaxRecordDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [paymentError, setPaymentError] = useState('');
+  const [unifiedPaid, setUnifiedPaid] = useState(false);
   const [actionError, setActionError] = useState('');
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
@@ -836,10 +839,18 @@ export function TaxRecordDetail() {
       if (!active) return;
       setRecord(data);
       try {
-        const result = await api.paymentStatus(data.jobId);
-        if (active) { setPayment(result); setPaymentError(''); }
+        if (data.rateSource === 'LOCKED_PAYOUT_QUOTE') {
+          // Unified rail: the payout is the partner-confirmed VND_PAYOUT step, not the P06 payment status.
+          const job = await api.job(data.jobId);
+          const flow = job.contract?.milestoneId ? await api.paymentFlow(job.contract.id, job.contract.milestoneId) : null;
+          const paid = flow?.steps.find(step => step.kind === 'VND_PAYOUT')?.status === 'CONFIRMED';
+          if (active) { setUnifiedPaid(paid); setPayment(null); setPaymentError(paid ? '' : 'Đối tác chưa xác nhận chi VND.'); }
+        } else {
+          const result = await api.paymentStatus(data.jobId);
+          if (active) { setUnifiedPaid(false); setPayment(result); setPaymentError(''); }
+        }
       } catch (cause) {
-        if (active) { setPayment(null); setPaymentError(message(cause)); }
+        if (active) { setPayment(null); setUnifiedPaid(false); setPaymentError(message(cause)); }
       }
       if (active) setLoading(false);
     }, cause => { if (active) { setRecord(null); setError(message(cause)); setLoading(false); } });
@@ -890,7 +901,7 @@ export function TaxRecordDetail() {
   if (loading && !record) return <StatePanel kind="loading" title="Đang tải chứng từ" body="Đang đối chiếu bản ghi thuế từ Marketplace." />;
   if (!record) return <StatePanel kind="error" title="Không thể tải chứng từ" body={error || 'Không có bản ghi.'}
     action={{ label: 'Thử lại', onClick: () => setAttempt(value => value + 1) }} />;
-  const payoutComplete = payment?.offRampStatus === 'COMPLETED';
+  const payoutComplete = payment?.offRampStatus === 'COMPLETED' || unifiedPaid;
   const canSync = payoutComplete && !!record.misaCertificateId && syncableTaxStatuses.has(record.status);
   const canRetry = payoutComplete && record.status === 'EXPORT_FAILED';
   return <article className="tax-page tax-case-page">

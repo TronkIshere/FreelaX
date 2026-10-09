@@ -65,7 +65,9 @@ export function ReviewTiming({ submission, contract, now }: { submission: Contra
     {submission.reviewDueAt && <p>Hạn review: <time dateTime={submission.reviewDueAt}>{localInstant(submission.reviewDueAt)}</time></p>}
     {submission.reviewGraceDueAt && <p>Hạn gia hạn: <time dateTime={submission.reviewGraceDueAt}>{localInstant(submission.reviewGraceDueAt)}</time></p>}
     {submission.status === 'SUBMITTED' && <>
-      <p className="metadata">Cửa sổ review hợp đồng: {contract.reviewWindowHours} giờ. {small === null ? '' : small ? 'Đủ điều kiện tự duyệt tại hạn review.' : 'Trên 500 USD: thêm 24 giờ gia hạn theo máy chủ.'}</p>
+      <p className="metadata">Cửa sổ review hợp đồng: {contract.reviewWindowHours} giờ. {contract.paymentRail === 'UNIFIED_USDC_PAYOUT'
+        ? 'Hết hạn mà Client chưa quyết định thì tự duyệt và release USDC; không gia hạn thêm.'
+        : small === null ? '' : small ? 'Đủ điều kiện tự duyệt tại hạn review.' : 'Trên 500 USD: thêm 24 giờ gia hạn theo máy chủ.'}</p>
       {Number.isFinite(due) && <p role="status">{remaining > 0 ? 'Còn ' + Math.ceil(remaining / 60000) + ' phút đến hạn review' : 'Đang chờ máy chủ xử lý'}</p>}
     </>}
   </section>;

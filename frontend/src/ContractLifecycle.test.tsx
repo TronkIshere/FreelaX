@@ -157,6 +157,8 @@ describe('P06.4C server review timing', () => {
   it('shows actual custom window, null/present grace and automatic source only from server', async () => {
     await act(async () => root.render(<ReviewTiming submission={v1} contract={contract} now={Date.now()} />)); expect(host.textContent).toContain('48 giờ'); expect(host.textContent).not.toContain('Hạn gia hạn');
     await act(async () => root.render(<ReviewTiming submission={{ ...v1, reviewGraceDueAt: '2030-01-04T00:00:00Z' }} contract={{ ...contract, amount: '500.01' }} now={Date.now()} />)); expect(host.textContent).toContain('Hạn gia hạn'); expect(host.textContent).toContain('24 giờ');
+    await act(async () => root.render(<ReviewTiming submission={v1} contract={{ ...contract, amount: '800.00', paymentRail: 'UNIFIED_USDC_PAYOUT' }} now={new Date('2030-01-02T23:00:00Z').getTime()} />));
+    expect(host.textContent).toContain('tự duyệt và release USDC; không gia hạn thêm'); expect(host.textContent).not.toContain('thêm 24 giờ'); expect(host.textContent).toContain('Còn 60 phút đến hạn review');
   });
   it('deadline boundary only refetches and waits for server, cleans timers', async () => {
     vi.useFakeTimers(); vi.setSystemTime(new Date('2026-10-05T00:00:00Z')); const due = { ...v1, reviewDueAt: '2026-10-05T00:00:02Z' }; vi.mocked(api.contractSubmissions).mockResolvedValue([due]); vi.mocked(api.job).mockResolvedValue(review); const approve = vi.spyOn(api, 'decideSubmission');
