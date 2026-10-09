@@ -19,6 +19,7 @@ import com.marketplace.backend.dto.response.job.JobSubmissionResponse;
 import com.marketplace.backend.dto.response.job.MyApplicationJobResponse;
 import com.marketplace.backend.dto.response.job.MyApplicationResponse;
 import com.marketplace.backend.dto.response.job.RequirementResponse;
+import com.marketplace.backend.dto.response.job.UnifiedTermsPreviewResponse;
 import com.marketplace.backend.dto.response.bofa.CheckoutOrderResult;
 import com.marketplace.backend.entity.*;
 import com.marketplace.backend.exception.ApplicationException;
@@ -36,6 +37,7 @@ import com.marketplace.backend.service.JobService;
 import com.marketplace.backend.service.JobSkills;
 import com.marketplace.backend.service.NotificationService;
 import com.marketplace.backend.service.PayoutService;
+import com.marketplace.backend.service.PaymentFlowService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -52,6 +54,10 @@ import java.time.LocalDateTime;
 import java.time.Duration;
 import java.time.Instant;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Collection;
 import java.util.Locale;
 import java.util.Map;
@@ -82,6 +88,7 @@ public class JobServiceImpl implements JobService {
     MilestoneRepository milestoneRepository;
     AcceptanceCriterionRepository acceptanceCriterionRepository;
     DeliverableRequirementRepository deliverableRequirementRepository;
+    PaymentFlowService paymentFlowService;
 
     @Override
     @Transactional
@@ -100,9 +107,17 @@ public class JobServiceImpl implements JobService {
         job.setCategory(category);
         job.setSkills(skills);
         job.setBudgetUsd(request.getBudgetUsd());
+        job.setPaymentFlowVersion(paymentFlowService.cutoverEnabled() ? 1 : 0);
+        if (Integer.valueOf(1).equals(job.getPaymentFlowVersion())) {
+            PaymentFlowService.ChainTerms chain = paymentFlowService.currentChainTerms();
+            job.setPaymentNetwork(chain.network());
+            job.setPaymentMint(chain.mint());
+        }
         job.setStatus(JobStatus.OPEN);
         job.setDeliveryDueAt(request.getDeliveryDueAt());
-        job.setReviewWindowHours(request.getReviewWindowHours());
+        // Unified terms publish one 72h review window with no grace; legacy rails keep the editor value.
+        job.setReviewWindowHours(Integer.valueOf(1).equals(job.getPaymentFlowVersion())
+                ? PaymentFlow.REVIEW_WINDOW_HOURS : request.getReviewWindowHours());
         job.setMaxRevisions(request.getMaxRevisions());
         jobRepository.save(job);
 
@@ -113,13 +128,14 @@ public class JobServiceImpl implements JobService {
 
     @Override
     @Transactional
-    public JobApplicationResponse apply(UUID freelancerId, UUID jobId) {
+    public JobApplicationResponse apply(UUID freelancerId, UUID jobId, String acceptedTermsFingerprint) {
         requireUserType(freelancerId, UserType.FREELANCER);
         Job job = getOrThrow(jobId);
 
         if (job.getStatus() != JobStatus.OPEN) {
             throw new ApplicationException(ErrorCode.INVALID_JOB_STATUS);
         }
+        requireUnifiedTermsAcceptance(job, acceptedTermsFingerprint);
 
         if (jobApplicationRepository.findByJobIdAndFreelancerId(jobId, freelancerId).isPresent()) {
             throw new ApplicationException(ErrorCode.ALREADY_APPLIED, jobId);
@@ -129,6 +145,10 @@ public class JobServiceImpl implements JobService {
         application.setJobId(jobId);
         application.setFreelancerId(freelancerId);
         application.setStatus(JobApplicationStatus.PENDING);
+        if (Integer.valueOf(1).equals(job.getPaymentFlowVersion())) {
+            application.setAcceptedTermsFingerprint(acceptedTermsFingerprint);
+            application.setTermsAcceptedAt(Instant.now());
+        }
         jobApplicationRepository.save(application);
 
         return toApplicationResponse(application);
@@ -161,6 +181,12 @@ public class JobServiceImpl implements JobService {
                 .findByJobIdAndFreelancerId(jobId, freelancer.getId())
                 .filter(a -> a.getStatus() == JobApplicationStatus.PENDING)
                 .orElseThrow(() -> new ApplicationException(ErrorCode.FREELANCER_NOT_APPLIED, jobId));
+        if (Integer.valueOf(1).equals(job.getPaymentFlowVersion())) {
+            requireUnifiedTermsAcceptance(job, request.getAcceptedTermsFingerprint());
+            if (!request.getAcceptedTermsFingerprint().equals(acceptedApplication.getAcceptedTermsFingerprint())) {
+                throw new ApplicationException(ErrorCode.INVALID_DATA);
+            }
+        }
 
         acceptedApplication.setStatus(JobApplicationStatus.ACCEPTED);
         jobApplicationRepository.save(acceptedApplication);
@@ -186,6 +212,12 @@ public class JobServiceImpl implements JobService {
         contract.setMaxRevisions(job.getMaxRevisions());
         contract.setRevisionsUsed(0);
         contract.setStatus(ContractStatus.PENDING_FUNDING);
+        if (Integer.valueOf(1).equals(job.getPaymentFlowVersion()))
+            contract.setPaymentRail(PaymentFlow.RAIL);
+        if (Integer.valueOf(1).equals(job.getPaymentFlowVersion())) {
+            contract.setAcceptedTermsFingerprint(request.getAcceptedTermsFingerprint());
+            contract.setClientTermsAcceptedAt(Instant.now());
+        }
         workContractRepository.save(contract);
 
         Milestone milestone = new Milestone();
@@ -194,6 +226,9 @@ public class JobServiceImpl implements JobService {
         milestone.setCurrency("USD");
         milestone.setStatus(MilestoneStatus.PENDING_FUNDING);
         milestoneRepository.save(milestone);
+        if (PaymentFlow.RAIL.equals(contract.getPaymentRail())) {
+            paymentFlowService.createDraft(contract, milestone);
+        }
         snapshotRequirements(job.getId(), contract.getId());
 
         notificationService.notify(
@@ -303,6 +338,10 @@ public class JobServiceImpl implements JobService {
         Job job = getOwnedByClientOrThrow(clientUserId, jobId);
 
         if (job.getStatus() != JobStatus.OPEN) {
+            throw new ApplicationException(ErrorCode.INVALID_JOB_STATUS);
+        }
+        // Applicants agreed to published terms; require a new Job for changes after an application.
+        if (!jobApplicationRepository.findByJobId(jobId).isEmpty()) {
             throw new ApplicationException(ErrorCode.INVALID_JOB_STATUS);
         }
 
@@ -651,6 +690,8 @@ public class JobServiceImpl implements JobService {
                 .jobId(application.getJobId())
                 .freelancerId(application.getFreelancerId())
                 .status(application.getStatus().name())
+                .acceptedTermsFingerprint(application.getAcceptedTermsFingerprint())
+                .termsAcceptedAt(application.getTermsAcceptedAt())
                 .createdAt(application.getCreatedAt())
                 .build();
     }
@@ -663,6 +704,7 @@ public class JobServiceImpl implements JobService {
                 .category(job.getCategory() == null ? JobCategory.OTHER : job.getCategory())
                 .skills(job.getSkills() == null ? List.of() : List.copyOf(job.getSkills()))
                 .budgetUsd(job.getBudgetUsd())
+                .localPaymentTerms(unifiedTermsPreview(job))
                 .status(job.getStatus().name())
                 .client(JobClientSummaryResponse.builder()
                         .id(job.getClientUserId())
@@ -795,6 +837,7 @@ public class JobServiceImpl implements JobService {
                 .category(job.getCategory() == null ? JobCategory.OTHER : job.getCategory())
                 .skills(job.getSkills() == null ? List.of() : List.copyOf(job.getSkills()))
                 .budgetUsd(job.getBudgetUsd())
+                .localPaymentTerms(unifiedTermsPreview(job))
                 .clientUserId(job.getClientUserId())
                 .freelancerId(job.getFreelancerId())
                 .status(job.getStatus().name())
@@ -809,6 +852,68 @@ public class JobServiceImpl implements JobService {
                 .createdAt(job.getCreatedAt())
                 .updatedAt(job.getUpdatedAt())
                 .build();
+    }
+
+    private UnifiedTermsPreviewResponse unifiedTermsPreview(Job job) {
+        if (!Integer.valueOf(1).equals(job.getPaymentFlowVersion())) return null;
+        BigDecimal grossUsd = job.getBudgetUsd().setScale(2, RoundingMode.HALF_UP);
+        BigDecimal escrowUsdc = grossUsd.setScale(6);
+        BigDecimal feeUsdc = grossUsd.multiply(new BigDecimal("0.03"))
+                .setScale(2, RoundingMode.HALF_UP).setScale(6);
+        BigDecimal rate = new BigDecimal("25000.00");
+        BigDecimal payoutVnd = escrowUsdc.subtract(feeUsdc).multiply(rate)
+                .setScale(0, RoundingMode.HALF_UP);
+        return new UnifiedTermsPreviewResponse(PaymentFlow.RAIL, 1, termsFingerprint(job),
+                grossUsd, escrowUsdc, feeUsdc, rate, payoutVnd, grossUsd, 48,
+                job.getReviewWindowHours(), job.getMaxRevisions(),
+                job.getPaymentNetwork(), job.getPaymentMint(), true);
+    }
+
+    private void requireUnifiedTermsAcceptance(Job job, String acceptedFingerprint) {
+        if (Integer.valueOf(1).equals(job.getPaymentFlowVersion())
+                && !termsFingerprint(job).equals(acceptedFingerprint)) {
+            throw new ApplicationException(ErrorCode.INVALID_DATA);
+        }
+    }
+
+    private String termsFingerprint(Job job) {
+        StringBuilder canonical = new StringBuilder("UNIFIED_USDC_PAYOUT|terms-v1|mock-usdc-1:1|vnd-25000|fee-3pct|refund-full|funding-48h");
+        appendTerm(canonical, job.getId());
+        appendTerm(canonical, job.getClientUserId());
+        appendTerm(canonical, job.getTitle());
+        appendTerm(canonical, job.getDescription());
+        appendTerm(canonical, job.getBudgetUsd().setScale(2, RoundingMode.HALF_UP).toPlainString());
+        appendTerm(canonical, job.getDeliveryDueAt());
+        appendTerm(canonical, job.getReviewWindowHours());
+        appendTerm(canonical, job.getMaxRevisions());
+        // Jobs published before chain terms were snapshotted keep their original fingerprint.
+        if (job.getPaymentMint() != null) {
+            appendTerm(canonical, job.getPaymentNetwork());
+            appendTerm(canonical, job.getPaymentMint());
+        }
+        safeDeliverables(job.getId()).forEach(item -> {
+            appendTerm(canonical, item.getOrder());
+            appendTerm(canonical, item.getTitle());
+            appendTerm(canonical, item.getDescription());
+            appendTerm(canonical, item.isRequired());
+        });
+        safeCriteria(job.getId()).forEach(item -> {
+            appendTerm(canonical, item.getOrder());
+            appendTerm(canonical, item.getDescription());
+            appendTerm(canonical, item.isRequired());
+        });
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest(canonical.toString().getBytes(StandardCharsets.UTF_8));
+            return java.util.HexFormat.of().formatHex(digest);
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 unavailable", exception);
+        }
+    }
+
+    private void appendTerm(StringBuilder canonical, Object value) {
+        String text = String.valueOf(value);
+        canonical.append('|').append(text.length()).append(':').append(text);
     }
 
     private void saveJobRequirements(UUID jobId, CreateJobRequest request) {
@@ -889,6 +994,7 @@ public class JobServiceImpl implements JobService {
                 .findByContractIdOrderByOrderAsc(contract.getId());
         return ContractSummaryResponse.builder()
                 .id(contract.getId()).status(contract.getStatus().name())
+                .paymentRail(contract.getPaymentRail() == null ? "SIMULATED" : contract.getPaymentRail())
                 .milestoneId(milestone != null ? milestone.getId() : null)
                 .milestoneStatus(milestone != null ? milestone.getStatus().name() : null)
                 .amount(milestone != null ? milestone.getAmount() : contract.getBudgetUsd())

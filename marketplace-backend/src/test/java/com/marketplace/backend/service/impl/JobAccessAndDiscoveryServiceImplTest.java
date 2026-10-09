@@ -65,6 +65,7 @@ class JobAccessAndDiscoveryServiceImplTest {
     private MilestoneRepository milestoneRepository;
     private AcceptanceCriterionRepository criterionRepository;
     private DeliverableRequirementRepository deliverableRepository;
+    private com.marketplace.backend.service.PaymentFlowService paymentFlowService;
     private JobServiceImpl service;
 
     @BeforeEach
@@ -82,9 +83,11 @@ class JobAccessAndDiscoveryServiceImplTest {
         milestoneRepository = mock(MilestoneRepository.class);
         criterionRepository = mock(AcceptanceCriterionRepository.class);
         deliverableRepository = mock(DeliverableRequirementRepository.class);
+        paymentFlowService = mock(com.marketplace.backend.service.PaymentFlowService.class);
         service = new JobServiceImpl(userRepository, jobRepository, applicationRepository, submissionRepository,
                 paymentBackendClient, misaBackendClient, notificationService, payoutService, payoutRecordRepository,
-                contractRepository, milestoneRepository, criterionRepository, deliverableRepository);
+                contractRepository, milestoneRepository, criterionRepository, deliverableRepository,
+                paymentFlowService);
         when(contractRepository.save(any(WorkContract.class))).thenAnswer(invocation -> {
             WorkContract contract = invocation.getArgument(0);
             if (contract.getId() == null) contract.setId(UUID.randomUUID());
@@ -206,6 +209,56 @@ class JobAccessAndDiscoveryServiceImplTest {
     }
 
     @Test
+    void unifiedTermsRequireTheSameAcceptedFingerprintFromBothParticipants() {
+        User client = user(UserType.CLIENT);
+        User freelancer = user(UserType.FREELANCER);
+        Job job = job(client.getId(), JobStatus.OPEN);
+        job.setPaymentFlowVersion(1);
+        when(userRepository.findById(client.getId())).thenReturn(Optional.of(client));
+        when(userRepository.findById(freelancer.getId())).thenReturn(Optional.of(freelancer));
+        when(jobRepository.findById(job.getId())).thenReturn(Optional.of(job));
+        when(jobRepository.findWithLockById(job.getId())).thenReturn(Optional.of(job));
+        when(applicationRepository.findByJobIdAndFreelancerId(job.getId(), freelancer.getId()))
+                .thenReturn(Optional.empty());
+        AcceptanceCriterion criterion = new AcceptanceCriterion();
+        criterion.setDescription("Artifact accepted");
+        DeliverableRequirement deliverable = new DeliverableRequirement();
+        deliverable.setTitle("Artifact");
+        deliverable.setDescription("Verifiable artifact");
+        when(criterionRepository.findByJobIdOrderByOrderAsc(job.getId())).thenReturn(List.of(criterion));
+        when(deliverableRepository.findByJobIdOrderByOrderAsc(job.getId())).thenReturn(List.of(deliverable));
+        var preview = service.getByIdForParticipant(client.getId(), job.getId()).getLocalPaymentTerms();
+        assertThat(preview.grossUsd()).isEqualByComparingTo("100.00");
+        assertThat(preview.escrowUsdc()).isEqualByComparingTo("100.000000");
+        assertThat(preview.platformFeeUsdc()).isEqualByComparingTo("3.000000");
+        assertThat(preview.estimatedPayoutVnd()).isEqualByComparingTo("2425000");
+        assertThat(preview.fullRefundUsd()).isEqualByComparingTo("100.00");
+        assertThatThrownBy(() -> service.apply(freelancer.getId(), job.getId(), null))
+                .isInstanceOf(ApplicationException.class);
+        var application = service.apply(freelancer.getId(), job.getId(), preview.fingerprint());
+        assertThat(application.getAcceptedTermsFingerprint()).isEqualTo(preview.fingerprint());
+        assertThat(application.getTermsAcceptedAt()).isNotNull();
+
+        JobApplication saved = application(job.getId(), freelancer.getId(), JobApplicationStatus.PENDING);
+        saved.setAcceptedTermsFingerprint(preview.fingerprint());
+        when(applicationRepository.findByJobIdAndFreelancerId(job.getId(), freelancer.getId()))
+                .thenReturn(Optional.of(saved));
+        var assign = new AssignFreelancerRequest();
+        assign.setFreelancerId(freelancer.getId());
+        assign.setAcceptedTermsFingerprint("stale");
+        assertThatThrownBy(() -> service.assignFreelancer(client.getId(), job.getId(), assign))
+                .isInstanceOf(ApplicationException.class)
+                .extracting(exception -> ((ApplicationException) exception).getErrorCode())
+                .isEqualTo(ErrorCode.INVALID_DATA);
+        verify(contractRepository, org.mockito.Mockito.never()).save(any());
+        assign.setAcceptedTermsFingerprint(preview.fingerprint());
+        service.assignFreelancer(client.getId(), job.getId(), assign);
+        verify(contractRepository).save(org.mockito.ArgumentMatchers.argThat(contract ->
+                preview.fingerprint().equals(contract.getAcceptedTermsFingerprint())
+                        && contract.getClientTermsAcceptedAt() != null));
+    }
+
+    @Test
     void createPersistsExplicitCategoryAndNormalizedJobSkillsWithoutCharging() {
         User client = user(UserType.CLIENT);
         when(userRepository.findById(client.getId())).thenReturn(Optional.of(client));
@@ -218,7 +271,33 @@ class JobAccessAndDiscoveryServiceImplTest {
         assertThat(result.getCategory()).isEqualTo(com.marketplace.backend.entity.JobCategory.WEB_FRONTEND);
         assertThat(result.getSkills()).containsExactly("React", "CSS");
         verify(jobRepository).save(org.mockito.ArgumentMatchers.argThat(row ->
-                row.getCategory() == com.marketplace.backend.entity.JobCategory.WEB_FRONTEND && row.getSkills().equals(List.of("React", "CSS"))));
+                row.getCategory() == com.marketplace.backend.entity.JobCategory.WEB_FRONTEND
+                        && Integer.valueOf(0).equals(row.getPaymentFlowVersion())
+                        && row.getSkills().equals(List.of("React", "CSS"))));
+        verifyNoInteractions(paymentBackendClient);
+    }
+
+    @Test
+    void cutoverVersionIsCapturedWhenJobIsCreated() {
+        User client = user(UserType.CLIENT);
+        when(userRepository.findById(client.getId())).thenReturn(Optional.of(client));
+        when(paymentFlowService.cutoverEnabled()).thenReturn(true);
+        when(paymentFlowService.currentChainTerms())
+                .thenReturn(new com.marketplace.backend.service.PaymentFlowService.ChainTerms("localnet", "mock-mint"));
+        when(jobRepository.save(any(Job.class))).thenAnswer(invocation -> {
+            Job saved = invocation.getArgument(0); saved.setId(UUID.randomUUID()); return saved;
+        });
+        CreateJobRequest request = createRequest();
+        request.setReviewWindowHours(48);
+
+        service.create(client.getId(), request);
+
+        // Unified terms override the editor value and snapshot the chain terms both sides accept.
+        verify(jobRepository).save(org.mockito.ArgumentMatchers.argThat(row ->
+                Integer.valueOf(1).equals(row.getPaymentFlowVersion())
+                        && row.getReviewWindowHours() == 72
+                        && "localnet".equals(row.getPaymentNetwork())
+                        && "mock-mint".equals(row.getPaymentMint())));
         verifyNoInteractions(paymentBackendClient);
     }
 

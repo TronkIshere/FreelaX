@@ -1,0 +1,16 @@
+# Solana escrow — scheduler timeout và Admin refund E2E local (2026-10-09)
+
+> **Lưu trữ theo mốc ngày.** Xem [tổng quan hiện tại](../README.md) và [trạng thái kiểm chứng](../VERIFICATION.md) trước khi dùng các kết luận bên dưới.
+
+**Phạm vi:** hai Job mới qua Marketplace → Gateway → Anchor trên `solana-test-validator`, dùng Mock USDC. Không dùng lệnh Gateway claim/resolve trực tiếp để hoàn thành hai ca. Đây là localnet, không phải devnet hay tiền thật.
+
+| Ca | Job / Milestone | Kết quả xác minh |
+| --- | --- | --- |
+| Scheduler tự giải ngân sau hạn review | `d1525c63-5198-47f8-a67e-677696ed6c13` / `22557349-2f19-4e7b-a563-bdf870576380` | **PASS:** Job/Contract `COMPLETED`, escrow `Released`, vault `0`, Freelancer tăng `20,000,000` base units (20 Mock USDC). Marketplace lưu release signature `2p1vf1U7eC9LaHRut7FYpEhBt4oHewHtdBF7GsfGjsimySJBpTkyjkmHhhpvFpacvYo3XjhvLgFJ1aiG1uvBjUc2`. |
+| Admin hoàn tiền tranh chấp | `ee8a0d7c-f6a7-4ae9-bff9-ce6ad87d8bc0` / `f0229390-95c0-4688-b5ec-e227c5b9a1e3` | **PASS:** Client mở tranh chấp on-chain/off-chain; Admin `claim` rồi quyết định `REFUND_TO_CLIENT` qua Marketplace. Scheduler gửi resolve, dispute `RESOLVED_REFUND`, Job/Contract `CANCELLED`, escrow `Refunded`, vault `0`, Client tăng `12,000,000` base units (12 Mock USDC). RPC xác nhận resolution signature `5cSRwggiLB9E6DcbM5NWgydPaVMFpp9soAbkj6F19C4KXja9zZgyDg9bcvyjfidpeJtH56KDxBzKiGq8VoKqsuEp` không lỗi. |
+
+Ca timeout bắt đầu với Job `SUBMITTED_FOR_REVIEW`, review deadline on-chain `1791607035`. Validator được dừng sau snapshot chứa bản bàn giao, khởi động lại với `--warp-slot 250000`, rồi Marketplace dùng `ESCROW_E2E_CLOCK_OFFSET_SECONDS=87000` **chỉ trong profile dev** để đồng hồ điều kiện scheduler vượt hạn. Test **không** gọi action `claim` trực tiếp. Scheduler ghi chữ ký release; lần đọc sau xác nhận token đã ra vault và Job hoàn thành. Sau khi validator khởi động lại, `getSignatureStatus` không còn trả lịch sử chữ ký timeout (`signatureInRpcHistory=false`), nên bằng chứng giao dịch ca này là chữ ký lưu tại Marketplace cộng trạng thái chain/vault/số dư, không phải xác nhận RPC lịch sử chữ ký. Không suy ra signature bị lỗi từ việc RPC không còn lịch sử.
+
+Marketplace đã được đưa về clock offset mặc định `0`. Ledger có time warp được giữ ở `solana-stablecoin-payout/target/runtime-ledger` để bảo toàn bằng chứng; clock của nó lệch khoảng 27 giờ. Để tiếp tục demo thường ngày, validator đã được chuyển sang ledger mới `solana-stablecoin-payout/target/demo-ledger-20261009` với đồng hồ bình thường. Ledger mới đã bootstrap Mock USDC; smoke release/refund trên đó **PASS** với Job `b6163ab6-986c-4dc4-bba4-34ee770fb187` (`COMPLETED`) và `2e4f1648-eb38-4176-ad1b-4fba59b71d61` (`CANCELLED`). Các Job QA trên ledger cũ không có account chain tương ứng trong ledger demo mới.
+
+Chạy lại Admin gate trên ledger local đã bootstrap bằng `scripts/local-admin-dispute-e2e.ts`. Script timeout `scripts/local-timeout-escrow-e2e.ts` có phase `ESCROW_E2E_PHASE=setup|finish`; cần môi trường time warp và clock dev có kiểm soát như trên, không chạy trên ledger demo thường ngày. Devnet, fiat thật, Solana browser UI E2E và ma trận regression rộng vẫn chưa được xác minh trong hai ca này.

@@ -3,6 +3,7 @@ package com.marketplace.backend.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.marketplace.backend.dto.request.submission.CreateContractSubmissionRequest;
 import com.marketplace.backend.dto.request.submission.ReviewSubmissionRequest;
+import com.marketplace.backend.dto.response.solana.SolanaEscrowResult;
 import com.marketplace.backend.entity.*;
 import com.marketplace.backend.exception.ApplicationException;
 import com.marketplace.backend.exception.ErrorCode;
@@ -31,6 +32,8 @@ class ContractSubmissionServiceTest {
     private DeliverableRequirementRepository requirements;
     private AcceptanceCriterionRepository criteria;
     private FundingTransactionRepository funding;
+    private EscrowContractRepository escrows;
+    private com.marketplace.backend.client.SolanaCprClient solana;
     private ContractDisputeRepository disputes;
     private DisputeAuditRepository disputeAudit;
     private ContractSubmissionService service;
@@ -52,12 +55,15 @@ class ContractSubmissionServiceTest {
         requirements = mock(DeliverableRequirementRepository.class);
         criteria = mock(AcceptanceCriterionRepository.class);
         funding = mock(FundingTransactionRepository.class);
+        escrows = mock(EscrowContractRepository.class);
+        solana = mock(com.marketplace.backend.client.SolanaCprClient.class);
         disputes = mock(ContractDisputeRepository.class);
         disputeAudit = mock(DisputeAuditRepository.class);
         savedEvidence = new ArrayList<>();
         service = new ContractSubmissionService(contracts, milestones, jobs, submissions, evidence,
-                requirements, criteria, funding, disputes, disputeAudit,
-                mock(NotificationService.class), new ObjectMapper());
+                requirements, criteria, funding, escrows,
+                solana, mock(com.marketplace.backend.client.PaymentBackendClient.class), disputes, disputeAudit,
+                mock(NotificationService.class), new BusinessDayClock(), new ObjectMapper());
 
         contract = new WorkContract();
         contract.setId(UUID.randomUUID());
@@ -120,6 +126,31 @@ class ContractSubmissionServiceTest {
         assertThat(milestone.getStatus()).isEqualTo(MilestoneStatus.SUBMITTED);
         assertThat(contract.getStatus()).isEqualTo(ContractStatus.UNDER_REVIEW);
         assertThat(job.getStatus()).isEqualTo(JobStatus.SUBMITTED_FOR_REVIEW);
+    }
+
+    @Test
+    void reconstructsSubmissionAfterChainAlreadyReleasedUsingFrozenReviewDeadline() {
+        var draft = request();
+        Instant due = Instant.now().plusSeconds(96 * 3600);
+        milestone.setAmount(new BigDecimal("501.00"));
+        when(escrows.existsByContractId(contract.getId())).thenReturn(true);
+        when(solana.findEscrow(milestone.getId().toString())).thenReturn(Optional.of(
+                new SolanaEscrowResult("escrow", milestone.getId().toString(),
+                        "client", "freelancer", "arbiter", "mint", "501000000", null,
+                        null, null, null, false, "345600", Long.toString(due.getEpochSecond()),
+                        service.escrowPayloadHash(contract.getId(), draft), 1, 0, 2,
+                        "Released", null, null, null, null, null, null, null, 0,
+                        "vault", "0")));
+
+        var result = service.submit(contract.getFreelancerId(), contract.getId(),
+                "escrow-reconcile", draft);
+
+        assertThat(result.getStatus()).isEqualTo("SUBMITTED");
+        assertThat(result.getReviewDueAt()).isEqualTo(due.truncatedTo(java.time.temporal.ChronoUnit.SECONDS));
+        assertThat(result.getSubmittedAt()).isEqualTo(
+                result.getReviewDueAt().minusSeconds(96 * 3600));
+        assertThat(milestone.getStatus()).isEqualTo(MilestoneStatus.SUBMITTED);
+        assertThat(contract.getStatus()).isEqualTo(ContractStatus.UNDER_REVIEW);
     }
 
     @Test
@@ -367,4 +398,35 @@ class ContractSubmissionServiceTest {
         input.setAcceptanceEvidence(List.of(criterionInput));
         return input;
     }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({"UNIFIED_USDC_PAYOUT,Released", "SOLANA_ESCROW,RELEASED_RECONCILED"})
+    void approvalAfterChainReleaseLeavesUnifiedRecordForTheMoneyReconciler(String rail, String expected) {
+        contract.setPaymentRail(rail);
+        contract.setStatus(ContractStatus.UNDER_REVIEW);
+        milestone.setStatus(MilestoneStatus.SUBMITTED);
+        job.setStatus(JobStatus.SUBMITTED_FOR_REVIEW);
+        saved = new JobSubmission();
+        saved.setId(UUID.randomUUID());
+        saved.setContractId(contract.getId());
+        saved.setVersion(1);
+        saved.setStatus(JobSubmissionStatus.SUBMITTED);
+        EscrowContract record = new EscrowContract();
+        record.setLastChainStatus("Released");
+        when(escrows.existsByContractId(contract.getId())).thenReturn(true);
+        when(escrows.findByContractId(contract.getId())).thenReturn(Optional.of(record));
+        com.marketplace.backend.dto.response.solana.SolanaEscrowResult chain =
+                mock(com.marketplace.backend.dto.response.solana.SolanaEscrowResult.class);
+        when(chain.status()).thenReturn("Released");
+        when(solana.findEscrow(milestone.getId().toString())).thenReturn(Optional.of(chain));
+        ReviewSubmissionRequest decision = new ReviewSubmissionRequest();
+        decision.setDecision(ReviewSubmissionRequest.Decision.APPROVE);
+
+        service.decide(contract.getClientUserId(), contract.getId(), saved.getId(), decision);
+
+        assertThat(contract.getStatus()).isEqualTo(ContractStatus.COMPLETED);
+        // The escrow reconciler picks up "Released" and records USDC_RELEASE before reconciling.
+        assertThat(record.getLastChainStatus()).isEqualTo(expected);
+    }
+
 }

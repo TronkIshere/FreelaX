@@ -3,6 +3,7 @@ package com.marketplace.backend.service;
 import com.marketplace.backend.client.PaymentBackendClient;
 import com.marketplace.backend.dto.request.bofa.CreateReleaseRequest;
 import com.marketplace.backend.dto.response.bofa.PaymentReleaseResult;
+import com.marketplace.backend.dto.response.partner.PartnerEscrowResult;
 import com.marketplace.backend.dto.response.settlement.SettlementResponse;
 import com.marketplace.backend.entity.*;
 import com.marketplace.backend.exception.ApplicationException;
@@ -24,13 +25,16 @@ import java.util.function.Supplier;
 @RequiredArgsConstructor
 public class SettlementService {
     private final ContractSettlementRepository settlements;
+    private final EscrowContractRepository escrowContracts;
     private final MilestoneRepository milestones;
     private final WorkContractRepository contracts;
     private final JobRepository jobs;
+    private final UserRepository users;
     private final JobSubmissionRepository submissions;
     private final FundingTransactionRepository funding;
     private final ContractDisputeRepository disputes;
     private final PaymentBackendClient payment;
+    private final PartnerReconciliationService partnerReconciliation;
     private final NotificationService notifications;
     private final TransactionTemplate transactionTemplate;
     private final SettlementDownstreamService downstream;
@@ -60,8 +64,12 @@ public class SettlementService {
 
     public void process(UUID settlementId) {
         processMoney(settlementId);
-        // No downstream operation shares the primary release commit.
-        downstream.process(settlementId);
+        // Partner mock already models FX and bank payout; never run Solana/off-ramp again.
+        ContractSettlement row = settlements.findById(settlementId).orElseThrow(this::ineligible);
+        WorkContract contract = contracts.findById(row.getContractId()).orElseThrow(this::ineligible);
+        if (!PartnerEscrowFundingService.RAIL.equals(contract.getPaymentRail())) {
+            downstream.process(settlementId);
+        }
     }
 
     public void processMoney(UUID settlementId) {
@@ -77,15 +85,45 @@ public class SettlementService {
             validateSnapshot(s, eligible, milestone);
             s.setMoneyStatus(SettlementMoneyStatus.PROCESSING);
             PaymentReleaseResult result;
+            PartnerEscrowResult partnerResult = null;
+            boolean partnerRail = PartnerEscrowFundingService.RAIL.equals(eligible.contract().getPaymentRail());
             boolean creating = false;
             try {
                 // Always reconcile first, including PENDING after a lost Marketplace commit.
-                result = payment.findRelease(s.getReleaseKey());
-                if (result == null) {
-                    creating = true;
-                    result = payment.createRelease(new CreateReleaseRequest(s.getCheckoutOrderId(),
-                            s.getFreelancerId(), new CreateReleaseRequest.ExpectedAmount(
-                            s.getAmount().toPlainString(), s.getCurrency()), s.getReleaseKey()));
+                if (partnerRail) {
+                    partnerResult = payment.getPartnerEscrow(milestoneId);
+                    if (!"PAID".equals(partnerResult.status())) {
+                        if (!partnerReconciliation.snapshot().matched()) {
+                            moneyError(s, SettlementMoneyStatus.UNKNOWN, "PARTNER_RECONCILIATION_MISMATCH", true);
+                            return null;
+                        }
+                        User recipient = users.findById(s.getFreelancerId()).orElseThrow(this::ineligible);
+                        if (recipient.getBankCode() == null || recipient.getBankAccountNumber() == null)
+                            throw new ApplicationException(ErrorCode.SETTLEMENT_INELIGIBLE);
+                        creating = true;
+                        partnerResult = payment.releasePartnerEscrow(milestoneId, s.getReleaseKey(),
+                                recipient.getBankCode().name(), recipient.getBankAccountNumber(),
+                                disputes.findByContractId(s.getContractId())
+                                        .map(d -> d.getStatus() == DisputeStatus.DECISION_PENDING_RELEASE)
+                                        .orElse(false));
+                    }
+                    if ("PAID".equals(partnerResult.status())
+                            && !partnerReconciliation.confirms(milestoneId, "RELEASE", s.getAmount())) {
+                        moneyError(s, SettlementMoneyStatus.UNKNOWN, "PARTNER_STATEMENT_UNCONFIRMED", true);
+                        return null;
+                    }
+                    result = new PaymentReleaseResult(milestoneId, s.getReleaseKey(), milestoneId,
+                            s.getFreelancerId(), "PAID".equals(partnerResult.status()) ? "SUCCEEDED" : "PENDING",
+                            s.getAmount(), "USD", true, "partner-mock-release-" + milestoneId,
+                            false, partnerResult.updatedAt(), partnerResult.updatedAt());
+                } else {
+                    result = payment.findRelease(s.getReleaseKey());
+                    if (result == null) {
+                        creating = true;
+                        result = payment.createRelease(new CreateReleaseRequest(s.getCheckoutOrderId(),
+                                s.getFreelancerId(), new CreateReleaseRequest.ExpectedAmount(
+                                s.getAmount().toPlainString(), s.getCurrency()), s.getReleaseKey()));
+                    }
                 }
             } catch (HttpStatusCodeException ex) {
                 int code = ex.getStatusCode().value();
@@ -104,9 +142,15 @@ public class SettlementService {
                 moneyError(s, SettlementMoneyStatus.UNKNOWN, "PAYMENT_OUTCOME_UNKNOWN", true);
                 return null;
             }
-            if (!matches(s, result)) {
+            if (partnerRail ? !matchesPartner(s, eligible, partnerResult) : !matches(s, result)) {
                 moneyError(s, SettlementMoneyStatus.UNKNOWN, "PAYMENT_RESPONSE_MISMATCH", true);
                 return null;
+            }
+            if (partnerRail && partnerResult != null) {
+                s.setPlatformFeeUsd(partnerResult.feeUsd());
+                s.setFreelancerUsd(partnerResult.freelancerUsd());
+                s.setLockedUsdVndRate(partnerResult.usdVndRate());
+                s.setPartnerPayoutVnd(partnerResult.payoutVnd());
             }
             s.setPaymentReleaseId(result.releaseId());
             // Do not forward arbitrary provider text to participants.
@@ -133,8 +177,9 @@ public class SettlementService {
                     contracts.save(eligible.contract());
                     jobs.save(eligible.job());
                     notifications.notify(s.getFreelancerId(), NotificationType.RELEASE_CONFIRMED,
-                            "Đã ghi nhận release mô phỏng",
-                            "Quyền nhận tiền đã được ghi có trong sổ mô phỏng. "
+                            partnerRail ? "Đối tác mock đã chi trả" : "Đã ghi nhận release mô phỏng",
+                            partnerRail ? "Đối tác mô phỏng đã xác nhận chi VND; phí FreelaX 3% được tính lúc này. Không phải chuyển khoản ngân hàng thật."
+                                    : "Quyền nhận tiền đã được ghi có trong sổ mô phỏng. "
                                     + "Solana, off-ramp và chứng từ thuế được xử lý riêng; chưa xác nhận chuyển khoản ngân hàng.",
                             s.getJobId());
                 }
@@ -162,6 +207,8 @@ public class SettlementService {
 
     private Eligibility eligible(Milestone milestone) {
         WorkContract contract = contracts.findById(milestone.getContractId()).orElseThrow(this::ineligible);
+        if (PaymentFlow.RAIL.equals(contract.getPaymentRail())) throw ineligible();
+        if (escrowContracts.existsByContractId(contract.getId())) throw ineligible();
         Job job = jobs.findById(contract.getJobId()).orElseThrow(this::ineligible);
         JobSubmission approved = submissions.findFirstByContractIdOrderByVersionDesc(contract.getId()).orElse(null);
         ContractDispute adminDecision = disputes.findByContractId(contract.getId())
@@ -228,6 +275,24 @@ public class SettlementService {
                 && Objects.equals(s.getCheckoutOrderId(), r.checkoutOrderId())
                 && Objects.equals(s.getFreelancerId(), r.recipientUserId())
                 && Objects.equals(s.getCurrency(), r.currency()) && same(s.getAmount(), r.amount());
+    }
+
+    private boolean matchesPartner(ContractSettlement s, Eligibility e, PartnerEscrowResult p) {
+        if (p == null || !p.simulation() || !"PAID".equals(p.status())
+                || !Objects.equals(p.milestoneId(), s.getMilestoneId())
+                || !Objects.equals(p.contractId(), s.getContractId())
+                || !Objects.equals(p.jobId(), s.getJobId())
+                || !Objects.equals(p.clientId(), e.contract().getClientUserId())
+                || !Objects.equals(p.freelancerId(), s.getFreelancerId())
+                || !Objects.equals(p.releaseKey(), s.getReleaseKey())
+                || !same(p.grossUsd(), s.getAmount()) || p.feeUsd() == null
+                || p.freelancerUsd() == null || p.usdVndRate() == null || p.payoutVnd() == null) return false;
+        BigDecimal expectedFee = s.getAmount().multiply(new BigDecimal("0.03"))
+                .setScale(2, java.math.RoundingMode.HALF_UP);
+        return p.feeUsd().compareTo(expectedFee) == 0
+                && p.freelancerUsd().compareTo(s.getAmount().subtract(expectedFee)) == 0
+                && p.payoutVnd().compareTo(p.freelancerUsd().multiply(p.usdVndRate())
+                        .setScale(0, java.math.RoundingMode.HALF_UP)) == 0;
     }
 
     private void moneyError(ContractSettlement s, SettlementMoneyStatus state, String error, boolean retry) {

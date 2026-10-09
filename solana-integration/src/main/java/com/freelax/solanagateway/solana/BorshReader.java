@@ -7,6 +7,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.HexFormat;
+import java.util.UUID;
 
 final class BorshReader {
 
@@ -41,6 +42,15 @@ final class BorshReader {
 
     String hash32() {
         return HexFormat.of().formatHex(bytes(32));
+    }
+
+    String uuid16() {
+        ByteBuffer value = ByteBuffer.wrap(bytes(16));
+        return new UUID(value.getLong(), value.getLong()).toString();
+    }
+
+    int u16() {
+        return Short.toUnsignedInt(ByteBuffer.wrap(bytes(2)).order(ByteOrder.LITTLE_ENDIAN).getShort());
     }
 
     boolean bool() {

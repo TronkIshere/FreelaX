@@ -21,6 +21,7 @@ public class JobResponse {
     com.marketplace.backend.entity.JobCategory category;
     List<String> skills;
     BigDecimal budgetUsd;
+    UnifiedTermsPreviewResponse localPaymentTerms;
     UUID clientUserId;
     UUID freelancerId;
     String status;

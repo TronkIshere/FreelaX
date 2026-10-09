@@ -55,6 +55,9 @@ export interface Dispute {
   disputeId: string; contractId: string; milestoneId: string; jobId: string; submissionId: string | null;
   openedBy: string; reasonCode: string; description: string; status: DisputeStatus; openedAt: string;
   claimedBy: string | null; claimedAt: string | null; resolvedBy: string | null; decisionAt: string | null;
+  negotiationUntil?: string | null; moderationDueAt?: string | null;
+  negotiationProposedBy?: string | null; negotiationOutcome?: 'RELEASE_TO_FREELANCER' | 'REFUND_TO_CLIENT' | null;
+  negotiationReason?: string | null;
   resolvedAt: string | null; resolutionReason: string | null; refundStatus: SettlementMoneyStatus | null;
   refundReference: string | null; evidence: DisputeEvidence[];
 }
@@ -72,6 +75,14 @@ export interface AdminDisputeDetail {
 }
 export interface DisputeDecision { outcome: 'RELEASE_TO_FREELANCER' | 'REFUND_TO_CLIENT'; reason: string }
 
+export interface UnifiedTermsPreview {
+  rail: 'UNIFIED_USDC_PAYOUT'; version: number; fingerprint: string;
+  grossUsd: DecimalValue; escrowUsdc: DecimalValue; platformFeeUsdc: DecimalValue;
+  usdcVndRate: DecimalValue; estimatedPayoutVnd: DecimalValue; fullRefundUsd: DecimalValue;
+  fundingHours: number; reviewWindowHours: number; maxRevisions: number;
+  network: string | null; mint: string | null; simulation: boolean;
+}
+
 export interface Job {
   id: string;
   title: string;
@@ -79,6 +90,7 @@ export interface Job {
   category?: JobCategory | null;
   skills?: string[] | null;
   budgetUsd: number;
+  localPaymentTerms?: UnifiedTermsPreview | null;
   clientUserId: string;
   freelancerId: string | null;
   status: string;
@@ -105,6 +117,7 @@ export interface Requirement {
 export interface ContractSummary {
   id: string;
   status: string;
+  paymentRail?: 'SIMULATED' | 'SOLANA_ESCROW' | 'PARTNER_ESCROW_MOCK' | 'UNIFIED_USDC_PAYOUT';
   milestoneId: string | null;
   milestoneStatus: string | null;
   amount: DecimalValue;
@@ -117,6 +130,38 @@ export interface ContractSummary {
   acceptanceCriteria: Requirement[];
 }
 
+export interface EscrowFundingView {
+  paymentRail: 'SOLANA_ESCROW'; status: string; settlementStatus: string;
+  escrowAddress: string;
+  clientWallet: string; freelancerWallet: string; mint: string | null;
+  amountBaseUnits: string | null; fundingExpiresAt: string | null;
+  deliveryDueAt: string | null;
+  reviewDueAt: string | null; submissionHash: string | null;
+  submissionCount: number | null; disputeHash: string | null;
+  fundSignature: string | null; releaseSignature: string | null;
+  refundSignature: string | null;
+  resolutionSignature: string | null; vaultAddress: string | null;
+  vaultBalanceBaseUnits: string | null; vaultBalanceStatus: string;
+  requestedDeliveryDueAt: string | null; extensionUsed: boolean;
+}
+
+export interface EscrowFundingBuild {
+  buildSessionId: string; transactionBase64: string; escrowAddress: string;
+  clientWallet: string; freelancerWallet: string; amountBaseUnits: string; mint: string;
+}
+export interface EscrowActionBuild {
+  intentId: string; action: string; buildSessionId: string;
+  transactionBase64: string; escrowAddress: string; actorWallet: string;
+  reviewDueAt: string | null; payloadHash: string | null;
+}
+export interface EscrowActionStatus {
+  intentId: string; action: string; signature: string; chainStatus: string;
+}
+export interface EscrowMutualRefund {
+  intentId: string; buildSessionId: string; originalTransaction: string;
+  partialTransaction: string | null; clientWallet: string; freelancerWallet: string;
+}
+
 export interface ClientBankAccount {
   paymentMethodId: 'BANK_ACCOUNT_ON_FILE'; ready: boolean;
   bankCode: BankCode | null; maskedAccountNumber: string | null;
@@ -125,6 +170,23 @@ export interface ClientBankInput { bankCode: BankCode; bankAccountNumber: string
 export interface FundingResponse {
   fundingTransactionId: string; fundingStatus: 'PENDING' | 'PROCESSING' | 'SUCCEEDED' | 'FAILED' | 'UNKNOWN';
   simulation: boolean; providerReference: string | null; nextAction: string; retryAfterSeconds: number | null;
+}
+export interface PaymentFlowTimeline {
+  paymentFlowId: string; version: number; jobId: string; contractId: string; milestoneId: string;
+  paymentRail: 'UNIFIED_USDC_PAYOUT'; termsStatus: 'DRAFT' | 'LOCKED';
+  grossUsd: DecimalValue; escrowUsdc: DecimalValue; platformFeeUsd: DecimalValue;
+  payerBankCode?: string | null; payerBankMaskedAccount?: string | null;
+  network: string | null; mint: string | null; quoteSource: string | null;
+  quoteExpiresAt: string | null; fundingExpiresAt: string | null; deliveryDueAt: string | null;
+  reviewWindowHours: number; maxRevisions: number; jobStatus: string; contractStatus: string;
+  steps: { kind: string; status: string; amount: DecimalValue | null; currency: string | null;
+    provider: string | null; reference: string | null; evidenceSource: string | null;
+    retryAfter: string | null; confirmedAt: string | null; transactionSignature?: string | null;
+    vndRate?: DecimalValue | null; payoutVnd?: DecimalValue | null; feeUsdc?: DecimalValue | null;
+    quoteExpiresAt?: string | null }[];
+  evidence: { kind: string; status: string; reference: string | null; evidenceSource: string;
+    amount: DecimalValue | null; currency: string | null; occurredAt: string }[];
+  simulation: boolean;
 }
 export interface SubmissionPayload {
   summary: string;
@@ -151,6 +213,7 @@ export interface DiscoverJob {
   category?: JobCategory | null;
   skills?: string[] | null;
   budgetUsd: number;
+  localPaymentTerms?: UnifiedTermsPreview | null;
   status: string;
   client: { id: string; displayName: string };
   hasApplied: boolean;
@@ -225,6 +288,8 @@ export interface ContractSettlement {
   offRampStatus: SettlementStageStatus; taxStatus: SettlementStageStatus;
   releaseReference: string | null; onChainReference: string | null;
   offRampReference: string | null; taxReference: string | null;
+  platformFeeUsd?: DecimalValue | null; freelancerUsd?: DecimalValue | null;
+  lockedUsdVndRate?: DecimalValue | null; partnerPayoutVnd?: DecimalValue | null;
   onChainError: string | null; offRampError: string | null; taxError: string | null;
   retryable: boolean; lastError: string | null; createdAt: string; updatedAt: string;
 }

@@ -68,6 +68,8 @@ public class JobSubmission extends AbstractEntity<UUID> {
 
     private Instant reviewDueAt;
 
+    private int reviewReminderCount;
+
     private Instant reviewGraceDueAt;
 
     private boolean reviewedAutomatically;

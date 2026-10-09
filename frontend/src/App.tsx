@@ -11,6 +11,8 @@ import { Activity } from './Activity';
 import { AuthEntry } from './Auth';
 import { ActionGroup, StatePanel } from './components';
 import { FinanceHome, TaxRecordDetail, TaxRecordsPage } from './Finance';
+import { PartnerReconciliation } from './PartnerReconciliation';
+import { UnifiedReconciliation } from './UnifiedReconciliation';
 import { ClientJobs, FreelancerDiscovery } from './Jobs';
 import { Overview } from './Overview';
 import { useSession } from './session';
@@ -95,7 +97,7 @@ function RoleShell({ user }: { user: User }) {
       <NavLink to="/work/applications">Ứng tuyển</NavLink>
       <NavLink to="/work/mine">Công việc của tôi</NavLink>
     </nav>}
-    {hasAuthority(user, 'ROLE_ADMIN') && location.pathname.startsWith('/admin/') && <nav className="subnav" aria-label="Khu vực quản trị"><NavLink to="/admin/disputes">Tranh chấp</NavLink><NavLink to="/admin/reviews">Đánh giá được báo cáo</NavLink></nav>}
+    {hasAuthority(user, 'ROLE_ADMIN') && location.pathname.startsWith('/admin/') && <nav className="subnav" aria-label="Khu vực quản trị"><NavLink to="/admin/disputes">Tranh chấp</NavLink><NavLink to="/admin/reviews">Đánh giá được báo cáo</NavLink><NavLink to="/admin/partner-reconciliation">Đối soát ký quỹ</NavLink><NavLink to="/admin/unified-reconciliation">Đối soát USDC</NavLink></nav>}
     <main id="main" className="view" tabIndex={-1}>
       <Routes>
         <Route path="/" element={<Overview user={user} />} />
@@ -118,6 +120,8 @@ function RoleShell({ user }: { user: User }) {
         <Route path="/admin/disputes/:disputeId" element={<AdminDisputeDetail user={user} />} />
         <Route path="/admin/reviews" element={<AdminReviews user={user} />} />
         <Route path="/admin/reviews/:reviewId" element={<AdminReview user={user} />} />
+        <Route path="/admin/partner-reconciliation" element={hasAuthority(user, 'ROLE_ADMIN') ? <PartnerReconciliation /> : <Navigate to="/" replace />} />
+        <Route path="/admin/unified-reconciliation" element={hasAuthority(user, 'ROLE_ADMIN') ? <UnifiedReconciliation /> : <Navigate to="/" replace />} />
         <Route path="/profiles/:userId" element={<PublicProfile user={user} />} />
         <Route path="/account" element={<Account user={user} onLogout={() => void logout()} loggingOut={loggingOut} onReconcileUser={reconcileUser} />} />
         <Route path="*" element={<Navigate to="/" replace />} />

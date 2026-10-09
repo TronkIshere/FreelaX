@@ -51,6 +51,14 @@ public class ContractDispute extends AbstractEntity<UUID> {
     private String description;
 
     private Instant openedAt;
+    private Instant negotiationUntil;
+    private Instant moderationDueAt;
+    private UUID negotiationProposedBy;
+    @Column(length = 32)
+    private String negotiationOutcome;
+    @Column(length = 2000)
+    private String negotiationReason;
+    private Instant negotiationProposedAt;
     private UUID claimedBy;
     private Instant claimedAt;
     private UUID resolvedBy;

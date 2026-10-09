@@ -17,7 +17,7 @@ spring:
 
 solana:
   rpc-url: ${SOLANA_RPC_HTTP_URL:http://127.0.0.1:9123}
-  program-id: ${SOLANA_PROGRAM_ID:4Wd6umju26vej2ftzwR6J55pjkUqDQsxfVkt46UqDb1b}
+  program-id: ${SOLANA_PROGRAM_ID:2Tx2faZU1siV1xvKMxbRN1VesgXftjM3Lff3Nwn69oqb}
   commitment: ${SOLANA_COMMITMENT:confirmed}
   system-fee-payer: ${SOLANA_SYSTEM_FEE_PAYER:}
   internal-api-key: ${SOLANA_INTERNAL_API_KEY:}

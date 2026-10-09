@@ -82,3 +82,60 @@ describe('P06.4A funding', () => {
     expect(host.querySelector('.bank-form')).not.toBeNull(); expect(host.textContent).not.toContain('123456781234');
   });
 });
+
+describe('unified payment flow draft', () => {
+  it('shows the shared flow and no legacy funding action', async () => {
+    const unified: Job = { ...job, contract: { ...job.contract!, paymentRail: 'UNIFIED_USDC_PAYOUT' } };
+    const timeline = vi.spyOn(api, 'paymentFlow').mockResolvedValue({
+      paymentFlowId: 'flow-1', version: 0, jobId: job.id, contractId: 'contract', milestoneId: 'milestone',
+      paymentRail: 'UNIFIED_USDC_PAYOUT', termsStatus: 'DRAFT', grossUsd: '100.00',
+      escrowUsdc: '100.000000', platformFeeUsd: '3.00', network: null, mint: null,
+      quoteSource: null, quoteExpiresAt: null, fundingExpiresAt: null, deliveryDueAt: null,
+      reviewWindowHours: 72, maxRevisions: 2, jobStatus: 'AWAITING_PAYMENT',
+      contractStatus: 'PENDING_FUNDING', steps: [{ kind: 'USD_ORDER', status: 'NOT_STARTED',
+        amount: null, currency: null, provider: null, reference: null, evidenceSource: null,
+        retryAfter: null, confirmedAt: null }], evidence: [], simulation: true,
+    });
+
+    await act(async () => root.render(<FundingPanel job={unified} user={client} onJobUpdated={updated} />));
+
+    expect(timeline).toHaveBeenCalledWith('contract', 'milestone');
+    expect(host.textContent).toContain('flow-1');
+    expect(host.textContent).toContain('Điều khoản và quote đang chờ khóa');
+    expect(button('Funding mô phỏng')).toBeUndefined();
+    expect(button('Chọn ký quỹ Solana')).toBeUndefined();
+    expect(button('Chọn ký quỹ đối tác mock')).toBeUndefined();
+    expect(api.funding).not.toHaveBeenCalled();
+    expect(button('Tạo USD order mô phỏng')?.disabled).toBe(false);
+  });
+
+  it('asks a new Client for the payer bank before the USD order can be opened', async () => {
+    const unified: Job = { ...job, contract: { ...job.contract!, paymentRail: 'UNIFIED_USDC_PAYOUT' } };
+    vi.spyOn(api, 'clientBank').mockResolvedValue({ ...ready, ready: false, bankCode: null, maskedAccountNumber: null } as never);
+    const save = vi.spyOn(api, 'saveClientBank').mockResolvedValue(ready);
+    vi.spyOn(api, 'paymentFlow').mockResolvedValue({
+      paymentFlowId: 'flow-1', version: 0, jobId: job.id, contractId: 'contract', milestoneId: 'milestone',
+      paymentRail: 'UNIFIED_USDC_PAYOUT', termsStatus: 'DRAFT', grossUsd: '100.00',
+      escrowUsdc: '100.000000', platformFeeUsd: '3.00', network: 'localnet', mint: 'mint',
+      quoteSource: null, quoteExpiresAt: null, fundingExpiresAt: null, deliveryDueAt: null,
+      reviewWindowHours: 72, maxRevisions: 2, jobStatus: 'AWAITING_PAYMENT',
+      contractStatus: 'PENDING_FUNDING', steps: [{ kind: 'USD_ORDER', status: 'NOT_STARTED',
+        amount: null, currency: null, provider: null, reference: null, evidenceSource: null,
+        retryAfter: null, confirmedAt: null }], evidence: [], simulation: true,
+    });
+
+    await act(async () => root.render(<FundingPanel job={unified} user={client} onJobUpdated={updated} />));
+    expect(button('Tạo USD order mô phỏng')?.disabled).toBe(true);
+    const form = host.querySelector<HTMLFormElement>('form[aria-label="Tài khoản ngân hàng Client"]')!;
+    const [number, holder] = Array.from(form.querySelectorAll<HTMLInputElement>('input'));
+    const setValue = (input: HTMLInputElement, value: string) => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, value);
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+    await act(async () => { setValue(number, '123456789'); setValue(holder, 'CLIENT NAME'); });
+    await act(async () => { form.requestSubmit(); });
+
+    expect(save).toHaveBeenCalledWith({ bankCode: 'VIETCOMBANK', bankAccountNumber: '123456789', bankAccountHolderName: 'CLIENT NAME' });
+    expect(button('Tạo USD order mô phỏng')?.disabled).toBe(false);
+  });
+});

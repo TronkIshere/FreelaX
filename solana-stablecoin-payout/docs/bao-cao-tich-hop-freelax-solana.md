@@ -1,6 +1,6 @@
 # Báo cáo đánh giá tích hợp FreelaX với Solana Stablecoin Payout
 
-> **HISTORICAL / TECHNICAL INTEGRATION ANALYSIS — 2026-10-08:** Một số phần mô tả kiến trúc đích, khuyến nghị hoặc các khoảng trống ở baseline cũ; không phải tất cả đã triển khai, và các Program ID/flow lịch sử bên dưới không phải cấu hình hiện hành. Vai trò Solana theo nghiệp vụ hiện tại: [Solana business role](../../docs/business/FREELAX_SOLANA_BUSINESS_ROLE_20261008.md). Sự thật runtime và giới hạn cuối: [Final Freeze / Handoff](../../docs/ui/FREELAX_FINAL_FREEZE_HANDOFF_20261008.md). Primary settlement thành công không chứng minh on-chain/off-ramp/tax hoàn tất. Giữ báo cáo làm lịch sử; ưu tiên source/API hiện tại khi có khác biệt.
+> **HISTORICAL / TECHNICAL INTEGRATION ANALYSIS — 2026-10-08:** Một số phần mô tả kiến trúc đích, khuyến nghị hoặc các khoảng trống ở baseline cũ; không phải tất cả đã triển khai, và các Program ID/flow lịch sử bên dưới không phải cấu hình hiện hành. Vai trò Solana theo nghiệp vụ hiện tại: [kiến trúc Solana](../../docs/business/SOLANA_ARCHITECTURE.md). Sự thật runtime và giới hạn cuối: [trạng thái kiểm chứng](../../docs/business/VERIFICATION.md). Primary settlement thành công không chứng minh on-chain/off-ramp/tax hoàn tất. Giữ báo cáo làm lịch sử; ưu tiên source/API hiện tại khi có khác biệt.
 
 > **Cập nhật 28/09/2026:** phân tích riêng ba commit mới nhất của `master`
 > (`3352168`, `7e73cee`, `26c44d3`) được ghi tại

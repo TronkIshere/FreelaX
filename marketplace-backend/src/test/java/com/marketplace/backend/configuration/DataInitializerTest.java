@@ -29,7 +29,7 @@ class DataInitializerTest {
     void rejectsMissingOrWeakRuntimePasswordsBeforeSeeding() {
         DataInitializer initializer = new DataInitializer();
         assertThatThrownBy(() -> initializer.initData(null, null, null, null, null, null, null,
-                "short", "f".repeat(32)).run(new DefaultApplicationArguments(new String[0])))
+                null, "short", "f".repeat(32), "").run(new DefaultApplicationArguments(new String[0])))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("DEMO_CLIENT_PASSWORD");
     }
@@ -63,7 +63,7 @@ class DataInitializerTest {
         when(jobs.findByClientUserId(any())).thenReturn(List.of(new Job()));
 
         new DataInitializer().initData(roles, users, jobs, criteria, deliverables, wallets, encoder,
-                "c".repeat(32), "f".repeat(32))
+                null, "c".repeat(32), "f".repeat(32), "")
                 .run(new DefaultApplicationArguments(new String[0]));
 
         assertThat(client.getPassword()).isEqualTo("hash:" + "c".repeat(32));
@@ -96,7 +96,7 @@ class DataInitializerTest {
         when(jobs.findByClientUserId(any())).thenReturn(List.of(new Job()));
 
         new DataInitializer().initData(roles, users, jobs, criteria, deliverables, wallets, encoder,
-                "c".repeat(32), "f".repeat(32))
+                null, "c".repeat(32), "f".repeat(32), "")
                 .run(new DefaultApplicationArguments(new String[0]));
 
         User freelancer = org.mockito.Mockito.mockingDetails(users).getInvocations().stream()

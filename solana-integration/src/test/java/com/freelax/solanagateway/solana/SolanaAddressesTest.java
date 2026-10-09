@@ -9,7 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class SolanaAddressesTest {
 
     private final SolanaAddresses addresses = new SolanaAddresses(new SolanaProperties(
-            "http://127.0.0.1:9123", "4Wd6umju26vej2ftzwR6J55pjkUqDQsxfVkt46UqDb1b",
+            "http://127.0.0.1:9123", "2Tx2faZU1siV1xvKMxbRN1VesgXftjM3Lff3Nwn69oqb",
             "confirmed", "", "test", true, 120, ""));
 
     @Test
@@ -17,14 +17,14 @@ class SolanaAddressesTest {
         PublicKey zero = new PublicKey("11111111111111111111111111111111");
 
         assertThat(addresses.config().toBase58())
-                .isEqualTo("EecUo2QqJjctz8EFvbiSxKF5rbU4AvPnVHbSiivUqUdb");
+                .isEqualTo("9dPw1tBnD85mVGyS41RRQCjjReBoZjkEt9qrYxdCoRvc");
         assertThat(addresses.invoice(zero, "42").toBase58())
-                .isEqualTo("6o1jYvTfhymLqmBy4CifV9N5SVQfptxbVj1PXya8Pxa5");
+                .isEqualTo("E7riCra953fdQHN5ZwznNMgWSWGyGWYc2evdogd1iVhS");
         assertThat(addresses.rate("42").toBase58())
-                .isEqualTo("4sb336jxELzA75B94UrXJJtRzh2sPE1c4izHvynEnZcx");
+                .isEqualTo("7tteMhQ7sau61k6KqEjXtYkkBVAhCi5YZZD12doTBEUR");
         assertThat(addresses.withdrawal(zero, "42").toBase58())
-                .isEqualTo("Gy3QESR2gWV9dCTQQ5zEpkuEsKSvvZxw3qe6QHCMKbEy");
+                .isEqualTo("HXx3opUBHanLP87UKrFcW3GBm1kusCJVZNvMFaDkreoD");
         assertThat(addresses.mockOnrampTreasuryAuthority().toBase58())
-                .isEqualTo("833bBZDEi9ZUx9SA6URqma9Z1srt2D6Po9hK8jjpHQPh");
+                .isEqualTo("7ajhzqfmefEBv8Aq4hxXn4Cqd4YP2UTNKMpXLS8zsCAq");
     }
 }

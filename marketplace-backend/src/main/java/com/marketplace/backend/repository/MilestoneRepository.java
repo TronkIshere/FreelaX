@@ -23,6 +23,7 @@ public interface MilestoneRepository extends JpaRepository<Milestone, UUID> {
             select m.id from Milestone m
             where m.status = com.marketplace.backend.entity.MilestoneStatus.RELEASE_PENDING
             and not exists (select s.id from ContractSettlement s where s.milestoneId = m.id)
+            and not exists (select e.id from EscrowContract e where e.milestoneId = m.id)
             order by m.updatedAt asc, m.id asc
             """)
     List<UUID> findUnsettledReleaseIds(Pageable pageable);

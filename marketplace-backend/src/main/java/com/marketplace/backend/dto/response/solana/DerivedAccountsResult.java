@@ -23,4 +23,6 @@ public class DerivedAccountsResult {
     String freelancerAta;
     String withdrawalRecord;
     String treasuryAta;
+    String milestoneEscrow;
+    String escrowVault;
 }

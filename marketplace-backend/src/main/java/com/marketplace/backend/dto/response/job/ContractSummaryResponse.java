@@ -13,6 +13,7 @@ import java.util.UUID;
 public class ContractSummaryResponse {
     UUID id;
     String status;
+    String paymentRail;
     UUID milestoneId;
     String milestoneStatus;
     BigDecimal amount;

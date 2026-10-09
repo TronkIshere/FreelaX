@@ -40,7 +40,7 @@ import static org.mockito.Mockito.*;
 class ContractDisputeServiceTest {
     @Configuration @EntityScan(basePackageClasses = Job.class)
     @EnableJpaRepositories(basePackageClasses = JobRepository.class)
-    @Import({ContractDisputeService.class, ContractCancellationService.class, SettlementService.class})
+    @Import({ContractDisputeService.class, ContractCancellationService.class, SettlementService.class, BusinessDayClock.class})
     static class Config {
         @Bean TransactionTemplate transactions(PlatformTransactionManager manager) { return new TransactionTemplate(manager); }
     }
@@ -60,6 +60,9 @@ class ContractDisputeServiceTest {
     @Autowired JobSubmissionRepository submissions;
     @Autowired TransactionTemplate tx;
     @MockitoBean PaymentBackendClient payment;
+    @MockitoBean PartnerReconciliationService partnerReconciliation;
+    @MockitoBean UserRepository users;
+    @MockitoBean com.marketplace.backend.client.SolanaCprClient solana;
     @MockitoBean NotificationService notifications;
     @MockitoBean SettlementDownstreamService downstream;
     Job job; WorkContract contract; Milestone milestone; FundingTransaction paid;
@@ -301,6 +304,31 @@ class ContractDisputeServiceTest {
                             ? MilestoneStatus.RELEASE_PENDING : MilestoneStatus.REFUND_PENDING);
             verifyNoInteractions(payment);
         } finally { pool.shutdownNow(); }
+    }
+    @Test void partnerNegotiationNeedsBothPartiesAndPreservesFullRefund() {
+        UUID[] id = {null};
+        tx.executeWithoutResult(s -> {
+            contracts.findById(contract.getId()).orElseThrow().setPaymentRail(PartnerEscrowFundingService.RAIL);
+            contracts.findById(contract.getId()).orElseThrow().setStatus(ContractStatus.DISPUTED);
+            milestones.findById(milestone.getId()).orElseThrow().setStatus(MilestoneStatus.DISPUTED);
+            funding.findById(paid.getId()).orElseThrow().setPaymentMethodId(PartnerEscrowFundingService.RAIL);
+            ContractDispute d = new ContractDispute();
+            d.setContractId(contract.getId()); d.setMilestoneId(milestone.getId()); d.setJobId(job.getId());
+            d.setOpenedBy(client()); d.setReasonCode("QUALITY"); d.setDescription("Negotiation");
+            d.setOpenedAt(Instant.now()); d.setNegotiationUntil(Instant.now().plusSeconds(3600));
+            d.setStatus(DisputeStatus.OPEN); id[0] = disputes.saveAndFlush(d).getId();
+        });
+        var request = new NegotiateDisputeRequest(ResolveDisputeRequest.Outcome.REFUND_TO_CLIENT, "Full refund");
+        service.negotiate(client(), contract.getId(), id[0], request);
+        assertThat(disputes.findById(id[0]).orElseThrow().getStatus()).isEqualTo(DisputeStatus.OPEN);
+        assertThatThrownBy(() -> service.claim(admin, id[0])).isInstanceOf(ApplicationException.class);
+        service.negotiate(freelancer(), contract.getId(), id[0], request);
+        ContractDispute agreed = disputes.findById(id[0]).orElseThrow();
+        assertThat(agreed.getStatus()).isEqualTo(DisputeStatus.DECISION_PENDING_REFUND);
+        assertThat(agreed.getAmount()).isEqualByComparingTo("500.00");
+        assertThat(agreed.getRefundKey()).isEqualTo("marketplace-refund-" + milestone.getId());
+        assertThat(milestones.findById(milestone.getId()).orElseThrow().getStatus()).isEqualTo(MilestoneStatus.REFUND_PENDING);
+        verifyNoInteractions(payment);
     }
     private void await(CountDownLatch latch) {
         try { latch.await(); } catch (InterruptedException ex) { Thread.currentThread().interrupt(); }

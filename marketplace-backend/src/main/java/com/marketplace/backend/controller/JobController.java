@@ -195,11 +195,13 @@ public class JobController {
 
     @PostMapping("/{jobId}/apply")
     public ResponseAPI<JobApplicationResponse> apply(@AuthenticationPrincipal UserPrincipal principal,
-                                                     @PathVariable UUID jobId) {
+                                                     @PathVariable UUID jobId,
+                                                     @RequestBody(required = false) com.marketplace.backend.dto.request.job.ApplyJobRequest request) {
         return ResponseAPI.<JobApplicationResponse>builder()
                 .code(200)
                 .message("Ứng tuyển thành công")
-                .data(jobService.apply(principal.getId(), jobId))
+                .data(jobService.apply(principal.getId(), jobId,
+                        request == null ? null : request.acceptedTermsFingerprint()))
                 .build();
     }
 

@@ -31,6 +31,7 @@ import static org.mockito.Mockito.*;
 class FundingServiceTest {
     private FundingTransactionRepository transactions;
     private WorkContractRepository contracts;
+    private EscrowContractRepository escrowContracts;
     private MilestoneRepository milestones;
     private JobRepository jobs;
     private UserRepository users;
@@ -46,6 +47,7 @@ class FundingServiceTest {
     void setUp() {
         transactions = mock(FundingTransactionRepository.class);
         contracts = mock(WorkContractRepository.class);
+        escrowContracts = mock(EscrowContractRepository.class);
         milestones = mock(MilestoneRepository.class);
         jobs = mock(JobRepository.class);
         users = mock(UserRepository.class);
@@ -57,7 +59,7 @@ class FundingServiceTest {
             @Override public void commit(TransactionStatus status) { }
             @Override public void rollback(TransactionStatus status) { }
         });
-        service = new FundingService(transactions, contracts, milestones, jobs, users, payment,
+        service = new FundingService(transactions, contracts, escrowContracts, milestones, jobs, users, payment,
                 mock(NotificationService.class), tx);
 
         contract = new WorkContract();
@@ -150,6 +152,18 @@ class FundingServiceTest {
                 .extracting(ex -> ((ApplicationException) ex).getErrorCode())
                 .isEqualTo(ErrorCode.FUNDING_AMOUNT_CHANGED);
         verifyNoInteractions(payment);
+    }
+
+    @Test
+    void unifiedFlowCannotBeFundedByLegacySimulatedCheckout() {
+        contract.setPaymentRail(PaymentFlow.RAIL);
+        assertThatThrownBy(() -> service.fund(client.getId(), contract.getId(), milestone.getId(),
+                "key-1", request("500.00")))
+                .isInstanceOf(ApplicationException.class)
+                .extracting(ex -> ((ApplicationException) ex).getErrorCode())
+                .isEqualTo(ErrorCode.FUNDING_INVALID_STATE);
+        verifyNoInteractions(payment);
+        verify(transactions, never()).saveAndFlush(any());
     }
 
     @Test

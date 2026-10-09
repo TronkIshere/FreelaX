@@ -36,3 +36,6 @@ pub use configure_mock_onramp::*;
 
 pub mod mock_onramp;
 pub use mock_onramp::*;
+
+pub mod milestone_escrow;
+pub use milestone_escrow::*;

@@ -21,7 +21,9 @@ public final class Responses {
             String mockOnrampTreasuryAta,
             String clientAta,
             String freelancerAta,
-            String treasuryAta
+            String treasuryAta,
+            String milestoneEscrow,
+            String escrowVault
     ) {
     }
 
@@ -65,6 +67,20 @@ public final class Responses {
             String address, String invoiceId, String freelancer, String client, String amount,
             String mint, String rateSnapshot, String expiresAt, String status,
             String createdAt, String paidAt, int bump
+    ) {
+    }
+
+    public record EscrowDto(
+            String address, String milestoneId, String client, String freelancer,
+            String arbiter, String mint, String amount, String fundingExpiresAt,
+            String originalDeliveryDueAt,
+            String deliveryDueAt, String requestedDeliveryDueAt, boolean extensionUsed,
+            String reviewWindowSeconds, String reviewDueAt, String submissionHash,
+            int submissionCount, int revisionsUsed, int maxRevisions, String status,
+            String fundedAt, String settledAt, String disputeHash,
+            String disputedBy, String disputedAt,
+            String resolutionHash, String revisionHash, int bump, String vaultAddress,
+            String vaultBalanceBaseUnits
     ) {
     }
 
