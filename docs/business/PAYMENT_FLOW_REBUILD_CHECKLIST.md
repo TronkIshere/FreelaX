@@ -13,6 +13,7 @@
 - [x] Chốt cách hoàn **đủ gross USD** trước release, gồm bên chịu phí on-ramp/off-ramp và chênh lệch tỷ giá. Nếu chưa bảo đảm được, phải sửa điều khoản trước khi bật flow.
 - [x] Chốt một chính sách hạn funding, bàn giao/gia hạn, review, tự duyệt/nhắc, tranh chấp và Admin cho flow mới; ánh xạ cùng điều khoản sang server và chain: hạn funding 48 giờ lưu một lần trên `PaymentFlow` cho server lẫn chain; review cố định 72 giờ, không grace (`high_value_review_grace=false`); gia hạn bàn giao một lần, ≤ hạn gốc + 7 ngày, Client duyệt on-chain (chủ sản phẩm chốt 2026-10-10); timer không hủy khi USD có thể đã vào; tranh chấp chặn auto release; Admin resolve toàn phần và hủy quá hạn có audit.
 - [x] Chốt quy tắc Job `COMPLETED` khi công việc/release USDC xong, còn Finance `VND_PAID` chỉ khi đối tác xác nhận VND; tax/review không thay thế payout evidence.
+- [x] Chứng từ khấu trừ thuế cho Job unified: phát hành qua MISA sau `VND_PAYOUT` đã xác nhận, thu nhập theo tỷ giá đã khóa; tải PDF/XML từ màn Chứng từ thuế (PR #7, 2026-10-10).
 - [x] Liệt kê Job đang `PENDING/UNKNOWN` trên từng rail cũ và quy tắc xử lý riêng: [runbook](CUTOVER_RUNBOOK.md#khoản-đang-dở-trên-db-local-đọc-ngày-2026-10-09-sau-e2e). Không migrate tiền/vault/withdrawal đang dở bằng cập nhật DB.
 
 **Gate 0: đạt ở local mock.** Tài khoản mới đã thấy cùng điều khoản (gồm mint/network, review 72 giờ, quy tắc gia hạn) và xác nhận cùng fingerprint trên browser.

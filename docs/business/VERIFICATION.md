@@ -1,31 +1,60 @@
-# Trạng thái kiểm chứng luồng thanh toán thống nhất
+# Kiểm chứng luồng thanh toán thống nhất
 
-**Kết luận hiện tại (2026-10-10): ĐÃ TRIỂN KHAI Ở LOCAL MOCK — Gate 0–6 và Gate hoàn tất đạt.** Chủ sản phẩm chốt quy tắc gia hạn bàn giao ngày 2026-10-10, đóng Gate 0. Đã chạy: tài khoản mới trên browser (release, refund, từ chối ký ví, đối tác chậm, bàn phím), tranh chấp hai hướng và hết hạn review trên flow unified, drill sự cố Payment Backend/RPC/giao dịch rơi, test đồng thời trên MySQL, rà soát bảo mật. Ngoài phạm vi và chưa bắt đầu: tiền thật, đối tác thật, devnet/production. Chi tiết ở [bổ sung 2026-10-10](#bổ-sung-2026-10-10-tranh-chấp-timeout-sự-cố-đồng-thời-và-bảo-mật). USD/VND và phí vẫn là mock; không chứng minh tiền thật hay devnet.
+**Kết luận (2026-10-10): ĐÃ TRIỂN KHAI Ở LOCAL MOCK.** Gate 0–6 và Gate hoàn tất trong [checklist](PAYMENT_FLOW_REBUILD_CHECKLIST.md) đều đạt. Phạm vi: Compose local, Solana local validator, Mock USDC, đối tác USD/VND và MISA mô phỏng. Không chứng minh tiền thật, đối tác thật hay devnet.
 
-| Thành phần đã chạy riêng | Bằng chứng hiện có | Điều chưa được chứng minh |
+## Bằng chứng theo nhóm
+
+| Nhóm | Đã kiểm chứng | Lệnh / nguồn |
 | --- | --- | --- |
-| Marketplace contract/work/review | E2E contract-backed, primary settlement mô phỏng và review/reputation của P06 | USD/USDC/vault/VND trên cùng Job |
-| Solana vault token | Local validator: Client approve release, mutual refund, timeout release và Admin dispute refund; trạng thái Job và vault/token balance được kiểm tra | On-ramp USD trước funding, off-ramp VND sau release trên cùng Job; devnet/tiền thật |
-| Đối tác mock USD/VND | HTTP E2E chi/hoàn/`UNKNOWN`; browser seed account funding → bàn giao → duyệt → chi; Admin thấy khớp/lệch | Bước USDC và vault; browser tự động từ đăng ký tài khoản mới; giao dịch ngân hàng thật |
-| P06 on-ramp/Invoice/off-ramp | Các module và API demo tồn tại, downstream chạy sau primary release mô phỏng | Funding escrow **trước** khi Freelancer làm và payout từ token vừa release của cùng Job |
-| `UNIFIED_USDC_PAYOUT` local mock | Script `solana-stablecoin-payout/scripts/local-unified-flow-e2e.ts`: hai Job seed qua USD statement, on-ramp receipt, vault, release/refund, WithdrawalRecord, VND+fee hoặc USD refund; chạy lại cùng reference PASS | Browser từ tài khoản mới; đối tác/tiền thật; Admin chưa tự chứng minh token delta ví nhận; outage/restart đầy đủ |
+| Điều khoản (Gate 0) | Hai bên thấy cùng điều khoản (fingerprint gồm mint/network, review 72 giờ, quy tắc gia hạn); tài khoản mới xác nhận trên browser | `frontend/scripts/unified-new-account-e2e.mjs` |
+| Dữ liệu và đồng thời (Gate 1) | Một flow/Milestone; release và refund không thể cùng xác nhận; hủy quá hạn đúng một lần dưới 4 Admin song song | `PaymentFlowMySqlConcurrencyIT` trên MySQL 8.4 + Flyway |
+| Đối tác mô phỏng (Gate 2) | Sao kê USD/VND/phí/hoàn USD độc lập; retry sau khi đối tác đã chi không chi lần hai; làm tròn | `payment-backend` test 71/71 |
+| Solana (Gate 3) | Ký quỹ, bàn giao, gia hạn, tranh chấp, release/refund chốt một lần; cờ grace 72 giờ; mã hóa instruction | Anchor 75/75, Gateway 7/7 |
+| Điều phối và đối soát (Gate 4) | 4 ranh giới `MATCHED` trên stack thật; `MISMATCH` và `UNKNOWN` chặn bước tiếp theo; bảng theo loại tiền | `scripts/local-unified-flow-e2e.ts`, `local-unified-outage-e2e.ts` |
+| Giao diện (Gate 5) | Tài khoản mới từ đăng ký đến VND và hoàn USD; từ chối ký ví; đối tác chậm; bàn phím | `unified-new-account-e2e.mjs`, `unified-browser-edge-e2e.mjs` |
+| Chuyển đổi (Gate 6) | Flag theo Job; Job cũ giữ rail; runbook và rollback | [CUTOVER_RUNBOOK](CUTOVER_RUNBOOK.md) |
+| Tranh chấp và hết hạn | Admin về Freelancer (→ VND) và về Client (→ hoàn USD); scheduler tự release sau 72 giờ trên bản sao ledger warp | `local-unified-dispute-e2e.ts`, `local-unified-timeout-e2e.ts` |
+| Sự cố | Payment Backend sập lúc nộp USD và lúc chi; RPC mất; on-ramp bị rơi rồi gửi lại; không chi trùng | `local-unified-outage-e2e.ts` |
+| Chứng từ thuế | Scheduler phát hành chứng từ sau `VND_PAYOUT`; 7 chứng từ `ACCEPTED`; PDF và XML tải được (ví dụ 5 USD → thu nhập 125.000 VND, khấu trừ 12.500 VND) | PR #7, `TaxCertificateContractTest` |
+| Bảo mật | Endpoint Admin trả 401/403 cho người không có quyền; danh tính lấy từ token; Freelancer không thấy ngân hàng của Client | `PaymentFlowControllerSecurityTest` |
 
-**Giới hạn chứng cứ cần giữ:** ca timeout Solana 2026-10-09 có signature lưu tại Marketplace và vault/số dư xác minh sau validator restart, nhưng RPC history của signature timeout không còn; Admin refund có signature RPC xác nhận. Ca mất kết nối đối tác mock là trước khi mock nhận lệnh hoàn, chưa chứng minh mất phản hồi **sau khi** provider đã chi/hoàn. Browser test đối tác chuẩn bị Job/ứng tuyển/phân công qua API. Chi tiết và ID nằm trong [archive](archive/README.md); [guide demo hai phía cũ](archive/LOCAL_TWO_SIDED_E2E_GUIDE.md) cũng ở đó.
+Kết quả test gần nhất: Marketplace 328/328, Payment Backend 71/71, Frontend 801/801 + build, Gateway 7/7, Anchor 75/75, MySQL IT 3/3.
 
-## Tiến độ nền dữ liệu flow (chưa qua gate)
+## Chạy lại kiểm chứng
+
+```bash
+# Từ solana-stablecoin-payout (validator ở 127.0.0.1:9123, stack Compose đang chạy, flag cutover = true)
+export ANCHOR_PROVIDER_URL=http://127.0.0.1:9123 ANCHOR_WALLET="$HOME/.config/solana/id.json"
+./node_modules/.bin/ts-mocha -p tsconfig.json -t 400000 scripts/local-unified-flow-e2e.ts --prepare   # tạo Job QA
+./node_modules/.bin/ts-mocha -p tsconfig.json -t 400000 scripts/local-unified-flow-e2e.ts             # release + refund
+./node_modules/.bin/ts-mocha -p tsconfig.json -t 600000 scripts/local-unified-dispute-e2e.ts
+./node_modules/.bin/ts-mocha -p tsconfig.json -t 1500000 scripts/local-unified-outage-e2e.ts           # cần Gateway trỏ proxy :9133
+
+# Từ frontend
+node scripts/unified-new-account-e2e.mjs
+node scripts/unified-browser-edge-e2e.mjs
+```
+
+Script outage cắt kết nối RPC qua `scripts/local-rpc-proxy.sh`. Gateway phải chạy với `SOLANA_RPC_HTTP_URL=http://host.docker.internal:9133` trong lúc drill, rồi trả về `:9123` sau đó. Ca hết hạn review cần bản sao ledger được warp đồng hồ; thao tác này chỉ làm trên bản sao, xem nhật ký ngày 2026-10-10 bên dưới.
+
+## Nhật ký kiểm chứng chi tiết
+
+Các mục dưới đây là biên bản theo thời gian. Nhận định "chưa đạt" trong các mục cũ đã được xử lý ở các mục sau.
+
+### Tiến độ nền dữ liệu flow (chưa qua gate)
 
 Quyết định nghiệp vụ ngày 2026-10-09: chỉ bỏ bộ chọn rail cho Job mới **khi** `UNIFIED_USDC_PAYOUT` đã có đường funding và qua các gate local mock. Cho tới lúc đó flag vẫn tắt; Job cũ tiếp tục theo rail đã ghi. Đây là quyết định về trình tự cutover, không phải bằng chứng E2E.
 
 Nền dữ liệu ngày 2026-10-09: thêm `PaymentFlow`, step, evidence append-only, API timeline có kiểm tra participant/Admin, và flag cutover mặc định `false`. Job mới ghi version ở lúc tạo để Job cũ không đổi rail khi flag đổi; ba API funding cũ từ chối Contract mang rail unified. UI đọc timeline của rail unified và không đưa bộ chọn ba rail cho Contract đó. [Điều khoản local đã chốt](UNIFIED_FLOW_LOCAL_TERMS.md) có ví dụ 100 USD và các ranh giới xác nhận. Chưa có migration chính thức; không đánh dấu checklist.
 
-### Bổ sung bản triển khai local ngày 2026-10-09
+#### Bổ sung bản triển khai local ngày 2026-10-09
 
 - Payment Backend có USD order mock riêng, quote 15 phút, lệnh xác nhận của Client và sao kê `USD_RECEIVED` độc lập. Marketplace chỉ xác nhận `USD_RECEIVED` khi sao kê khớp `paymentFlowId`, reference, amount và currency; sau đó đối soát receipt on-ramp trước khi mở quyền ký funding escrow. Giao diện unified hiển thị USD order, trạng thái USDC và thao tác ký escrow theo cùng timeline.
 - Reconciler Solana ghi `USDC_RELEASE` hoặc `USDC_REFUND` sau trạng thái terminal on-chain khớp escrow đã xác nhận; chặn ghi hai kết quả đối nghịch. Contract unified bị chặn khỏi release/refund ledger mô phỏng cũ. Job vẫn chỉ kích hoạt khi vault ở trạng thái có đủ USDC.
 - Build Java dùng JDK 21/Maven 3.9.12 tạm trong `/tmp/freelax-build` vì workspace không có JDK/Maven. `mvn -q -o -pl marketplace-backend -am -DskipTests compile` PASS; `UnifiedUsdOrderMockServiceTest` PASS; `PaymentFlowServiceTest`, `SettlementServiceTest`, `ContractCancellationServiceTest` PASS **92/92**. Build frontend và 15 ca `Funding.test.tsx` PASS sau thay đổi UI. `git diff --check` PASS.
 - Tại thời điểm bổ sung này chưa có E2E unified; bằng chứng local E2E chạy sau đó được ghi ở phần dưới. Trạng thái release/refund hiện dựa trên account escrow terminal do gateway đọc; Admin chưa tự chứng minh token delta ví đích. Vì vậy **không bật** `PAYMENT_FLOW_CUTOVER_ENABLED` cho Job thường.
 
-### Bổ sung chặng tiền ra (code và unit test, chưa E2E)
+#### Bổ sung chặng tiền ra (code và unit test, chưa E2E)
 
 - Gateway `request_offramp` hiện được gọi ở chế độ build; Freelancer ký withdrawal sau `USDC_RELEASE`, hoặc Client ký trả USDC vào treasury sau `USDC_REFUND`. Marketplace đối chiếu WithdrawalRecord theo ví, mint, lượng token, rate snapshot, withdrawal ID và VND gross trước khi gửi lệnh cho mock provider. Bank beneficiary, quote 25.000 VND/USDC, phí 3% và idempotency key được khóa trong flow.
 - Payment Backend có `UnifiedFiatExitMock` cho payout/refund: ví dụ 100 USDC tạo phí 3 USDC và payout 2.425.000 VND; refund tạo sao kê 100 USD, phí 0. Reconcile Marketplace chỉ xác nhận `VND_PAYOUT` **và** `PLATFORM_FEE` khi cả hai sao kê khớp; xác nhận `USD_REFUND` sau sao kê USD, không suy diễn từ `USDC_REFUND`. Finance có timeline và thao tác ký withdrawal cho participant đúng quyền.
@@ -34,7 +63,7 @@ Nền dữ liệu ngày 2026-10-09: thêm `PaymentFlow`, step, evidence append-o
 - Admin có màn hình đọc bốn ranh giới của 50 flow gần nhất từ provider statement, on-ramp receipt, escrow PDA, WithdrawalRecord và payout/refund statement. Mã `RECIPIENT_TOKEN_DELTA_UNPROVEN` cố ý giữ `UNKNOWN`: gateway hiện chưa trả token delta ví đích, dù program escrow chuyển token cùng giao dịch trước khi ghi terminal. Đây là khoảng trống chứng cứ Gate 3/4, không được trình bày là đã đối soát khớp.
 - Các giới hạn này được kiểm tra lại trong E2E bên dưới; kết quả mới không tự động xác nhận browser E2E, outage/restart và đối soát delta tự động trong Admin.
 
-### E2E thống nhất trên local validator (2026-10-09)
+#### E2E thống nhất trên local validator (2026-10-09)
 
 Ledger mới `solana-stablecoin-payout/target/unified-ledger-20261009` dùng program `2Tx2faZU1siV1xvKMxbRN1VesgXftjM3Lff3Nwn69oqb`, Mock USDC mint `DXeZia7qViiE8nsF4XLz2NH1yeZF57Wk2kbCn3JYExRZ`; script `bootstrap-local-demo.ts` cấp mint/treasury demo, `local-unified-flow-e2e.ts --prepare` kiểm tra clock và đồng bộ authority với signer local. Flag chỉ bật tạm trên container Marketplace lúc tạo Job QA, sau đó đặt lại `false` trước funding. Script E2E dùng tài khoản seed và khóa local từ `.env` bị Git bỏ qua. Không dùng đối tác ngân hàng hoặc token thật.
 
@@ -61,7 +90,7 @@ Admin reconciliation trả `USD_USDC_MATCH`, `VAULT_MATCH`, `FIAT_AND_FEE_MATCH`
 
 WSL local thiếu thư viện Chromium; ca browser chạy bằng `LD_LIBRARY_PATH=/tmp/freelax-browser-libs/usr/lib/x86_64-linux-gnu node scripts/unified-browser-smoke.mjs` từ `frontend/` sau khi tải `libnspr4`, `libnss3`, `libasound2t64` vào `/tmp`. Máy đã cài phụ thuộc Chromium có thể chạy `node scripts/unified-browser-smoke.mjs` trực tiếp. Lần `npm test` không giới hạn worker trong lúc stack/browser cùng chạy có 16 timeout/DOM chậm; lần chạy giới hạn 2 worker sau khi thêm ca điều khoản PASS đủ 796 ca.
 
-## Bổ sung cuối ngày 2026-10-09: tài khoản mới, đối soát và migration
+### Bổ sung cuối ngày 2026-10-09: tài khoản mới, đối soát và migration
 
 Source: nhánh `feat/solana-milestone-escrow`, thay đổi chưa commit tại thời điểm chạy. Môi trường: localnet `127.0.0.1:9123` trên ledger `target/unified-ledger-20261009`, program `2Tx2faZU1siV1xvKMxbRN1VesgXftjM3Lff3Nwn69oqb` được nâng cấp (slot 7367) để có `high_value_review_grace`; Compose local; đối tác USD/VND mock. Không dùng tiền thật.
 
@@ -92,7 +121,7 @@ cd frontend && node scripts/unified-new-account-e2e.mjs   # cần Chromium; xem 
 
 **Giới hạn còn lại tại thời điểm đó (đã xử lý ở [bổ sung 2026-10-10](#bổ-sung-2026-10-10-tranh-chấp-timeout-sự-cố-đồng-thời-và-bảo-mật)):** chưa có test đồng thời trên MySQL thật; chưa E2E lỗi RPC timeout, restart validator/Payment giữa flow, sao kê lệch trên stack chạy thật; dispute/timeout chưa chạy lại trên flow unified tới off-ramp; Admin chưa có tổng hợp số dư theo USD/USDC/VND; browser chưa có ca từ chối ký ví, callback chậm có chủ đích và keyboard focus; quy tắc gia hạn bàn giao chờ chủ sản phẩm xác nhận. Flag Compose mặc định là `false`; môi trường local đã bật `true` qua `.env` sau khi chủ sản phẩm xác nhận.
 
-## Bổ sung 2026-10-10: tranh chấp, timeout, sự cố, đồng thời và bảo mật
+### Bổ sung 2026-10-10: tranh chấp, timeout, sự cố, đồng thời và bảo mật
 
 Môi trường: Compose local, localnet `127.0.0.1:9123` ledger `unified-ledger-20261009`, flag cutover `true` (đã chuyển đổi local). Thay đổi chưa commit tại thời điểm chạy, commit ngay sau.
 

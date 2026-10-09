@@ -1,75 +1,60 @@
-# Solana trong kiến trúc thanh toán FreelaX
+# Solana trong FreelaX
 
-**Vai trò chính thức:** Solana là lớp **giữ và chuyển USDC có thể xác minh** ở giữa on-ramp USD và off-ramp VND. Một Job có **một luồng tiền**: `USD Client → USDC Client → vault escrow của Milestone → USDC Freelancer → VND Freelancer`. `paymentFlowId` ở Marketplace liên kết các bước; Solana không nhận USD, không tự đổi USDC thành VND và không xác nhận tiền đã đến ngân hàng.
+## Vì sao có Solana
 
-**Trạng thái 2026-10-10:** luồng USD order → on-ramp → escrow → withdrawal → VND mock payout và nhánh hoàn USD **đã triển khai ở local mock**: browser từ tài khoản mới, tranh chấp, hết hạn review, drill sự cố và đối soát bốn ranh giới đều đạt; môi trường local đã chuyển đổi. Devnet, tiền thật và đối tác thật chưa bắt đầu.
+Client và Freelancer cần một nơi **giữ tiền trung lập**: tiền đã được nộp thật, Freelancer yên tâm làm việc, và không bên nào tự ý rút được. FreelaX dùng một **chương trình (smart contract) trên Solana** làm nơi giữ đó. Tiền được giữ dưới dạng USDC (stablecoin, 1 USDC ≈ 1 USD). Ai cũng kiểm tra được tiền đang nằm ở đâu, và chỉ đúng quy tắc mới mở được.
 
-## Vị trí của Solana
+Solana **chỉ giữ và chuyển USDC**. Phần nhận USD và chi VND do đối tác ngoài chain làm; Solana không xác nhận tiền đã vào ngân hàng.
+
+Trên môi trường local: dùng **Mock USDC** trên **local validator** (`127.0.0.1:9123`); program ID `2Tx2faZU1siV1xvKMxbRN1VesgXftjM3Lff3Nwn69oqb`. Không có tiền thật, không dùng devnet.
+
+## Bốn khái niệm cần biết
+
+| Khái niệm | Hiểu đơn giản | Trong FreelaX |
+| --- | --- | --- |
+| **Ví** (wallet) | Tài khoản của người dùng trên Solana, ký giao dịch bằng khóa riêng | Client và Freelancer liên kết ví bằng cách ký một thông điệp xác minh |
+| **ATA** | "Ngăn" chứa USDC của một ví | USDC on-ramp vào ATA của Client; release vào ATA của Freelancer |
+| **Vault / Escrow PDA** | Két sắt do chương trình quản lý, riêng cho từng Milestone | Giữ USDC của Job từ lúc Client ký quỹ cho tới khi release hoặc refund |
+| **WithdrawalRecord** | Biên nhận rút USDC sang treasury để đổi VND | Gắn với withdrawal ID và tỷ giá đã khóa của flow |
+
+## Luồng trên chain
 
 ```text
-Client USD ──► Đối tác on-ramp / sao kê USD
-                        │ xác nhận USD, chuyển USDC
-                        ▼
-                 Client USDC ATA (Solana)
-                        │ Client ký fund
-                        ▼
-              Milestone Escrow PDA + vault ATA
-                        │ nghiệm thu/timeout/dispute hợp lệ
-                        ▼
-              Freelancer USDC ATA (Solana)
-                        │ Freelancer ký request_offramp
-                        ▼
-              Treasury USDC ATA + WithdrawalRecord
-                        │ đối tác xử lý ngoài chain
-                        ▼
-              VND vào tài khoản Freelancer
+Ví Client ──(mock_onramp: đối tác chuyển USDC sau khi nhận USD)──► ATA Client
+ATA Client ──(fund_milestone_escrow: Client + FreelaX cùng ký)───► Vault của Milestone
+Vault ──(settle: Client duyệt / hết hạn review / Admin quyết định)──► ATA Freelancer
+Vault ──(refund_mutual: hai bên cùng ký / Admin hoàn)─────────────► ATA Client
+ATA Freelancer ──(request_offramp: Freelancer ký)──────────────────► Treasury + WithdrawalRecord
+                                                         đối tác chi VND ngoài chain
 ```
 
-`ATA` là token account của đúng mint và chủ ví. Escrow PDA/vault là nơi giữ token trước khi làm; treasury của off-ramp chỉ nhận USDC **sau khi Freelancer đã được release**. Hai tài khoản này có vai trò khác nhau và không được coi là cùng một số dư ký quỹ.
+## Chương trình kiểm tra gì
 
-## Ranh giới trách nhiệm
+- **Ký quỹ:** đúng mint USDC, đúng số tiền, Client không trùng Freelancer; lưu hạn ký quỹ, hạn giao, thời hạn review 72 giờ (cờ `high_value_review_grace=false` cho luồng unified), số lần sửa. Mỗi Milestone chỉ có một vault, không ký quỹ được hai lần.
+- **Bàn giao:** Freelancer ký kèm mã băm bằng chứng; hệ thống tính hạn review từ lúc này.
+- **Gia hạn:** Freelancer xin một lần, tối đa hạn gốc + 7 ngày, trước hạn gốc; chỉ có hiệu lực khi Client duyệt.
+- **Release:** Client duyệt, **hoặc** bất kỳ ai gọi sau khi hết hạn review (đây là "tự duyệt"). Đang tranh chấp thì chỉ Admin được quyết định.
+- **Refund:** cần cả hai bên ký (hoàn theo thỏa thuận), hoặc Admin quyết định khi có tranh chấp.
+- **Chốt một lần:** release và refund chuyển **toàn bộ** số tiền trong vault vào đúng ATA của người nhận, trong cùng lệnh ghi trạng thái cuối. Nhờ vậy chỉ cần thấy "trạng thái cuối + vault bằng 0 + đúng người nhận" là biết người nhận đã có tiền, kể cả khi lịch sử giao dịch bị cắt.
+- **Rút tiền:** dùng tỷ giá do rate authority công bố và còn hạn; số VND được tính sẵn vào WithdrawalRecord.
 
-| Thành phần | Quyết định/giữ gì | Bằng chứng trả về |
-| --- | --- | --- |
-| Frontend | Hiển thị điều khoản và trạng thái; chuyển transaction cho Client/Freelancer ký | Wallet address, signed transaction; không tự xác nhận tiền |
-| Marketplace Backend | Authority nghiệp vụ Job/Contract/Milestone, `paymentFlowId`, quyền, điều kiện chuyển bước và đối soát | Timeline, reference/amount/status theo từng bước |
-| Payment Backend/đối tác | USD vào, quote, VND chi hoặc USD hoàn; mock local chỉ mô phỏng | Statement, receipt, payout/refund reference độc lập |
-| Solana Gateway | Build/send/read transaction và account qua RPC theo quyền đã cấu hình | Signature, PDA/ATA, trạng thái giao dịch và account |
-| Anchor program | Kiểm tra signer, mint, amount, hạn, quyền release/refund; chuyển token | Escrow/WithdrawalRecord và token balance trên chain |
+## Các thành phần
 
-Browser chỉ gọi Marketplace; Gateway/RPC và API nội bộ đối tác không trở thành authority nghiệp vụ độc lập cho Job. Marketplace không được gán trạng thái thành công chỉ từ HTTP 200 hoặc signature chưa xác minh.
+| Thành phần | Vai trò |
+| --- | --- |
+| Frontend | Đưa giao dịch cho người dùng ký bằng ví; không tự kết luận tiền đã chuyển |
+| Marketplace | Quyết định nghiệp vụ, kiểm tra quyền, đối chiếu dữ liệu chain trước khi ghi một bước là xác nhận |
+| Solana Gateway (`solana-integration`) | Dựng và gửi giao dịch, đọc tài khoản và PDA qua RPC; không phải nơi quyết định nghiệp vụ |
+| Anchor program (`solana-stablecoin-payout`) | Thực thi quy tắc giữ và chuyển USDC |
 
-## Từng bước áp dụng cho một Job
+Trình duyệt chỉ gọi Marketplace. Gateway và RPC nằm phía sau.
 
-1. **USD vào:** Marketplace tạo USD order có `paymentFlowId` và quote. Đối tác xác nhận nhận USD từ nguồn độc lập. Trên local, `mock_onramp` chuyển **Mock USDC có sẵn trong treasury demo** vào Client ATA và tạo receipt; nó không mint USDC thật hoặc chứng minh USD ngân hàng.
-2. **Client funding escrow:** Marketplace xác minh on-ramp receipt, Client ATA, mint và lượng token theo hợp đồng. Client ký `fund_milestone_escrow` cùng marketplace authority theo điều kiện program. PDA theo Milestone ID giữ vault USDC; chỉ khi account và vault balance khớp mới ghi `ESCROW_FUNDED` và mở công việc.
-3. **Làm việc/nghiệm thu:** Freelancer submit evidence hash; Client duyệt, yêu cầu revision hoặc mở dispute. Program lưu hạn/review và terminal state; Marketplace lưu bản giao, bằng chứng và quyết định nghiệp vụ. Scheduler có thể gửi timeout release sau hạn; Solana không tự chạy transaction vì đồng hồ trôi.
-4. **Release hoặc refund:** Client duyệt hợp lệ, timeout đủ điều kiện hoặc Admin resolve dispute mới cho chuyển USDC từ vault sang Freelancer ATA; mutual/Admin refund chuyển USDC về Client ATA. Marketplace kiểm tra escrow terminal, đúng ví/mint/amount, vault và ATA delta trước khi ghi `USDC_RELEASED` hoặc `USDC_REFUNDED`.
-5. **Off-ramp sau release:** Freelancer ký `request_offramp`; USDC vào treasury ATA, WithdrawalRecord được tạo. Đối tác ngoài chain chi VND theo quote đã khóa và beneficiary đã xác minh. Chỉ sau đối tác xác nhận chi và đối soát mới gọi `record_offramp`/transition phù hợp và ghi `VND_PAID`. WithdrawalRecord `Completed` một mình không thay sao kê ngân hàng.
-6. **Hoàn USD nếu hủy:** `USDC_REFUNDED` chỉ nói token về Client ATA. Nếu điều khoản cam kết trả đủ USD, phải có lệnh đổi/hoàn qua đối tác và xác nhận USD về Client; bước này tách khỏi escrow và chưa được nối cho flow mới.
+## Hồi phục khi có sự cố
 
-**Phí FreelaX 3%** do Freelancer chịu chỉ được ghi sau VND payout và phần phí được đối soát. `settle_milestone_escrow` hiện chuyển toàn bộ token từ vault cho Freelancer; program chưa trừ phí 3%. Cơ chế thu phần phí tại off-ramp cần chốt trước khi bật flow thống nhất. Tỷ giá và quote phải khóa theo lệnh, không tính lại khi retry.
+- **RPC mất kết nối:** Admin thấy `UNKNOWN`, các bước tiền bị chặn; khi RPC trở lại thì tiếp tục với cùng giao dịch đã ký.
+- **Giao dịch on-ramp bị rơi:** sau 300 giây, nếu chưa có receipt thì gửi lại với cùng purchase ID. Receipt PDA bảo đảm không thể cấp USDC hai lần.
+- **Phiên ký hết hạn** (quá 120 giây): giao dịch cũ không được gửi; người dùng chuẩn bị lại với cùng withdrawal ID.
 
-## Đối soát Solana với fiat
+## Giới hạn local
 
-| Ranh giới | Cần so khớp | Khi chưa khớp |
-| --- | --- | --- |
-| USD đối tác → Client ATA | USD order/statement ↔ receipt on-ramp ↔ đúng USDC mint, ví, token delta | Không cho fund vault |
-| Client ATA → vault | Contract/Milestone/amount ↔ escrow PDA/status ↔ vault balance và tx | Không cho Freelancer bắt đầu |
-| Vault → Freelancer/Client ATA | Quyết định release/refund ↔ escrow terminal ↔ vault về 0 ↔ participant đã ghi. `settle`/`refund_mutual` chuyển toàn bộ amount vào ATA participant trong cùng instruction ghi terminal, nên điều kiện này chứng minh ví nhận được ghi có kể cả khi lịch sử giao dịch đã mất | Không kết luận đã nhận USDC/hoàn USDC |
-| Freelancer ATA → treasury | Withdrawal ID/amount/mint ↔ tx và WithdrawalRecord ↔ treasury delta | Không gửi/không lặp payout VND |
-| Treasury/đối tác → VND | Withdrawal/quote/fee ↔ provider reference, beneficiary, statement chi VND | Không ghi `VND_PAID` hoặc phí đã thu |
-
-Mọi lệnh có idempotency key và reference ổn định. Với RPC timeout, mất callback, mất lịch sử signature hoặc restart, đọc PDA/account/balance và sao kê theo **cùng reference** trước khi gửi lại. Không phát lệnh release và refund đối nghịch; `UNKNOWN` không có nghĩa là thất bại.
-
-## Tái dùng code và giới hạn hiện tại
-
-- Program: [`mock_onramp.rs`](../../solana-stablecoin-payout/programs/invoice_payments/src/instructions/mock_onramp.rs), [`milestone_escrow.rs`](../../solana-stablecoin-payout/programs/invoice_payments/src/instructions/milestone_escrow.rs), [`request_offramp.rs`](../../solana-stablecoin-payout/programs/invoice_payments/src/instructions/request_offramp.rs), [`record_offramp.rs`](../../solana-stablecoin-payout/programs/invoice_payments/src/instructions/record_offramp.rs). `pay_invoice` chuyển Client ATA → Freelancer ATA trực tiếp là nhánh Invoice cũ; **không thay** vault escrow của Job.
-- Gateway: [`SolanaGatewayController.java`](../../solana-integration/src/main/java/com/freelax/solanagateway/api/SolanaGatewayController.java) và [`SolanaGatewayService.java`](../../solana-integration/src/main/java/com/freelax/solanagateway/service/SolanaGatewayService.java) có endpoint cho mock on-ramp, escrow và withdrawal; chúng chưa tự ghép các endpoint thành một payment flow.
-- Marketplace: [`SolanaEscrowFundingService.java`](../../marketplace-backend/src/main/java/com/marketplace/backend/service/SolanaEscrowFundingService.java) và [`SolanaEscrowTimeoutService.java`](../../marketplace-backend/src/main/java/com/marketplace/backend/service/SolanaEscrowTimeoutService.java) xác minh vault/release/refund local; [`SettlementDownstreamService.java`](../../marketplace-backend/src/main/java/com/marketplace/backend/service/SettlementDownstreamService.java) chạy on-ramp/Invoice/off-ramp **sau** primary Payment release của P06. Không dùng thứ tự P06 cho flow mới.
-- Program escrow lưu review timeout theo giây. Grace 24 giờ cho amount trên 500 USDC chỉ áp khi Marketplace gửi `high_value_review_grace=true` (rail `SOLANA_ESCROW` cũ); Job unified gửi `false` để giữ đúng 72 giờ. Escrow đã fund trước thay đổi giữ giá trị đã lưu trên account. Đối tác mock dùng ngày làm việc. [Checklist phase 0](PAYMENT_FLOW_REBUILD_CHECKLIST.md#0-khóa-hợp-đồng-nghiệp-vụ-và-đường-chuyển-đổi) yêu cầu chốt một chính sách trước khi đồng bộ server và chain.
-- Ví/signer demo local chưa phải cấp phát, bảo vệ và khôi phục khóa production cho tài khoản mới. User action cần chữ ký đúng quyền; secrets/backend signing không được đưa vào frontend.
-
-## Điều kiện gọi là đã tích hợp
-
-Một **Job mới** phải có cùng `paymentFlowId` xuyên USD order, on-ramp receipt, escrow PDA, release signature, WithdrawalRecord và VND payout reference; số dư/statement khớp ở mọi ranh giới. Job khác chứng minh hoàn USDC rồi hoàn USD. Các ca duplicate, `UNKNOWN`, RPC/provider outage và restart không tạo tiền/lệnh hai lần. Chỉ sau [gate hoàn tất](PAYMENT_FLOW_REBUILD_CHECKLIST.md#gate-hoàn-tất) và bằng chứng trong [VERIFICATION](VERIFICATION.md) mới đổi trạng thái tài liệu thành “đã triển khai”; local mock không chứng minh devnet hay tiền thật.
+Ví demo và khóa local chưa phải cơ chế cấp phát và khôi phục khóa cho người dùng thật. Validator test chỉ có một node: không nên kill nó khi đang chạy (có thể làm chain đứng). Muốn giả lập RPC sập thì dùng `solana-stablecoin-payout/scripts/local-rpc-proxy.sh`.
