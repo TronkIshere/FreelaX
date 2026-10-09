@@ -8,6 +8,7 @@ import com.marketplace.backend.dto.request.funding.FundMilestoneRequest;
 import com.marketplace.backend.dto.request.submission.CreateContractSubmissionRequest;
 import com.marketplace.backend.dto.request.job.AssignFreelancerRequest;
 import com.marketplace.backend.dto.response.bofa.*;
+import com.marketplace.backend.dto.response.partner.PartnerEscrowResult;
 import com.marketplace.backend.entity.*;
 import com.marketplace.backend.exception.ApplicationException;
 import com.marketplace.backend.repository.*;
@@ -45,7 +46,7 @@ import static org.mockito.Mockito.*;
 class ContractCancellationServiceTest {
     @Configuration @EntityScan(basePackageClasses = Job.class)
     @EnableJpaRepositories(basePackageClasses = JobRepository.class)
-    @Import({ContractCancellationService.class, SettlementService.class, FundingService.class, ContractSubmissionService.class,
+    @Import({ContractCancellationService.class, SettlementService.class, FundingService.class, ContractSubmissionService.class, BusinessDayClock.class,
             com.marketplace.backend.service.impl.JobServiceImpl.class})
     static class Config {
         @Bean TransactionTemplate transactions(PlatformTransactionManager manager) { return new TransactionTemplate(manager); }
@@ -72,11 +73,13 @@ class ContractCancellationServiceTest {
     @Autowired TransactionTemplate tx;
     @Autowired ObjectMapper json;
     @MockitoBean PaymentBackendClient payment;
+    @MockitoBean PartnerReconciliationService partnerReconciliation;
     @MockitoBean NotificationService notifications;
     @MockitoBean SettlementDownstreamService downstream;
     @MockitoBean com.marketplace.backend.client.MisaBackendClient misa;
     @MockitoBean com.marketplace.backend.client.SolanaCprClient solana;
     @MockitoBean PayoutService payout;
+    @MockitoBean PaymentFlowService paymentFlowService;
     @MockitoBean UserRepository users;
     Job job; WorkContract contract; Milestone milestone; FundingTransaction paid;
     Map<String, PaymentRefundResult> ledger; AtomicInteger credits;
@@ -126,6 +129,31 @@ class ContractCancellationServiceTest {
     @Test void freelancerCannotCancelBeforeFunding() {
         preFunding(); assertThatThrownBy(() -> service.request(worker(), contract.getId(), intent)).isInstanceOf(ApplicationException.class);
         assertThat(cancellations.count()).isZero(); verifyNoInteractions(payment);
+    }
+    @Test void clientCanRecoverFullPartnerDepositAfterMissedDeadlineWithoutFreelancerConsent() {
+        tx.executeWithoutResult(s -> {
+            contracts.findById(contract.getId()).orElseThrow().setPaymentRail(PartnerEscrowFundingService.RAIL);
+            contracts.findById(contract.getId()).orElseThrow().setDeliveryDueAt(Instant.now().minusSeconds(60));
+            funding.findById(paid.getId()).orElseThrow().setPaymentMethodId(PartnerEscrowFundingService.RAIL);
+            funding.findById(paid.getId()).orElseThrow().setCheckoutOrderId(milestone.getId());
+            jobs.findById(job.getId()).orElseThrow().setCheckoutOrderId(milestone.getId());
+        });
+        when(partnerReconciliation.snapshot()).thenReturn(new PartnerReconciliationService.ReconciliationView(
+                new BigDecimal("500.00"), new BigDecimal("500.00"), BigDecimal.ZERO, true, 0,
+                List.of(), Instant.now(), true));
+        when(partnerReconciliation.confirms(eq(milestone.getId()), eq("REFUND"), any())).thenReturn(true);
+        when(payment.getPartnerEscrow(milestone.getId())).thenReturn(new PartnerEscrowResult(milestone.getId(),
+                contract.getId(), job.getId(), client(), worker(), new BigDecimal("500.00"), "FUNDED",
+                null, null, null, null, null, null, null, null, null, Instant.now(), true));
+        when(payment.refundPartnerEscrow(eq(milestone.getId()), anyString(), eq(false))).thenAnswer(a ->
+                new PartnerEscrowResult(milestone.getId(), contract.getId(), job.getId(), client(), worker(),
+                        new BigDecimal("500.00"), "REFUNDED", BigDecimal.ZERO, null, null, null,
+                        null, a.getArgument(1), null, null, null, Instant.now(), true));
+        var result = service.requestLateRefund(client(), contract.getId());
+        assertThat(result.cancellationStatus()).isEqualTo("CANCELLED");
+        assertThat(result.amount()).isEqualByComparingTo("500.00");
+        assertThat(jobs.findById(job.getId()).orElseThrow().getStatus()).isEqualTo(JobStatus.CANCELLED);
+        verify(payment, never()).createRefund(any());
     }
     @Test void anyPriorFundingAttemptBlocksUncapturedAssumption() {
         tx.executeWithoutResult(s -> {
@@ -232,7 +260,7 @@ class ContractCancellationServiceTest {
         var r = propose(); assertThatThrownBy(() -> consent(r.cancellationId())).isInstanceOf(IllegalStateException.class);
         String key = saved().getRefundKey(); assertThat(saved().getRefundStatus()).isEqualTo(SettlementMoneyStatus.PENDING);
         var restarted = new ContractCancellationService(cancellations, escrowContracts, contracts, milestones, funding, settlements, disputes,
-                submissions, jobs, payment, notifications, tx);
+                submissions, jobs, payment, partnerReconciliation, notifications, tx);
         restarted.process(r.cancellationId()); assertCancelled(); assertThat(saved().getRefundKey()).isEqualTo(key);
         assertThat(credits.get()).isEqualTo(1); verify(payment, times(1)).createRefund(any());
     }

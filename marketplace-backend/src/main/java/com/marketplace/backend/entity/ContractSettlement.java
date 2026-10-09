@@ -46,6 +46,14 @@ public class ContractSettlement extends AbstractEntity<UUID> {
     private UUID paymentReleaseId;
     @Column(length = 128)
     private String paymentReleaseReference;
+    @Column(name = "platform_fee_usd", precision = 19, scale = 2)
+    private BigDecimal platformFeeUsd;
+    @Column(name = "freelancer_usd", precision = 19, scale = 2)
+    private BigDecimal freelancerUsd;
+    @Column(name = "locked_usd_vnd_rate", precision = 19, scale = 6)
+    private BigDecimal lockedUsdVndRate;
+    @Column(name = "partner_payout_vnd", precision = 19, scale = 0)
+    private BigDecimal partnerPayoutVnd;
     private UUID payoutRecordId;
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 24)

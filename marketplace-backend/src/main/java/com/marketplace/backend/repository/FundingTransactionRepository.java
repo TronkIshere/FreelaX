@@ -20,6 +20,9 @@ public interface FundingTransactionRepository extends JpaRepository<FundingTrans
     Optional<FundingTransaction> findFirstByMilestoneIdOrderByCreatedAtDesc(UUID milestoneId);
     List<FundingTransaction> findTop50ByStatusInAndUpdatedAtBeforeOrderByUpdatedAtAsc(
             Collection<FundingStatus> statuses, LocalDateTime before);
+    List<FundingTransaction> findTop50ByPaymentMethodIdAndStatusInOrderByUpdatedAtAsc(
+            String paymentMethodId, Collection<FundingStatus> statuses);
+    List<FundingTransaction> findByPaymentMethodIdAndStatus(String paymentMethodId, FundingStatus status);
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<FundingTransaction> findWithLockById(UUID id);
     @Query("select count(distinct f.contractId) from FundingTransaction f where f.clientUserId = :userId and f.status = :status")

@@ -15,7 +15,8 @@ import { checkoutLabel, clientPaymentLabel, decimal, exportLabel, maskedBank, of
   settlementMoneyLabel, settlementStageLabel, releaseOwned } from './financeStatus';
 import { cancellationLabel, date, fundingLabel, money, refundLabel } from './status';
 import type { ContractFinance } from './financeStatus';
-import type { EscrowFundingView, FundingResponse, Job, JobPaymentStatus, Page, TaxRecord, User } from './types';
+import type { EscrowFundingView, FundingResponse, Job, JobPaymentStatus, Page, PaymentFlowTimeline, TaxRecord, User } from './types';
+import { connectSolanaWallet, signEscrowTransaction } from './escrowWallet';
 
 const POLL_MS = 15000;
 const message = (cause: unknown) => cause instanceof Error ? cause.message : 'Không thể tải dữ liệu từ Marketplace.';
@@ -39,7 +40,8 @@ function FinanceNav() {
   </nav>;
 }
 
-type PaymentEntry = { data: JobPaymentStatus | null; error: string; contract?: ContractFinance; escrow?: EscrowFundingView | null };
+type PaymentEntry = { data: JobPaymentStatus | null; error: string; contract?: ContractFinance;
+  escrow?: EscrowFundingView | null; flow?: PaymentFlowTimeline | null };
 
 // The current API has no batch settlement/refund projection. Reads are bounded to the returned page.
 async function readContractFinance(job: Job): Promise<ContractFinance> {
@@ -69,6 +71,13 @@ function FinanceList({ user }: { user: User }) {
       const financial = data.data.filter(job => job.contract || job.status === 'COMPLETED');
       const entries = await Promise.all(financial.map(async job => {
         if (job.contract) {
+          if (job.contract.paymentRail === 'UNIFIED_USDC_PAYOUT') {
+            const flow = job.contract.milestoneId
+              ? await api.paymentFlow(job.contract.id, job.contract.milestoneId)
+                .then(data => ({ data, error: '' }), cause => ({ data: null, error: message(cause) }))
+              : { data: null, error: 'Thiếu Milestone ID.' };
+            return [job.id, { data: null, error: flow.error, flow: flow.data }] as const;
+          }
           if (job.contract.paymentRail === 'SOLANA_ESCROW') {
             const escrow = job.contract.milestoneId
               ? await api.escrowFunding(job.contract.id, job.contract.milestoneId)
@@ -152,6 +161,11 @@ function FinanceSummary({ count, freelancer }: { count: number; freelancer: bool
 }
 
 function financeRowTone(job: Job, entry?: PaymentEntry) {
+  if (job.contract?.paymentRail === 'UNIFIED_USDC_PAYOUT') {
+    const step = (kind: string) => entry?.flow?.steps.find(s => s.kind === kind)?.status;
+    return step('USD_REFUND') === 'CONFIRMED' ? 'refund'
+      : step('VND_PAYOUT') === 'CONFIRMED' ? 'done' : 'active';
+  }
   if (job.contract?.paymentRail === 'SOLANA_ESCROW') {
     return entry?.escrow?.status === 'Released' ? 'done' : entry?.escrow?.status === 'Refunded' ? 'refund' : 'active';
   }
@@ -167,6 +181,7 @@ function financeRowTone(job: Job, entry?: PaymentEntry) {
 function financeUpdatedAt(entry?: PaymentEntry) {
   const data = entry?.data;
   return [entry?.contract?.settlement?.updatedAt, entry?.contract?.cancellation?.updatedAt,
+    ...entry?.flow?.steps.map(step => step.confirmedAt) || [],
     data?.clientPaymentSubmittedAt, data?.clientPaymentConfirmedAt, data?.withdrawalSubmittedAt,
     data?.withdrawalConfirmedAt, data?.simulatedPayoutAt, data?.offRampCompletionSubmittedAt, data?.offRampCompletedAt]
     .filter((value): value is string => !!value && Number.isFinite(Date.parse(value)))
@@ -187,10 +202,10 @@ function FinanceLedgerRow({ job, entry }: { job: Job; entry?: PaymentEntry }) {
       {status?.amountUsdcReceived != null && <span>{usdc(status.amountUsdcReceived)}</span>}
       {status?.estimatedAmountVnd != null && <span>{vnd(status.estimatedAmountVnd)} dự kiến</span>}</div>
     <div className="finance-ledger-state"><span className="finance-status-badge"><Icon size={19} aria-hidden="true" />
-      {job.contract?.paymentRail === 'SOLANA_ESCROW' ? 'Solana escrow: ' + (entry?.escrow?.status || 'Đang đối soát') : job.contract ? contractFinanceLabel(job, entry?.contract) : status ? checkoutLabel(status.checkoutOrderStatus) : entry?.error || 'Chưa có dữ liệu'}</span>
-      <span className="finance-payout-label">{job.contract?.paymentRail === 'SOLANA_ESCROW' ? 'Token vault on-chain' : entry?.contract?.settlement ? 'Chi trả: ' + settlementStageLabel(entry.contract.settlement.offRampStatus)
+      {job.contract?.paymentRail === 'UNIFIED_USDC_PAYOUT' ? 'Unified: ' + (entry?.flow?.steps.find(s => s.status === 'PENDING' || s.status === 'UNKNOWN')?.kind || (tone === 'done' ? 'VND_PAID' : tone === 'refund' ? 'USD_REFUNDED' : 'Đang đối soát')) : job.contract?.paymentRail === 'SOLANA_ESCROW' ? 'Solana escrow: ' + (entry?.escrow?.status || 'Đang đối soát') : job.contract ? contractFinanceLabel(job, entry?.contract) : status ? checkoutLabel(status.checkoutOrderStatus) : entry?.error || 'Chưa có dữ liệu'}</span>
+      <span className="finance-payout-label">{job.contract?.paymentRail === 'UNIFIED_USDC_PAYOUT' ? entry?.flow?.steps.find(s => s.kind === 'VND_PAYOUT')?.status === 'CONFIRMED' ? 'Đối tác mock đã xác nhận VND' : 'VND chưa xác nhận' : job.contract?.paymentRail === 'SOLANA_ESCROW' ? 'Token vault on-chain' : job.contract?.paymentRail === 'PARTNER_ESCROW_MOCK' ? entry?.contract?.settlement?.moneyStatus === 'SUCCEEDED' ? 'Đối tác mock đã chi ' + String(entry.contract.settlement.partnerPayoutVnd) + ' VND · phí FreelaX ' + String(entry.contract.settlement.platformFeeUsd) + ' USD' : 'Chưa giải ngân VND' : entry?.contract?.settlement ? 'Chi trả: ' + settlementStageLabel(entry.contract.settlement.offRampStatus)
         : status ? offRampLabel(status.offRampStatus) : 'Chưa có dữ liệu chi trả'}</span>
-      {(status?.simulation || entry?.contract?.settlement?.simulation || entry?.contract?.cancellation?.simulation) && <b className="simulation-mark">Mô phỏng</b>}
+      {(entry?.flow?.simulation || status?.simulation || entry?.contract?.settlement?.simulation || entry?.contract?.cancellation?.simulation) && <b className="simulation-mark">Mô phỏng</b>}
       {(entry?.error || entry?.contract?.error) && <span className="finance-row-error" role="alert">{entry.error || entry.contract?.error}</span>}
     </div>
     <div className="finance-ledger-date"><span className="finance-mobile-label">Ngày cập nhật</span>
@@ -515,6 +530,108 @@ function EscrowFinanceEvidence({ job }: { job: Job }) {
   </section>;
 }
 
+function UnifiedFinanceEvidence({ job, user }: { job: Job; user: User }) {
+  const contract = job.contract!;
+  const [flow, setFlow] = useState<PaymentFlowTimeline | null>(null);
+  const [build, setBuild] = useState<Awaited<ReturnType<typeof api.prepareUnifiedWithdrawal>> | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  // Kept apart from load errors so a timeline refresh does not hide why an action failed.
+  const [actionError, setActionError] = useState('');
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    if (!contract.milestoneId) return;
+    let active = true;
+    void api.paymentFlow(contract.id, contract.milestoneId).then(next => {
+      if (active) { setFlow(next); setError(''); }
+    }).catch(cause => { if (active) setError(message(cause)); });
+    return () => { active = false; };
+  }, [contract.id, contract.milestoneId, tick]);
+  useEffect(() => {
+    if (!flow || ['CONFIRMED', 'FAILED'].includes(flow.steps.find(s => s.kind === 'VND_PAYOUT')?.status || '')
+      || ['CONFIRMED', 'FAILED'].includes(flow.steps.find(s => s.kind === 'USD_REFUND')?.status || '')) return;
+    const timer = window.setTimeout(() => setTick(value => value + 1), 5000);
+    return () => window.clearTimeout(timer);
+  }, [flow, tick]);
+  const status = (kind: string) => flow?.steps.find(step => step.kind === kind);
+  const payout = status('USDC_RELEASE')?.status === 'CONFIRMED';
+  const refund = status('USDC_REFUND')?.status === 'CONFIRMED';
+  const stepNames: Record<string, string> = {
+    USD_ORDER: 'Lệnh nạp USD', USD_RECEIVED: 'Đối tác xác nhận USD',
+    CLIENT_USDC: 'USDC vào ví Client', ESCROW: 'USDC khóa trong vault',
+    WORK_ACCEPTED: 'Công việc được duyệt', USDC_RELEASE: 'USDC đến ví Freelancer',
+    USDC_REFUND: 'USDC hoàn về ví Client', WITHDRAWAL: 'USDC gửi đến treasury',
+    VND_PAYOUT: 'VND chi cho Freelancer', PLATFORM_FEE: 'Phí FreelaX',
+    USD_REFUND: 'USD hoàn về Client',
+  };
+  const statusNames: Record<string, string> = {
+    CONFIRMED: 'Đã xác nhận', PENDING: 'Đang chờ', PROCESSING: 'Đang xử lý',
+    UNKNOWN: 'Chưa rõ · đang đối soát', FAILED: 'Thất bại',
+    NOT_STARTED: 'Chưa bắt đầu', AWAITING_CLIENT: 'Chờ Client xác nhận',
+  };
+  const visibleSteps = flow?.steps.filter(step => payout
+    ? !['USDC_REFUND', 'USD_REFUND'].includes(step.kind)
+    : refund ? !['WORK_ACCEPTED', 'USDC_RELEASE', 'VND_PAYOUT', 'PLATFORM_FEE'].includes(step.kind)
+      : true) || [];
+  const permitted = payout ? user.id === job.freelancerId : refund && user.id === job.clientUserId;
+  const withdrawal = status('WITHDRAWAL');
+  async function prepare() {
+    if (!contract.milestoneId || busy) return;
+    setBusy(true); setActionError('');
+    try { setBuild(await api.prepareUnifiedWithdrawal(contract.id, contract.milestoneId)); }
+    catch (cause) { setActionError(message(cause)); setTick(value => value + 1); }
+    finally { setBusy(false); }
+  }
+  async function sign() {
+    if (!contract.milestoneId || !build || busy) return;
+    setBusy(true); setActionError('');
+    try {
+      const connected = await connectSolanaWallet();
+      if (connected.address !== build.wallet) throw new Error('Ví đang kết nối không khớp ví đã đăng ký.');
+      const signed = await signEscrowTransaction(connected.wallet, build.transactionBase64);
+      setFlow(await api.submitUnifiedWithdrawal(contract.id, contract.milestoneId,
+        build.buildSessionId, signed));
+      setBuild(null); setTick(value => value + 1);
+    } catch (cause) { setActionError(message(cause)); setTick(value => value + 1); }
+    finally { setBusy(false); }
+  }
+  return <section className="settlement-document" aria-label="Luồng tài chính thống nhất">
+    <SectionHeading title="Luồng thanh toán của Job" aside="Mô phỏng" />
+    {error && <p role="alert" className="form-error">{error}</p>}
+    {actionError && <p role="alert" className="form-error">{actionError}</p>}
+    {!flow && <p role="status">Đang đọc timeline thanh toán…</p>}
+    {flow && <>
+      <p>Mã luồng: <code>{flow.paymentFlowId}</code> · {flow.grossUsd} USD → {flow.escrowUsdc} USDC.</p>
+      <p>Phí Freelancer chịu: {flow.platformFeeUsd} USD tương đương USDC. Job hoàn thành sau release; VND chỉ ghi đã chi khi sao kê đối tác xác nhận.</p>
+      <dl className="reference-list">{visibleSteps.map(step => <div key={step.kind}>
+        <dt>{stepNames[step.kind] || step.kind}</dt><dd>
+          {statusNames[step.status] || step.status}
+          {step.amount != null && step.currency ? ` · ${step.amount} ${step.currency}` : ''}
+          {(step.reference || step.transactionSignature || step.evidenceSource) && <details>
+            <summary>Reference và nguồn xác nhận</summary>
+            {step.reference && <p>Reference: <code>{step.reference}</code></p>}
+            {step.transactionSignature && <p>Giao dịch: <code>{step.transactionSignature}</code></p>}
+            {step.evidenceSource && <p>Nguồn: {step.evidenceSource}</p>}
+          </details>}
+        </dd></div>)}</dl>
+      {withdrawal?.vndRate && <p>Quote off-ramp: 1 USDC = {withdrawal.vndRate} VND · phí {withdrawal.feeUsdc} USDC · Freelancer dự kiến nhận {withdrawal.payoutVnd} VND · hết hạn {stamp(withdrawal.quoteExpiresAt)}.</p>}
+      {permitted && withdrawal?.status !== 'CONFIRMED' && !withdrawal?.transactionSignature && !build &&
+        <button className="button" disabled={busy} onClick={() => void prepare()}>
+          {payout ? 'Chuẩn bị đổi USDC sang VND' : 'Chuẩn bị hoàn USD sau khi gửi USDC về treasury'}
+        </button>}
+      {build && <div className="approval-confirm" role="group" aria-label="Xác nhận withdrawal">
+        <p>Ví {build.wallet} sẽ ký chuyển {build.grossUsdc} USDC tới treasury mô phỏng. {build.kind === 'PAYOUT'
+          ? `Phí ${build.feeUsdc} USDC; dự kiến nhận ${build.payoutVnd} VND.`
+          : 'USD chỉ được ghi hoàn sau khi withdrawal và sao kê USD được xác nhận.'}</p>
+        <p>Quote hết hạn: {stamp(build.quoteExpiresAt)}.</p>
+        <button className="button" disabled={busy} onClick={() => void sign()}>Ký withdrawal bằng ví</button>
+        <button className="button button-secondary" disabled={busy} onClick={() => setBuild(null)}>Hủy</button>
+      </div>}
+      <button className="text-button" disabled={busy} onClick={() => setTick(value => value + 1)}>Đối soát lại</button>
+    </>}
+  </section>;
+}
+
 function JobEvidence({ jobId, user }: { jobId: string; user: User }) {
   const [job, setJob] = useState<Job | null>(null);
   const [payment, setPayment] = useState<JobPaymentStatus | null>(null);
@@ -593,7 +710,9 @@ function JobEvidence({ jobId, user }: { jobId: string; user: User }) {
     <div className="finance-detail-back"><Link to="/finance"><ArrowLeft size={22} aria-hidden="true" />
       {user.userType === 'FREELANCER' ? 'Lịch sử thu nhập' : 'Danh sách thanh toán'}</Link></div>
     {job.contract?.paymentRail === 'SOLANA_ESCROW' && <EscrowFinanceEvidence job={job} />}
-    {job.contract && job.contract.paymentRail !== 'SOLANA_ESCROW' && <ContractEvidence initialJob={job} />}
+    {job.contract?.paymentRail === 'UNIFIED_USDC_PAYOUT' && <UnifiedFinanceEvidence job={job} user={user} />}
+    {job.contract && job.contract.paymentRail !== 'SOLANA_ESCROW'
+      && job.contract.paymentRail !== 'UNIFIED_USDC_PAYOUT' && <ContractEvidence initialJob={job} />}
     {!payment && !job.contract && <StatePanel kind="error" title="Chưa thể đọc trạng thái thanh toán"
       body={paymentError || 'Marketplace chưa trả dữ liệu.'} action={{ label: 'Tải lại', onClick: retry }} />}
     {payment && <>

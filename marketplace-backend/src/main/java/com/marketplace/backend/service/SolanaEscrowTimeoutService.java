@@ -7,6 +7,9 @@ import com.marketplace.backend.dto.response.solana.SolanaEscrowResult;
 import com.marketplace.backend.entity.*;
 import com.marketplace.backend.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,6 +37,21 @@ public class SolanaEscrowTimeoutService {
     private final ContractDisputeService disputeService;
     private final ObjectMapper objectMapper;
     private final NotificationService notifications;
+    private final Environment environment;
+    private final PaymentFlowService paymentFlowService;
+
+    @Value("${escrow.e2e-clock-offset-seconds:0}")
+    private long e2eClockOffsetSeconds;
+
+    private Instant reviewClock() {
+        // Local-validator time warp advances the chain without advancing the host clock.
+        // The opt-in dev clock lets an E2E run exercise the scheduled claim itself.
+        if (e2eClockOffsetSeconds > 0
+                && environment.acceptsProfiles(Profiles.of("dev"))
+                && !environment.acceptsProfiles(Profiles.of("prod")))
+            return Instant.now().plusSeconds(e2eClockOffsetSeconds);
+        return Instant.now();
+    }
 
     @Transactional
     public void process(UUID escrowRecordId) {
@@ -84,7 +102,7 @@ public class SolanaEscrowTimeoutService {
             return;
         }
         if ("Refunded".equals(chain.status())) {
-            finalizeMutualRefund(record, contract, milestone);
+            finalizeMutualRefund(record, contract, milestone, chain);
             return;
         }
         if (record.getRefundSignature() != null && record.getRefundSubmittedAt() != null
@@ -119,7 +137,7 @@ public class SolanaEscrowTimeoutService {
                 || contract.getStatus() != ContractStatus.UNDER_REVIEW
                 || milestone.getStatus() != MilestoneStatus.SUBMITTED
                 || chain.reviewDueAt() == null
-                || Instant.now().isBefore(Instant.ofEpochSecond(Long.parseLong(chain.reviewDueAt())))) return;
+                || reviewClock().isBefore(Instant.ofEpochSecond(Long.parseLong(chain.reviewDueAt())))) return;
         JobSubmission latest = submissions.findFirstByContractIdOrderByVersionDesc(contract.getId()).orElse(null);
         if (latest == null || latest.getStatus() != JobSubmissionStatus.SUBMITTED
                 || !Objects.equals(latest.getPayloadHash(), chain.submissionHash())) return;
@@ -156,7 +174,8 @@ public class SolanaEscrowTimeoutService {
         }
         // The instruction itself rejects funding after 48 hours. Wait for any earlier
         // blockhash to expire before closing a locally unresolved build/signature.
-        if (now.isBefore(assigned.plusSeconds(48 * 3600 + 15 * 60))) return;
+        if (now.isBefore(paymentFlowService.fundingDeadline(contract).plusSeconds(15 * 60))
+                || paymentFlowService.unifiedFundingStarted(contract)) return;
         if (record.getFundSignature() != null) {
             var tx = solana.getTransactionStatus(record.getFundSignature());
             if (tx.isFound() && !tx.hasError()) return;
@@ -272,9 +291,11 @@ public class SolanaEscrowTimeoutService {
     }
 
     private void finalizeMutualRefund(EscrowContract record, WorkContract contract,
-            Milestone milestone) {
+            Milestone milestone, SolanaEscrowResult chain) {
         if (contract.getStatus() == ContractStatus.CANCELLED
                 && milestone.getStatus() == MilestoneStatus.REFUNDED) {
+            paymentFlowService.confirmChainSettlement(contract, milestone, "Refunded",
+                    chain.address(), refundReference(record, chain));
             record.setLastChainStatus("REFUNDED_RECONCILED");
             record.setSettlementRetryPending(false);
             return;
@@ -287,6 +308,8 @@ public class SolanaEscrowTimeoutService {
                 && milestone.getStatus() != MilestoneStatus.SUBMITTED) return;
         Job job = jobs.findById(contract.getJobId()).orElse(null);
         if (job == null) return;
+        paymentFlowService.confirmChainSettlement(contract, milestone, "Refunded",
+                chain.address(), refundReference(record, chain));
         milestone.setStatus(MilestoneStatus.REFUNDED);
         contract.setStatus(ContractStatus.CANCELLED);
         job.setStatus(JobStatus.CANCELLED);
@@ -310,6 +333,8 @@ public class SolanaEscrowTimeoutService {
                 && dispute.getResolutionHash().equalsIgnoreCase(chain.resolutionHash())) {
             Job job = jobs.findById(contract.getJobId()).orElse(null);
             if (job == null) return;
+            paymentFlowService.confirmChainSettlement(contract, milestone, target,
+                    chain.address(), release ? releaseReference(record, chain) : refundReference(record, chain));
             dispute.setStatus(release ? DisputeStatus.RESOLVED_RELEASE : DisputeStatus.RESOLVED_REFUND);
             dispute.setResolvedAt(Instant.now());
             milestone.setStatus(release ? MilestoneStatus.RELEASED : MilestoneStatus.REFUNDED);
@@ -352,6 +377,8 @@ public class SolanaEscrowTimeoutService {
             Milestone milestone, SolanaEscrowResult chain) {
         if (contract.getStatus() == ContractStatus.COMPLETED
                 && milestone.getStatus() == MilestoneStatus.RELEASED) {
+            paymentFlowService.confirmChainSettlement(contract, milestone, "Released",
+                    chain.address(), releaseReference(record, chain));
             record.setLastChainStatus("RELEASED_RECONCILED");
             record.setSettlementRetryPending(false);
             if (record.getReleasedAt() == null) record.setReleasedAt(Instant.now());
@@ -367,11 +394,15 @@ public class SolanaEscrowTimeoutService {
                 || chain.submissionCount() != latest.getVersion()) return;
         Job job = jobs.findById(contract.getJobId()).orElse(null);
         if (job == null || job.getStatus() != JobStatus.SUBMITTED_FOR_REVIEW) return;
+        paymentFlowService.confirmChainSettlement(contract, milestone, "Released",
+                chain.address(), releaseReference(record, chain));
         if (latest.getStatus() == JobSubmissionStatus.SUBMITTED) {
             latest.setStatus(JobSubmissionStatus.APPROVED);
             latest.setReviewedAt(LocalDateTime.now());
-            latest.setReviewedAutomatically(chain.reviewDueAt() != null
-                    && !Instant.now().isBefore(Instant.ofEpochSecond(Long.parseLong(chain.reviewDueAt()))));
+            // Chain time decides: settled at or after the on-chain review deadline means the
+            // Client stayed silent and the release was the permissionless timeout claim.
+            latest.setReviewedAutomatically(chain.reviewDueAt() != null && chain.settledAt() != null
+                    && Long.parseLong(chain.settledAt()) >= Long.parseLong(chain.reviewDueAt()));
         }
         milestone.setStatus(MilestoneStatus.RELEASED);
         contract.setStatus(ContractStatus.COMPLETED);
@@ -383,5 +414,18 @@ public class SolanaEscrowTimeoutService {
                 "Escrow đã giải ngân on-chain", "Milestone đã được giải ngân từ vault Solana.", job.getId());
         notifications.notify(contract.getClientUserId(), NotificationType.REVIEW_AUTO_APPROVED,
                 "Escrow đã giải ngân on-chain", "Milestone đã được giải ngân sau khi chain xác nhận.", job.getId());
+    }
+
+    private String releaseReference(EscrowContract record, SolanaEscrowResult chain) {
+        if (record.getReleaseSignature() != null) return record.getReleaseSignature();
+        if (record.getClaimSignature() != null) return record.getClaimSignature();
+        if (record.getResolutionSignature() != null) return record.getResolutionSignature();
+        return chain.address() + ":Released:" + chain.settledAt();
+    }
+
+    private String refundReference(EscrowContract record, SolanaEscrowResult chain) {
+        if (record.getRefundSignature() != null) return record.getRefundSignature();
+        if (record.getResolutionSignature() != null) return record.getResolutionSignature();
+        return chain.address() + ":Refunded:" + chain.settledAt();
     }
 }

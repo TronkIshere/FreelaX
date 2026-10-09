@@ -18,6 +18,7 @@ public class PendingFundingTimeoutService {
     private final EscrowContractRepository escrows;
     private final FundingTransactionRepository funding;
     private final NotificationService notifications;
+    private final PaymentFlowService paymentFlows;
 
     @Transactional
     public void process(UUID contractId) {
@@ -34,9 +35,10 @@ public class PendingFundingTimeoutService {
             notifications.notify(contract.getClientUserId(), NotificationType.FUNDING_REMINDER,
                     "Nhắc funding Milestone", "Bạn còn dưới 24 giờ để funding hợp đồng.", job.getId());
         }
-        if (java.time.LocalDateTime.now().isBefore(contract.getCreatedAt().plusHours(48))
+        if (java.time.Instant.now().isBefore(paymentFlows.fundingDeadline(contract))
                 || funding.existsByMilestoneIdAndStatusIn(milestone.getId(),
-                    EnumSet.allOf(FundingStatus.class))) return;
+                    EnumSet.allOf(FundingStatus.class))
+                || paymentFlows.unifiedFundingStarted(contract)) return;
         contract.setStatus(ContractStatus.CANCELLED);
         milestone.setStatus(MilestoneStatus.CANCELLED);
         job.setStatus(JobStatus.CANCELLED);

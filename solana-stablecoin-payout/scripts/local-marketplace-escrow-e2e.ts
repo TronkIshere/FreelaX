@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto";
 import { readFileSync } from "fs";
+import * as anchor from "@anchor-lang/core";
 import bs58 from "bs58";
 import { Keypair, LAMPORTS_PER_SOL, PublicKey, Transaction } from "@solana/web3.js";
 import { getAccount, getAssociatedTokenAddressSync, getOrCreateAssociatedTokenAccount, mintTo } from "@solana/spl-token";
@@ -43,16 +44,38 @@ function signTransaction(base64: string, wallet: Keypair, requireAll = true): st
 async function waitFor(read: () => Promise<any>, predicate: (value: any) => boolean,
                        label: string, tries = 40): Promise<any> {
   let last: any;
+  let lastError: unknown;
   for (let attempt = 0; attempt < tries; attempt++) {
-    last = await read();
-    if (predicate(last)) return last;
+    try {
+      last = await read();
+      lastError = undefined;
+      if (predicate(last)) return last;
+    } catch (error) {
+      // Escrow PDA and vault balance are separate RPC reads. Immediately after
+      // settlement they can briefly describe different confirmed slots.
+      if (!String(error).includes("FUNDING_AMOUNT_CHANGED")) throw error;
+      lastError = error;
+    }
     await new Promise(resolve => setTimeout(resolve, 750));
   }
-  throw new Error(`${label} did not reconcile; last state: ${JSON.stringify(last)}`);
+  throw new Error(`${label} did not reconcile; last state: ${JSON.stringify(last)}; last error: ${String(lastError)}`);
 }
 
 async function main() {
-  const env = await getTestEnvironment();
+  const reuse = process.argv.includes("--existing");
+  const releaseAmount = reuse ? 15 : 75;
+  const refundAmount = reuse ? 10 : 20;
+  const env: any = reuse ? await (async () => {
+    const provider = anchor.AnchorProvider.env();
+    const response = await fetch("http://127.0.0.1:9193/api/v1/solana/config", {
+      headers: { "X-Internal-Api-Key": envFile.SOLANA_INTERNAL_API_KEY },
+    });
+    if (!response.ok) throw new Error(`Gateway config: HTTP ${response.status}`);
+    const config: any = await response.json();
+    if (!config.exists) throw new Error("Run bootstrap-local-demo.ts on this ledger first");
+    return { provider, payer: (provider.wallet as any).payer,
+      mockUsdc: { mint: new PublicKey(config.data.acceptedMint) } };
+  })() : await getTestEnvironment();
   for (const address of [envFile.SOLANA_SYSTEM_FEE_PAYER,
     clientWallet.publicKey.toBase58(), freelancerWallet.publicKey.toBase58()]) {
     const signature = await env.provider.connection.requestAirdrop(
@@ -61,7 +84,7 @@ async function main() {
   }
   const clientAta = (await getOrCreateAssociatedTokenAccount(env.provider.connection,
     env.payer, env.mockUsdc.mint, clientWallet.publicKey)).address;
-  await mintTo(env.provider.connection, env.payer, env.mockUsdc.mint, clientAta,
+  if (!reuse) await mintTo(env.provider.connection, env.payer, env.mockUsdc.mint, clientAta,
     env.mockUsdc.mintAuthority, 200_000_000n);
 
   const client = await request("POST", "/auth/sign-in", {
@@ -120,7 +143,7 @@ async function main() {
     return { path, escrow, signature: submitted.fundSignature, contract: active.contract };
   }
 
-  const releaseJob = await assignedJob(75);
+  const releaseJob = await assignedJob(releaseAmount);
   const releaseFunding = await fund(releaseJob);
   const contract = releaseFunding.contract;
   const payload = {
@@ -133,6 +156,9 @@ async function main() {
     })),
   };
   const actionPath = `/contracts/${contract.id}/escrow/actions`;
+  const freelancerAta = getAssociatedTokenAddressSync(env.mockUsdc.mint, freelancerWallet.publicKey);
+  const freelancerBefore = await env.provider.connection.getAccountInfo(freelancerAta)
+    ? (await getAccount(env.provider.connection, freelancerAta)).amount : 0n;
   const submissionBuild = await request("POST", actionPath + "/submit/build",
     { submission: payload }, freelancerToken);
   const submittedAction = await request("POST", actionPath + `/${submissionBuild.intentId}/submit`, {
@@ -149,19 +175,25 @@ async function main() {
   }, clientToken);
   await waitFor(() => request("GET", releaseFunding.path, undefined, clientToken),
     value => value.status === "Released", "on-chain release");
-  await request("POST", `/contracts/${contract.id}/submissions/${submission.id}/decisions`,
-    { decision: "APPROVE" }, clientToken);
+  try {
+    await request("POST", `/contracts/${contract.id}/submissions/${submission.id}/decisions`,
+      { decision: "APPROVE" }, clientToken);
+  } catch (error) {
+    if (!String(error).includes('"code":"SUBMISSION_STALE"')) throw error;
+    const alreadyCompleted = await request("GET", `/marketplace/jobs/${releaseJob.id}`,
+      undefined, clientToken);
+    if (alreadyCompleted.status !== "COMPLETED") throw error;
+  }
   const completed = await waitFor(() => request("GET", `/marketplace/jobs/${releaseJob.id}`,
     undefined, clientToken), value => value.status === "COMPLETED", "Job completion");
   const releaseVault = await request("GET", releaseFunding.path, undefined, clientToken);
-  const freelancerAta = getAssociatedTokenAddressSync(env.mockUsdc.mint, freelancerWallet.publicKey);
   const freelancerReceived = (await getAccount(env.provider.connection, freelancerAta)).amount;
   if (completed.contract.status !== "COMPLETED" || releaseVault.vaultBalanceBaseUnits !== "0"
-      || freelancerReceived !== 75_000_000n) {
+      || freelancerReceived !== freelancerBefore + BigInt(releaseAmount) * 1_000_000n) {
     throw new Error("Marketplace release and chain balances disagree");
   }
 
-  const refundJob = await assignedJob(20);
+  const refundJob = await assignedJob(refundAmount);
   const refundFunding = await fund(refundJob);
   const beforeRefund = (await getAccount(env.provider.connection, clientAta)).amount;
   const refundActionPath = `/contracts/${refundFunding.contract.id}/escrow/actions`;
@@ -180,7 +212,7 @@ async function main() {
     undefined, clientToken), value => value.status === "CANCELLED", "Job refund reconciliation", 60);
   const afterRefund = (await getAccount(env.provider.connection, clientAta)).amount;
   if (cancelled.contract.status !== "CANCELLED" || refunded.vaultBalanceBaseUnits !== "0"
-      || afterRefund !== beforeRefund + 20_000_000n) {
+      || afterRefund !== beforeRefund + BigInt(refundAmount) * 1_000_000n) {
     throw new Error("Marketplace refund and chain balances disagree");
   }
 
@@ -189,13 +221,16 @@ async function main() {
       milestoneId: contract.milestoneId, fundingSignature: releaseFunding.signature,
       submissionSignature: submittedAction.signature, releaseSignature: releasedAction.signature,
       jobStatus: completed.status, vaultAfter: releaseVault.vaultBalanceBaseUnits,
-      freelancerReceivedBaseUnits: String(freelancerReceived) },
+      freelancerReceivedBaseUnits: String(freelancerReceived - freelancerBefore) },
     refund: { jobId: refundJob.id, contractId: refundFunding.contract.id,
       milestoneId: refundFunding.contract.milestoneId, fundingSignature: refundFunding.signature,
       refundSignature: refundResult.signature, jobStatus: cancelled.status,
       vaultAfter: refunded.vaultBalanceBaseUnits,
-      clientBalanceRestored: afterRefund === beforeRefund + 20_000_000n },
+      clientBalanceRestored: afterRefund === beforeRefund + BigInt(refundAmount) * 1_000_000n },
   }, null, 2));
 }
 
-main().catch(error => { console.error(error); process.exitCode = 1; });
+describe("Marketplace → Gateway → local escrow", function () {
+  this.timeout(120_000);
+  it("releases approved work and refunds a mutual cancellation", main);
+});

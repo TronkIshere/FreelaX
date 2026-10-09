@@ -23,4 +23,11 @@ public interface EscrowContractRepository extends JpaRepository<EscrowContract, 
             + "and e.lastChainStatus = 'RELEASED_RECONCILED' "
             + "and not exists (select r.id from ContractReview r where r.contractId = e.contractId)")
     List<UUID> findUninvitedReleasedContractIds(Pageable pageable);
+    /** Unified escrows marked reconciled whose payment flow has not yet recorded the terminal USDC transfer. */
+    @Query("select e from EscrowContract e, WorkContract c, PaymentFlow f, PaymentFlowStep r, PaymentFlowStep u "
+            + "where c.id = e.contractId and c.paymentRail = 'UNIFIED_USDC_PAYOUT' and f.contractId = c.id "
+            + "and e.lastChainStatus in ('RELEASED_RECONCILED', 'REFUNDED_RECONCILED') "
+            + "and r.paymentFlowId = f.id and r.kind = 'USDC_RELEASE' and r.status <> 'CONFIRMED' "
+            + "and u.paymentFlowId = f.id and u.kind = 'USDC_REFUND' and u.status <> 'CONFIRMED'")
+    List<EscrowContract> findUnifiedTerminalAwaitingFlow(Pageable pageable);
 }

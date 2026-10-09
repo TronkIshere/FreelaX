@@ -11,6 +11,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.util.UUID;
+import java.time.Instant;
 
 @Entity
 @Table(name = "job_applications",
@@ -28,4 +29,10 @@ public class JobApplication extends AbstractEntity<UUID> {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private JobApplicationStatus status;
+
+    @Column(name = "accepted_terms_fingerprint", length = 64)
+    private String acceptedTermsFingerprint;
+
+    @Column(name = "terms_accepted_at")
+    private Instant termsAcceptedAt;
 }

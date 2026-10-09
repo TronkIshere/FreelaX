@@ -4,6 +4,7 @@ import com.marketplace.backend.client.SolanaCprClient;
 import com.marketplace.backend.dto.response.solana.SolanaBuildResult;
 import com.marketplace.backend.dto.response.solana.SolanaConfigResult;
 import com.marketplace.backend.dto.response.solana.SolanaEscrowResult;
+import com.marketplace.backend.dto.response.solana.MockOnrampReceiptResult;
 import com.marketplace.backend.entity.*;
 import com.marketplace.backend.exception.ApplicationException;
 import com.marketplace.backend.exception.ErrorCode;
@@ -13,7 +14,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.time.Instant;
 import java.util.EnumSet;
 import java.util.Map;
@@ -31,6 +31,10 @@ public class SolanaEscrowFundingService {
     private final EscrowContractRepository escrows;
     private final SolanaCprClient solana;
     private final NotificationService notifications;
+    private final PaymentFlowRepository paymentFlows;
+    private final UnifiedUsdFundingService unifiedFunding;
+    private final PaymentFlowService paymentFlowService;
+    private final UnifiedReconciliationService reconciliation;
 
     public record EscrowView(String paymentRail, String status, String settlementStatus,
             String escrowAddress,
@@ -57,11 +61,12 @@ public class SolanaEscrowFundingService {
                 .orElseThrow(() -> new ApplicationException(ErrorCode.FUNDING_NOT_FOUND));
         Job job = jobs.findById(contract.getJobId())
                 .orElseThrow(() -> new ApplicationException(ErrorCode.FUNDING_NOT_FOUND));
+        boolean unified = PaymentFlow.RAIL.equals(contract.getPaymentRail());
         if (milestone.getStatus() != MilestoneStatus.PENDING_FUNDING
                 || contract.getStatus() != ContractStatus.PENDING_FUNDING
                 || job.getStatus() != JobStatus.AWAITING_PAYMENT
                 || (contract.getCreatedAt() != null
-                    && LocalDateTime.now().isAfter(contract.getCreatedAt().plusHours(48)))
+                    && !Instant.now().isBefore(paymentFlowService.fundingDeadline(contract)))
                 || simulatedFunding.existsByMilestoneIdAndStatusIn(milestoneId,
                     EnumSet.allOf(FundingStatus.class))) {
             throw new ApplicationException(ErrorCode.FUNDING_INVALID_STATE);
@@ -84,15 +89,31 @@ public class SolanaEscrowFundingService {
             throw new ApplicationException(ErrorCode.FUNDING_IN_PROGRESS);
         }
         SolanaConfigResult config = solana.getConfig();
+        if (unified) {
+            PaymentFlow flow = paymentFlows.findByMilestoneId(milestoneId)
+                    .filter(f -> f.getContractId().equals(contractId))
+                    .orElseThrow(() -> new ApplicationException(ErrorCode.FUNDING_INVALID_STATE));
+            if (!unifiedFunding.clientUsdcConfirmed(flow.getId(), config.getAcceptedMint(), milestone.getAmount()))
+                throw new ApplicationException(ErrorCode.FUNDING_INVALID_STATE);
+            reconciliation.requireMatched(flow, 1);
+            String purchaseId = Long.toUnsignedString(flow.getId().getMostSignificantBits());
+            MockOnrampReceiptResult receipt = solana.findMockOnrampReceipt(clientWallet, purchaseId)
+                    .orElseThrow(() -> new ApplicationException(ErrorCode.FUNDING_INVALID_STATE));
+            if (!Objects.equals(receipt.getClient(), clientWallet)
+                    || !Objects.equals(receipt.getMint(), config.getAcceptedMint())
+                    || !Objects.equals(receipt.getPurchaseId(), purchaseId)
+                    || !Objects.equals(receipt.getTokenAmount(), baseUnits(milestone.getAmount()))
+                    || !Objects.equals(receipt.getUsdAmountE6(), baseUnits(milestone.getAmount())))
+                throw new ApplicationException(ErrorCode.FUNDING_AMOUNT_CHANGED);
+        }
         String amount = baseUnits(milestone.getAmount());
         Map<String, Object> request = Map.of(
                 "client", clientWallet, "freelancer", freelancerWallet,
                 "amount", amount,
-                "fundingExpiresAt", Long.toString(contract.getCreatedAt()
-                    .atZone(java.time.ZoneId.systemDefault()).toEpochSecond() + 48 * 3600),
+                "fundingExpiresAt", Long.toString(paymentFlowService.fundingDeadline(contract).getEpochSecond()),
                 "deliveryDueAt", Long.toString(contract.getDeliveryDueAt().getEpochSecond()),
                 "reviewWindowHours", contract.getReviewWindowHours(), "maxRevisions", contract.getMaxRevisions(),
-                "mode", "build");
+                "highValueReviewGrace", !unified, "mode", "build");
         SolanaBuildResult built = solana.buildEscrowFund(milestoneId.toString(), request);
         if (built.derivedAccounts() == null
                 || built.derivedAccounts().getMilestoneEscrow() == null
@@ -113,7 +134,7 @@ public class SolanaEscrowFundingService {
         record.setFundBuildSession(built.buildSessionId());
         record.setLastChainStatus("AWAITING_SIGNATURE");
         escrows.saveAndFlush(record);
-        contract.setPaymentRail("SOLANA_ESCROW");
+        if (!unified) contract.setPaymentRail("SOLANA_ESCROW");
         return new EscrowBuildView(built.buildSessionId(), built.transactionBase64(),
                 record.getEscrowAddress(), clientWallet, freelancerWallet, amount,
                 config.getAcceptedMint());
@@ -141,11 +162,10 @@ public class SolanaEscrowFundingService {
     public EscrowView get(UUID actorId, UUID contractId, UUID milestoneId) {
         EscrowContract record = participant(actorId, contractId, milestoneId);
         WorkContract contract = contracts.findById(contractId).orElseThrow();
-        String expectedFundingExpiry = Long.toString(contract.getCreatedAt()
-                .atZone(java.time.ZoneId.systemDefault()).toEpochSecond() + 48 * 3600);
+        String expectedFundingExpiry = Long.toString(paymentFlowService.fundingDeadline(contract).getEpochSecond());
         SolanaEscrowResult chain = solana.findEscrow(milestoneId.toString()).orElse(null);
         if (chain == null) {
-            return new EscrowView("SOLANA_ESCROW", record.getLastChainStatus(),
+            return new EscrowView(contract.getPaymentRail() == null ? "SOLANA_ESCROW" : contract.getPaymentRail(), record.getLastChainStatus(),
                     record.getLastChainStatus(),
                     record.getEscrowAddress(), record.getClientWallet(), record.getFreelancerWallet(),
                     record.getMint(), null, expectedFundingExpiry, null, null, null, null, null,
@@ -156,8 +176,11 @@ public class SolanaEscrowFundingService {
                     null, false);
         }
         Milestone milestone = milestones.findWithLockById(milestoneId).orElseThrow();
+        // Unified terms lock one review window; only legacy escrow adds high-value grace.
+        boolean reviewGrace = !PaymentFlow.RAIL.equals(contract.getPaymentRail())
+                && milestone.getAmount().compareTo(new BigDecimal("500.00")) > 0;
         String expectedReviewSeconds = Long.toString((contract.getReviewWindowHours()
-                + (milestone.getAmount().compareTo(new BigDecimal("500.00")) > 0 ? 24 : 0)) * 3600L);
+                + (reviewGrace ? 24 : 0)) * 3600L);
         if (!Objects.equals(chain.address(), record.getEscrowAddress())
                 || !Objects.equals(chain.milestoneId(), milestoneId.toString())
                 || !Objects.equals(chain.client(), record.getClientWallet())
@@ -177,14 +200,26 @@ public class SolanaEscrowFundingService {
             record.setLastChainStatus("MISMATCH");
             throw new ApplicationException(ErrorCode.FUNDING_AMOUNT_CHANGED);
         }
+        if (PaymentFlow.RAIL.equals(contract.getPaymentRail()) && "Released".equals(chain.status())
+                && contract.getStatus() == ContractStatus.COMPLETED
+                && milestone.getStatus() == MilestoneStatus.RELEASED)
+            // Idempotent; the chain terminal and vault were checked above against this escrow.
+            paymentFlowService.confirmChainSettlement(contract, milestone, "Released",
+                    chain.address(), record.getReleaseSignature());
         record.setLastChainStatus("Released".equals(chain.status())
                 && contract.getStatus() == ContractStatus.COMPLETED
                 ? "RELEASED_RECONCILED" : chain.status());
+        if (PaymentFlow.RAIL.equals(contract.getPaymentRail())
+                && ("Funded".equals(chain.status()) || "Submitted".equals(chain.status())
+                    || "Revision".equals(chain.status()) || "Disputed".equals(chain.status()))) {
+            PaymentFlow flow = paymentFlows.findByMilestoneId(milestoneId)
+                    .orElseThrow(() -> new ApplicationException(ErrorCode.FUNDING_INVALID_STATE));
+            unifiedFunding.confirmEscrow(flow, chain);
+        }
         if (milestone.getStatus() == MilestoneStatus.PENDING_FUNDING
                 && contract.getStatus() == ContractStatus.PENDING_FUNDING
                 && ("Funded".equals(chain.status()) || "Submitted".equals(chain.status())
-                    || "Revision".equals(chain.status()) || "Disputed".equals(chain.status())
-                    || "Released".equals(chain.status()) || "Refunded".equals(chain.status()))) {
+                    || "Revision".equals(chain.status()) || "Disputed".equals(chain.status()))) {
             Job job = jobs.findById(contract.getJobId()).orElseThrow();
             if (job.getStatus() != JobStatus.AWAITING_PAYMENT) {
                 throw new ApplicationException(ErrorCode.FUNDING_INVALID_STATE);
@@ -195,7 +230,7 @@ public class SolanaEscrowFundingService {
             notifications.notify(contract.getFreelancerId(), NotificationType.FUNDING_CONFIRMED,
                     "Milestone đã được ký quỹ on-chain", "Bạn có thể bắt đầu công việc.", job.getId());
         }
-        return new EscrowView("SOLANA_ESCROW", chain.status(), phase(chain, record), chain.address(),
+        return new EscrowView(contract.getPaymentRail() == null ? "SOLANA_ESCROW" : contract.getPaymentRail(), chain.status(), phase(chain, record), chain.address(),
                 chain.client(), chain.freelancer(), chain.mint(), chain.amount(),
                 chain.fundingExpiresAt(), chain.deliveryDueAt(), chain.reviewDueAt(), chain.submissionHash(),
                 chain.submissionCount(), chain.disputeHash(),
@@ -238,4 +273,5 @@ public class SolanaEscrowFundingService {
     private String baseUnits(BigDecimal usd) {
         return usd.movePointRight(6).toBigIntegerExact().toString();
     }
+
 }

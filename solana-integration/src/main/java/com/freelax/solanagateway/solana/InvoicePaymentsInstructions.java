@@ -148,7 +148,8 @@ public class InvoicePaymentsInstructions {
 
     public TransactionInstruction fundMilestoneEscrow(PublicKey client, PublicKey marketplaceAuthority,
             PublicKey freelancer, PublicKey mint, String milestoneId, String amount,
-            long fundingExpiresAt, long deliveryDueAt, int reviewWindowHours, int maxRevisions) {
+            long fundingExpiresAt, long deliveryDueAt, int reviewWindowHours, int maxRevisions,
+            boolean highValueReviewGrace) {
         PublicKey escrow = addresses.milestoneEscrow(milestoneId);
         return instruction("fund_milestone_escrow", List.of(
                 writableSigner(client), signer(marketplaceAuthority), readonly(addresses.config()),
@@ -159,7 +160,7 @@ public class InvoicePaymentsInstructions {
                 SolanaValueCodec.u64Le(amount, "amount"), SolanaValueCodec.i64Le(fundingExpiresAt),
                 SolanaValueCodec.i64Le(deliveryDueAt),
                 SolanaValueCodec.u16Le(reviewWindowHours, "reviewWindowHours"),
-                new byte[]{(byte) maxRevisions});
+                new byte[]{(byte) maxRevisions}, bool(highValueReviewGrace));
     }
 
     public TransactionInstruction escrowPartyAction(String name, PublicKey actor,

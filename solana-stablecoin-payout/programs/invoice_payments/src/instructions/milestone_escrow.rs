@@ -43,7 +43,7 @@ pub struct FundMilestoneEscrow<'info> {
 
 pub fn fund(ctx: Context<FundMilestoneEscrow>, milestone_id: [u8; 16], freelancer: Pubkey,
             amount: u64, funding_expires_at: i64, delivery_due_at: i64, review_window_hours: u16,
-            max_revisions: u8) -> Result<()> {
+            max_revisions: u8, high_value_review_grace: bool) -> Result<()> {
     let now = Clock::get()?.unix_timestamp;
     require!(amount > 0 && funding_expires_at >= now && delivery_due_at > now
         && review_window_hours >= MIN_REVIEW_HOURS
@@ -52,7 +52,8 @@ pub fn fund(ctx: Context<FundMilestoneEscrow>, milestone_id: [u8; 16], freelance
         && freelancer != ctx.accounts.config.admin
         && ctx.accounts.client.key() != ctx.accounts.config.admin,
         ErrorCode::InvalidEscrowTerms);
-    let extra_hours: u16 = if amount > HIGH_VALUE_THRESHOLD { 24 } else { 0 };
+    // Legacy escrow terms add 24h for high-value work; unified terms lock one review window.
+    let extra_hours: u16 = if high_value_review_grace && amount > HIGH_VALUE_THRESHOLD { 24 } else { 0 };
     let review_window_seconds = i64::from(review_window_hours + extra_hours) * 3600;
     token::transfer_checked(
         CpiContext::new(ctx.accounts.token_program.key(), TransferChecked {

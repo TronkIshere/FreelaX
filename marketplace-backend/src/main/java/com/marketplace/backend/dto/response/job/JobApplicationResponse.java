@@ -16,5 +16,7 @@ public class JobApplicationResponse {
     UUID jobId;
     UUID freelancerId;
     String status;
+    String acceptedTermsFingerprint;
+    java.time.Instant termsAcceptedAt;
     LocalDateTime createdAt;
 }

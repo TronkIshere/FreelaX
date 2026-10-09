@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.marketplace.backend.client.SolanaCprClient;
+import com.marketplace.backend.client.PaymentBackendClient;
 import com.marketplace.backend.dto.response.solana.SolanaEscrowResult;
 import com.marketplace.backend.dto.request.submission.CreateContractSubmissionRequest;
 import com.marketplace.backend.dto.request.submission.ReviewSubmissionRequest;
@@ -45,9 +46,11 @@ public class ContractSubmissionService {
     private final FundingTransactionRepository funding;
     private final EscrowContractRepository escrowContracts;
     private final SolanaCprClient solana;
+    private final PaymentBackendClient payment;
     private final ContractDisputeRepository disputes;
     private final DisputeAuditRepository disputeAudit;
     private final NotificationService notifications;
+    private final BusinessDayClock businessDays;
     private final ObjectMapper objectMapper;
 
     @Transactional
@@ -121,7 +124,8 @@ public class ContractSubmissionService {
         submission.setSubmittedLate(chain == null && contract.getDeliveryDueAt() != null
                 && now.isAfter(contract.getDeliveryDueAt()));
         submission.setReviewDueAt(chain == null
-                ? now.plus(contract.getReviewWindowHours(), ChronoUnit.HOURS)
+                ? PartnerEscrowFundingService.RAIL.equals(contract.getPaymentRail())
+                    ? businessDays.add(now, 3) : now.plus(contract.getReviewWindowHours(), ChronoUnit.HOURS)
                 : Instant.ofEpochSecond(Long.parseLong(chain.reviewDueAt())));
         submissions.saveAndFlush(submission);
 
@@ -185,7 +189,10 @@ public class ContractSubmissionService {
                 contract.setStatus(ContractStatus.COMPLETED);
                 job.setStatus(JobStatus.COMPLETED);
                 escrowContracts.findByContractId(contractId).ifPresent(record -> {
-                    record.setLastChainStatus("RELEASED_RECONCILED");
+                    // A unified flow must record USDC_RELEASE first; the escrow reconciler does
+                    // that from the "Released" state and only then marks the record reconciled.
+                    if (!com.marketplace.backend.entity.PaymentFlow.RAIL.equals(contract.getPaymentRail()))
+                        record.setLastChainStatus("RELEASED_RECONCILED");
                     if (record.getReleasedAt() == null) record.setReleasedAt(Instant.now());
                 });
             }
@@ -234,6 +241,11 @@ public class ContractSubmissionService {
                     EnumSet.of(DisputeStatus.OPEN, DisputeStatus.UNDER_REVIEW))) {
                 throw new ApplicationException(ErrorCode.DISPUTE_ALREADY_OPEN);
             }
+            if (PartnerEscrowFundingService.RAIL.equals(contract.getPaymentRail())) {
+                var frozen = payment.freezePartnerEscrow(milestone.getId());
+                if (!"FROZEN".equals(frozen.status()))
+                    throw new ApplicationException(ErrorCode.SUBMISSION_INVALID_STATE);
+            }
             ContractDispute dispute = new ContractDispute();
             dispute.setContractId(contractId);
             dispute.setJobId(job.getId());
@@ -243,6 +255,8 @@ public class ContractSubmissionService {
             dispute.setReasonCode(request.getReasonCode().trim());
             dispute.setDescription(request.getDescription().trim());
             dispute.setOpenedAt(Instant.now());
+            if (PartnerEscrowFundingService.RAIL.equals(contract.getPaymentRail()))
+                dispute.setNegotiationUntil(businessDays.add(dispute.getOpenedAt(), 3));
             dispute.setStatus(DisputeStatus.OPEN);
             disputes.save(dispute);
             DisputeAudit opened = new DisputeAudit();
@@ -294,7 +308,8 @@ public class ContractSubmissionService {
         if (escrowContracts.existsByContractId(contract.getId())) {
             return AutoReviewOutcome.SKIPPED;
         }
-        if (milestone.getAmount().compareTo(new BigDecimal("500.00")) > 0) {
+        if (!PartnerEscrowFundingService.RAIL.equals(contract.getPaymentRail())
+                && milestone.getAmount().compareTo(new BigDecimal("500.00")) > 0) {
             Instant graceDueAt = submission.getReviewDueAt().plus(24, ChronoUnit.HOURS);
             if (now.isBefore(graceDueAt)) {
                 if (submission.getReviewGraceDueAt() == null) {
@@ -324,6 +339,27 @@ public class ContractSubmissionService {
     }
 
     public enum AutoReviewOutcome { SKIPPED, GRACE_STARTED, APPROVED }
+
+    @Transactional
+    public void remindPartnerReview(UUID submissionId, Instant now) {
+        UUID milestoneId = submissions.findReviewMilestoneId(submissionId).orElse(null);
+        if (milestoneId == null) return;
+        Milestone milestone = milestones.findWithLockById(milestoneId).orElse(null);
+        JobSubmission submission = submissions.findWithLockById(submissionId).orElse(null);
+        if (milestone == null || submission == null || submission.getStatus() != JobSubmissionStatus.SUBMITTED
+                || submission.getReviewReminderCount() >= 2 || submission.getSubmittedAt() == null) return;
+        WorkContract contract = contracts.findById(submission.getContractId()).orElse(null);
+        if (contract == null || !PartnerEscrowFundingService.RAIL.equals(contract.getPaymentRail())
+                || contract.getStatus() != ContractStatus.UNDER_REVIEW || milestone.getStatus() != MilestoneStatus.SUBMITTED
+                || submissions.findFirstByContractIdOrderByVersionDesc(contract.getId())
+                    .filter(latest -> latest.getId().equals(submissionId)).isEmpty()) return;
+        int next = submission.getReviewReminderCount() + 1;
+        if (now.isBefore(businessDays.add(submission.getSubmittedAt(), next))
+                || !now.isBefore(submission.getReviewDueAt())) return;
+        submission.setReviewReminderCount(next);
+        notifications.notify(contract.getClientUserId(), NotificationType.REVIEW_REMINDER,
+                "Nhắc duyệt bản bàn giao", "Nhắc lần " + next + "/2: phản hồi trước hạn 3 ngày làm việc để tránh tự duyệt.", contract.getJobId());
+    }
 
     public String escrowPayloadHash(UUID contractId, CreateContractSubmissionRequest request) {
         if (request == null) throw new ApplicationException(ErrorCode.INVALID_DATA);

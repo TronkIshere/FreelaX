@@ -5,6 +5,7 @@ import com.marketplace.backend.client.PaymentBackendClient;
 import com.marketplace.backend.dto.request.bofa.CreateReleaseRequest;
 import com.marketplace.backend.dto.request.submission.ReviewSubmissionRequest;
 import com.marketplace.backend.dto.response.bofa.PaymentReleaseResult;
+import com.marketplace.backend.dto.response.partner.PartnerEscrowResult;
 import com.marketplace.backend.entity.*;
 import com.marketplace.backend.exception.ApplicationException;
 import com.marketplace.backend.repository.*;
@@ -48,7 +49,7 @@ class SettlementServiceTest {
     @Configuration
     @EntityScan(basePackageClasses = Job.class)
     @EnableJpaRepositories(basePackageClasses = JobRepository.class)
-    @Import({SettlementService.class, ContractSubmissionService.class})
+    @Import({SettlementService.class, ContractSubmissionService.class, BusinessDayClock.class})
     static class Config {
         @Bean TransactionTemplate transactions(PlatformTransactionManager manager) {
             return new TransactionTemplate(manager);
@@ -69,6 +70,8 @@ class SettlementServiceTest {
     @Autowired TransactionTemplate tx;
     @Autowired ObjectMapper json;
     @MockitoBean PaymentBackendClient payment;
+    @MockitoBean PartnerReconciliationService partnerReconciliation;
+    @MockitoBean UserRepository users;
     @MockitoBean com.marketplace.backend.client.SolanaCprClient solana;
     @MockitoBean NotificationService notifications;
     @MockitoBean SettlementDownstreamService downstream;
@@ -155,6 +158,43 @@ class SettlementServiceTest {
         verifyNoInteractions(payment);
     }
 
+    @Test void partnerRailPaysNetVndAndBooksFeeOnlyAfterConfirmation() {
+        tx.executeWithoutResult(s -> {
+            contracts.findById(contract.getId()).orElseThrow().setPaymentRail(PartnerEscrowFundingService.RAIL);
+            funding.findById(paid.getId()).orElseThrow().setPaymentMethodId(PartnerEscrowFundingService.RAIL);
+        });
+        User recipient = new User();
+        recipient.setId(contract.getFreelancerId());
+        recipient.setBankCode(BankCode.ACB);
+        recipient.setBankAccountNumber("1234567890");
+        when(users.findById(contract.getFreelancerId())).thenReturn(Optional.of(recipient));
+        when(partnerReconciliation.snapshot()).thenReturn(new PartnerReconciliationService.ReconciliationView(
+                new BigDecimal("500.00"), new BigDecimal("500.00"), BigDecimal.ZERO, true, 0,
+                List.of(), Instant.now(), true));
+        when(partnerReconciliation.confirms(eq(milestone.getId()), eq("RELEASE"), any())).thenReturn(true);
+        UUID id = service.prepare(milestone.getId());
+        assertThat(saved(id).getPlatformFeeUsd()).isNull();
+        when(payment.getPartnerEscrow(milestone.getId())).thenReturn(new PartnerEscrowResult(milestone.getId(),
+                contract.getId(), job.getId(), contract.getClientUserId(), contract.getFreelancerId(),
+                new BigDecimal("500.00"), "FUNDED", null, null, null, null, null, null,
+                null, null, null, Instant.now(), true));
+        when(payment.releasePartnerEscrow(eq(milestone.getId()), anyString(), eq("ACB"), eq("1234567890"), eq(false)))
+                .thenAnswer(a -> new PartnerEscrowResult(milestone.getId(), contract.getId(), job.getId(),
+                        contract.getClientUserId(), contract.getFreelancerId(), new BigDecimal("500.00"), "PAID",
+                        new BigDecimal("15.00"), new BigDecimal("485.00"), new BigDecimal("25000"),
+                        new BigDecimal("12125000"), a.getArgument(1), null, "ACB", "7890",
+                        Instant.now(), Instant.now(), true));
+        service.processMoney(id);
+        assertThat(saved(id).getMoneyStatus()).isEqualTo(SettlementMoneyStatus.SUCCEEDED);
+        assertThat(saved(id).getPlatformFeeUsd()).isEqualByComparingTo("15.00");
+        assertThat(saved(id).getFreelancerUsd()).isEqualByComparingTo("485.00");
+        assertThat(saved(id).getPartnerPayoutVnd()).isEqualByComparingTo("12125000");
+        assertThat(jobs.findById(job.getId()).orElseThrow().getStatus()).isEqualTo(JobStatus.COMPLETED);
+        verify(payment, never()).createRelease(any());
+        service.processMoney(id);
+        verify(payment, times(1)).releasePartnerEscrow(any(), any(), any(), any(), eq(false));
+    }
+
     @Test void outerTransactionRollbackCannotEraseTheReleaseIdentity() {
         UUID[] id = {null};
         tx.executeWithoutResult(status -> {
@@ -231,8 +271,8 @@ class SettlementServiceTest {
         assertThatThrownBy(() -> service.processMoney(id)).isInstanceOf(IllegalStateException.class);
         assertThat(saved(id).getMoneyStatus()).isEqualTo(SettlementMoneyStatus.PENDING);
         assertThat(jobs.findById(job.getId()).orElseThrow().getStatus()).isEqualTo(JobStatus.SUBMITTED_FOR_REVIEW);
-        SettlementService restarted = new SettlementService(settlements, escrowContracts, milestones, contracts, jobs, submissions,
-                funding, disputes, payment, notifications, tx, downstream);
+        SettlementService restarted = new SettlementService(settlements, escrowContracts, milestones, contracts, jobs, users, submissions,
+                funding, disputes, payment, partnerReconciliation, notifications, tx, downstream);
         restarted.processMoney(id); assertCompleted(id); assertThat(saved(id).getReleaseKey()).isEqualTo(key);
         assertThat(credits.get()).isEqualTo(1); verify(payment, times(1)).createRelease(any());
     }

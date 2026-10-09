@@ -49,7 +49,7 @@ function JobDocument({ job }: { job: Detail }) {
   const maxRevisions = contract?.maxRevisions ?? job.maxRevisions;
   const terms = [
     ...(due ? [{ label: 'Hạn bàn giao', value: localInstant(due) }] : []),
-    ...(typeof reviewWindow === 'number' ? [{ label: 'Thời hạn review mỗi lượt', value: reviewWindow + ' giờ' }] : []),
+    ...(typeof reviewWindow === 'number' ? [{ label: 'Thời hạn review mỗi lượt', value: contract?.paymentRail === 'PARTNER_ESCROW_MOCK' ? '3 ngày làm việc' : reviewWindow + ' giờ' }] : []),
     ...(typeof maxRevisions === 'number' ? [{ label: 'Số lần chỉnh sửa tối đa', value: maxRevisions }] : []),
     ...(contract && typeof contract.revisionsUsed === 'number' && typeof contract.maxRevisions === 'number'
       ? [{ label: 'Chỉnh sửa đã dùng', value: contract.revisionsUsed + '/' + contract.maxRevisions + ' lần' }] : []),
@@ -57,6 +57,24 @@ function JobDocument({ job }: { job: Detail }) {
   return <section className="work-document" aria-labelledby="work-document-title">
     <SectionHeading id="work-document-title" title="Nội dung công việc" />
     <p className="work-description">{job.description}</p>
+    <p>Điều khoản công việc được chốt khi Freelancer ứng tuyển và Client giao việc.</p>
+    {job.localPaymentTerms ? <section className="job-terms-document" aria-label="Điều khoản thanh toán thống nhất">
+      <SectionHeading title="Thanh toán thống nhất · Mô phỏng local" level={3} />
+      <p>Client nộp USD; đối tác đổi thành Mock USDC để khóa trong escrow. Khi nghiệm thu, Freelancer nhận USDC rồi đổi sang VND. Đây là số tiền theo mẫu local; mint và network bên dưới là phần của điều khoản, quote USD được khóa khi mở USD order.</p>
+      <FactGrid facts={[
+        { label: 'Client nộp', value: money(Number(job.localPaymentTerms.grossUsd)) },
+        { label: 'USDC phải vào escrow', value: Number(job.localPaymentTerms.escrowUsdc).toFixed(6) + ' Mock USDC' },
+        { label: 'Phí Freelancer chịu khi payout', value: Number(job.localPaymentTerms.platformFeeUsdc).toFixed(6) + ' Mock USDC (3%)' },
+        { label: 'Tỷ giá VND ước tính', value: '1 USDC = ' + Number(job.localPaymentTerms.usdcVndRate).toLocaleString('vi-VN') + ' VND' },
+        { label: 'Freelancer dự kiến nhận', value: Number(job.localPaymentTerms.estimatedPayoutVnd).toLocaleString('vi-VN') + ' VND' },
+        { label: 'Hủy trước release', value: 'Client nhận đủ ' + money(Number(job.localPaymentTerms.fullRefundUsd)) + '; phí FreelaX bằng 0' },
+        { label: 'Hạn funding', value: job.localPaymentTerms.fundingHours + ' giờ từ khi giao việc' },
+        { label: 'Thời hạn duyệt', value: job.localPaymentTerms.reviewWindowHours + ' giờ sau bàn giao hợp lệ, không gia hạn' },
+        { label: 'Số lần sửa tối đa', value: String(job.localPaymentTerms.maxRevisions) },
+        ...(job.localPaymentTerms.mint ? [{ label: 'Token escrow', value: 'Mock USDC · ' + job.localPaymentTerms.network + ' · mint ' + job.localPaymentTerms.mint }] : []),
+      ]} />
+      <p className="metadata">Hai bên xác nhận cùng phiên bản điều khoản trước khi phân công. Số VND cuối cùng theo quote được khóa khi withdrawal; mô phỏng không dùng tiền thật.</p>
+    </section> : <p>Với ký quỹ đối tác mock, Freelancer chịu phí FreelaX 3% chỉ khi được giải ngân; nếu hoàn trước giải ngân Client nhận đủ USD.</p>}
     {job.category && <p>Danh mục: {jobCategories[job.category] ?? 'Khác'}</p>}
     {!!job.skills?.length && <p>Kỹ năng: {job.skills.join(', ')}</p>}
     <ActionGroup label="Hồ sơ các bên"><Link className="text-link" to={'/profiles/' + encodeURIComponent(isDiscover(job) ? job.client.id : job.clientUserId)}>Hồ sơ Client</Link>{!isDiscover(job) && job.freelancerId && <Link className="text-link" to={'/profiles/' + encodeURIComponent(job.freelancerId)}>Hồ sơ Freelancer</Link>}</ActionGroup>
@@ -138,6 +156,7 @@ export function JobDetail({ user }: { user: User }) {
   const [mutationError, setMutationError] = useState('');
   const [busy, setBusy] = useState(false);
   const [applyBlocked, setApplyBlocked] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const busyRef = useRef(false);
 
@@ -163,7 +182,8 @@ export function JobDetail({ user }: { user: User }) {
     setBusy(true);
     setMutationError('');
     try {
-      const application = await api.apply(jobId);
+      const application = job.localPaymentTerms
+        ? await api.apply(jobId, job.localPaymentTerms.fingerprint) : await api.apply(jobId);
       setJob(current => current && isDiscover(current) ? {
         ...current, hasApplied: true, applicationId: application.id, applicationStatus: application.status,
       } : current);
@@ -212,10 +232,12 @@ export function JobDetail({ user }: { user: User }) {
       <section className="action-band" aria-label="Bước tiếp">
         {discovered && user.userType === 'FREELANCER' && <>
           <h2>{applied ? 'Ứng tuyển đã ghi nhận' : job.status === 'OPEN' ? 'Sẵn sàng ứng tuyển?' : 'Ứng tuyển đã đóng'}</h2>
+          {!applied && job.status === 'OPEN' && <p>Gửi ứng tuyển nghĩa là đồng ý với sản phẩm bàn giao, tiêu chí nghiệm thu, hạn và số vòng sửa đang hiển thị. Sau ứng tuyển, Client không thể sửa điều khoản này.</p>}
+          {!applied && job.status === 'OPEN' && job.localPaymentTerms && <label><input type="checkbox" checked={termsAccepted} onChange={event => setTermsAccepted(event.target.checked)} /> Tôi đã đọc và đồng ý điều khoản thanh toán mô phỏng local ở dưới.</label>}
           {applied && <p>{applicationLabel(discovered.applicationStatus || 'PENDING')}</p>}
           <ActionGroup>
             <button className="button" type="button" onClick={apply}
-              disabled={busy || applied || applyBlocked || job.status !== 'OPEN'}>{busy ? 'Đang gửi ứng tuyển…' : applied ? 'Đã ứng tuyển' : 'Ứng tuyển'}</button>
+              disabled={busy || applied || applyBlocked || job.status !== 'OPEN' || (!!job.localPaymentTerms && !termsAccepted)}>{busy ? 'Đang gửi ứng tuyển…' : applied ? 'Đã ứng tuyển' : 'Ứng tuyển'}</button>
             {applied && <Link className="text-link" to="/work/applications">Xem ứng tuyển của tôi →</Link>}
           </ActionGroup>
         </>}
@@ -392,6 +414,7 @@ export function ClientApplicants({ user }: { user: User }) {
   const [error, setError] = useState('');
   const [mutationError, setMutationError] = useState('');
   const [selected, setSelected] = useState<string | null>(null);
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [busy, setBusy] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [profiles, setProfiles] = useState<Record<string, ApplicantProfile>>({});
@@ -441,7 +464,9 @@ export function ClientApplicants({ user }: { user: User }) {
     if (!applicant) return;
     busyRef.current = true; setBusy(true); setMutationError('');
     try {
-      const assigned = await api.assign(jobId, freelancerId);
+      const assigned = job.localPaymentTerms
+        ? await api.assign(jobId, freelancerId, job.localPaymentTerms.fingerprint)
+        : await api.assign(jobId, freelancerId);
       setJob(assigned);
       setSelected(null);
       await refresh();
@@ -497,14 +522,16 @@ export function ClientApplicants({ user }: { user: User }) {
                   <span className="candidate-date"><CalendarDays size={17} aria-hidden="true" />Nộp {timestamp(application.createdAt)}</span>
                   {canSelect && <button className="button candidate-select" type="button" disabled={busy}
                     aria-expanded={confirming} aria-controls={'candidate-confirm-' + application.id}
-                    onClick={() => setSelected(application.id)}>Chọn Freelancer <KineticActionArrow /></button>}
+                    onClick={() => { setSelected(application.id); setTermsAccepted(false); }}>Chọn Freelancer <KineticActionArrow /></button>}
                   <Link className="candidate-profile-link" to={'/profiles/' + encodeURIComponent(application.freelancerId)}>Xem hồ sơ <KineticActionArrow /></Link>
                 </div>
                 {confirming && <div className="candidate-confirmation" id={'candidate-confirm-' + application.id} role="group" aria-label="Xác nhận chọn Freelancer">
                   <div><h4>Xác nhận lựa chọn</h4>
                     <p>Khi xác nhận, hồ sơ này sẽ được chấp nhận và các hồ sơ đang chờ còn lại sẽ được đóng (không được chọn).
                       Công việc chuyển sang bước funding. Freelancer chỉ bắt đầu sau khi milestone được funding.</p></div>
-                  <ActionGroup><button className="button" type="button" disabled={busy} onClick={() => assign(application.freelancerId)}>
+                  {job?.localPaymentTerms && <div><p>Điều khoản thanh toán: {money(Number(job.localPaymentTerms.grossUsd))} → {Number(job.localPaymentTerms.escrowUsdc).toFixed(6)} Mock USDC; phí Freelancer {Number(job.localPaymentTerms.platformFeeUsdc).toFixed(6)} USDC; payout dự kiến {Number(job.localPaymentTerms.estimatedPayoutVnd).toLocaleString('vi-VN')} VND. Hủy trước release hoàn đủ {money(Number(job.localPaymentTerms.fullRefundUsd))}.</p>
+                    <label><input type="checkbox" checked={termsAccepted} onChange={event => setTermsAccepted(event.target.checked)} /> Tôi đã đọc và đồng ý điều khoản thanh toán mô phỏng local này.</label></div>}
+                  <ActionGroup><button className="button" type="button" disabled={busy || (!!job?.localPaymentTerms && !termsAccepted)} onClick={() => assign(application.freelancerId)}>
                     {busy ? 'Đang phân công…' : 'Xác nhận chọn'}</button>
                     <button className="button button-secondary" type="button" disabled={busy} onClick={() => setSelected(null)}>Quay lại</button></ActionGroup>
                 </div>}

@@ -4,6 +4,7 @@ import com.marketplace.backend.client.PaymentBackendClient;
 import com.marketplace.backend.dto.request.bofa.CreateRefundRequest;
 import com.marketplace.backend.dto.request.cancellation.*;
 import com.marketplace.backend.dto.response.bofa.PaymentRefundResult;
+import com.marketplace.backend.dto.response.partner.PartnerEscrowResult;
 import com.marketplace.backend.dto.response.cancellation.CancellationResponse;
 import com.marketplace.backend.entity.*;
 import com.marketplace.backend.exception.*;
@@ -37,8 +38,47 @@ public class ContractCancellationService {
     private final JobSubmissionRepository submissions;
     private final JobRepository jobs;
     private final PaymentBackendClient payment;
+    private final PartnerReconciliationService partnerReconciliation;
     private final NotificationService notifications;
     private final TransactionTemplate transactions;
+
+    /** Partner rail: an unfixed missed deadline lets the Client recover the full USD deposit. */
+    public CancellationResponse requestLateRefund(UUID clientId, UUID contractId) {
+        UUID id = committed(() -> {
+            Milestone m = milestones.findWithLockByContractId(contractId).orElseThrow(this::notFound);
+            WorkContract c = contracts.findById(contractId)
+                    .filter(row -> clientId.equals(row.getClientUserId())).orElseThrow(this::notFound);
+            if (!PartnerEscrowFundingService.RAIL.equals(c.getPaymentRail())
+                    || c.getDeliveryDueAt() == null || !Instant.now().isAfter(c.getDeliveryDueAt())) throw ineligible();
+            ContractCancellation prior = cancellations.findByContractId(contractId).orElse(null);
+            if (prior != null) {
+                if ("LATE_DELIVERY".equals(prior.getReasonCode())
+                        && (prior.getStatus() == CancellationStatus.REFUND_PENDING
+                            || prior.getStatus() == CancellationStatus.CANCELLED)) return prior.getId();
+                throw new ApplicationException(ErrorCode.CANCELLATION_CONFLICT);
+            }
+            Job job = jobs.findById(c.getJobId()).orElseThrow(this::notFound);
+            commonEligibility(c, m, job);
+            FundingTransaction paid = funding.findFirstByMilestoneIdOrderByCreatedAtDesc(m.getId()).orElseThrow(this::ineligible);
+            fundedEligibility(c, m, job, paid);
+            ContractCancellation row = new ContractCancellation();
+            row.setContractId(contractId); row.setMilestoneId(m.getId()); row.setJobId(job.getId());
+            row.setRequestedBy(clientId); row.setDecidedBy(clientId); row.setDecidedAt(Instant.now());
+            row.setReasonCode("LATE_DELIVERY"); row.setReason("Freelancer chưa bàn giao sau hạn chốt");
+            row.setIntentHash(hash(clientId + ":LATE_DELIVERY:" + contractId));
+            row.setAmount(m.getAmount()); row.setCurrency(m.getCurrency()); row.setSimulation(true);
+            row.setFundingTransactionId(paid.getId()); row.setCheckoutOrderId(paid.getCheckoutOrderId());
+            row.setStatus(CancellationStatus.REFUND_PENDING); row.setRefundKey("marketplace-refund-" + m.getId());
+            row.setRefundStatus(SettlementMoneyStatus.PENDING); row.setRetryable(true);
+            row.setNextAttemptAt(Instant.EPOCH); m.setStatus(MilestoneStatus.REFUND_PENDING);
+            cancellations.saveAndFlush(row);
+            notifyBoth(c, NotificationType.REFUND_PENDING, "Hoàn ký quỹ do giao trễ",
+                    "Đã quá hạn bàn giao mà chưa có bản nộp; đang hoàn đủ USD từ đối tác mock.");
+            return row.getId();
+        });
+        process(id);
+        return get(clientId, contractId);
+    }
 
     public CancellationResponse request(UUID actor, UUID contractId, CreateCancellationRequest request) {
         if (request == null || !StringUtils.hasText(request.reasonCode()) || request.reasonCode().length() > 60
@@ -50,6 +90,7 @@ public class ContractCancellationService {
             // No consistent read before this lock: avoid a stale funding/submission snapshot after waiting.
             Milestone m = milestones.findWithLockByContractId(contractId).orElseThrow(this::notFound);
             WorkContract c = participant(actor, contractId);
+            if (PaymentFlow.RAIL.equals(c.getPaymentRail())) throw ineligible();
             if (escrowContracts.existsByContractId(contractId)) throw ineligible();
             ContractCancellation prior = cancellations.findByContractId(contractId).orElse(null);
             if (prior != null) {
@@ -156,8 +197,9 @@ public class ContractCancellationService {
                     || disputes.existsByContractIdAndStatusIn(c.getId(), EnumSet.of(DisputeStatus.OPEN, DisputeStatus.UNDER_REVIEW))) {
                 error(row, SettlementMoneyStatus.FAILED, "REFUND_WORKFLOW_CONFLICT", false); return null;
             }
+            boolean partnerRail = PartnerEscrowFundingService.RAIL.equals(c.getPaymentRail());
             RefundAttempt attempt = refundAttempt(row.getRefundKey(), row.getCheckoutOrderId(), row.getAmount(),
-                    row.getCurrency(), c.getClientUserId());
+                    row.getCurrency(), c.getClientUserId(), partnerRail, false);
             if (attempt.status() != SettlementMoneyStatus.SUCCEEDED) {
                 error(row, attempt.status(), attempt.error(), attempt.retry()); return null;
             }
@@ -167,8 +209,10 @@ public class ContractCancellationService {
             row.setRetryable(false); row.setLastError(null); row.setNextAttemptAt(null);
             m.setStatus(MilestoneStatus.REFUNDED); c.setStatus(ContractStatus.CANCELLED); job.setStatus(JobStatus.CANCELLED);
             cancellations.saveAndFlush(row);
-            notifyBoth(c, NotificationType.REFUND_CONFIRMED, "Đã hoàn tiền ledger mô phỏng",
-                    "Hợp đồng đã hủy; số tiền được khôi phục vào ledger mô phỏng của Client. Đây không phải chuyển tiền ngân hàng.");
+            notifyBoth(c, NotificationType.REFUND_CONFIRMED,
+                    partnerRail ? "Đối tác mock đã hoàn đủ USD" : "Đã hoàn tiền ledger mô phỏng",
+                    partnerRail ? "Đối tác mô phỏng đã xác nhận hoàn đủ USD; phí FreelaX bằng 0. Không phải chuyển khoản ngân hàng thật."
+                            : "Hợp đồng đã hủy; số tiền được khôi phục vào ledger mô phỏng của Client. Đây không phải chuyển tiền ngân hàng.");
             return null;
         });
     }
@@ -191,6 +235,7 @@ public class ContractCancellationService {
             if (d.getStatus() != DisputeStatus.DECISION_PENDING_REFUND || !d.isRetryable()
                     || d.getRefundStatus() == SettlementMoneyStatus.SUCCEEDED) return null;
             WorkContract c = contracts.findById(d.getContractId()).orElseThrow(this::notFound);
+            if (PaymentFlow.RAIL.equals(c.getPaymentRail())) throw ineligible();
             Job job = jobs.findById(c.getJobId()).orElseThrow(this::notFound);
             FundingTransaction paid = funding.findById(d.getFundingTransactionId()).orElseThrow(this::ineligible);
             if (m.getStatus() != MilestoneStatus.REFUND_PENDING || c.getStatus() != ContractStatus.DISPUTED
@@ -216,8 +261,9 @@ public class ContractCancellationService {
                     || settlements.findByMilestoneId(m.getId()).isPresent()) {
                 disputeError(d, SettlementMoneyStatus.FAILED, "REFUND_WORKFLOW_CONFLICT", false); return null;
             }
+            boolean partnerRail = PartnerEscrowFundingService.RAIL.equals(c.getPaymentRail());
             RefundAttempt attempt = refundAttempt(d.getRefundKey(), d.getCheckoutOrderId(), d.getAmount(),
-                    d.getCurrency(), c.getClientUserId());
+                    d.getCurrency(), c.getClientUserId(), partnerRail, true);
             if (attempt.status() != SettlementMoneyStatus.SUCCEEDED) {
                 disputeError(d, attempt.status(), attempt.error(), attempt.retry()); return null;
             }
@@ -228,8 +274,10 @@ public class ContractCancellationService {
             d.setRetryable(false); d.setNextAttemptAt(null); d.setLastError(null);
             m.setStatus(MilestoneStatus.REFUNDED); c.setStatus(ContractStatus.CANCELLED); job.setStatus(JobStatus.CANCELLED);
             disputes.saveAndFlush(d);
-            notifyBoth(c, NotificationType.REFUND_CONFIRMED, "Đã hoàn tiền ledger mô phỏng",
-                    "Tranh chấp đã xử lý; số tiền được khôi phục vào ledger mô phỏng của Client. Đây không phải chuyển tiền ngân hàng.");
+            notifyBoth(c, NotificationType.REFUND_CONFIRMED,
+                    partnerRail ? "Đối tác mock đã hoàn đủ USD" : "Đã hoàn tiền ledger mô phỏng",
+                    partnerRail ? "Tranh chấp đã xử lý; đối tác mô phỏng hoàn đủ USD, phí FreelaX bằng 0."
+                            : "Tranh chấp đã xử lý; số tiền được khôi phục vào ledger mô phỏng của Client. Đây không phải chuyển tiền ngân hàng.");
             return null;
         });
     }
@@ -249,13 +297,43 @@ public class ContractCancellationService {
                 || !p.getCheckoutOrderId().equals(job.getCheckoutOrderId()) || !same(p.getAmount(), m.getAmount())
                 || !p.getCurrency().equals(m.getCurrency())) throw ineligible();
     }
-    private boolean matches(String key, UUID checkout, BigDecimal amount, String currency, UUID payer, PaymentRefundResult p) {
+    private boolean matches(String key, UUID checkout, BigDecimal amount, String currency, UUID payer,
+                            PaymentRefundResult p, boolean partnerRail) {
         return p != null && p.refundId() != null && p.status() != null && Boolean.TRUE.equals(p.simulation())
-                && ("sim-refund-" + p.refundId()).equals(p.refundReference()) && key.equals(p.refundKey())
+                && ((partnerRail ? "partner-mock-refund-" : "sim-refund-") + p.refundId())
+                    .equals(p.refundReference()) && key.equals(p.refundKey())
                 && checkout.equals(p.checkoutOrderId()) && payer.equals(p.payerUserId())
                 && currency.equals(p.currency()) && same(amount, p.amount());
     }
-    private RefundAttempt refundAttempt(String key, UUID checkout, BigDecimal amount, String currency, UUID payer) {
+    private RefundAttempt refundAttempt(String key, UUID checkout, BigDecimal amount, String currency,
+                                        UUID payer, boolean partnerRail, boolean adminResolution) {
+        if (partnerRail) {
+            try {
+                PartnerEscrowResult partner = payment.getPartnerEscrow(checkout);
+                if (!"REFUNDED".equals(partner.status())) {
+                    if (!partnerReconciliation.snapshot().matched())
+                        return new RefundAttempt(null, SettlementMoneyStatus.UNKNOWN,
+                                "PARTNER_RECONCILIATION_MISMATCH", true);
+                    partner = payment.refundPartnerEscrow(checkout, key, adminResolution);
+                }
+                if (!partner.simulation() || !"REFUNDED".equals(partner.status())
+                        || !checkout.equals(partner.milestoneId()) || !payer.equals(partner.clientId())
+                        || !key.equals(partner.refundKey()) || !same(amount, partner.grossUsd())
+                        || partner.feeUsd() == null || partner.feeUsd().signum() != 0)
+                    return new RefundAttempt(null, SettlementMoneyStatus.UNKNOWN, "PARTNER_REFUND_MISMATCH", true);
+                if (!partnerReconciliation.confirms(checkout, "REFUND", amount))
+                    return new RefundAttempt(null, SettlementMoneyStatus.UNKNOWN,
+                            "PARTNER_STATEMENT_UNCONFIRMED", true);
+                PaymentRefundResult result = new PaymentRefundResult(checkout, key, checkout, payer,
+                        "SUCCEEDED", amount, currency, true, "partner-mock-refund-" + checkout,
+                        false, partner.updatedAt(), partner.updatedAt());
+                return matches(key, checkout, amount, currency, payer, result, true)
+                        ? new RefundAttempt(result, SettlementMoneyStatus.SUCCEEDED, null, false)
+                        : new RefundAttempt(null, SettlementMoneyStatus.UNKNOWN, "PARTNER_REFUND_MISMATCH", true);
+            } catch (RestClientException ex) {
+                return new RefundAttempt(null, SettlementMoneyStatus.UNKNOWN, "PARTNER_REFUND_UNKNOWN", true);
+            }
+        }
         PaymentRefundResult result;
         try { result = payment.findRefund(key); }
         catch (RestClientException ex) { return new RefundAttempt(null, SettlementMoneyStatus.UNKNOWN, "REFUND_LOOKUP_UNRESOLVED", true); }
@@ -272,7 +350,7 @@ public class ContractCancellationService {
                 return new RefundAttempt(null, SettlementMoneyStatus.UNKNOWN, "REFUND_CREATE_UNRESOLVED", true);
             }
         }
-        if (!matches(key, checkout, amount, currency, payer, result))
+        if (!matches(key, checkout, amount, currency, payer, result, false))
             return new RefundAttempt(null, SettlementMoneyStatus.UNKNOWN, "REFUND_RESPONSE_MISMATCH", true);
         if (!"SUCCEEDED".equals(result.status())) {
             SettlementMoneyStatus state = "FAILED".equals(result.status())

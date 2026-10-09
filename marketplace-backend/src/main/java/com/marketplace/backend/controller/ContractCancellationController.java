@@ -13,6 +13,10 @@ import java.util.UUID;
 @RestController @RequiredArgsConstructor @RequestMapping("/api/v1/contracts/{contractId}/cancellations")
 public class ContractCancellationController {
     private final ContractCancellationService cancellations;
+    @PostMapping("/late-delivery") public ResponseAPI<CancellationResponse> lateDelivery(
+            @AuthenticationPrincipal UserPrincipal user, @PathVariable UUID contractId) {
+        return envelope(cancellations.requestLateRefund(user.getId(), contractId));
+    }
     @PostMapping public ResponseAPI<CancellationResponse> request(@AuthenticationPrincipal UserPrincipal user,
             @PathVariable UUID contractId, @Valid @RequestBody CreateCancellationRequest request) {
         return envelope(cancellations.request(user.getId(), contractId, request));

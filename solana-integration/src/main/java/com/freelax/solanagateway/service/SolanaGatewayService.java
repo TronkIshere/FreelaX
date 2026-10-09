@@ -332,7 +332,9 @@ public class SolanaGatewayService {
         list.add(instructions.fundMilestoneEscrow(client, admin, freelancer, mint, milestoneId,
                 request.amount(), SolanaValueCodec.i64(request.fundingExpiresAt(), "fundingExpiresAt"),
                 SolanaValueCodec.i64(request.deliveryDueAt(), "deliveryDueAt"),
-                request.reviewWindowHours(), request.maxRevisions()));
+                request.reviewWindowHours(), request.maxRevisions(),
+                // Omitted by legacy callers, which keep the high-value review grace.
+                !Boolean.FALSE.equals(request.highValueReviewGrace())));
         return execute("fund_milestone_escrow", client, request, ExecutionMode.build, list,
                 derived(Map.of("milestoneEscrow", escrow, "escrowVault", addresses.ata(escrow, mint),
                         "clientAta", addresses.ata(client, mint))));

@@ -68,7 +68,7 @@ export function ContractCancellation({ job, user, submissionCount, workflowBusy,
         let canAccept = false;
         if (candidate && (!record || record.cancellationStatus === 'REQUESTED') && c?.milestoneId) {
           const [funding, settlement, historyCount] = await Promise.all([
-            api.funding(c.id, c.milestoneId), api.settlement(c.id),
+            c.paymentRail === 'PARTNER_ESCROW_MOCK' ? api.partnerFunding(c.id, c.milestoneId) : api.funding(c.id, c.milestoneId), api.settlement(c.id),
             verifyHistory ? api.contractSubmissions(c.id).then(list => list.length) : Promise.resolve(snapshot.current.submissionCount),
           ]);
           // A local unresolved funding attempt also forbids cancellation, even if latest GET is null.
@@ -186,15 +186,32 @@ export function ContractCancellation({ job, user, submissionCount, workflowBusy,
     }
     void mutate({ kind: 'request', payload });
   }
+  async function requestLateRefund() {
+    if (!client || !eligible || busy || workflowBusy || uncertain || operationLock.current) return;
+    operationLock.current = true; setBusy(true); setError('');
+    try {
+      await read(true, true);
+      const fresh = await api.job(job.id);
+      if (fresh.contract?.paymentRail !== 'PARTNER_ESCROW_MOCK' || fresh.contract.status !== 'ACTIVE'
+          || !fresh.contract.deliveryDueAt || Date.now() <= new Date(fresh.contract.deliveryDueAt).getTime()) return;
+      const result = await api.requestLateRefund(contract.id);
+      if (alive.current) { setRow(result); setNotice('Đã ghi nhận hoàn đủ USD từ khoản ký quỹ mock.'); }
+    } catch { if (alive.current) setError('Chưa xác nhận được yêu cầu hoàn tiền. Hãy đối soát lại trước khi thử tiếp.'); }
+    finally { operationLock.current = false; if (alive.current) { setBusy(false); await read().catch(() => {}); } }
+  }
   if (!participant) return null;
   if (ready && !row && !candidateState && !uncertain && !error && job.status !== 'CANCELLED') return null;
   const refundConfirmed = row?.cancellationStatus === 'CANCELLED' && row.refundStatus === 'SUCCEEDED';
   const ownRequest = row?.requestedBy === user.id;
   const canDecide = ready && !busy && !workflowBusy && !uncertain && row?.cancellationStatus === 'REQUESTED' && !ownRequest;
   const replay = intent.current;
+  const lateEligible = client && eligible && !row && contract.paymentRail === 'PARTNER_ESCROW_MOCK'
+    && contract.status === 'ACTIVE' && !!contract.deliveryDueAt
+    && Date.now() > new Date(contract.deliveryDueAt).getTime();
   return <section className="cancellation-document" aria-label="Hủy hợp đồng / Hoàn tiền">
     <SectionHeading title={refundConfirmed ? 'Hợp đồng đã hủy / Hoàn tiền đã xác nhận' : 'Hủy hợp đồng / Hoàn tiền'}
       aside={row?.simulation ? 'Mô phỏng' : undefined} />
+    {lateEligible && <ActionGroup><button className="button button-caution" type="button" disabled={busy || workflowBusy || uncertain} onClick={() => void requestLateRefund()}>Hủy do giao trễ và hoàn đủ USD</button></ActionGroup>}
     {loading && <p role="status">Đang đối chiếu điều kiện hủy…</p>}
     {row && <>
       <p className={'financial-status financial-status-' + (row.refundStatus ? financialMoneyTone(row.refundStatus) : row.cancellationStatus === 'CANCELLED' || row.cancellationStatus === 'REJECTED' ? 'done' : 'pending')} role="status">{cancellationLabel(row.cancellationStatus)}</p>

@@ -1,18 +1,20 @@
-# Ký quỹ qua đối tác — luồng nghiệp vụ mục tiêu và khoảng trống hiện tại
+# Ký quỹ qua đối tác — nghiệp vụ MVP mock và khoảng trống còn lại
 
-**Ngày đối chiếu:** 2026-10-08. **Trạng thái:** quy tắc kinh doanh cho luồng đối tác đã chốt về phí FreelaX **3%**, thời điểm tính phí, tỷ giá và hoàn tiền; luồng đối tác **chưa được triển khai**. Các mốc ngày làm việc và nhiều milestone bên dưới vẫn là đề xuất.
+> **Lưu trữ theo mốc ngày.** Xem [tổng quan hiện tại](../README.md) và [trạng thái kiểm chứng](../VERIFICATION.md) trước khi dùng các kết luận bên dưới.
+
+**Ngày đối chiếu:** 2026-10-08. **Trạng thái nhánh hiện tại:** API và giao diện đối tác **mock** đã được thêm cho nhận USD, sao kê, giải ngân VND, hoàn USD và đối soát. Phí FreelaX **3%** chỉ ghi nhận sau khi đối tác mock xác nhận chi; hoàn trước chi trả đủ USD. Các mốc 3 ngày tự duyệt, 2 lần nhắc, 3 ngày thương lượng và 5 ngày điều phối đã được áp dụng cho rail mock. Kiểm thử chạy thực tế và các giới hạn còn lại được ghi cuối tài liệu; không có giao dịch ngân hàng thật.
 
 ## Ranh giới các luồng tiền
 
 Hệ thống hiện có ledger thanh toán **mô phỏng** trong Payment Backend và rail `SOLANA_ESCROW` giữ **token** trong vault PDA. Hai rail tách biệt; không dùng một giao dịch ở cả hai rail hoặc cộng hai số dư thành một khoản ký quỹ. E2E local đã xác minh một số đường chuyển mock token, không chứng minh nhận USD thật hay chi VND vào ngân hàng. Xem [kết quả E2E](SOLANA_ESCROW_LOCAL_E2E_20261008.md).
 
-Luồng đối tác nhận USD, giữ tiền, đổi sang VND, chi trả/hoàn tiền theo lệnh FreelaX là **thiết kế mục tiêu chưa triển khai**. MVP sẽ mock API và sao kê của đối tác; màn hình demo phải ghi rõ `Mô phỏng`, không hiển thị như giao dịch ngân hàng thật. Khi chọn đối tác thực, cần xác nhận phạm vi dịch vụ, loại tài khoản, quyền nhận/giữ ngoại tệ, đổi USD/VND, hoàn tiền và chi VND theo giấy phép và hợp đồng. Quy định về [dịch vụ trung gian thanh toán](https://vbpl.vn/TW/Pages/vbpq-toanvan.aspx?ItemID=167087) và [tài khoản đảm bảo thanh toán](https://vbpl.vn/nganhangnhanuoc/Pages/vbpq-toanvan.aspx?ItemID=168578) không tự chứng minh rằng một tài khoản USD bất kỳ của đối tác phù hợp cho luồng này.
+Luồng `PARTNER_ESCROW_MOCK` chạy trên một sổ sao kê mock riêng trong Payment Backend. Màn hình demo ghi rõ `Mô phỏng`, không hiển thị như giao dịch ngân hàng thật. Khi chọn đối tác thực, cần xác nhận phạm vi dịch vụ, loại tài khoản, quyền nhận/giữ ngoại tệ, đổi USD/VND, hoàn tiền và chi VND theo giấy phép và hợp đồng. Quy định về [dịch vụ trung gian thanh toán](https://vbpl.vn/TW/Pages/vbpq-toanvan.aspx?ItemID=167087) và [tài khoản đảm bảo thanh toán](https://vbpl.vn/nganhangnhanuoc/Pages/vbpq-toanvan.aspx?ItemID=168578) không tự chứng minh rằng một tài khoản USD bất kỳ của đối tác phù hợp cho luồng này.
 
 **Phân công trách nhiệm mục tiêu:** Client nộp tiền và duyệt/đề nghị sửa; Freelancer làm và bàn giao; FreelaX chốt điều khoản, điều phối trạng thái và gửi lệnh; đối tác giữ tiền, xác nhận số dư, đổi/chi/hoàn; Admin xử lý tranh chấp theo bằng chứng và theo dõi đối soát. FreelaX không tự khẳng định giữ USD hoặc đã chuyển khoản VND khi chỉ có bản ghi nội bộ.
 
 ## Luồng mục tiêu qua đối tác (mock ở MVP)
 
-1. Trước lúc giao Job, Client và Freelancer thấy cùng một bản điều khoản: sản phẩm bàn giao, tiêu chí đạt, hạn, tối đa 2 vòng sửa, giá Job bằng USD và phí FreelaX 3% do Freelancer chịu khi giải ngân. Điều khoản được chụp lại khi giao Job; không âm thầm sửa sau khi ký quỹ.
+1. Trước lúc giao Job, Client và Freelancer thấy cùng bản điều khoản: sản phẩm bàn giao, tiêu chí đạt, hạn, tối đa 2 vòng sửa, giá Job bằng USD và phí FreelaX 3% do Freelancer chịu khi giải ngân trên rail đối tác. Freelancer ứng tuyển theo điều khoản hiển thị; sau khi đã có đơn ứng tuyển, Client không thể sửa Job. Khi giao Job, hợp đồng lưu snapshot điều khoản.
 2. Client thanh toán đủ giá Job bằng USD cho đối tác. FreelaX ghi `FUNDING_PENDING`; chỉ sau xác nhận/sao kê của đối tác và đối soát đúng số tiền mới ghi `FUNDED/Đã ký quỹ` và cho Freelancer bắt đầu. Không coi lệnh gửi hoặc callback chưa xác minh là tiền đã nhận.
 3. Freelancer bàn giao theo yêu cầu đã chốt. Client duyệt, yêu cầu sửa hoặc mở tranh chấp. Chỉ tự duyệt sau hạn đã công bố nếu có bàn giao hợp lệ và không có tranh chấp.
 4. FreelaX tạo lệnh giải ngân có mã idempotency. Đối tác dùng tỷ giá được chốt **tại thời điểm tạo lệnh** để đổi phần USD của Freelancer sang VND, chuyển thẳng vào tài khoản ngân hàng Freelancer và chuyển/ghi nhận phần phí FreelaX. Khi gửi lại cùng lệnh, tỷ giá và số tiền không đổi. FreelaX chỉ ghi `PAID` và doanh thu phí sau xác nhận đã chi thành công và đối soát.
@@ -49,25 +51,25 @@ Lệnh giải ngân mock gồm hai phần của cùng một khoản `grossUsd`: 
 
 | Nhu cầu | Hiện trạng | Khoảng trống |
 | --- | --- | --- |
-| Bắt đầu làm sau funding | Rail Solana chỉ kích hoạt Job sau khi vault được xác minh; Payment Backend có ledger mô phỏng. | Chưa có xác nhận nhận USD từ đối tác và lệnh chi/hoàn qua đối tác. |
-| Đối soát tiền ký quỹ | Finance hiển thị vault và giao dịch theo Job. | Chưa có sao kê đối tác, tổng nghĩa vụ còn giữ theo USD và chênh lệch toàn hệ thống. |
-| Phí FreelaX tại giải ngân | `settle_milestone_escrow` chuyển toàn bộ token cho Freelancer; rail này chưa trừ phí nền tảng. | Quy tắc 3% ở trên **chưa có trong code** của luồng đối tác mock; không áp sang rail Solana nếu chưa thiết kế lại. |
-| Điều khoản nghiệm thu | Job bắt buộc có deliverables, acceptance criteria, hạn giao, review window; hợp đồng lưu snapshot; mặc định tối đa 2 vòng sửa. | Cần bảo đảm Client/Freelancer nhìn thấy và chấp nhận bản điều khoản trước khi funding; 3 vòng sửa chưa được hỗ trợ. |
-| Client im lặng | Tự duyệt theo giờ liên tục: mặc định 72 giờ, thêm 24 giờ với milestone trên 500 USD. | Chưa tính ngày làm việc/ngày nghỉ và chưa nhắc duyệt 2–3 lần. |
-| Tranh chấp | Có khóa giải ngân, bằng chứng, Admin quyết định release/refund 100%. | Chưa có giai đoạn tự thương lượng, hạn xử lý của điều phối, phân chia một phần; tin nhắn chưa được tự gom thành bộ chứng cứ. |
-| Freelancer giao trễ | Có gia hạn một lần nếu Client duyệt; quá hạn không có submission thì khóa nộp và xử lý qua tranh chấp. | Client chưa có quyền hủy và hoàn tiền đơn phương theo điều kiện giao trễ. |
+| Bắt đầu làm sau funding | Đối tác mock xác nhận `FUNDED`, Marketplace đối chiếu đúng danh tính/số tiền rồi mới chuyển Job sang `IN_PROGRESS`. | Chưa có nhận USD thật. |
+| Đối soát tiền ký quỹ | Admin xem sao kê mock độc lập, nghĩa vụ ledger USD, chênh lệch và các milestone lệch; hệ thống chặn lệnh chi/hoàn mới khi lệch. | Chưa có sao kê ngân hàng thật; có thể thấy chênh lệch tạm thời giữa hai lần đồng bộ. |
+| Phí FreelaX tại giải ngân | Rail đối tác mock lưu phí 3%, phần USD của Freelancer, tỷ giá khóa và VND chi; chỉ ghi ở settlement thành công. | Rail Solana không áp phí 3%. |
+| Điều khoản nghiệm thu | Job bắt buộc có sản phẩm, tiêu chí, hạn; ứng tuyển khóa sửa Job và hợp đồng lưu snapshot; tối đa 2 vòng sửa. | Chưa có quy trình thay đổi phạm vi sau funding bằng đồng thuận hai bên. |
+| Client im lặng | Rail đối tác tự duyệt sau 3 ngày làm việc theo múi giờ Bangkok và gửi 2 lần nhắc; rail cũ vẫn dùng giờ liên tục. | Chưa loại trừ ngày lễ công bố. |
+| Tranh chấp | Đối tác mock đóng băng tiền, hai bên có 3 ngày làm việc để cùng đồng ý chi/hoàn toàn bộ; sau đó Admin có mốc quyết định 5 ngày làm việc; bằng chứng, quyết định và audit được lưu. | Chưa tự gom tin nhắn (hệ thống chưa có module chat), chưa chia tỷ lệ, chưa tự động cưỡng chế SLA Admin. |
+| Freelancer giao trễ | Client có thể hủy và hoàn đủ USD qua rail mock nếu quá hạn, chưa có submission hợp lệ, chưa có payout/dispute. | Rail mock chưa có quy trình gia hạn hai chiều; rail Solana dùng quy tắc riêng. |
 | Job lớn trả theo giai đoạn | Một Job tạo đúng một Milestone bằng toàn bộ ngân sách. | Chưa có nhiều milestone, nghiệm thu, funding, release/refund, phí và đối soát riêng theo từng giai đoạn. |
 
 ## Quy tắc sản phẩm đề xuất để thảo luận
 
 - **Nghiệm thu:** giữ mức tối đa 2 vòng sửa cho MVP; yêu cầu đầu ra và tiêu chí đạt phải cụ thể, lưu snapshot bất biến khi giao Job. Thay đổi phạm vi sau funding phải được hai bên chấp thuận. Quy tắc 2 vòng đã có ở Job hiện tại, xác nhận điều khoản hai chiều trước funding cần hoàn thiện.
-- **Tự duyệt:** đề xuất 3 ngày làm việc từ lúc bàn giao hợp lệ, nhắc Client 2 lần (sau 1 ngày và trước hạn 1 ngày làm việc). Cần chốt múi giờ, lịch nghỉ áp dụng và thời điểm bắt đầu lại đồng hồ sau mỗi lần sửa. Chỉ gửi lệnh chi khi không có tranh chấp; hiển thị `Đang giải ngân` đến khi đối tác xác nhận.
-- **Tranh chấp:** đề xuất 3 ngày làm việc để hai bên thương lượng, sau đó điều phối quyết định trong 5 ngày làm việc dựa trên yêu cầu đã chốt, lịch sử bàn giao, file và tin nhắn liên quan. Đóng băng giải ngân ngay khi tranh chấp được ghi nhận ở hệ thống giữ tiền. Cần chốt quyền truy cập/chấp thuận sử dụng tin nhắn làm bằng chứng.
-- **Kết quả tranh chấp MVP:** người điều phối chọn giải ngân **toàn bộ** theo công thức phí 3% hoặc hoàn **toàn bộ** USD cho Client; không chia một khoản theo tỷ lệ khi chỉ có một Milestone. Quyết định phải lưu lý do và bằng chứng, nhưng chưa có quy trình thương lượng/thời hạn tự động trong code.
+- **Tự duyệt:** rail mock dùng 3 ngày làm việc từ lần bàn giao hợp lệ gần nhất; nhắc sau ngày thứ nhất và thứ hai. Múi giờ `Asia/Bangkok`, chỉ bỏ Thứ Bảy/Chủ Nhật; chưa có lịch ngày lễ. Chỉ gửi lệnh chi khi không có tranh chấp.
+- **Tranh chấp:** rail mock đóng băng tiền; hai bên có 3 ngày làm việc để đề xuất và đồng ý cùng nội dung chi/hoàn toàn bộ. Sau mốc đó Admin mới được tiếp nhận, `moderationDueAt` là 5 ngày làm việc từ lúc tiếp nhận. Admin xem yêu cầu chốt, lịch sử bàn giao, file và bằng chứng do hai bên gửi. Tin nhắn chưa được tự gom vì chưa có chat trong hệ thống.
+- **Kết quả tranh chấp MVP:** thỏa thuận hai bên hoặc Admin chọn giải ngân **toàn bộ** theo phí 3% hoặc hoàn **toàn bộ** USD cho Client. Quyết định lưu lý do, audit và bằng chứng; một Milestone không chia tỷ lệ.
 - **Giao trễ:** Client có thể yêu cầu hủy và hoàn nếu quá hạn có hiệu lực mà không có bản giao hợp lệ, không có gia hạn đã duyệt và không có giao dịch bàn giao đang chờ xác nhận. Nếu có bằng chứng xung đột, chuyển tranh chấp; không tự hoàn theo đồng hồ khi trạng thái tiền hoặc bàn giao còn chưa rõ.
 - **Nhiều giai đoạn:** hợp lý cho Job lớn, nhưng để sau MVP. Mỗi giai đoạn cần số tiền, đầu ra, tiêu chí, hạn, review, trạng thái tiền và phí riêng; tổng giai đoạn phải bằng giá trị hợp đồng. Job chỉ hoàn tất khi tất cả giai đoạn đã quyết toán.
 
-Các mốc **3/3/5 ngày** và 2 lần nhắc ở trên là gợi ý để thảo luận, **chưa được chốt hoặc lập trình**. Quy tắc **phí 3%, chỉ thu lúc chi thành công, hoàn đủ USD, tỷ giá chốt lúc tạo lệnh và phí đối tác bằng 0 ở mock** đã được chốt về nghiệp vụ nhưng **chưa được lập trình**. Nếu đổi sang ngày làm việc, phải cập nhật đồng bộ backend, hiển thị và hạn lưu trên chain; hạn on-chain hiện tính theo giây/giờ liên tục.
+Các mốc **3/3/5 ngày** và 2 lần nhắc đã được lập trình cho rail mock. Chúng không đổi đồng hồ của Solana escrow; hạn on-chain vẫn tính theo giây/giờ liên tục. Nhiều milestone vẫn để sau MVP theo kế hoạch hiện hành.
 
 ## Đối soát cần demo
 
@@ -87,4 +89,4 @@ Chứng từ thuế, review hai chiều và các tác vụ hậu xử lý đi sa
 
 ## Trạng thái kiểm chứng
 
-Code/kiểm thử hiện có mới chứng minh một số nhánh escrow token local. Scheduler tự gửi timeout release, Admin dispute refund xuyên Marketplace, browser UI E2E và devnet vẫn chưa được xác minh đầy đủ. Luồng đối tác fiat mock, phí FreelaX 3% khi giải ngân, đối soát tổng và nhiều milestone chưa được triển khai; không dùng tài liệu này để tuyên bố các luồng đó đã chạy E2E.
+Luồng đối tác mock đã có mã nguồn và kiểm thử đơn vị cho tính phí, hoàn đủ USD, khóa tranh chấp, lịch ngày làm việc và settlement. Marketplace kiểm tra bút toán `FUND` trước khi ghi `FUNDED`, và bút toán `RELEASE`/`REFUND` trước khi chốt `PAID`/`REFUNDED`; sao kê thiếu hoặc lệch giữ giao dịch ở trạng thái chờ đối soát. Ngày 2026-10-09, Java compile và các test nhắm vào payment mock, settlement, cancellation, dispute, business-day clock và xác nhận sao kê đều qua trong Docker Maven. [HTTP E2E local](PARTNER_MOCK_LOCAL_E2E_20261009.md) đã qua các nhánh chi, hoàn và hồi phục sau `UNKNOWN` do Payment Backend tạm ngắt. Browser E2E với tài khoản seed đã qua funding → bàn giao → duyệt → chi và màn hình Admin đối soát khớp/lệch; Job, ứng tuyển và phân công của ca browser được chuẩn bị qua API. Tạo tài khoản mới rồi đi hết luồng trong browser chưa được tự động kiểm chứng. Chưa có giao dịch ngân hàng thật, chưa hỗ trợ nhiều milestone trong một Job và chưa tự gom tin nhắn làm bằng chứng. Không suy từ kiểm thử mock rằng rail fiat thật đã hoạt động.

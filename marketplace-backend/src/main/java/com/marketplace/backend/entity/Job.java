@@ -47,6 +47,10 @@ public class Job extends AbstractEntity<UUID> {
     @Column(nullable = false)
     private UUID clientUserId;
 
+    // Null/0 means a Job created before unified-flow cutover. Keep its rail on assignment.
+    @Column(name = "payment_flow_version")
+    private Integer paymentFlowVersion;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private JobStatus status;
@@ -71,6 +75,12 @@ public class Job extends AbstractEntity<UUID> {
 
     @Column(nullable = false)
     private int maxRevisions = 2;
+
+    /** Unified rail only: chain terms both parties accept with the fingerprint. */
+    @Column(name = "payment_network", length = 30)
+    private String paymentNetwork;
+    @Column(name = "payment_mint", length = 64)
+    private String paymentMint;
 
     private UUID misaPayoutTransactionId;
     private UUID misaCertificateId;

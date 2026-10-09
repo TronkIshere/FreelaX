@@ -11,6 +11,8 @@ public record SettlementResponse(UUID contractId, UUID milestoneId, UUID jobId,
         SettlementMoneyStatus moneyStatus, SettlementStageStatus onChainStatus,
         SettlementStageStatus offRampStatus, SettlementStageStatus taxStatus,
         String releaseReference, String onChainReference, String offRampReference, String taxReference,
+        BigDecimal platformFeeUsd, BigDecimal freelancerUsd, BigDecimal lockedUsdVndRate,
+        BigDecimal partnerPayoutVnd,
         String onChainError, String offRampError, String taxError,
         boolean retryable, String lastError, LocalDateTime createdAt, LocalDateTime updatedAt) {
     public static SettlementResponse from(ContractSettlement s) {
@@ -18,7 +20,9 @@ public record SettlementResponse(UUID contractId, UUID milestoneId, UUID jobId,
                 s.getAmount(), s.getCurrency(), s.isSimulation(), s.getMoneyStatus(),
                 s.getOnChainStatus(), s.getOffRampStatus(), s.getTaxStatus(),
                 s.getPaymentReleaseReference(), s.getOnChainReference(), s.getOffRampReference(),
-                s.getTaxReference(), s.getOnChainError(), s.getOffRampError(), s.getTaxError(),
+                s.getTaxReference(), s.getPlatformFeeUsd(), s.getFreelancerUsd(),
+                s.getLockedUsdVndRate(), s.getPartnerPayoutVnd(),
+                s.getOnChainError(), s.getOffRampError(), s.getTaxError(),
                 s.isRetryable(), s.getLastError(), s.getCreatedAt(), s.getUpdatedAt());
     }
 }

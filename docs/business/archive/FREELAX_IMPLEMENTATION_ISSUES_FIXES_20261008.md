@@ -1,5 +1,7 @@
 # FreelaX — Những gì đã làm, lỗi đã gặp và cách khắc phục
 
+> **Lưu trữ theo mốc ngày.** Xem [tổng quan hiện tại](../README.md) và [trạng thái kiểm chứng](../VERIFICATION.md) trước khi dùng các kết luận bên dưới.
+
 **Mục tiêu:** ghi lại tiến trình theo hướng sản phẩm/nghiệp vụ, tránh sa vào chi tiết code. Phần 1–8 là lịch sử **P06 tại thời điểm freeze**, không phải tuyên bố rằng toàn bộ nhánh escrow hiện tại hay luồng đối tác USD→VND đã chạy E2E.
 
 ## Bài học nghiệp vụ sau P06: phải gọi đúng nơi giữ tiền
@@ -9,7 +11,7 @@
 | Ledger Payment P06 ghi tiền mô phỏng; một trạng thái `SUCCEEDED` không chứng minh USD nằm ở tài khoản đối tác | Mỗi rail cần nguồn xác nhận tiền riêng. Chỉ cho Freelancer bắt đầu sau khi nguồn đó xác nhận funding đủ và đối soát được. |
 | Escrow Solana nhánh hiện tại giữ mock token trong vault, không đại diện cho USD ngân hàng | Luồng token được demo riêng; một Job/khoản tiền không được hạch toán đồng thời trong vault và tài khoản đối tác mock. |
 | Tài chính theo từng Job không trả lời được tổng tiền đang giữ có khớp tổng nghĩa vụ hay không | Luồng đối tác mock cần sao kê độc lập, màn hình tổng đối soát theo USD, chênh lệch và khoản đang chờ. |
-| Phí thu trước làm sai yêu cầu kinh doanh mới | Đối với luồng đối tác USD→VND, **phí FreelaX 3% do Freelancer chịu và chỉ ghi nhận sau chi thành công**; hoàn đủ USD cho Client không thu phí FreelaX. Quy tắc đã chốt nhưng chưa được code. |
+| Phí thu trước làm sai yêu cầu kinh doanh mới | Rail `PARTNER_ESCROW_MOCK` ghi **phí FreelaX 3% do Freelancer chịu chỉ sau chi thành công**; hoàn đủ USD cho Client không thu phí. Rail Solana chưa áp phí này. |
 | Trạng thái duyệt, lệnh chi và chi tiền là ba mốc khác nhau | Sau duyệt là `RELEASE_PENDING`; chỉ xác nhận từ bên giữ tiền mới đưa sang `PAID`. Tranh chấp hoặc kết quả chi chưa rõ phải giữ trạng thái chờ. |
 
 Luồng mục tiêu, phép tính tiền, tình huống hoàn và các mốc nghiệp vụ còn mở nằm ở [tài liệu đối tác](PARTNER_ESCROW_BUSINESS_GAP_20261008.md). Bằng chứng token E2E và giới hạn kiểm chứng nằm ở [báo cáo escrow local](SOLANA_ESCROW_LOCAL_E2E_20261008.md).

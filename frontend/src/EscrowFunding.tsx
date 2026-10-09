@@ -7,10 +7,10 @@ import type { EscrowFundingBuild, EscrowFundingView, Job, User } from './types';
 const liveStatuses = new Set(['Funded', 'Submitted', 'Revision', 'Disputed', 'Released']);
 
 export function EscrowFundingPanel({ job, user, onJobUpdated, blocked = false,
-  operationLock, onMutationChange, onChooseBack }: {
+  operationLock, onMutationChange, onChooseBack, expectedUsdc }: {
   job: Job; user: User; onJobUpdated: (job: Job) => void; blocked?: boolean;
   operationLock?: MutableRefObject<boolean>; onMutationChange?: (busy: boolean) => void;
-  onChooseBack: () => void;
+  onChooseBack?: () => void; expectedUsdc?: string | number;
 }) {
   const contract = job.contract;
   const owner = user.userType === 'CLIENT' && job.clientUserId === user.id;
@@ -105,8 +105,8 @@ export function EscrowFundingPanel({ job, user, onJobUpdated, blocked = false,
   if (!participant || !contract?.milestoneId) return null;
   const eligible = owner && contract.status === 'PENDING_FUNDING' && job.status === 'AWAITING_PAYMENT';
   return <section className="funding-document" id="funding" tabIndex={-1} aria-label="Ký quỹ Solana">
-    <SectionHeading title="Ký quỹ Solana" aside="On-chain" />
-    <strong>{contract.amount} {contract.currency}</strong>
+    <SectionHeading title={expectedUsdc == null ? 'Ký quỹ Solana' : 'Ký quỹ USDC'} aside="On-chain" />
+    <strong>{expectedUsdc == null ? `${contract.amount} ${contract.currency}` : `${expectedUsdc} USDC`}</strong>
     <p role="status">{loading ? 'Đang đối soát escrow…' : view ? `Trạng thái on-chain: ${view.status} · ${view.settlementStatus}` : 'Chưa có token được xác nhận trong vault.'}</p>
     {view?.fundingExpiresAt && <p>Hạn ký quỹ: {new Date(Number(view.fundingExpiresAt) * 1000).toLocaleString('vi-VN')}.</p>}
     <p>Tiền chỉ được xem là ký quỹ sau khi backend xác minh escrow trên Solana. Khi Client im lặng hết hạn review, lệnh giải ngân có thể được gọi mà không cần chữ ký Client.</p>
@@ -114,7 +114,7 @@ export function EscrowFundingPanel({ job, user, onJobUpdated, blocked = false,
     {!address && <button className="text-button" disabled={busy} onClick={() => void connect()}>Kết nối ví Solana</button>}
     {eligible && !build && !liveStatuses.has(view?.status ?? '') && <ActionGroup>
       <button className="button" disabled={blocked || busy || loading || view?.status === 'PENDING_CONFIRMATION'} onClick={() => void prepare()}>{busy ? 'Đang chuẩn bị…' : 'Chuẩn bị giao dịch ký quỹ'}</button>
-      {!view && contract.paymentRail !== 'SOLANA_ESCROW' && <button className="button button-secondary" disabled={busy} onClick={onChooseBack}>Quay lại thanh toán mô phỏng</button>}
+      {!view && onChooseBack && contract.paymentRail !== 'SOLANA_ESCROW' && contract.paymentRail !== 'UNIFIED_USDC_PAYOUT' && <button className="button button-secondary" disabled={busy} onClick={onChooseBack}>Quay lại thanh toán mô phỏng</button>}
     </ActionGroup>}
     {build && <div className="approval-confirm" role="group" aria-label="Xác nhận ký quỹ Solana">
       <strong>Xác nhận token sẽ chuyển vào vault escrow</strong>

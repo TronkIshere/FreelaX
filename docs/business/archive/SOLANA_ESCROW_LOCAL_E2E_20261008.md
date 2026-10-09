@@ -1,8 +1,10 @@
 # Solana milestone escrow — kết quả E2E local ngày 2026-10-08
 
+> **Lưu trữ theo mốc ngày.** Xem [tổng quan hiện tại](../README.md) và [trạng thái kiểm chứng](../VERIFICATION.md) trước khi dùng các kết luận bên dưới.
+
 **Phạm vi:** Mock USDC trên `solana-test-validator`; Marketplace, Solana Gateway và Anchor chạy bằng code của working tree `feat/solana-milestone-escrow`. Đây là kiểm thử local, không phải devnet hay tiền thật. Các Job bên dưới được tạo qua API Marketplace, không tạo trạng thái nghiệp vụ bằng SQL.
 
-**Ý nghĩa nghiệp vụ:** các ca dưới đây chỉ chứng minh mock token vào/ra vault và Job đổi trạng thái sau đối soát chain. Chúng **không** chứng minh Client đã nộp USD cho đối tác, Freelancer đã nhận VND ngân hàng, màn hình đối soát tổng ký quỹ hoặc phí FreelaX 3%. Quy tắc USD→VND và phí đã chốt nhưng chưa triển khai nằm ở [tài liệu luồng đối tác](PARTNER_ESCROW_BUSINESS_GAP_20261008.md).
+**Ý nghĩa nghiệp vụ:** các ca dưới đây chỉ chứng minh mock token vào/ra vault và Job đổi trạng thái sau đối soát chain. Chúng **không** chứng minh Client đã nộp USD thật cho đối tác hoặc Freelancer đã nhận VND ngân hàng. Rail đối tác mock và phí 3% được mô tả riêng trong [tài liệu luồng đối tác](PARTNER_ESCROW_BUSINESS_GAP_20261008.md); các ca Solana không kiểm thử rail đó.
 
 ## Kết quả đã xác minh
 
@@ -22,8 +24,12 @@ Một ca Gateway → Anchor riêng đã đi qua submission → Client dispute �
 2. **Admin dispute refund chưa chạy xuyên Marketplace.** Cơ sở dữ liệu demo local hiện có `0` tài khoản `ROLE_ADMIN` (kiểm tra chỉ đọc). Không tạo quyền Admin bằng SQL để làm đẹp bằng chứng E2E. Cần fixture Admin hợp lệ qua cơ chế seed/test rồi chạy Job riêng từ dispute đến quyết định refund.
 3. **Thiếu signature khi release được gửi ngoài Marketplace.** Sau permissionless release, Gateway trả signature `5Rvxf...`, chain đã `Released` và Job đã `COMPLETED`, nhưng `releaseSignature` trong response escrow của Marketplace vẫn `null`. Finance vì vậy chưa có reference của giao dịch release này. Cần đường đối soát signature của giao dịch được gửi trực tiếp ngoài Marketplace.
 4. **Khóa deploy lệch Program ID.** `target/deploy/invoice_payments-keypair.json` có địa chỉ `2Tx2fa...`, còn `Anchor.toml`, `declare_id!` và `.env` dùng `4Wd6um...`. `anchor deploy` local đã tạo program ở ID khác rồi lỗi khởi tạo IDL. E2E này dùng validator genesis nạp `.so` tại đúng `4Wd6um...` với upgrade authority local. Cần đồng bộ keypair/deploy trước khi chứng minh quy trình deploy chuẩn hoặc devnet.
+
+   **Cập nhật 2026-10-09:** mục 4 là lỗi của lần chạy lịch sử. Working tree hiện tại đã đồng bộ `Anchor.toml`, `declare_id!`, khóa deploy và `.env` về `2Tx2faZU1siV1xvKMxbRN1VesgXftjM3Lff3Nwn69oqb`. Validator local mới đã nạp program tại ID này; điều đó chưa chứng minh quy trình deploy hoặc E2E devnet.
 5. Lần warp đầu khôi phục snapshot cũ và làm mất giao dịch mới của Job test. Ca timeout được tạo lại, chờ archive snapshot chứa funding/submission rồi mới warp; các số liệu thành công trong bảng thuộc lần chạy sau. Đây là giới hạn của cách test time warp bằng restart validator.
 
 Các lần thử bị gián đoạn để lại dữ liệu QA trong MySQL local: Job `fd6b9f0a-6177-44a7-a5d5-79f2ea391edb` còn `SUBMITTED_FOR_REVIEW` dù escrow của lần chạy đó đã mất sau khi validator khôi phục snapshot cũ; một lần funding khác lỗi tại Contract `561052d2-57eb-475a-9722-2adad7715d29`. Không dùng các record này làm bằng chứng thành công. Validator đã được dừng sau kiểm thử để không giữ clock đã warp cho các luồng demo khác.
 
 **Trạng thái gate:** local E2E của Client approve release, mutual refund và permissionless release + Marketplace reconcile **PASS**. Gate trong [implementation plan](SOLANA_ESCROW_IMPLEMENTATION_PLAN.md) yêu cầu scheduler timeout release và Admin dispute refund cho hai Job riêng vẫn **OPEN**. Browser UI E2E và devnet demo cũng chưa chạy.
+
+**Cập nhật 2026-10-09:** Hai ca scheduler timeout release và Admin dispute refund qua Marketplace đã PASS trong [báo cáo E2E mới](SOLANA_ESCROW_GATE_E2E_20261009.md). Đoạn trạng thái ngay trên phản ánh mốc lịch sử 2026-10-08; browser UI E2E Solana và devnet vẫn mở.

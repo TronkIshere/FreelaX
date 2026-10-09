@@ -158,7 +158,8 @@ public final class Requests {
             @NotBlank String amount, @NotBlank String fundingExpiresAt,
             @NotBlank String deliveryDueAt,
             int reviewWindowHours, int maxRevisions,
-            ExecutionMode mode, Commitment commitment, Boolean skipPreflight
+            ExecutionMode mode, Commitment commitment, Boolean skipPreflight,
+            Boolean highValueReviewGrace
     ) implements TransactionOptions {
     }
 

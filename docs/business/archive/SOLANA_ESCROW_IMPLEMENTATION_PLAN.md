@@ -1,12 +1,16 @@
 # Solana milestone escrow — implementation and verification status
 
+> **Lưu trữ theo mốc ngày.** Xem [tổng quan hiện tại](../README.md) và [trạng thái kiểm chứng](../VERIFICATION.md) trước khi dùng các kết luận bên dưới.
+
 Branch: `feat/solana-milestone-escrow`. Scope: one milestone per Job, one configured six-decimal token mint, full release or full refund. The existing simulated payment rail remains separate.
 
 **Business boundary (2026-10-08 update):** this plan covers **token custody in a Solana vault**. It does not implement the newly agreed partner-held USD → bank-paid VND flow. That target flow uses a separate mock partner statement and a **3% FreelaX fee charged to the Freelancer only after confirmed payout**; a pre-payout refund returns the full deposited USD and charges no FreelaX fee. The current Solana settle instruction transfers the full token amount and must not be presented as implementing that fee or a bank payout. See [partner flow and business rules](PARTNER_ESCROW_BUSINESS_GAP_20261008.md).
 
-**Status:** implementation is present across Anchor, Solana Gateway, Marketplace and frontend on the current branch. This is beyond the frozen P06 baseline. Selected local-validator E2E paths have passed, while the full E2E gate and devnet demo remain open. A checked item means implementation exists; it does not mean that every flow passed E2E or is deployed.
+**Status:** implementation is present across Anchor, Solana Gateway, Marketplace and frontend on the current branch. This is beyond the frozen P06 baseline. Local-validator approved release, mutual refund, scheduler timeout release and Admin dispute refund have passed. The broad regression gate, remaining edge-case matrix, Solana browser E2E and devnet demo remain open. A checked item means the stated scope was verified; it does not mean production deployment.
 
-**Local E2E update (2026-10-08):** [release, refund and timeout reconciliation results](SOLANA_ESCROW_LOCAL_E2E_20261008.md). Client-approved release and mutual refund passed through Marketplace → Gateway → Anchor with verified token balances. Permissionless timeout release and Marketplace reconciliation passed after a direct Gateway claim. Marketplace scheduler initiation, Admin dispute refund, browser UI E2E and devnet remain open, so the full verification gate below stays unchecked.
+**Local E2E history (2026-10-08):** [release, refund and timeout reconciliation results](SOLANA_ESCROW_LOCAL_E2E_20261008.md). Client-approved release and mutual refund passed through Marketplace → Gateway → Anchor with verified token balances. Permissionless timeout release and Marketplace reconciliation passed after a direct Gateway claim. At that date, Marketplace scheduler initiation and Admin dispute refund remained open; both were verified in the later result below.
+
+**Status review (2026-10-09):** the local Marketplace → Gateway → Anchor approved-release and mutual-refund paths were rerun with Mock USDC and passed. Two new Jobs then passed [scheduler timeout release and Admin dispute refund](SOLANA_ESCROW_GATE_E2E_20261009.md), including vault/token-balance checks. The separate `PARTNER_ESCROW_MOCK` rail passed HTTP E2E release/refund/outage recovery and a browser E2E using seeded accounts for funding → submission → approval → payout plus Admin matched/mismatch views. That browser test creates the Job, application and assignment through API; fresh-account registration and full Job creation in the browser are documented for manual testing but are not covered by that automated gate.
 
 ## 1. On-chain escrow and timeout release
 
@@ -36,12 +40,13 @@ Branch: `feat/solana-milestone-escrow`. Scope: one milestone per Job, one config
 - [x] On Funding, show vault address, balance, funding transaction and confirmation/reconciliation state. On Work Detail, show effective deadline, submission hash, review countdown, extension, revision, dispute and timeout claim button for Freelancer.
 - [x] On Finance, show release/refund signatures and explorer links when a known public cluster is configured. Distinguish `awaiting confirmation`, `funded`, `release eligible`, `release pending`, `retry pending` and `settled`; never infer success from a click or local clock alone. Simulated Jobs retain their current UI.
 
-## 5. Verification and demo — open
+## 5. Verification and demo
 
-- [ ] Run Anchor, Gateway, Marketplace and frontend checks. Exercise two new Jobs end-to-end on local validator: one timeout release after Client silence and one dispute refund. Verify transaction signatures and vault/token balances before and after.
+- [x] Exercise two new Jobs end-to-end on local validator: scheduler timeout release after Client silence and Admin dispute refund. Verify Marketplace/chain terminal state and vault/token balances. Admin resolution signature was confirmed through RPC; the timeout signature was stored by Marketplace but RPC history was unavailable after validator restart. See [evidence and limits](SOLANA_ESCROW_GATE_E2E_20261009.md).
+- [ ] Rerun broad Anchor, Gateway, Marketplace and frontend checks on the current working tree; complete signer, mint, amount, deadline, dispute/revision race, duplicate transfer and restart matrix. Solana browser UI E2E also remains open.
 - [ ] Repeat on devnet using the deployed Program ID and configured mock token; label demo assets accurately. Record compute units, signatures and account state. Deployment and use of externally controlled funds require separate explicit authorization.
 
-The partner-held USD MVP needs its **own** end-to-end gate: Client funding is confirmed from an independent mock partner statement before work starts; payout confirms VND to the Freelancer and records the 3% fee only once; refund restores the full USD with zero FreelaX fee; the admin reconciliation shows both a matching balance and an intentional mismatch. None of the Solana checks above satisfy this gate.
+The partner-held USD MVP has its **own** end-to-end gate: Client funding is confirmed from an independent mock partner statement before work starts; payout confirms VND to the Freelancer and records the 3% fee only once; refund restores the full USD with zero FreelaX fee; the admin reconciliation shows both a matching balance and an intentional mismatch. The mock API checks and seeded-account browser checks above cover these cases at different layers; see [partner local E2E evidence](PARTNER_MOCK_LOCAL_E2E_20261009.md). Fresh-account signup through final payout remains a manual guide, not an automated browser result. None of the Solana checks above satisfy this partner gate.
 
 ## Rules for ambiguous states
 
