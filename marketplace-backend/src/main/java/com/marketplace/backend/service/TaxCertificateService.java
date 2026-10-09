@@ -11,6 +11,9 @@ import java.util.UUID;
 
 public interface TaxCertificateService {
 
+    /** Unified rail: issue the withholding certificate once the VND payout statement is confirmed. */
+    void exportForUnifiedPayout(UUID paymentFlowId);
+
     void exportForPayout(Job job, FreelancerPayoutRecord payoutRecord, String transactionReference);
 
     PageResponse<TaxCertificateResponse> listForUser(UUID userId, int page, int size);

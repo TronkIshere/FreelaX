@@ -7,7 +7,10 @@ import com.marketplace.backend.dto.response.misa.MisaCertificateStatusResult;
 import com.marketplace.backend.dto.response.misa.MisaPayoutTransactionResult;
 import com.marketplace.backend.dto.response.tax.TaxCertificateFile;
 import com.marketplace.backend.dto.response.tax.TaxCertificateResponse;
+import com.marketplace.backend.entity.ExchangeRateSource;
 import com.marketplace.backend.entity.FreelancerPayoutRecord;
+import com.marketplace.backend.entity.PaymentFlow;
+import com.marketplace.backend.entity.PaymentFlowStep;
 import com.marketplace.backend.entity.Job;
 import com.marketplace.backend.entity.NotificationType;
 import com.marketplace.backend.entity.OffRampStatus;
@@ -19,6 +22,8 @@ import com.marketplace.backend.exception.ApplicationException;
 import com.marketplace.backend.exception.ErrorCode;
 import com.marketplace.backend.repository.FreelancerPayoutRecordRepository;
 import com.marketplace.backend.repository.JobRepository;
+import com.marketplace.backend.repository.PaymentFlowRepository;
+import com.marketplace.backend.repository.PaymentFlowStepRepository;
 import com.marketplace.backend.repository.TaxCertificateRecordRepository;
 import com.marketplace.backend.repository.UserRepository;
 import com.marketplace.backend.service.NotificationService;
@@ -66,6 +71,10 @@ public class TaxCertificateServiceImpl implements TaxCertificateService {
     MisaBackendClient misaBackendClient;
     NotificationService notificationService;
     MisaCertificateProperties misaCertificateProperties;
+    PaymentFlowRepository paymentFlowRepository;
+    PaymentFlowStepRepository paymentFlowStepRepository;
+
+    private static final String UNIFIED_REFERENCE = "unified:";
 
     @Override
     @Transactional
@@ -79,6 +88,51 @@ public class TaxCertificateServiceImpl implements TaxCertificateService {
         }
 
         export(taxRecord, job, true);
+    }
+
+    @Override
+    @Transactional
+    public void exportForUnifiedPayout(UUID paymentFlowId) {
+        PaymentFlow flow = paymentFlowRepository.findById(paymentFlowId)
+                .orElseThrow(() -> new ApplicationException(ErrorCode.TAX_RECORD_INVALID_STATUS, "payment flow"));
+        PaymentFlowStep withdrawal = unifiedStep(flow.getId(), "WITHDRAWAL");
+        if (!unifiedPayoutConfirmed(flow.getId()) || withdrawal == null || withdrawal.getVndRate() == null)
+            throw new ApplicationException(ErrorCode.TAX_RECORD_INVALID_STATUS, "payout not completed");
+        Job job = jobRepository.findById(flow.getJobId())
+                .orElseThrow(() -> new ApplicationException(ErrorCode.JOB_NOT_FOUND, flow.getJobId()));
+        TaxCertificateRecord taxRecord = taxCertificateRecordRepository.findByJobId(job.getId()).orElse(null);
+        if (taxRecord == null) {
+            taxRecord = new TaxCertificateRecord();
+            taxRecord.setJobId(job.getId());
+            taxRecord.setFreelancerId(flow.getFreelancerId());
+            taxRecord.setClientUserId(flow.getClientId());
+            // Income is the Job price released to the Freelancer, at the quote locked on the withdrawal;
+            // the FreelaX fee is collected at off-ramp and does not change the income being certified.
+            taxRecord.setAmountUsd(flow.getGrossUsd());
+            taxRecord.setUsdToVndRate(withdrawal.getVndRate());
+            taxRecord.setRateSource(ExchangeRateSource.LOCKED_PAYOUT_QUOTE);
+            taxRecord.setRateObservedAt(withdrawal.getConfirmedAt());
+            taxRecord.setTaxableIncomeVnd(flow.getGrossUsd().multiply(withdrawal.getVndRate())
+                    .setScale(0, RoundingMode.HALF_UP));
+            taxRecord.setTransactionReference(UNIFIED_REFERENCE + flow.getId());
+            taxRecord = taxCertificateRecordRepository.saveAndFlush(taxRecord);
+        } else if (!(UNIFIED_REFERENCE + flow.getId()).equals(taxRecord.getTransactionReference())) {
+            throw new ApplicationException(ErrorCode.TAX_RECORD_INVALID_STATUS, "certificate belongs to another payout");
+        }
+        // One automatic attempt; a failed export waits for the participant's explicit retry.
+        if (taxRecord.getMisaCertificateId() != null || taxRecord.getStatus() == TaxCertificateStatus.EXPORT_FAILED)
+            return;
+        export(taxRecord, job, true);
+    }
+
+    private PaymentFlowStep unifiedStep(UUID flowId, String kind) {
+        return paymentFlowStepRepository.findByPaymentFlowIdOrderByCreatedAtAsc(flowId).stream()
+                .filter(step -> kind.equals(step.getKind())).findFirst().orElse(null);
+    }
+
+    private boolean unifiedPayoutConfirmed(UUID flowId) {
+        PaymentFlowStep payout = unifiedStep(flowId, "VND_PAYOUT");
+        return payout != null && "CONFIRMED".equals(payout.getStatus());
     }
 
     @Override
@@ -217,10 +271,15 @@ public class TaxCertificateServiceImpl implements TaxCertificateService {
     }
 
     private boolean isPayoutCompleted(TaxCertificateRecord taxRecord) {
-        return taxRecord.getPayoutRecordId() != null
-                && freelancerPayoutRecordRepository.findById(taxRecord.getPayoutRecordId())
-                .map(r -> r.getOffRampStatus() == OffRampStatus.COMPLETED)
-                .orElse(false);
+        if (taxRecord.getPayoutRecordId() != null)
+            return freelancerPayoutRecordRepository.findById(taxRecord.getPayoutRecordId())
+                    .map(r -> r.getOffRampStatus() == OffRampStatus.COMPLETED)
+                    .orElse(false);
+        // Unified rail: completed means the partner's VND payout statement is confirmed.
+        String reference = taxRecord.getTransactionReference();
+        if (reference == null || !reference.startsWith(UNIFIED_REFERENCE)) return false;
+        try { return unifiedPayoutConfirmed(UUID.fromString(reference.substring(UNIFIED_REFERENCE.length()))); }
+        catch (IllegalArgumentException ex) { return false; }
     }
 
     private void export(TaxCertificateRecord taxRecord, Job job, boolean notifyOnFailure) {
