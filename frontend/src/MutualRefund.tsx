@@ -38,7 +38,7 @@ export function MutualRefundPanel({ contractId, escrow, client, freelancer, onRe
           || !hasEscrowSignerSignature(signed, built.clientWallet))
         throw new Error('Chữ ký Client không hợp lệ cho giao dịch hoàn tiền.');
       await api.signMutualRefund(contractId, built.intentId, signed);
-      setNotice('Client đã ký. Freelancer cần mở Job và ký cùng giao dịch trong thời hạn blockhash.');
+      setNotice('Khách hàng đã xác nhận. Đang chờ người làm xác nhận hoàn tiền.');
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Chưa tạo được yêu cầu hoàn tiền.'); }
     finally { setBusy(false); onBusy(false); }
   }
@@ -58,24 +58,23 @@ export function MutualRefundPanel({ contractId, escrow, client, freelancer, onRe
           || !hasEscrowSignerSignature(signed, pending.freelancerWallet))
         throw new Error('Giao dịch cuối không có đủ hai chữ ký hợp lệ.');
       await api.finishMutualRefund(contractId, pending.intentId, signed);
-      setNotice('Giao dịch hoàn tiền đã gửi. Chờ xác nhận on-chain.');
+      setNotice('Đã gửi yêu cầu hoàn tiền. Đang chờ xác nhận.');
       await onRefresh();
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Chưa gửi được hoàn tiền.'); }
     finally { setBusy(false); onBusy(false); }
   }
 
   if (!active || (!client && !freelancer)) return null;
-  return <section className="settlement-document" aria-label="Hoàn tiền escrow theo thỏa thuận">
-    <SectionHeading title="Hoàn tiền theo thỏa thuận" aside="Hai chữ ký ví" />
-    <p>Hoàn toàn bộ {escrow.amountBaseUnits ? (Number(escrow.amountBaseUnits) / 1_000_000).toFixed(6) : 'số token'} về ví Client <code>{escrow.clientWallet}</code>. Hai bên phải ký cùng một giao dịch trước khi blockhash hết hạn.</p>
-    {escrow.status === 'Submitted' && <p>Nếu hạn review đã qua, lệnh giải ngân có thể được xác nhận trước giao dịch hoàn tiền này.</p>}
-    <p>Mint: <code>{escrow.mint}</code> · Vault: <code>{escrow.vaultAddress}</code></p>
-    <label><input type="checkbox" checked={agree} disabled={busy} onChange={event => setAgree(event.target.checked)} /> Tôi đồng ý hoàn toàn bộ token cho Client.</label>
+  return <section className="settlement-document" aria-label="Hoàn tiền theo thỏa thuận">
+    <SectionHeading title="Hoàn tiền theo thỏa thuận" />
+    <p>Hoàn toàn bộ số tiền của công việc về cho khách hàng. Hai bên cần xác nhận yêu cầu này.</p>
+    {escrow.status === 'Submitted' && <p>Nếu đã hết hạn duyệt, khoản thanh toán có thể hoàn tất trước yêu cầu hoàn tiền.</p>}
+    <label><input type="checkbox" checked={agree} disabled={busy} onChange={event => setAgree(event.target.checked)} /> Tôi đồng ý hoàn toàn bộ số tiền cho khách hàng.</label>
     <ActionGroup>
-      {client && <button className="button button-secondary" disabled={busy || !agree} onClick={() => void clientPropose()}>Ký đề nghị hoàn tiền</button>}
-      {freelancer && <button className="button button-secondary" disabled={busy || !agree || !pending?.partialTransaction} onClick={() => void freelancerFinish()}>Ký và gửi hoàn tiền</button>}
+      {client && <button className="button button-secondary" disabled={busy || !agree} onClick={() => void clientPropose()}>Xác nhận hoàn tiền</button>}
+      {freelancer && <button className="button button-secondary" disabled={busy || !agree || !pending?.partialTransaction} onClick={() => void freelancerFinish()}>Đồng ý hoàn tiền</button>}
     </ActionGroup>
-    {freelancer && !pending && <p>Chưa có đề nghị đã ký từ Client.</p>}
+    {freelancer && !pending && <p>Đang chờ khách hàng gửi yêu cầu hoàn tiền.</p>}
     {notice && <p role="status">{notice}</p>}{error && <p role="alert" className="form-error">{error}</p>}
   </section>;
 }

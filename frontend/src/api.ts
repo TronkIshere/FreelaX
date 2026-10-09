@@ -287,7 +287,7 @@ export class MarketplaceApi {
   async prepareUnifiedWithdrawal(contractId: string, milestoneId: string): Promise<{
     paymentFlowId: string; kind: 'PAYOUT' | 'REFUND'; buildSessionId: string;
     transactionBase64: string; wallet: string; withdrawalId: string;
-    grossUsdc: DecimalValue; feeUsdc: DecimalValue; payoutVnd: DecimalValue;
+    grossUsdc: DecimalValue; feeUsdc: DecimalValue; vndRate: DecimalValue; payoutVnd: DecimalValue;
     quoteExpiresAt: string; simulation: boolean;
   }> {
     return this.authorized('/contracts/' + encodeURIComponent(contractId) + '/milestones/'
@@ -343,6 +343,13 @@ export class MarketplaceApi {
   }
   async boundSolanaWallet(): Promise<{ walletAddress: string } | null> {
     return this.authorized('/solana/wallet-link');
+  }
+  async autoSolanaWallet(): Promise<{ walletAddress: string }> {
+    return this.authorized('/solana/wallet-link/auto', { method: 'POST' });
+  }
+  async signAutoSolanaTransaction(transactionBase64: string): Promise<{ transactionBase64: string }> {
+    return this.authorized('/solana/wallet-link/auto/sign',
+      { method: 'POST', body: JSON.stringify({ transactionBase64 }) });
   }
   async solanaWalletChallenge(walletAddress: string): Promise<{
     challengeId: string; walletAddress: string; message: string; expiresAt: string;

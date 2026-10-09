@@ -1,23 +1,22 @@
 import { useEffect, useRef, useState, type MutableRefObject } from 'react';
 import { api, ApiError } from './api';
-import { ActionGroup, EvidenceDisclosure, SectionHeading } from './components';
+import { ActionGroup, SectionHeading } from './components';
 import { connectSolanaWallet, signEscrowTransaction } from './escrowWallet';
 import type { EscrowFundingBuild, EscrowFundingView, Job, User } from './types';
 
 const liveStatuses = new Set(['Funded', 'Submitted', 'Revision', 'Disputed', 'Released']);
 
 export function EscrowFundingPanel({ job, user, onJobUpdated, blocked = false,
-  operationLock, onMutationChange, onChooseBack, expectedUsdc }: {
+  operationLock, onMutationChange, onChooseBack, expectedUsdc, onPaymentRefresh }: {
   job: Job; user: User; onJobUpdated: (job: Job) => void; blocked?: boolean;
   operationLock?: MutableRefObject<boolean>; onMutationChange?: (busy: boolean) => void;
-  onChooseBack?: () => void; expectedUsdc?: string | number;
+  onChooseBack?: () => void; expectedUsdc?: string | number; onPaymentRefresh?: () => void;
 }) {
   const contract = job.contract;
   const owner = user.userType === 'CLIENT' && job.clientUserId === user.id;
   const participant = owner || (user.userType === 'FREELANCER' && job.freelancerId === user.id);
   const [view, setView] = useState<EscrowFundingView | null>(null);
   const [build, setBuild] = useState<EscrowFundingBuild | null>(null);
-  const [address, setAddress] = useState('');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -42,7 +41,7 @@ export function EscrowFundingPanel({ job, user, onJobUpdated, blocked = false,
         }
       } catch (cause) {
         if (active && !(cause instanceof ApiError && cause.status === 404 && contract!.paymentRail !== 'SOLANA_ESCROW')) {
-          setError('Chưa đối soát được trạng thái escrow trên Solana.');
+          setError('Chưa cập nhật được trạng thái giữ tiền. Hãy thử lại.');
         }
       } finally { if (active) setLoading(false); }
     }
@@ -56,25 +55,25 @@ export function EscrowFundingPanel({ job, user, onJobUpdated, blocked = false,
     return () => window.clearTimeout(timer);
   }, [view, tick]);
 
-  async function connect() {
-    try {
-      const connected = await connectSolanaWallet();
-      if (alive.current) { setAddress(connected.address); setError(''); }
-    } catch (cause) { if (alive.current) setError(cause instanceof Error ? cause.message : 'Không kết nối được ví.'); }
-  }
-
   async function prepare() {
     if (!owner || !contract?.milestoneId || lock.current || operationLock?.current || blocked) return;
     lock.current = true; setBusy(true); setError('');
     if (operationLock) operationLock.current = true;
     try {
       const connected = await connectSolanaWallet();
+      if (contract.paymentRail === 'UNIFIED_USDC_PAYOUT') {
+        const flow = await api.paymentFlow(contract.id, contract.milestoneId);
+        if (flow.steps.find(step => step.kind === 'CLIENT_USDC')?.status !== 'CONFIRMED') {
+          if (alive.current) onPaymentRefresh?.();
+          return;
+        }
+      }
       const next = await api.prepareEscrowFunding(contract.id, contract.milestoneId, connected.address);
-      if (alive.current) { setAddress(connected.address); setBuild(next); setConfirmedTerms(false); }
+      if (alive.current) { setBuild(next); setConfirmedTerms(false); }
     } catch (cause) {
       if (alive.current) setError(cause instanceof ApiError
-        ? 'Không chuẩn bị được escrow. Kiểm tra ví đã đăng ký, hạn funding và trạng thái Job.'
-        : cause instanceof Error ? cause.message : 'Không chuẩn bị được giao dịch.');
+        ? 'Chưa chuẩn bị được khoản tiền. Hãy kiểm tra trạng thái công việc và thử lại.'
+        : cause instanceof Error ? cause.message : 'Chưa chuẩn bị được khoản tiền.');
     } finally { lock.current = false; if (operationLock) operationLock.current = false; if (alive.current) setBusy(false); }
   }
 
@@ -85,7 +84,7 @@ export function EscrowFundingPanel({ job, user, onJobUpdated, blocked = false,
     if (operationLock) operationLock.current = true;
     try {
       const connected = await connectSolanaWallet();
-      if (connected.address !== build.clientWallet) throw new Error('Ví đang kết nối không khớp ví Client của escrow.');
+      if (connected.address !== build.clientWallet) throw new Error('Ví của tài khoản chưa khớp với công việc này.');
       const signed = await signEscrowTransaction(connected.wallet, build.transactionBase64);
       const next = await api.submitEscrowFunding(contract.id, contract.milestoneId,
         build.buildSessionId, signed);
@@ -104,36 +103,24 @@ export function EscrowFundingPanel({ job, user, onJobUpdated, blocked = false,
 
   if (!participant || !contract?.milestoneId) return null;
   const eligible = owner && contract.status === 'PENDING_FUNDING' && job.status === 'AWAITING_PAYMENT';
-  return <section className="funding-document" id="funding" tabIndex={-1} aria-label="Ký quỹ Solana">
-    <SectionHeading title={expectedUsdc == null ? 'Ký quỹ Solana' : 'Ký quỹ USDC'} aside="On-chain" />
-    <strong>{expectedUsdc == null ? `${contract.amount} ${contract.currency}` : `${expectedUsdc} USDC`}</strong>
-    <p role="status">{loading ? 'Đang đối soát escrow…' : view ? `Trạng thái on-chain: ${view.status} · ${view.settlementStatus}` : 'Chưa có token được xác nhận trong vault.'}</p>
+  return <section className="funding-document" id="funding" tabIndex={-1} aria-label="Giữ tiền cho công việc">
+    <SectionHeading title="Giữ tiền cho công việc" />
+    <strong>{expectedUsdc == null ? `${contract.amount} ${contract.currency}` : `${expectedUsdc} USD`}</strong>
+    <p role="status">{loading ? 'Đang cập nhật…' : view && liveStatuses.has(view.status) ? 'Đã giữ tiền. Người làm có thể bắt đầu.' : 'Đang chờ giữ tiền.'}</p>
     {view?.fundingExpiresAt && <p>Hạn ký quỹ: {new Date(Number(view.fundingExpiresAt) * 1000).toLocaleString('vi-VN')}.</p>}
-    <p>Tiền chỉ được xem là ký quỹ sau khi backend xác minh escrow trên Solana. Khi Client im lặng hết hạn review, lệnh giải ngân có thể được gọi mà không cần chữ ký Client.</p>
-    {address && <p>Ví đang kết nối: <code>{address}</code></p>}
-    {!address && <button className="text-button" disabled={busy} onClick={() => void connect()}>Kết nối ví Solana</button>}
+    <p>Công việc bắt đầu khi khoản tiền này được xác nhận. Nếu hủy trước khi trả cho người làm, tiền sẽ được hoàn theo điều khoản.</p>
     {eligible && !build && !liveStatuses.has(view?.status ?? '') && <ActionGroup>
-      <button className="button" disabled={blocked || busy || loading || view?.status === 'PENDING_CONFIRMATION'} onClick={() => void prepare()}>{busy ? 'Đang chuẩn bị…' : 'Chuẩn bị giao dịch ký quỹ'}</button>
+      <button className="button" disabled={blocked || busy || loading || view?.status === 'PENDING_CONFIRMATION'} onClick={() => void prepare()}>{busy ? 'Đang chuẩn bị…' : 'Chuẩn bị giữ tiền'}</button>
       {!view && onChooseBack && contract.paymentRail !== 'SOLANA_ESCROW' && contract.paymentRail !== 'UNIFIED_USDC_PAYOUT' && <button className="button button-secondary" disabled={busy} onClick={onChooseBack}>Quay lại thanh toán mô phỏng</button>}
     </ActionGroup>}
-    {build && <div className="approval-confirm" role="group" aria-label="Xác nhận ký quỹ Solana">
-      <strong>Xác nhận token sẽ chuyển vào vault escrow</strong>
-      <p>Mint: <code>{build.mint}</code></p>
-      <p>Số token (base units): <code>{build.amountBaseUnits}</code></p>
-      <p>Vault/escrow: <code>{build.escrowAddress}</code></p>
-      <p>Ví Client: <code>{build.clientWallet}</code></p>
-      <p>Ví Freelancer: <code>{build.freelancerWallet}</code></p>
-      <label><input type="checkbox" checked={confirmedTerms} disabled={busy} onChange={event => setConfirmedTerms(event.target.checked)} /> Tôi đã kiểm tra mint, số tiền và hai ví.</label>
-      <ActionGroup><button className="button" disabled={busy || blocked || !confirmedTerms} onClick={() => void signAndFund()}>{busy ? 'Đang ký…' : 'Ký và gửi giao dịch'}</button></ActionGroup>
+    {build && <div className="approval-confirm" role="group" aria-label="Xác nhận giữ tiền">
+      <strong>Xác nhận giữ {expectedUsdc == null ? contract.amount : expectedUsdc} {expectedUsdc == null ? contract.currency : 'USD'} cho công việc</strong>
+      <p>Người làm chỉ bắt đầu sau khi khoản tiền được xác nhận.</p>
+      <label><input type="checkbox" checked={confirmedTerms} disabled={busy} onChange={event => setConfirmedTerms(event.target.checked)} /> Tôi đồng ý giữ khoản tiền này theo điều khoản công việc.</label>
+      <ActionGroup><button className="button" disabled={busy || blocked || !confirmedTerms} onClick={() => void signAndFund()}>{busy ? 'Đang xác nhận…' : 'Xác nhận giữ tiền'}</button></ActionGroup>
     </div>}
-    {!owner && <p>Client cần ký giao dịch funding. Freelancer chỉ bắt đầu sau khi vault được xác nhận đủ tiền.</p>}
+    {!owner && <p>Đang chờ khách xác nhận khoản tiền. Người làm sẽ bắt đầu sau đó.</p>}
     {error && <p role="alert" className="form-error">{error}</p>}
-    <button className="text-button" disabled={busy || loading} onClick={() => { setLoading(true); setTick(value => value + 1); }}>Đối soát escrow</button>
-    {view && <EvidenceDisclosure summary="Bằng chứng escrow"><dl className="reference-list">
-      <div><dt>Escrow PDA</dt><dd><code>{view.escrowAddress}</code></dd></div>
-      <div><dt>Vault</dt><dd><code>{view.vaultAddress || 'Chưa xác minh'}</code></dd></div>
-      <div><dt>Số dư vault (base units)</dt><dd><code>{view.vaultBalanceBaseUnits || 'Chưa xác minh'}</code></dd></div>
-      <div><dt>Funding signature</dt><dd><code>{view.fundSignature || 'Đang chờ'}</code></dd></div>
-    </dl></EvidenceDisclosure>}
+    <button className="text-button" disabled={busy || loading} onClick={() => { setLoading(true); setTick(value => value + 1); }}>Làm mới trạng thái</button>
   </section>;
 }

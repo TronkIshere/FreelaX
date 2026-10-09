@@ -21,6 +21,7 @@ public interface PaymentFlowRepository extends JpaRepository<PaymentFlow, UUID> 
     java.util.List<PaymentFlow> findPaidWithoutCertificate(org.springframework.data.domain.Pageable page);
     Optional<PaymentFlow> findByMilestoneId(UUID milestoneId);
     Optional<PaymentFlow> findByContractId(UUID contractId);
+    java.util.List<PaymentFlow> findByClientId(UUID clientId);
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<PaymentFlow> findWithLockByMilestoneId(UUID milestoneId);
 }

@@ -65,16 +65,40 @@ describe('P06.5C tax evidence contract', () => {
   });
 
   it('reads a unified certificate payout from the confirmed VND step, not the legacy payment status', async () => {
-    const unified = { ...tax, status: 'SUBMITTED', rateSource: 'LOCKED_PAYOUT_QUOTE' } as TaxRecord;
+    const unified = { ...tax, status: 'SUBMITTED', rateSource: 'LOCKED_PAYOUT_QUOTE',
+      amountUsd: 120, taxableIncomeVnd: 3000000, taxWithheldVnd: 300000 } as TaxRecord;
     vi.spyOn(api, 'taxRecord').mockResolvedValue(unified);
     const legacy = vi.spyOn(api, 'paymentStatus');
     vi.spyOn(api, 'job').mockResolvedValue({ id: unified.jobId, contract: { id: 'contract-u', milestoneId: 'milestone-u' } } as never);
-    const flow = vi.spyOn(api, 'paymentFlow').mockResolvedValue({ steps: [{ kind: 'VND_PAYOUT', status: 'CONFIRMED' }] } as never);
+    const flow = vi.spyOn(api, 'paymentFlow').mockResolvedValue({ grossUsd: 120, steps: [
+      { kind: 'WITHDRAWAL', status: 'CONFIRMED', feeUsdc: 3.6, vndRate: 25000 },
+      { kind: 'VND_PAYOUT', status: 'CONFIRMED', amount: 2910000 },
+    ] } as never);
     await render(<Routes><Route path="/finance/tax-records/:taxRecordId" element={<TaxRecordDetail />} /></Routes>, '/finance/tax-records/tax-1');
     expect(flow).toHaveBeenCalledWith('contract-u', 'milestone-u');
     expect(legacy).not.toHaveBeenCalled();
     expect(host.textContent).not.toContain('Chưa xác minh được trạng thái chi trả');
+    expect(host.textContent).toContain('Chứng từ này được phát hành theo cách tính cũ');
+    expect(host.textContent).toContain('Giá trị công việc quy đổi3.000.000');
+    expect(host.textContent).toContain('Phí dịch vụ90.000');
+    expect(host.textContent).toContain('Đã chuyển cho người làm2.910.000');
     expect(button('Đồng bộ trạng thái')).toBeTruthy();
+  });
+
+  it('reconciles a new certificate after service fee and withholding tax', async () => {
+    vi.spyOn(api, 'taxRecord').mockResolvedValue({ ...tax, rateSource: 'LOCKED_PAYOUT_QUOTE',
+      amountUsd: 116.4, usdToVndRate: 25000, taxableIncomeVnd: 2910000, taxWithheldVnd: 291000 });
+    vi.spyOn(api, 'job').mockResolvedValue({ id: tax.jobId,
+      contract: { id: 'contract-u', milestoneId: 'milestone-u' } } as never);
+    vi.spyOn(api, 'paymentFlow').mockResolvedValue({ grossUsd: 120, steps: [
+      { kind: 'WITHDRAWAL', status: 'CONFIRMED', feeUsdc: 3.6, vndRate: 25000 },
+      { kind: 'VND_PAYOUT', status: 'CONFIRMED', amount: 2619000 },
+    ] } as never);
+    await render(<Routes><Route path="/finance/tax-records/:taxRecordId" element={<TaxRecordDetail />} /></Routes>, '/finance/tax-records/tax-1');
+    expect(host.textContent).toContain('Số tiền sau phí để tính thuế2.910.000');
+    expect(host.textContent).toContain('Thuế trên chứng từ291.000');
+    expect(host.textContent).toContain('Đã chuyển cho người làm2.619.000');
+    expect(host.textContent).not.toContain('chưa khớp');
   });
 
   it('does not promote a draft with certificate ID and successful payment export to ACCEPTED', async () => {
@@ -541,7 +565,7 @@ describe('P06.5B single-job money evidence spine', () => {
     expect(host.querySelectorAll('.connector-completed')).toHaveLength(3);
     expect(host.querySelectorAll('.connector-current')).toHaveLength(1);
     expect(host.querySelectorAll('.connector-upcoming')).toHaveLength(1);
-    expect(host.querySelector('[data-stage="withdrawal"] h3')?.textContent).toBe('Rút on-chain');
+    expect(host.querySelector('[data-stage="withdrawal"] h3')?.textContent).toBe('Người làm rút tiền');
   });
 
   it('does not advance when local time or animation completes; advances after a new API response', async () => {
@@ -718,7 +742,7 @@ describe('P06.5B single-job money evidence spine', () => {
     expect(resolveMoneySpine(stages).current).toBe(2);
     const refund = contractMoneyStages({ ...contractJob, contract: { ...contractJob.contract!, status: 'CANCELLED' } },
       { settlement: null, cancellation: { ...cancellation, cancellationStatus: 'CANCELLED', refundStatus: 'SUCCEEDED' }, error: '' }, null, null);
-    expect(refund[1].title).toBe('Hoàn tiền Client');
+    expect(refund[1].title).toBe('Hoàn tiền cho khách');
     expect(refund.slice(2).every(stage => stage.applicable === false)).toBe(true);
     expect(resolveMoneySpine(refund).current).toBe(-1);
   });

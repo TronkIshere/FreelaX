@@ -22,7 +22,8 @@ Phạm vi: local mock. Số liệu và đối tác đều mô phỏng.
    │ 5. Freelancer ký withdrawal ─────────────── bằng chứng: WithdrawalRecord + treasury tăng
    ▼
  Treasury FreelaX (Solana)
-   │ 6. Đối tác chi VND, giữ phí 3% ───────────── bằng chứng: sao kê VND_PAYOUT + PLATFORM_FEE
+   │ 6. Đối tác trừ phí 3%, khấu trừ thuế 10%, chi VND
+   │    ────────────────────────────────────────── bằng chứng: VND_PAYOUT + PLATFORM_FEE + TAX_WITHHELD
    ▼
  VND trong tài khoản Freelancer ─► 7. MISA phát hành chứng từ khấu trừ thuế
 ```
@@ -39,8 +40,9 @@ Phạm vi: local mock. Số liệu và đối tác đều mô phỏng.
 | USDC vào ví Client, rồi vào vault | 100,000000 Mock USDC |
 | Freelancer nhận khi release | 100,000000 Mock USDC |
 | Phí FreelaX giữ ở off-ramp | 3,000000 USDC |
-| Đổi sang VND cho Freelancer (97 × 25.000) | 2.425.000 VND |
-| Thu nhập ghi trên chứng từ (100 × 25.000) | 2.500.000 VND |
+| Thu nhập tính thuế sau phí (97 × 25.000) | 2.425.000 VND |
+| Thuế khấu trừ mô phỏng (10% × 2.425.000) | 242.500 VND |
+| VND thực trả Freelancer | 2.182.500 VND |
 | Nếu hủy trước release | 100,00 USD hoàn Client, phí 0 |
 
 ## Trạng thái của một bước
@@ -65,8 +67,10 @@ Phạm vi: local mock. Số liệu và đối tác đều mô phỏng.
 
 ## Phí và chứng từ thuế
 
-- Phí 3% = `round(giá Job × 3%, 0,01)`, do Freelancer chịu. Toàn bộ USDC được release cho Freelancer; đối tác chỉ đổi phần sau phí sang VND. Phí chỉ được ghi là đã thu khi **cả** WithdrawalRecord on-chain **và** hai sao kê `VND_PAYOUT` + `PLATFORM_FEE` đều khớp.
-- Sau khi `VND_PAYOUT` được xác nhận, khoảng 30 giây sau hệ thống phát hành chứng từ khấu trừ thuế qua MISA. Thu nhập = giá Job × tỷ giá đã khóa; nguồn tỷ giá ghi `LOCKED_PAYOUT_QUOTE`. Freelancer xem và tải PDF/XML ở *Thu nhập → Chứng từ thuế*. Nếu phát hành lỗi, hệ thống dừng lại và chờ người dùng bấm "Lập lại chứng từ".
+- Phí 3% = `round(giá Job × 3%, 0,01)`, do Freelancer chịu. Toàn bộ USDC được release cho Freelancer. Tại bước đổi tiền, thu nhập tính thuế = `(USDC đã release − phí USDC) × tỷ giá USDC/VND đã khóa`; thuế mô phỏng = `round(thu nhập tính thuế × 10%)`; VND thực trả = `thu nhập tính thuế − thuế`. Phí và thuế chỉ được ghi nhận khi WithdrawalRecord trên chuỗi cùng ba sao kê `VND_PAYOUT`, `PLATFORM_FEE`, `TAX_WITHHELD` khớp.
+- Local mock khóa `1 USDC = 1 USD` và `1 USD = 25.000 VND`, nên tỷ giá hiệu dụng `1 USDC = 25.000 VND`. Đây là hai cặp tỷ giá khác nhau, dù số 25.000 trùng nhau trong mô phỏng.
+- Sau khi `VND_PAYOUT` được xác nhận, hệ thống phát hành chứng từ khấu trừ thuế qua MISA. Chứng từ ghi thu nhập **sau phí dịch vụ, trước thuế**, và thuế đã giữ từ khoản VND phải chi; nguồn tỷ giá ghi `LOCKED_PAYOUT_QUOTE`. Freelancer xem và tải PDF/XML ở *Thu nhập → Chứng từ thuế*. Nếu phát hành lỗi, hệ thống dừng lại và chờ người dùng bấm "Lập lại chứng từ".
+- Chứng từ đã phát hành theo công thức cũ không tự bị sửa khi cập nhật phần mềm. Trang chứng từ cảnh báo khi số thuế trên chứng từ không khớp với khoản chi cũ; muốn thay thế chứng từ cần một quy trình điều chỉnh riêng.
 
 ## Job cũ
 

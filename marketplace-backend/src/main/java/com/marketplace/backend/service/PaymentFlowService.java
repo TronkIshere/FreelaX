@@ -42,6 +42,21 @@ public class PaymentFlowService {
 
     public boolean cutoverEnabled() { return cutoverEnabled; }
 
+    /** Existing locked quotes keep their original fee-only promise. */
+    @Transactional(readOnly = true)
+    public boolean usesLegacyFeeOnlyQuote(UUID contractId) {
+        return flows.findByContractId(contractId)
+                .filter(flow -> flow.getTermsVersion() == 1)
+                .map(flow -> steps.findByPaymentFlowIdOrderByCreatedAtAsc(flow.getId()).stream()
+                        .filter(step -> "WITHDRAWAL".equals(step.getKind()))
+                        .anyMatch(step -> step.getFeeUsdc() != null && step.getVndRate() != null
+                                && step.getPayoutVnd() != null
+                                && step.getPayoutVnd().compareTo(flow.getEscrowUsdc()
+                                    .subtract(step.getFeeUsdc()).multiply(step.getVndRate())
+                                    .setScale(0, RoundingMode.HALF_UP)) == 0))
+                .orElse(false);
+    }
+
     public record ChainTerms(String network, String mint) { }
 
     /** Network and mint published with a unified Job; both parties accept them in the fingerprint. */

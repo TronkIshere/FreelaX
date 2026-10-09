@@ -117,7 +117,7 @@ public class UnifiedUsdFundingService {
                 .orElseThrow(() -> new ApplicationException(ErrorCode.FUNDING_NOT_FOUND));
         PaymentFlow flow = flows.findByMilestoneId(milestoneId)
                 .filter(f -> f.getContractId().equals(contract.getId())
-                        && f.getTermsVersion() == 1 && f.getQuoteExpiresAt() != null
+                        && f.getTermsVersion() > 0 && f.getQuoteExpiresAt() != null
                         && Instant.now().isBefore(f.getQuoteExpiresAt())
                         && Instant.now().isBefore(f.getFundingExpiresAt()))
                 .orElseThrow(() -> new ApplicationException(ErrorCode.FUNDING_INVALID_STATE));
@@ -340,7 +340,7 @@ public class UnifiedUsdFundingService {
                         && (!Objects.equals(lockedFlow.getMint(), config.getAcceptedMint())
                             || !Objects.equals(lockedFlow.getNetwork(), solanaProperties.getNetwork())))
                     throw new ApplicationException(ErrorCode.FUNDING_AMOUNT_CHANGED);
-                lockedFlow.setTermsVersion(1);
+                lockedFlow.setTermsVersion(2);
                 lockedFlow.setNetwork(solanaProperties.getNetwork());
                 lockedFlow.setMint(config.getAcceptedMint());
                 lockedFlow.setQuoteSource(order.quoteSource());

@@ -1,0 +1,1 @@
+ALTER TABLE wallets ADD COLUMN demo_private_key VARBINARY(256) NULL;

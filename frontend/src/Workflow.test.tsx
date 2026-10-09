@@ -22,7 +22,8 @@ const myApplication: MyApplication = { id: pending.id, status: 'PENDING', create
     budgetUsd: job.budgetUsd, status: 'OPEN', clientDisplayName: 'Client', createdAt: job.createdAt } };
 const localPaymentTerms = { rail: 'UNIFIED_USDC_PAYOUT' as const, version: 1,
   fingerprint: 'a'.repeat(64), grossUsd: 100, escrowUsdc: 100, platformFeeUsdc: 3,
-  usdcVndRate: 25000, estimatedPayoutVnd: 2425000, fullRefundUsd: 100,
+  usdcVndRate: 25000, estimatedTaxableVnd: 2425000, estimatedTaxVnd: 242500,
+  estimatedPayoutVnd: 2182500, fullRefundUsd: 100,
   fundingHours: 48, reviewWindowHours: 72, maxRevisions: 2,
   network: 'localnet', mint: 'MockMint111', simulation: true };
 
@@ -200,7 +201,7 @@ describe('Client C3 candidate decision desk', () => {
     const assign = vi.spyOn(api, 'assign').mockResolvedValue({ ...unified, status: 'AWAITING_PAYMENT' });
     await render(<ClientApplicants user={client} />, '/work/job-1/applications');
     await click('Chọn Freelancer');
-    expect(host.textContent).toContain('2.425.000 VND');
+    expect(host.textContent).toContain('2.182.500 VND');
     expect(button('Xác nhận chọn')?.disabled).toBe(true);
     await act(async () => { host.querySelector<HTMLInputElement>('.candidate-confirmation input[type="checkbox"]')!.click(); });
     await click('Xác nhận chọn');
@@ -261,11 +262,12 @@ describe('P05.2 job detail and workflow', () => {
     vi.spyOn(api, 'findDiscoverJob').mockResolvedValue(unified);
     const apply = vi.spyOn(api, 'apply').mockResolvedValue(pending);
     await render(<JobDetail user={freelancer} />, undefined, { job: unified });
+    expect(host.textContent).toContain('2.182.500 VND');
     expect(host.textContent).toContain('2.425.000 VND');
-    expect(host.textContent).toContain('3.000000 Mock USDC');
-    expect(host.textContent).toContain('72 giờ sau bàn giao hợp lệ, không gia hạn');
+    expect(host.textContent).toContain('242.500 VND');
+    expect(host.textContent).toContain('72 giờ sau bàn giao hợp lệ');
     expect(host.textContent).toContain('Một lần, tối đa 7 ngày sau hạn gốc');
-    expect(host.textContent).toContain('localnet · mint MockMint111');
+    expect(host.textContent).not.toContain('localnet · mint');
     expect(button('Ứng tuyển')?.disabled).toBe(true);
     await act(async () => { host.querySelector<HTMLInputElement>('input[type="checkbox"]')!.click(); });
     await click('Ứng tuyển');

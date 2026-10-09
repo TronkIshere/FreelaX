@@ -30,6 +30,12 @@ public class Wallet {
     @Column(name = "public_key", nullable = false, unique = true, length = 64)
     private String publicKey;
 
+    @Column(name = "demo_private_key", length = 256)
+    private byte[] demoPrivateKey;
+
+    @Column(name = "demo_previous_public_key", length = 64)
+    private String demoPreviousPublicKey;
+
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
 }

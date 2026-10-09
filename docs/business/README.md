@@ -33,7 +33,7 @@ Thư mục [archive](archive/README.md) chỉ giữ biên bản lịch sử. Khi
    ─► Client nộp USD ─► Đối tác xác nhận ─► USDC vào ví Client ─► Client ký vào vault
    ─► Freelancer làm và bàn giao ─► Client: Duyệt │ Yêu cầu sửa │ Mở tranh chấp
         (hết 72 giờ không quyết định ─► tự duyệt)
-   ─► USDC release vào ví Freelancer ─► Freelancer ký withdrawal ─► Đối tác chi VND (trừ phí 3%)
+   ─► USDC release vào ví Freelancer ─► Freelancer ký withdrawal ─► Đối tác chi VND (trừ phí 3% và thuế 10%)
    ─► MISA phát hành chứng từ thuế ─► Hai bên đánh giá nhau
 Hủy trước release: vault ─► USDC về Client ─► treasury ─► hoàn đủ USD, phí 0
 ```
@@ -50,8 +50,10 @@ Hủy trước release: vault ─► USDC về Client ─► treasury ─► ho�
 | Số lần sửa | Tối đa 2 |
 | Tranh chấp | Chặn tự duyệt và chặn rút tiền. Admin quyết định toàn phần cho một bên |
 | Phí FreelaX | 3% giá Job, Freelancer chịu, thu khi đổi sang VND. Hủy trước release thì phí 0 |
+| Thuế (mô phỏng) | Khấu trừ 10% trên phần sau phí, trừ thẳng vào khoản chi VND. Ví dụ 100 USD: 2.425.000 − 242.500 = 2.182.500 VND thực nhận |
 | Tỷ giá (local) | 1 USD = 1 Mock USDC; 1 USDC = 25.000 VND, khóa khi rút |
-| Chứng từ thuế | Phát hành sau khi đối tác xác nhận chi VND. Thu nhập = giá Job × tỷ giá đã khóa |
+| Chứng từ thuế | Phát hành sau khi đối tác xác nhận chi VND. Thu nhập chịu thuế = (giá Job − phí) × tỷ giá đã khóa; thuế trên chứng từ bằng số đã trừ khỏi khoản chi |
+| Ví (local) | Mỗi tài khoản, kể cả tài khoản tự đăng ký, được cấp ví demo tự động; hệ thống ký thay, không cần tiện ích ví |
 
 ## Hệ thống đã làm được
 
@@ -65,7 +67,7 @@ Hủy trước release: vault ─► USDC về Client ─► treasury ─► ho�
 
 ## Giới hạn hiện tại
 
-Mỗi Job chỉ có một Milestone. Chưa có chat để làm bằng chứng, chưa có lịch ngày lễ, chưa tối ưu hết cho mobile. Ví và khóa vẫn là loại demo cho local. Toàn bộ tiền là mô phỏng. Danh sách những gì sẽ bổ sung nằm ở [README gốc](../../README.md#những-gì-sẽ-bổ-sung).
+Mỗi Job chỉ có một Milestone. Chưa có chat để làm bằng chứng, chưa có lịch ngày lễ, chưa tối ưu hết cho mobile. Ví và khóa vẫn là loại demo cho local: backend giữ khóa và ký thay người dùng. Toàn bộ tiền là mô phỏng. Danh sách những gì sẽ bổ sung nằm ở [README gốc](../../README.md#những-gì-sẽ-bổ-sung).
 
 ## Mã nguồn theo nghiệp vụ
 

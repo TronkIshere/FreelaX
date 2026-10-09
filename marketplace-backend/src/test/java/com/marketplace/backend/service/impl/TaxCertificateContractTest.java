@@ -130,14 +130,18 @@ class TaxCertificateContractTest {
     }
 
     @Test
-    void unifiedPayoutCertifiesGrossIncomeAtTheLockedQuoteOnce() {
+    void unifiedPayoutCertifiesIncomeAfterFeeAndTaxAtTheLockedQuoteOnce() {
         Job job = job();
         PaymentFlow flow = unifiedFlow(job);
         PaymentFlowStep withdrawal = step(flow, "WITHDRAWAL", "CONFIRMED");
         withdrawal.setVndRate(new BigDecimal("25000.00"));
+        withdrawal.setFeeUsdc(new BigDecimal("3.000000"));
+        withdrawal.setPayoutVnd(new BigDecimal("2182500"));
         withdrawal.setConfirmedAt(Instant.parse("2026-10-10T00:00:00Z"));
+        PaymentFlowStep paid = step(flow, "VND_PAYOUT", "CONFIRMED");
+        paid.setAmount(new BigDecimal("2182500"));
         when(flowSteps.findByPaymentFlowIdOrderByCreatedAtAsc(flow.getId()))
-                .thenReturn(java.util.List.of(withdrawal, step(flow, "VND_PAYOUT", "CONFIRMED")));
+                .thenReturn(java.util.List.of(withdrawal, paid));
         when(flows.findById(flow.getId())).thenReturn(Optional.of(flow));
         when(jobs.findById(job.getId())).thenReturn(Optional.of(job));
         when(taxRecords.findByJobId(job.getId())).thenReturn(Optional.empty());
@@ -151,7 +155,7 @@ class TaxCertificateContractTest {
         MisaPayoutTransactionResult misaPayout = new MisaPayoutTransactionResult();
         ReflectionTestUtils.setField(misaPayout, "id", misaPayoutId);
         when(misa.registerTaxpayerForExternal(eq(flow.getFreelancerId()), any(), any(), any(), any(), any())).thenReturn(taxpayerId);
-        when(misa.recordPayoutTransaction(eq(taxpayerId), eq(job.getId()), any(), any(), any(), any())).thenReturn(misaPayout);
+        when(misa.recordPayoutTransaction(eq(taxpayerId), eq(job.getId()), any(), any(), any(), any(), eq(true))).thenReturn(misaPayout);
         when(misa.createWithholdingCertificate(misaPayoutId)).thenReturn(result(certificateId, "DRAFT"));
         when(misa.getCertificateStatus(certificateId)).thenReturn(result(certificateId, "DRAFT"));
         when(misa.issueCertificate(eq(certificateId), any(), any())).thenReturn(result(certificateId, "SIGNED"));
@@ -162,15 +166,15 @@ class TaxCertificateContractTest {
         org.mockito.ArgumentCaptor<TaxCertificateRecord> created = org.mockito.ArgumentCaptor.forClass(TaxCertificateRecord.class);
         verify(taxRecords).saveAndFlush(created.capture());
         TaxCertificateRecord record = created.getValue();
-        assertThat(record.getAmountUsd()).isEqualByComparingTo("100.00");
+        assertThat(record.getAmountUsd()).isEqualByComparingTo("97.00");
         assertThat(record.getUsdToVndRate()).isEqualByComparingTo("25000");
-        assertThat(record.getTaxableIncomeVnd()).isEqualByComparingTo("2500000");
+        assertThat(record.getTaxableIncomeVnd()).isEqualByComparingTo("2425000");
         assertThat(record.getRateSource()).isEqualTo(ExchangeRateSource.LOCKED_PAYOUT_QUOTE);
         assertThat(record.getTransactionReference()).isEqualTo("unified:" + flow.getId());
         assertThat(record.getPayoutRecordId()).isNull();
         assertThat(record.getMisaCertificateId()).isEqualTo(certificateId);
-        verify(misa).recordPayoutTransaction(eq(taxpayerId), eq(job.getId()), eq(new BigDecimal("100.00")),
-                eq(new BigDecimal("25000.00")), eq("unified:" + flow.getId()), eq("solana"));
+        verify(misa).recordPayoutTransaction(eq(taxpayerId), eq(job.getId()), eq(new BigDecimal("97.00")),
+                eq(new BigDecimal("25000.00")), eq("unified:" + flow.getId()), eq("solana"), eq(true));
 
         // Already issued: a second run does not create anything at MISA.
         when(taxRecords.findByJobId(job.getId())).thenReturn(Optional.of(record));
@@ -184,6 +188,8 @@ class TaxCertificateContractTest {
         PaymentFlow flow = unifiedFlow(job);
         PaymentFlowStep withdrawal = step(flow, "WITHDRAWAL", "CONFIRMED");
         withdrawal.setVndRate(new BigDecimal("25000.00"));
+        withdrawal.setFeeUsdc(new BigDecimal("3.000000"));
+        withdrawal.setPayoutVnd(new BigDecimal("2182500"));
         PaymentFlowStep payout = step(flow, "VND_PAYOUT", "PENDING");
         when(flowSteps.findByPaymentFlowIdOrderByCreatedAtAsc(flow.getId())).thenReturn(java.util.List.of(withdrawal, payout));
         when(flows.findById(flow.getId())).thenReturn(Optional.of(flow));
@@ -192,6 +198,7 @@ class TaxCertificateContractTest {
         assertThatThrownBy(() -> service.exportForUnifiedPayout(flow.getId())).isInstanceOf(ApplicationException.class);
 
         payout.setStatus("CONFIRMED");
+        payout.setAmount(new BigDecimal("2182500"));
         TaxCertificateRecord failed = new TaxCertificateRecord();
         failed.setJobId(job.getId());
         failed.setTransactionReference("unified:" + flow.getId());

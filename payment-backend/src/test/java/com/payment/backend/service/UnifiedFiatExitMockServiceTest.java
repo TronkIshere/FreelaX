@@ -40,17 +40,20 @@ class UnifiedFiatExitMockServiceTest {
 
         var opened = service.request(request);
         assertThat(opened.feeUsdc()).isEqualByComparingTo("3.000000");
-        assertThat(opened.payoutVnd()).isEqualByComparingTo("2425000");
-        assertThat(service.request(request).payoutVnd()).isEqualByComparingTo("2425000");
+        assertThat(opened.taxableVnd()).isEqualByComparingTo("2425000");
+        assertThat(opened.taxWithheldVnd()).isEqualByComparingTo("242500");
+        assertThat(opened.payoutVnd()).isEqualByComparingTo("2182500");
+        assertThat(service.request(request).payoutVnd()).isEqualByComparingTo("2182500");
         assertThatThrownBy(() -> service.request(request(flow, "PAYOUT", "bank:other")))
                 .isInstanceOf(RuntimeException.class);
         service.settle(flow);
         service.settle(flow);
         assertThat(service.statement(flow).entries()).extracting(UnifiedFiatExitMockService.StatementRow::kind)
-                .containsExactly("VND_PAYOUT", "PLATFORM_FEE");
-        assertThat(ledger).hasSize(2);
-        assertThat(ledger.get(0).getAmount()).isEqualByComparingTo("2425000");
+                .containsExactly("VND_PAYOUT", "PLATFORM_FEE", "TAX_WITHHELD");
+        assertThat(ledger).hasSize(3);
+        assertThat(ledger.get(0).getAmount()).isEqualByComparingTo("2182500");
         assertThat(ledger.get(1).getAmount()).isEqualByComparingTo("3.000000");
+        assertThat(ledger.get(2).getAmount()).isEqualByComparingTo("242500");
     }
 
     @Test
@@ -93,13 +96,13 @@ class UnifiedFiatExitMockServiceTest {
         var retried = service.request(request);
 
         assertThat(retried.status()).isEqualTo("CONFIRMED");
-        assertThat(ledger).hasSize(2);
+        assertThat(ledger).hasSize(3);
         verify(exits, times(1)).saveAndFlush(any());
         assertThatThrownBy(() -> service.request(new UnifiedFiatExitMockService.ExitRequest(flow, jobId,
                 contractId, milestoneId, "PAYOUT", "exit-" + flow, "withdrawal-" + flow, "bank:123",
-                new BigDecimal("101.000000"), new BigDecimal("101.00"))))
+                new BigDecimal("101.000000"), new BigDecimal("101.00"), new BigDecimal("2204325"))))
                 .isInstanceOf(RuntimeException.class);
-        assertThat(ledger).hasSize(2);
+        assertThat(ledger).hasSize(3);
     }
 
     @Test
@@ -110,15 +113,39 @@ class UnifiedFiatExitMockServiceTest {
 
         var opened = service.request(new UnifiedFiatExitMockService.ExitRequest(flow, jobId, contractId,
                 milestoneId, "PAYOUT", "exit-" + flow, "withdrawal-" + flow, "bank:123",
-                new BigDecimal("33.330000"), new BigDecimal("33.33")));
+                new BigDecimal("33.330000"), new BigDecimal("33.33"), new BigDecimal("727425")));
 
         assertThat(opened.feeUsdc()).isEqualByComparingTo("1.000000");
-        assertThat(opened.payoutVnd()).isEqualByComparingTo("808250");
+        assertThat(opened.taxableVnd()).isEqualByComparingTo("808250");
+        assertThat(opened.taxWithheldVnd()).isEqualByComparingTo("80825");
+        assertThat(opened.payoutVnd()).isEqualByComparingTo("727425");
+    }
+
+    @Test
+    void existingFeeOnlyQuoteKeepsItsOriginalPayoutWithoutInventingWithheldTax() {
+        UUID flow = UUID.randomUUID();
+        final UnifiedFiatExitMock[] stored = new UnifiedFiatExitMock[1];
+        List<UnifiedMockStatement> ledger = new ArrayList<>();
+        when(exits.findWithLockByPaymentFlowId(flow)).thenAnswer(inv -> Optional.ofNullable(stored[0]));
+        when(exits.saveAndFlush(any())).thenAnswer(inv -> { stored[0] = inv.getArgument(0); return stored[0]; });
+        when(statements.saveAndFlush(any())).thenAnswer(inv -> {
+            UnifiedMockStatement event = inv.getArgument(0); ledger.add(event); return event;
+        });
+        when(statements.findByPaymentFlowIdOrderByOccurredAtAsc(flow)).thenAnswer(inv -> ledger);
+
+        var legacy = service.request(new UnifiedFiatExitMockService.ExitRequest(flow, jobId, contractId,
+                milestoneId, "PAYOUT", "exit-" + flow, "withdrawal-" + flow, "bank:123",
+                new BigDecimal("100.000000"), new BigDecimal("100.00"), new BigDecimal("2425000")));
+        assertThat(legacy.taxWithheldVnd()).isEqualByComparingTo("0");
+        service.settle(flow);
+        assertThat(service.statement(flow).entries()).extracting(UnifiedFiatExitMockService.StatementRow::kind)
+                .containsExactly("VND_PAYOUT", "PLATFORM_FEE");
     }
 
     private UnifiedFiatExitMockService.ExitRequest request(UUID flow, String kind, String beneficiary) {
         return new UnifiedFiatExitMockService.ExitRequest(flow, jobId, contractId,
                 milestoneId, kind, "exit-" + flow, "withdrawal-" + flow, beneficiary,
-                new BigDecimal("100.000000"), new BigDecimal("100.00"));
+                new BigDecimal("100.000000"), new BigDecimal("100.00"),
+                "PAYOUT".equals(kind) ? new BigDecimal("2182500") : BigDecimal.ZERO);
     }
 }

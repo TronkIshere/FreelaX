@@ -141,6 +141,7 @@ export function rateSource(value: string | null | undefined): string {
   if (value === 'FALLBACK_PLACEHOLDER') return 'Tỷ giá giả lập / placeholder';
   if (value === 'LIVE_COINGECKO') return 'CoinGecko (USDC/VND)';
   if (value === 'LIVE_OPEN_ER_API') return 'Open Exchange Rates (USD/VND)';
+  if (value === 'LOCKED_PAYOUT_QUOTE') return 'Tỷ giá được xác nhận khi rút tiền';
   return 'Nguồn tỷ giá: ' + value;
 }
 
@@ -151,34 +152,35 @@ export function paymentStages(payment: JobPaymentStatus, tax: TaxRecord | null):
   const taxFailed = taxStatus === 'EXPORT_FAILED' || taxStatus === 'REJECTED' ||
     taxStatus === 'CANCELLED' || payment.taxExportStatus === 'FAILED';
   return [
-    { key: 'checkout', title: 'Thanh toán Client',
+    { key: 'checkout', title: 'Khách thanh toán',
       tone: payment.checkoutOrderStatus === 'CAPTURED' ? 'done' : payment.checkoutOrderStatus === 'FAILED' ? 'error' : 'pending',
       status: checkoutLabel(payment.checkoutOrderStatus),
-      note: 'Trạng thái checkout riêng với thanh toán on-chain.' },
-    { key: 'settlement', title: 'Quyết toán USDC',
+      note: payment.checkoutOrderStatus === 'CAPTURED' ? 'Hệ thống đã nhận khoản thanh toán của khách.' : 'Đang chờ khoản thanh toán của khách được xác nhận.' },
+    { key: 'settlement', title: 'Tiền vào ví',
       tone: clientFailed ? 'error' : settlementDone ? 'done'
         : payment.onRampStatus || payment.clientPaymentStatus ? 'active' : 'pending',
       status: onRampLabel(payment.onRampStatus) + ' · ' + clientPaymentLabel(payment.clientPaymentStatus),
-      note: payment.simulation ? 'Mô phỏng · Mock USDC; không phải số dư có thể rút.' : 'Bằng chứng xử lý USDC từ Marketplace.',
+      note: settlementDone ? 'Tiền đã được đổi và xác nhận trong ví.' : 'Đang chờ tiền được đổi và xác nhận trong ví.',
       error: payment.clientPaymentError },
-    { key: 'withdrawal', title: 'Rút on-chain',
+    { key: 'withdrawal', title: 'Người làm rút tiền',
       tone: payment.onChainOffRampStatus === 'FAILED' ? 'error'
         : payment.onChainOffRampStatus === 'CONFIRMED' ? 'done'
           : payment.onChainOffRampStatus === 'REQUEST_SUBMITTED' ? 'active' : 'pending',
       status: withdrawalLabel(payment.onChainOffRampStatus),
-      note: 'Bản ghi yêu cầu rút trên mạng được cấu hình.',
+      note: payment.onChainOffRampStatus === 'CONFIRMED' ? 'Người làm đã xác nhận rút tiền từ ví.' : 'Đang chờ người làm xác nhận rút tiền từ ví.',
       error: payment.onChainOffRampError },
     { key: 'vnd', title: 'Chi trả VND',
       tone: payment.offRampStatus === 'FAILED' ? 'error'
         : payment.offRampStatus === 'COMPLETED' ? 'done'
           : payment.offRampStatus === 'SIMULATED' || payment.offRampStatus === 'COMPLETION_SUBMITTED' ? 'active' : 'pending',
       status: offRampLabel(payment.offRampStatus),
-      note: payment.simulation ? 'Mô phỏng · không xác nhận chuyển khoản ngân hàng thật.' : 'Theo dõi trạng thái chi trả từ Marketplace.',
+      note: (payment.offRampStatus === 'COMPLETED' ? 'Khoản chi VND đã được xác nhận.' : 'Đang chờ xác nhận khoản chi VND.')
+        + (payment.simulation ? ' Mô phỏng · không xác nhận chuyển khoản ngân hàng thật.' : ''),
       error: payment.offRampError },
     { key: 'tax', title: 'Chứng từ thuế',
       tone: taxFailed ? 'error' : taxStatus === 'ACCEPTED' ? 'done' : tax ? 'active' : 'pending',
       status: tax ? tax.statusLabel || tax.status : exportLabel(payment.taxExportStatus),
-      note: 'Trạng thái chứng từ tách biệt với kết quả xuất thuế của job.' },
+      note: taxStatus === 'ACCEPTED' ? 'Chứng từ đã được ghi nhận; hãy xem số tiền và trạng thái trên chứng từ.' : 'Chứng từ được lập sau khi khoản chi VND được xác nhận.' },
   ];
 }
 

@@ -11,14 +11,14 @@
 | Đối tác mô phỏng (Gate 2) | Sao kê USD/VND/phí/hoàn USD độc lập; retry sau khi đối tác đã chi không chi lần hai; làm tròn | `payment-backend` test 71/71 |
 | Solana (Gate 3) | Ký quỹ, bàn giao, gia hạn, tranh chấp, release/refund chốt một lần; cờ grace 72 giờ; mã hóa instruction | Anchor 75/75, Gateway 7/7 |
 | Điều phối và đối soát (Gate 4) | 4 ranh giới `MATCHED` trên stack thật; `MISMATCH` và `UNKNOWN` chặn bước tiếp theo; bảng theo loại tiền | `scripts/local-unified-flow-e2e.ts`, `local-unified-outage-e2e.ts` |
-| Giao diện (Gate 5) | Tài khoản mới từ đăng ký đến VND và hoàn USD; từ chối ký ví; đối tác chậm; bàn phím | `unified-new-account-e2e.mjs`, `unified-browser-edge-e2e.mjs` |
+| Giao diện (Gate 5) | Tài khoản mới từ đăng ký đến VND và hoàn USD, dùng ví demo tự động (không cần tiện ích ví); đối tác chậm; bàn phím | `unified-new-account-e2e.mjs`, `unified-browser-edge-e2e.mjs` |
 | Chuyển đổi (Gate 6) | Flag theo Job; Job cũ giữ rail; runbook và rollback | [CUTOVER_RUNBOOK](CUTOVER_RUNBOOK.md) |
 | Tranh chấp và hết hạn | Admin về Freelancer (→ VND) và về Client (→ hoàn USD); scheduler tự release sau 72 giờ trên bản sao ledger warp | `local-unified-dispute-e2e.ts`, `local-unified-timeout-e2e.ts` |
 | Sự cố | Payment Backend sập lúc nộp USD và lúc chi; RPC mất; on-ramp bị rơi rồi gửi lại; không chi trùng | `local-unified-outage-e2e.ts` |
-| Chứng từ thuế | Scheduler phát hành chứng từ sau `VND_PAYOUT`; 7 chứng từ `ACCEPTED`; PDF và XML tải được (ví dụ 5 USD → thu nhập 125.000 VND, khấu trừ 12.500 VND) | PR #7, `TaxCertificateContractTest` |
+| Chứng từ thuế | Scheduler phát hành chứng từ sau `VND_PAYOUT`; 7 chứng từ `ACCEPTED`; PDF và XML tải được. Từ `terms-v2`: thu nhập = (giá − phí 3%) × tỷ giá, thuế 10% trừ thẳng vào khoản chi (12 USD → thu nhập 291.000, thuế 29.100, thực nhận 261.900 VND) | PR #7, `TaxCertificateContractTest`, `unified-new-account-e2e.mjs` |
 | Bảo mật | Endpoint Admin trả 401/403 cho người không có quyền; danh tính lấy từ token; Freelancer không thấy ngân hàng của Client | `PaymentFlowControllerSecurityTest` |
 
-Kết quả test gần nhất: Marketplace 328/328, Payment Backend 71/71, Frontend 801/801 + build, Gateway 7/7, Anchor 75/75, MySQL IT 3/3.
+Kết quả test gần nhất (2026-10-10): Marketplace 333/333, Payment Backend 72/72, Frontend 806/806 + tsc + build, Gateway 7/7, Anchor 75/75, MySQL IT 3/3.
 
 ## Chạy lại kiểm chứng
 
@@ -141,6 +141,18 @@ Môi trường: Compose local, localnet `127.0.0.1:9123` ledger `unified-ledger-
 **Test:** Marketplace **326/326**, Payment Backend **71/71**, Frontend **800/800** + build, Gateway **7/7** (Docker Maven), Anchor 75/75 (không đổi program từ lần trước), MySQL IT 3/3. Flyway Payment Backend: DB trống áp V1, DB hiện có baseline V1, DB `payment` local baseline thành công (đã sao lưu trước).
 
 **Ghi chú vận hành validator test:** kill validator một node khi đang vote có thể làm tower kẹt (“Waiting to switch vote”); xóa tower khiến validator hoãn leader slot ~2.000 slot. Drill RPC vì vậy cắt proxy thay vì dừng validator; `scripts/local-validator-ctl.sh` chỉ trả về khi block mới được tạo.
+
+### Bổ sung 2026-10-10 (tối): ví demo tự động và khoản chi sau phí và thuế
+
+Môi trường: Compose local, localnet `127.0.0.1:9123`, flag cutover `true`. Thay đổi kiểm chứng trên nhánh `feat/local-auto-wallet-net-payout`.
+
+| Ca | Lệnh | Kết quả |
+| --- | --- | --- |
+| Tài khoản mới, ví tự động, release + hoàn tiền | `frontend/scripts/unified-new-account-e2e.mjs` | Run `mv1lgx1b`. Trang không có `window.solana`; ví được cấp tự động. Release Job `c486c7c0-3691-411d-b6d3-64b2b6aef93d`, flow `d6c250ee-4675-4f4a-9f72-e9efa3f0ca15`: 12 USD → phí 0,36 → `VND_PAYOUT` 261.900 VND; chứng từ `ACCEPTED`, thu nhập 291.000, thuế 29.100, `LOCKED_PAYOUT_QUOTE`. Hoàn tiền Job `1aee9033-48bb-4487-b001-d15e8c87d6e7`, flow `0623690d-02a2-4f08-a6a9-3d85f0f15336`: hoàn 8 USD, phí 0. Bốn ranh giới `MATCHED` cho cả hai flow. |
+| Ca biên | `frontend/scripts/unified-browser-edge-e2e.mjs` | Run `mv1lme5c`, Job `df84c4dd-16b2-4368-8640-0e8fc751b512`: thao tác bàn phím (outline 3px); Payment Backend dừng lúc nộp USD thì bước hiện "Đang kiểm tra", công việc không mở, sau đó hồi phục; chuẩn bị giữ tiền hai lần vẫn chỉ ký quỹ một lần bằng ví tự động. Ca "từ chối ký trong ví" không còn áp dụng cho localnet. |
+| Khoản cũ `terms-v1` | DB local | SmartClass vẫn chi 2.910.000 VND, chứng từ cũ 3.000.000 / 300.000 VND giữ nguyên; trang Job hiện cảnh báo cách tính cũ. |
+
+**Giới hạn:** ví demo tự động chỉ bật ở profile `dev` + `localnet`. Backend giữ khóa (mã hóa bằng khóa dẫn xuất từ JWT secret) và ký thay mọi giao dịch có ví của tài khoản làm signer. Không dùng cho môi trường khác.
 
 ## Mẫu ghi bằng chứng khi hoàn thành gate mới
 

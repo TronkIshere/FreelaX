@@ -7,6 +7,7 @@ import type { BankCode, ClientBankAccount, FundingResponse, Job, PaymentFlowTime
 import { EscrowFundingPanel } from './EscrowFunding';
 import { WalletLinkPanel } from './WalletLink';
 import { PartnerFundingPanel } from './PartnerFunding';
+import { PaymentJourney } from './PaymentJourney';
 
 const banks: BankCode[] = ['VIETCOMBANK', 'VIETINBANK', 'BIDV', 'AGRIBANK', 'TECHCOMBANK', 'MBBANK', 'ACB', 'VPBANK', 'SACOMBANK', 'TPBANK'];
 type FundingAttempt = { key: string; amount: string; currency: string };
@@ -58,7 +59,7 @@ function UnifiedFundingPanel({ job, user, onJobUpdated, blocked = false, operati
     void api.paymentFlow(contract.id, contract.milestoneId).then(result => {
       if (active) { setFlow(result); setError(''); }
     }).catch(() => {
-      if (active) setError('Chưa đọc được timeline thanh toán. Hãy đối chiếu lại trước khi thao tác.');
+      if (active) setError('Chưa cập nhật được thanh toán. Hãy thử lại.');
     }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [contract?.id, contract?.milestoneId, tick]);
@@ -81,8 +82,8 @@ function UnifiedFundingPanel({ job, user, onJobUpdated, blocked = false, operati
       if (next.termsStatus === 'LOCKED') clearAttempt(scope);
     } catch (cause) {
       setError(cause instanceof ApiError && cause.code === 4021
-        ? 'Cần tài khoản ngân hàng Client và ví Solana đã liên kết trước khi tạo USD order.'
-        : 'Chưa xác nhận được USD order. Giữ nguyên lần gửi và đối chiếu trước khi thử lại.');
+        ? 'Cần thêm tài khoản ngân hàng trước khi thanh toán.'
+        : 'Chưa xác nhận được thanh toán. Hãy kiểm tra trạng thái trước khi thử lại.');
       setTick(value => value + 1);
     } finally { setBusy(false); if (operationLock) operationLock.current = false; }
   }
@@ -90,7 +91,7 @@ function UnifiedFundingPanel({ job, user, onJobUpdated, blocked = false, operati
     if (!contract?.milestoneId || !owner || blocked || busy || operationLock?.current) return;
     setBusy(true); setError(''); if (operationLock) operationLock.current = true;
     try { setFlow(await api.submitUnifiedUsdOrder(contract.id, contract.milestoneId)); setConfirm(false); }
-    catch { setError('Chưa xác nhận được lệnh nộp USD. Hãy đối chiếu cùng order trước khi gửi lại.'); setTick(value => value + 1); }
+    catch { setError('Chưa xác nhận được thanh toán. Hãy kiểm tra trạng thái trước khi thử lại.'); setTick(value => value + 1); }
     finally { setBusy(false); if (operationLock) operationLock.current = false; }
   }
   if (!contract) return null;
@@ -99,33 +100,29 @@ function UnifiedFundingPanel({ job, user, onJobUpdated, blocked = false, operati
   // On-ramp delivers USDC to the bound Client wallet and the vault names the Freelancer wallet,
   // so both parties link wallets before any money moves.
   return <><WalletLinkPanel />
-    <section className="funding-document" id="funding" tabIndex={-1} aria-label="Luồng thanh toán thống nhất">
-    <SectionHeading title="Thanh toán của Job" aside="Mô phỏng" />
-    {loading && <p role="status">Đang đọc timeline thanh toán…</p>}
+    <section className="funding-document" id="funding" tabIndex={-1} aria-label="Tiến trình thanh toán">
+    <SectionHeading title="Thanh toán của công việc" />
+    {loading && <p role="status">Đang cập nhật thanh toán…</p>}
     {error && <p role="alert" className="form-error">{error}</p>}
     {flow && <>
-      <p>Mã luồng: <code>{flow.paymentFlowId}</code></p>
-      <p>Giá Job: {flow.grossUsd} USD · USDC dự kiến vào escrow: {flow.escrowUsdc} · Phí Freelancer chịu: {flow.platformFeeUsd} USD.</p>
+      <p>Giá công việc: {flow.grossUsd} USD · Phí dịch vụ do người làm chịu: {flow.platformFeeUsd} USD.</p>
       {flow.payerBankCode && <p>Tài khoản Client nộp USD / nhận hoàn: {flow.payerBankCode} · {flow.payerBankMaskedAccount}.</p>}
-      {flow.termsStatus === 'DRAFT' && <p role="status">Điều khoản và quote đang chờ khóa. Chưa tạo lệnh USD và chưa thể bắt đầu công việc.</p>}
-      {flow.termsStatus === 'LOCKED' && <p>Quote: {flow.quoteSource || 'Chưa có nguồn'} · Hết hạn: {flow.quoteExpiresAt || 'Chưa xác nhận'} · Mint: {flow.mint || 'Chưa xác nhận'}.</p>}
-      <p>Hủy trước release: USDC về ví Client trước, sau đó đối tác hoàn USD theo điều khoản. Phí FreelaX bằng 0 khi hoàn.</p>
-      <p>Công việc: {flow.jobStatus} · Hợp đồng: {flow.contractStatus}. Mỗi bước tiền cần xác nhận riêng.</p>
-      <ul>{flow.steps.map(step => <li key={step.kind}>{step.kind}: {step.status}{step.amount != null && step.currency ? ` · ${step.amount} ${step.currency}` : ''}{step.reference ? ` · ${step.reference}` : ''}</li>)}</ul>
+      {flow.termsStatus === 'DRAFT' && <p role="status">Đang chuẩn bị thanh toán. Công việc bắt đầu sau khi tiền được giữ an toàn.</p>}
+      <PaymentJourney flow={flow} />
       {owner && flow.termsStatus === 'DRAFT' && !bank?.ready && <ClientBankForm blocked={blocked} onSaved={setBank} />}
-      {owner && flow.termsStatus === 'DRAFT' && <p className="metadata">Liên kết ví Solana của bạn trước khi tạo USD order: USDC từ on-ramp chỉ được chuyển vào ví đã xác minh.</p>}
-      {owner && flow.termsStatus === 'DRAFT' && <button className="button" disabled={busy || blocked || loading || !bank?.ready} onClick={() => void openOrder()}>Tạo USD order mô phỏng</button>}
-      {owner && usdOrder?.status === 'AWAITING_CLIENT' && !confirm && <button className="button" disabled={busy || blocked || loading} onClick={() => setConfirm(true)}>Xem và xác nhận nộp USD</button>}
-      {owner && usdOrder?.status === 'AWAITING_CLIENT' && confirm && <div className="approval-confirm" role="group" aria-label="Xác nhận USD order">
-        <p>Client nộp {flow.grossUsd} USD theo quote đã hiển thị; mock chỉ ghi đã nhận sau sao kê đối tác. USDC chưa vào escrow ở bước này.</p>
-        <ActionGroup><button className="button" disabled={busy || blocked} onClick={() => void submitOrder()}>Xác nhận nộp USD mô phỏng</button><button className="button button-secondary" disabled={busy} onClick={() => setConfirm(false)}>Quay lại</button></ActionGroup>
+      {owner && flow.termsStatus === 'DRAFT' && <button className="button" disabled={busy || blocked || loading || !bank?.ready} onClick={() => void openOrder()}>Bắt đầu thanh toán</button>}
+      {owner && usdOrder?.status === 'AWAITING_CLIENT' && !confirm && <button className="button" disabled={busy || blocked || loading} onClick={() => setConfirm(true)}>Xem và xác nhận thanh toán</button>}
+      {owner && usdOrder?.status === 'AWAITING_CLIENT' && confirm && <div className="approval-confirm" role="group" aria-label="Xác nhận thanh toán">
+        <p>Bạn xác nhận thanh toán {flow.grossUsd} USD cho công việc này. Công việc bắt đầu sau khi khoản tiền được xác nhận và giữ an toàn.</p>
+        <ActionGroup><button className="button" disabled={busy || blocked} onClick={() => void submitOrder()}>Xác nhận thanh toán</button><button className="button button-secondary" disabled={busy} onClick={() => setConfirm(false)}>Quay lại</button></ActionGroup>
       </div>}
-      {usdOrder?.status === 'PENDING' && <p role="status">Đối tác mock đang xác nhận USD; chưa mở công việc.</p>}
-      {clientUsdc?.status === 'CONFIRMED' && <p role="status">USDC đã vào ví Client theo receipt on-ramp. Client cần ký chuyển vào escrow; công việc chỉ mở sau khi vault được xác minh.</p>}
+      {usdOrder?.status === 'PENDING' && <p role="status">Đang chờ xác nhận thanh toán.</p>}
+      {clientUsdc?.status === 'PENDING' && <p role="status">Đang cập nhật khoản tiền để tiếp tục công việc.</p>}
+      {clientUsdc?.status === 'CONFIRMED' && <p role="status">Tiền đã sẵn sàng. Hãy xác nhận giữ tiền để bắt đầu công việc.</p>}
     </>}
-    <button className="text-button" disabled={loading} onClick={() => setTick(value => value + 1)}>Đối chiếu timeline</button>
+    <button className="text-button" disabled={loading} onClick={() => setTick(value => value + 1)}>Làm mới trạng thái</button>
   </section>
-    {clientUsdc?.status === 'CONFIRMED' && <><EscrowFundingPanel job={job} user={user} onJobUpdated={onJobUpdated} blocked={blocked} operationLock={operationLock} onMutationChange={onMutationChange} expectedUsdc={flow!.escrowUsdc} /></>}
+    {clientUsdc?.status === 'CONFIRMED' && <><EscrowFundingPanel job={job} user={user} onJobUpdated={onJobUpdated} blocked={blocked} operationLock={operationLock} onMutationChange={onMutationChange} expectedUsdc={flow!.escrowUsdc} onPaymentRefresh={() => setTick(value => value + 1)} /></>}
   </>;
 }
 

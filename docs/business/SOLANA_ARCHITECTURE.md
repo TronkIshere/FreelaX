@@ -12,7 +12,7 @@ Trên môi trường local: dùng **Mock USDC** trên **local validator** (`127.
 
 | Khái niệm | Hiểu đơn giản | Trong FreelaX |
 | --- | --- | --- |
-| **Ví** (wallet) | Tài khoản của người dùng trên Solana, ký giao dịch bằng khóa riêng | Client và Freelancer liên kết ví bằng cách ký một thông điệp xác minh |
+| **Ví** (wallet) | Tài khoản của người dùng trên Solana, ký giao dịch bằng khóa riêng | Local: mỗi tài khoản được cấp **ví demo tự động** khi đăng nhập, backend giữ khóa (mã hóa) và ký thay. Ngoài localnet: người dùng liên kết ví trình duyệt (Phantom…) bằng cách ký thông điệp xác minh |
 | **ATA** | "Ngăn" chứa USDC của một ví | USDC on-ramp vào ATA của Client; release vào ATA của Freelancer |
 | **Vault / Escrow PDA** | Két sắt do chương trình quản lý, riêng cho từng Milestone | Giữ USDC của Job từ lúc Client ký quỹ cho tới khi release hoặc refund |
 | **WithdrawalRecord** | Biên nhận rút USDC sang treasury để đổi VND | Gắn với withdrawal ID và tỷ giá đã khóa của flow |
@@ -36,13 +36,13 @@ ATA Freelancer ──(request_offramp: Freelancer ký)────────�
 - **Release:** Client duyệt, **hoặc** bất kỳ ai gọi sau khi hết hạn review (đây là "tự duyệt"). Đang tranh chấp thì chỉ Admin được quyết định.
 - **Refund:** cần cả hai bên ký (hoàn theo thỏa thuận), hoặc Admin quyết định khi có tranh chấp.
 - **Chốt một lần:** release và refund chuyển **toàn bộ** số tiền trong vault vào đúng ATA của người nhận, trong cùng lệnh ghi trạng thái cuối. Nhờ vậy chỉ cần thấy "trạng thái cuối + vault bằng 0 + đúng người nhận" là biết người nhận đã có tiền, kể cả khi lịch sử giao dịch bị cắt.
-- **Rút tiền:** dùng tỷ giá do rate authority công bố và còn hạn; số VND được tính sẵn vào WithdrawalRecord.
+- **Rút tiền:** dùng tỷ giá do rate authority công bố và còn hạn; số VND được tính sẵn vào WithdrawalRecord. Phí 3% và thuế 10% được đối tác trừ ngoài chain khi chi VND.
 
 ## Các thành phần
 
 | Thành phần | Vai trò |
 | --- | --- |
-| Frontend | Đưa giao dịch cho người dùng ký bằng ví; không tự kết luận tiền đã chuyển |
+| Frontend | Đưa giao dịch đi ký (local: qua ví demo tự động; ngoài localnet: ví trình duyệt); không tự kết luận tiền đã chuyển |
 | Marketplace | Quyết định nghiệp vụ, kiểm tra quyền, đối chiếu dữ liệu chain trước khi ghi một bước là xác nhận |
 | Solana Gateway (`solana-integration`) | Dựng và gửi giao dịch, đọc tài khoản và PDA qua RPC; không phải nơi quyết định nghiệp vụ |
 | Anchor program (`solana-stablecoin-payout`) | Thực thi quy tắc giữ và chuyển USDC |
@@ -57,4 +57,4 @@ Trình duyệt chỉ gọi Marketplace. Gateway và RPC nằm phía sau.
 
 ## Giới hạn local
 
-Ví demo và khóa local chưa phải cơ chế cấp phát và khôi phục khóa cho người dùng thật. Validator test chỉ có một node: không nên kill nó khi đang chạy (có thể làm chain đứng). Muốn giả lập RPC sập thì dùng `solana-stablecoin-payout/scripts/local-rpc-proxy.sh`.
+Ví demo tự động chỉ bật ở profile `dev` + `localnet`: khóa riêng lưu mã hóa trong bảng `wallets` (khóa mã hóa dẫn xuất từ JWT secret, đổi secret thì không đọc lại được ví), và endpoint ký thay ký mọi giao dịch có ví của tài khoản làm signer. Đây chưa phải cơ chế cấp phát, bảo vệ và khôi phục khóa cho người dùng thật. Ví cũ (liên kết bằng tiện ích) chưa ký quỹ được tự chuyển sang ví demo; USDC on-ramp được cấp lại cho ví mới. Validator test chỉ có một node: không nên kill nó khi đang chạy (có thể làm chain đứng). Muốn giả lập RPC sập thì dùng `solana-stablecoin-payout/scripts/local-rpc-proxy.sh`.

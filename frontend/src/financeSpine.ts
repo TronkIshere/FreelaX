@@ -45,29 +45,29 @@ export function contractMoneyStages(job: Job, record: ContractFinance, funding: 
   const downstream = (key: string, title: string, status?: string, error?: string | null): MoneyStage => ({
     key, title, tone: refund ? 'pending' : status ? status === 'NOT_STARTED' ? 'pending' : financialMoneyTone(status) : 'pending',
     status: refund ? 'Không thuộc luồng hoàn tiền' : status ? settlementStageLabel(status) : record.error ? 'Chưa xác minh' : 'Chưa bắt đầu',
-    note: refund ? 'Hồ sơ hủy/hoàn tiền không xác nhận release hoặc chi trả cho Freelancer.' : 'Bằng chứng riêng từ bản ghi settlement của Marketplace.',
+    note: refund ? 'Công việc đang đi theo hướng hoàn tiền cho khách.' : 'Đang chờ hệ thống xác nhận bước này.',
     error: refund ? null : error, facts: [], applicable: !refund,
   });
   return [
-    { key: 'funding', title: 'Funding Client', tone: fundingError ? 'error' : funding ? financialMoneyTone(funding.fundingStatus) : 'pending',
+    { key: 'funding', title: 'Khách giữ tiền cho công việc', tone: fundingError ? 'error' : funding ? financialMoneyTone(funding.fundingStatus) : 'pending',
       status: fundingError ? 'Chưa đọc được funding' : funding ? fundingLabel(funding.fundingStatus) : 'Chưa có bản ghi funding',
-      note: 'Funding đã xác nhận không có nghĩa Freelancer đã nhận release.', error: fundingError, facts: amount, applicable: !cancelled },
-    { key: refund ? 'refund' : 'release', title: refund ? 'Hoàn tiền Client' : 'Release cho Freelancer',
+      note: funding?.fundingStatus === 'SUCCEEDED' ? 'Khoản tiền đã được giữ; người làm có thể bắt đầu.' : 'Đang chờ khách hoàn tất việc giữ tiền.', error: fundingError, facts: amount, applicable: !cancelled },
+    { key: refund ? 'refund' : 'release', title: refund ? 'Hoàn tiền cho khách' : 'Trả tiền cho người làm',
       tone: record.error && !(refund ? cancellation : settlement) ? 'error' : financialMoneyTone(refund ? cancellation?.refundStatus : settlement?.moneyStatus),
       status: refund ? cancellation?.refundStatus ? refundLabel(cancellation.refundStatus) : cancelled ? 'Hợp đồng đã hủy; chưa có xác nhận hoàn tiền' : 'Chưa có xác nhận hoàn tiền'
         : settlement ? settlementMoneyLabel(settlement.moneyStatus) : record.error ? 'Chưa xác minh release' : 'Chưa có bản ghi release',
-      note: 'Bản ghi tiền chính độc lập với funding và các chặng xử lý sau đó.',
+      note: refund ? 'Sau khi hủy, tiền được trả lại cho khách khi khoản hoàn được xác nhận.' : 'Sau khi kết quả được duyệt, tiền bắt đầu chuyển cho người làm.',
       error: refund ? cancellation?.lastError : settlement?.lastError,
       facts: amount, applicable: !(cancelled && !cancellation?.refundStatus) },
-    downstream('onchain', 'Bằng chứng on-chain', settlement?.onChainStatus, settlement?.onChainError),
-    downstream('vnd', 'Chi trả VND', settlement?.offRampStatus, settlement?.offRampError),
+    downstream('onchain', 'Xác nhận chuyển tiền trong ví', settlement?.onChainStatus, settlement?.onChainError),
+    downstream('vnd', 'Chuyển VND', settlement?.offRampStatus, settlement?.offRampError),
     { ...downstream('tax', 'Chứng từ thuế', settlement?.taxStatus, settlement?.taxError),
       ...(!refund ? { tone: taxError || taxFailure || ['FAILED', 'FAILED_RETRYABLE'].includes(settlement?.taxStatus || '') ? 'error' as const
         : tax?.status === 'ACCEPTED' ? 'done' as const : tax || settlement?.taxStatus === 'SUCCEEDED' ? 'active' as const : settlement?.taxStatus === 'PROCESSING' || settlement?.taxStatus === 'UNKNOWN' ? 'active' as const : 'pending' as const,
       status: taxError ? 'Chưa đọc được chứng từ' : tax ? tax.statusLabel || tax.status : settlement?.taxStatus === 'SUCCEEDED' ? 'Đã lập / khôi phục; chưa xác minh chứng từ' : settlement ? settlementStageLabel(settlement.taxStatus) : 'Chưa có chứng từ',
       timestamp: tax?.lastSyncedAt || tax?.updatedAt || tax?.createdAt,
       error: taxError || settlement?.taxError } : {}),
-      note: 'Kết quả lập/xuất chứng từ không xác nhận cơ quan thuế đã ACCEPTED.' },
+      note: 'Chứng từ được lập sau khi khoản chi được xác nhận; xem chứng từ để kiểm tra số tiền.' },
   ];
 }
 

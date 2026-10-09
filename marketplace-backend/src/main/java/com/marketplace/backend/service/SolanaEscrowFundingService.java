@@ -35,6 +35,7 @@ public class SolanaEscrowFundingService {
     private final UnifiedUsdFundingService unifiedFunding;
     private final PaymentFlowService paymentFlowService;
     private final UnifiedReconciliationService reconciliation;
+    private final LocalAutoWalletService autoWallets;
 
     public record EscrowView(String paymentRail, String status, String settlementStatus,
             String escrowAddress,
@@ -71,6 +72,7 @@ public class SolanaEscrowFundingService {
                     EnumSet.allOf(FundingStatus.class))) {
             throw new ApplicationException(ErrorCode.FUNDING_INVALID_STATE);
         }
+        if (autoWallets.isLocalDemoEnabled()) autoWallets.connect(contract.getFreelancerId());
         EscrowContract record = escrows.findByContractId(contractId).orElse(null);
         if (record != null && record.getFundSignature() != null) {
             throw new ApplicationException(ErrorCode.FUNDING_IN_PROGRESS);

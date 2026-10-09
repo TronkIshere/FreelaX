@@ -1,13 +1,12 @@
-// Browser E2E for UNIFIED_USDC_PAYOUT with brand-new accounts: registration, wallet linking,
-// Job, application, assignment, USD order, on-ramp, escrow, delivery, release, VND payout,
-// and a second Job refunded by mutual signature then USD. Local validator and mock providers only.
+// Browser E2E for UNIFIED_USDC_PAYOUT with brand-new accounts: registration, automatic local wallet,
+// Job, application, assignment, USD order, on-ramp, escrow, delivery, release, VND payout after
+// fee and 10% tax, tax certificate, and a second Job refunded by mutual signature then USD.
+// Local validator and mock providers only.
 // Requires PAYMENT_FLOW_CUTOVER_ENABLED=true on Marketplace while the Jobs are created.
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { chromium } from 'playwright';
-import { Connection, Keypair, LAMPORTS_PER_SOL } from '@solana/web3.js';
-import { ed25519 } from '@noble/curves/ed25519';
 
 const env = Object.fromEntries(readFileSync(new URL('../../.env', import.meta.url), 'utf8')
   .split(/\r?\n/).filter(line => line.includes('=') && !line.startsWith('#'))
@@ -20,8 +19,8 @@ const run = Date.now().toString(36);
 // Throwaway credentials for this run only; never committed.
 const password = 'E2e!' + randomUUID().slice(0, 12);
 const people = {
-  client: { email: `client.${run}@e2e.test`, name: `Client ${run}`, wallet: Keypair.generate() },
-  freelancer: { email: `freelancer.${run}@e2e.test`, name: `Freelancer ${run}`, wallet: Keypair.generate() },
+  client: { email: `client.${run}@e2e.test`, name: `Client ${run}` },
+  freelancer: { email: `freelancer.${run}@e2e.test`, name: `Freelancer ${run}` },
 };
 const errors = [];
 const apiFailures = [];
@@ -44,30 +43,17 @@ async function until(label, read, accept, timeout = 180_000) {
   throw new Error(`Timed out waiting for ${label}: ${JSON.stringify(last)?.slice(0, 600)}`);
 }
 const stage = (flow, kind) => flow.steps.find(step => step.kind === kind);
+const flowPath = ids => `/contracts/${ids.contractId}/milestones/${ids.milestoneId}/payment-flow`;
+// terms-v2: fee 3% of the Job price, then 10% tax withheld from the VND value after fee.
+function expectedPayout(usd) {
+  const fee = Math.round(usd * 3) / 100;
+  const taxable = Math.round((usd - fee) * 25000);
+  const tax = Math.round(taxable * 0.1);
+  return { fee, taxable, tax, payout: taxable - tax };
+}
 
 async function open(browser, role) {
-  const keypair = people[role].wallet;
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
-  // Stand-in for a browser wallet extension: the page asks, the test key signs.
-  await context.exposeFunction('__freelaxSign', base64 => Buffer.from(
-    ed25519.sign(Buffer.from(base64, 'base64'), keypair.secretKey.slice(0, 32))).toString('base64'));
-  await context.addInitScript(({ address }) => {
-    const toBase64 = bytes => { let text = ''; for (const byte of bytes) text += String.fromCharCode(byte); return btoa(text); };
-    const fromBase64 = text => Uint8Array.from(atob(text), char => char.charCodeAt(0));
-    const publicKey = { toBase58: () => address };
-    window.solana = {
-      publicKey,
-      async connect() { return { publicKey }; },
-      async signMessage(message) { return { signature: fromBase64(await window.__freelaxSign(toBase64(message))) }; },
-      async signTransaction(transaction) {
-        const signer = transaction.signatures.find(entry => entry.publicKey.toBase58() === address);
-        if (!signer) throw new Error('Wallet is not a required signer');
-        const signature = fromBase64(await window.__freelaxSign(toBase64(transaction.serializeMessage())));
-        transaction.addSignature(signer.publicKey, signature);
-        return transaction;
-      },
-    };
-  }, { address: keypair.publicKey.toBase58() });
   const page = await context.newPage();
   page.on('pageerror', error => errors.push(`${role}: ${error.message}`));
   page.on('response', async response => {
@@ -104,17 +90,16 @@ async function register(page, role) {
   person.token = (await (await signIn).json()).data.accessToken;
   await page.locator('.masthead').waitFor({ timeout: 15000 });
   person.id = (await call('GET', '/auth/me', undefined, person.token)).id;
-  evidence.accounts[role] = { email: person.email, wallet: person.wallet.publicKey.toBase58() };
+  // The local auto wallet is issued on first use; the page must never need a wallet extension.
+  assert.equal(await page.evaluate(() => Boolean(window.solana || window.phantom)), false);
+  person.wallet = (await call('POST', '/solana/wallet-link/auto', undefined, person.token)).walletAddress;
+  evidence.accounts[role] = { email: person.email, wallet: person.wallet };
 }
 
-async function linkWallet(page, role) {
-  const address = people[role].wallet.publicKey.toBase58();
-  const panel = page.getByRole('region', { name: 'Ví Solana của tài khoản' });
-  const bound = panel.locator('p', { hasText: 'Ví Solana đã đăng ký:' }).locator('code');
-  await until('wallet panel loaded', () => bound.innerText(), text => text !== 'Đang đối chiếu…', 20000);
-  if ((await bound.innerText()) === address) return;
-  await panel.getByRole('button', { name: 'Kết nối và xác minh ví' }).click();
-  await until('wallet bound', () => bound.innerText(), text => text === address, 20000);
+async function linkWallet(page) {
+  const panel = page.getByRole('region', { name: 'Kết nối ví' });
+  await until('auto wallet connected', () => panel.getByRole('status').innerText(),
+    text => text === 'Đã kết nối ví', 20000);
 }
 
 async function createJob(page, kind, budget) {
@@ -137,8 +122,9 @@ async function createJob(page, kind, budget) {
   const terms = page.getByRole('region', { name: 'Điều khoản thanh toán thống nhất' });
   await terms.waitFor({ timeout: 15000 });
   const text = await terms.innerText();
-  assert(text.includes('72 giờ sau bàn giao hợp lệ, không gia hạn'), 'review terms missing');
-  assert(/mint [1-9A-HJ-NP-Za-km-z]{32,44}/.test(text), 'mint missing from terms');
+  assert(text.includes('72 giờ sau bàn giao hợp lệ'), 'review terms missing');
+  const net = expectedPayout(budget);
+  assert(text.includes(net.payout.toLocaleString('vi-VN') + ' VND'), `net payout ${net.payout} missing from terms`);
   return { jobId, terms: text };
 }
 
@@ -162,11 +148,11 @@ async function applyAndAssign(client, freelancer, jobId) {
 async function fund(client, freelancer, jobId) {
   // Both parties link wallets from the Job page before any money moves.
   await freelancer.page.goto(`${site}/work/${jobId}`);
-  await linkWallet(freelancer.page, 'freelancer');
+  await linkWallet(freelancer.page);
   await client.page.goto(`${site}/work/${jobId}`);
-  await linkWallet(client.page, 'client');
+  await linkWallet(client.page);
   const bank = client.page.getByRole('form', { name: 'Tài khoản ngân hàng Client' });
-  const order = client.page.getByRole('button', { name: 'Tạo USD order mô phỏng' });
+  const order = client.page.getByRole('button', { name: 'Bắt đầu thanh toán' });
   await order.waitFor({ timeout: 20000 });
   // The bank lookup resolves after the timeline; give it a moment before deciding.
   await bank.waitFor({ timeout: 5000 }).catch(() => {});
@@ -176,23 +162,26 @@ async function fund(client, freelancer, jobId) {
     await bank.getByRole('button', { name: 'Lưu ngân hàng' }).click();
     await bank.waitFor({ state: 'detached', timeout: 15000 });
   }
-  await client.page.getByRole('button', { name: 'Tạo USD order mô phỏng' }).click();
-  await client.page.getByRole('button', { name: 'Xem và xác nhận nộp USD' }).click({ timeout: 20000 });
-  await client.page.getByRole('button', { name: 'Xác nhận nộp USD mô phỏng' }).click();
-  await client.page.getByText('USDC đã vào ví Client theo receipt on-ramp').waitFor({ timeout: 120000 });
-  const escrow = client.page.getByRole('region', { name: 'Ký quỹ Solana' });
-  const connect = escrow.getByRole('button', { name: 'Kết nối ví Solana' });
-  if (await connect.count()) await connect.click();
-  await escrow.getByRole('button', { name: 'Chuẩn bị giao dịch ký quỹ' }).click();
-  await escrow.getByLabel('Tôi đã kiểm tra mint, số tiền và hai ví.').check();
-  await escrow.getByRole('button', { name: 'Ký và gửi giao dịch' }).click();
+  await client.page.getByRole('button', { name: 'Bắt đầu thanh toán' }).click();
+  await client.page.getByRole('button', { name: 'Xem và xác nhận thanh toán' }).click({ timeout: 20000 });
+  await client.page.getByRole('group', { name: 'Xác nhận thanh toán' })
+    .getByRole('button', { name: 'Xác nhận thanh toán' }).click();
+  const escrow = client.page.getByRole('region', { name: 'Giữ tiền cho công việc' });
+  await escrow.getByRole('button', { name: 'Chuẩn bị giữ tiền' }).waitFor({ timeout: 120000 });
+  await until('USDC in client wallet', async () => {
+    const job = await call('GET', `/marketplace/jobs/${jobId}`, undefined, people.client.token);
+    return call('GET', flowPath({ contractId: job.contract.id, milestoneId: job.contract.milestoneId }),
+      undefined, people.client.token);
+  }, flow => stage(flow, 'CLIENT_USDC').status === 'CONFIRMED');
+  await escrow.getByRole('button', { name: 'Chuẩn bị giữ tiền' }).click();
+  await escrow.getByLabel('Tôi đồng ý giữ khoản tiền này theo điều khoản công việc.').check();
+  await escrow.getByRole('button', { name: 'Xác nhận giữ tiền' }).click();
   await until('work activated', () => call('GET', `/marketplace/jobs/${jobId}`, undefined, people.client.token),
     job => job.status === 'IN_PROGRESS', 180_000);
   const job = await call('GET', `/marketplace/jobs/${jobId}`, undefined, people.client.token);
   return { contractId: job.contract.id, milestoneId: job.contract.milestoneId };
 }
 
-const flowPath = ids => `/contracts/${ids.contractId}/milestones/${ids.milestoneId}/payment-flow`;
 
 async function shot(view, name) {
   for (const width of [1440, 390]) {
@@ -202,12 +191,6 @@ async function shot(view, name) {
     await view.page.screenshot({ path: new URL(`${name}-${width}.png`, output).pathname, fullPage: true });
   }
   await view.page.setViewportSize({ width: 1440, height: 900 });
-}
-
-const rpc = new Connection('http://127.0.0.1:9123', 'confirmed');
-for (const person of Object.values(people)) {
-  const signature = await rpc.requestAirdrop(person.wallet.publicKey, 2 * LAMPORTS_PER_SOL);
-  await rpc.confirmTransaction(signature, 'confirmed');
 }
 
 const browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
@@ -239,38 +222,45 @@ try {
   await until('USDC released', () => call('GET', flowPath(releaseIds), undefined, people.client.token),
     flow => stage(flow, 'USDC_RELEASE').status === 'CONFIRMED');
   await freelancer.page.goto(`${site}/finance?jobId=${release.jobId}`);
-  await freelancer.page.getByRole('button', { name: 'Chuẩn bị đổi USDC sang VND' }).click({ timeout: 30000 });
-  await freelancer.page.getByRole('button', { name: 'Ký withdrawal bằng ví' }).click();
+  await freelancer.page.getByRole('button', { name: 'Xem số tiền sẽ nhận' }).click({ timeout: 30000 });
+  await freelancer.page.getByRole('button', { name: 'Xác nhận nhận tiền', exact: true }).click();
   const paid = await until('VND payout and fee', () => call('GET', flowPath(releaseIds), undefined,
     people.freelancer.token), flow => stage(flow, 'VND_PAYOUT').status === 'CONFIRMED'
       && stage(flow, 'PLATFORM_FEE').status === 'CONFIRMED');
-  assert.equal(Number(stage(paid, 'VND_PAYOUT').amount), 291000);
-  assert.equal(Number(stage(paid, 'PLATFORM_FEE').amount), 0.36);
+  const net = expectedPayout(12);
+  assert.equal(Number(stage(paid, 'VND_PAYOUT').amount), net.payout);
+  assert.equal(Number(stage(paid, 'PLATFORM_FEE').amount), net.fee);
+  const certificate = await until('tax certificate', () => call('GET', `/marketplace/tax-records/jobs/${release.jobId}`,
+    undefined, people.freelancer.token), record => record?.status === 'ACCEPTED', 240_000);
+  assert.equal(Number(certificate.taxableIncomeVnd), net.taxable);
+  assert.equal(Number(certificate.taxWithheldVnd), net.tax);
+  assert.equal(certificate.rateSource, 'LOCKED_PAYOUT_QUOTE');
   await freelancer.page.reload();
-  await freelancer.page.getByText('VND chi cho Freelancer').first().waitFor({ timeout: 15000 });
+  await freelancer.page.getByRole('link', { name: 'Xem chứng từ thuế' }).first().waitFor({ timeout: 15000 });
   await shot(freelancer, 'freelancer-release-finance');
   evidence.jobs.release = { jobId: release.jobId, paymentFlowId: paid.paymentFlowId,
-    steps: Object.fromEntries(paid.steps.map(step => [step.kind, step.status])) };
+    steps: Object.fromEntries(paid.steps.map(step => [step.kind, step.status])),
+    payoutVnd: net.payout, certificate: { taxableIncomeVnd: net.taxable, taxWithheldVnd: net.tax } };
 
   // Refund branch: second Job, cancelled by both signatures before release.
   const refund = await createJob(client.page, 'refund', 8);
   await applyAndAssign(client, freelancer, refund.jobId);
   const refundIds = await fund(client, freelancer, refund.jobId);
   await client.page.goto(`${site}/work/${refund.jobId}`);
-  const clientRefund = client.page.getByRole('region', { name: 'Hoàn tiền escrow theo thỏa thuận' });
-  await clientRefund.getByLabel('Tôi đồng ý hoàn toàn bộ token cho Client.').check({ timeout: 30000 });
-  await clientRefund.getByRole('button', { name: 'Ký đề nghị hoàn tiền' }).click();
-  await clientRefund.getByText('Client đã ký.').waitFor({ timeout: 20000 });
+  const clientRefund = client.page.getByRole('region', { name: 'Hoàn tiền theo thỏa thuận' });
+  await clientRefund.getByLabel('Tôi đồng ý hoàn toàn bộ số tiền cho khách hàng.').check({ timeout: 30000 });
+  await clientRefund.getByRole('button', { name: 'Xác nhận hoàn tiền' }).click();
+  await clientRefund.getByText('Khách hàng đã xác nhận.', { exact: false }).waitFor({ timeout: 20000 });
   await freelancer.page.goto(`${site}/work/${refund.jobId}`);
-  const freelancerRefund = freelancer.page.getByRole('region', { name: 'Hoàn tiền escrow theo thỏa thuận' });
-  await freelancerRefund.getByLabel('Tôi đồng ý hoàn toàn bộ token cho Client.').check({ timeout: 30000 });
-  await freelancerRefund.getByRole('button', { name: 'Ký và gửi hoàn tiền' }).click();
+  const freelancerRefund = freelancer.page.getByRole('region', { name: 'Hoàn tiền theo thỏa thuận' });
+  await freelancerRefund.getByLabel('Tôi đồng ý hoàn toàn bộ số tiền cho khách hàng.').check({ timeout: 30000 });
+  await freelancerRefund.getByRole('button', { name: 'Đồng ý hoàn tiền' }).click({ timeout: 30000 });
   await until('USDC refunded', () => call('GET', flowPath(refundIds), undefined, people.client.token),
     flow => stage(flow, 'USDC_REFUND').status === 'CONFIRMED');
   await client.page.goto(`${site}/finance?jobId=${refund.jobId}`);
-  await client.page.getByRole('button', { name: 'Chuẩn bị hoàn USD sau khi gửi USDC về treasury' })
-    .click({ timeout: 30000 });
-  await client.page.getByRole('button', { name: 'Ký withdrawal bằng ví' }).click();
+  await client.page.getByRole('button', { name: 'Xem khoản hoàn tiền' }).click({ timeout: 30000 });
+  await client.page.getByRole('group', { name: 'Xác nhận nhận tiền' })
+    .getByRole('button', { name: 'Xác nhận hoàn tiền' }).click();
   const refunded = await until('USD refund', () => call('GET', flowPath(refundIds), undefined,
     people.client.token), flow => stage(flow, 'USD_REFUND').status === 'CONFIRMED');
   assert.equal(Number(stage(refunded, 'USD_REFUND').amount), 8);
