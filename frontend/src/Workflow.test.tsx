@@ -264,6 +264,7 @@ describe('P05.2 job detail and workflow', () => {
     expect(host.textContent).toContain('2.425.000 VND');
     expect(host.textContent).toContain('3.000000 Mock USDC');
     expect(host.textContent).toContain('72 giờ sau bàn giao hợp lệ, không gia hạn');
+    expect(host.textContent).toContain('Một lần, tối đa 7 ngày sau hạn gốc');
     expect(host.textContent).toContain('localnet · mint MockMint111');
     expect(button('Ứng tuyển')?.disabled).toBe(true);
     await act(async () => { host.querySelector<HTMLInputElement>('input[type="checkbox"]')!.click(); });

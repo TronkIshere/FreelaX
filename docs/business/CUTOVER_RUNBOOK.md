@@ -73,5 +73,6 @@ Admin chỉ ghi quyết định có audit (`ACKNOWLEDGED`, `ESCALATED`, `CLEARED
 | Ngày | Môi trường | Hành động | Kiểm tra |
 | --- | --- | --- | --- |
 | 2026-10-09 | Local mock (Compose + localnet) | Chủ sản phẩm xác nhận chuyển đổi khi các gate còn mở đã được ghi trong [checklist](PAYMENT_FLOW_REBUILD_CHECKLIST.md#gate-hoàn-tất). Thêm `PAYMENT_FLOW_CUTOVER_ENABLED=true` vào `.env` local (Git bỏ qua), tạo lại riêng `marketplace-backend`. | Trước: program slot 7367, Flyway V2, Gateway có mint/rate/on-ramp authority, không pause. Sau: `printenv` trả `true`; Job kiểm tra `f7a19474-8bbe-43e4-b57a-79eae13edddf` tạo với review nhập 48 giờ được ghi 72 giờ, rail `UNIFIED_USDC_PAYOUT`, mint `DXeZia7qViiE8nsF4XLz2NH1yeZF57Wk2kbCn3JYExRZ`, rồi hủy khi còn `OPEN`; Job cũ đọc được theo rail gốc (SOLANA_ESCROW 17, PARTNER_ESCROW_MOCK 22, SIMULATED 2, UNIFIED 10). |
+| 2026-10-10 | Local mock | Chủ sản phẩm chốt quy tắc gia hạn bàn giao (một lần, ≤ hạn gốc + 7 ngày, Client duyệt on-chain); Gate 0 và Gate hoàn tất đạt; trạng thái tài liệu chuyển sang “đã triển khai ở local mock”. Không mở phạm vi tiền thật/devnet. | Checklist chỉ còn mục đã đánh dấu; flag local vẫn `true`; điều khoản xem trước hiển thị quy tắc gia hạn. |
 
 `docker-compose.yml` vẫn để mặc định `false`; giá trị bật chỉ nằm trong `.env` của môi trường đã chuyển đổi. Rollback theo mục [Rollback](#rollback).

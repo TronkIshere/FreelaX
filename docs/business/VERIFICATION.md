@@ -1,6 +1,6 @@
 # Trạng thái kiểm chứng luồng thanh toán thống nhất
 
-**Kết luận hiện tại (2026-10-10): Gate 1–6 và các mục Gate hoàn tất đạt ở local mock, trừ một quyết định nghiệp vụ.** Đã chạy: tài khoản mới trên browser (release, refund, từ chối ký ví, đối tác chậm, bàn phím), tranh chấp hai hướng và hết hạn review trên flow unified, drill sự cố Payment Backend/RPC/giao dịch rơi, test đồng thời trên MySQL, rà soát bảo mật. Còn mở: chủ sản phẩm xác nhận quy tắc gia hạn bàn giao (Gate 0). Chi tiết ở [bổ sung 2026-10-10](#bổ-sung-2026-10-10-tranh-chấp-timeout-sự-cố-đồng-thời-và-bảo-mật). USD/VND và phí vẫn là mock; không chứng minh tiền thật hay devnet.
+**Kết luận hiện tại (2026-10-10): ĐÃ TRIỂN KHAI Ở LOCAL MOCK — Gate 0–6 và Gate hoàn tất đạt.** Chủ sản phẩm chốt quy tắc gia hạn bàn giao ngày 2026-10-10, đóng Gate 0. Đã chạy: tài khoản mới trên browser (release, refund, từ chối ký ví, đối tác chậm, bàn phím), tranh chấp hai hướng và hết hạn review trên flow unified, drill sự cố Payment Backend/RPC/giao dịch rơi, test đồng thời trên MySQL, rà soát bảo mật. Ngoài phạm vi và chưa bắt đầu: tiền thật, đối tác thật, devnet/production. Chi tiết ở [bổ sung 2026-10-10](#bổ-sung-2026-10-10-tranh-chấp-timeout-sự-cố-đồng-thời-và-bảo-mật). USD/VND và phí vẫn là mock; không chứng minh tiền thật hay devnet.
 
 | Thành phần đã chạy riêng | Bằng chứng hiện có | Điều chưa được chứng minh |
 | --- | --- | --- |
@@ -90,7 +90,7 @@ cd frontend && node scripts/unified-new-account-e2e.mjs   # cần Chromium; xem 
 
 **Chuyển đổi local (2026-10-09):** chủ sản phẩm xác nhận bật flag khi các gate dưới đây còn mở; kiểm tra trước/sau ghi ở [nhật ký chuyển đổi](CUTOVER_RUNBOOK.md#nhật-ký-chuyển-đổi). Đây là quyết định vận hành, không đổi các mục chưa đạt thành đạt.
 
-**Giới hạn còn lại:** chưa có test đồng thời trên MySQL thật; chưa E2E lỗi RPC timeout, restart validator/Payment giữa flow, sao kê lệch trên stack chạy thật; dispute/timeout chưa chạy lại trên flow unified tới off-ramp; Admin chưa có tổng hợp số dư theo USD/USDC/VND; browser chưa có ca từ chối ký ví, callback chậm có chủ đích và keyboard focus; quy tắc gia hạn bàn giao chờ chủ sản phẩm xác nhận. Flag Compose mặc định là `false`; môi trường local đã bật `true` qua `.env` sau khi chủ sản phẩm xác nhận.
+**Giới hạn còn lại tại thời điểm đó (đã xử lý ở [bổ sung 2026-10-10](#bổ-sung-2026-10-10-tranh-chấp-timeout-sự-cố-đồng-thời-và-bảo-mật)):** chưa có test đồng thời trên MySQL thật; chưa E2E lỗi RPC timeout, restart validator/Payment giữa flow, sao kê lệch trên stack chạy thật; dispute/timeout chưa chạy lại trên flow unified tới off-ramp; Admin chưa có tổng hợp số dư theo USD/USDC/VND; browser chưa có ca từ chối ký ví, callback chậm có chủ đích và keyboard focus; quy tắc gia hạn bàn giao chờ chủ sản phẩm xác nhận. Flag Compose mặc định là `false`; môi trường local đã bật `true` qua `.env` sau khi chủ sản phẩm xác nhận.
 
 ## Bổ sung 2026-10-10: tranh chấp, timeout, sự cố, đồng thời và bảo mật
 

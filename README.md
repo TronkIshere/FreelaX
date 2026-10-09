@@ -1,6 +1,6 @@
 # FreelaX
 
-FreelaX là marketplace hai phía cho Client và Freelancer: đăng việc, chốt hợp đồng, xác nhận funding, bàn giao, nghiệm thu, giải ngân/hoàn tiền và đánh giá sau hoàn thành. **Luồng tiền sản phẩm hướng tới là USD của Client → USDC trong ví Client → khóa USDC cho Job → USDC trong ví Freelancer sau nghiệm thu → đổi/chi VND cho Freelancer.** Rail `UNIFIED_USDC_PAYOUT` đã có E2E trên local validator với USD/VND mock và tài khoản seed; flag cutover vẫn tắt vì các gate về điều khoản, đối soát tự động, browser và recovery chưa hoàn tất. Không có bằng chứng chuyển tiền ngân hàng thật hoặc triển khai Solana production.
+FreelaX là marketplace hai phía cho Client và Freelancer: đăng việc, chốt hợp đồng, xác nhận funding, bàn giao, nghiệm thu, giải ngân/hoàn tiền và đánh giá sau hoàn thành. **Luồng tiền sản phẩm hướng tới là USD của Client → USDC trong ví Client → khóa USDC cho Job → USDC trong ví Freelancer sau nghiệm thu → đổi/chi VND cho Freelancer.** Rail `UNIFIED_USDC_PAYOUT` **đã triển khai ở phạm vi local mock** (2026-10-10): mọi gate trong [checklist](docs/business/PAYMENT_FLOW_REBUILD_CHECKLIST.md) đạt với USD/VND mô phỏng, Mock USDC và Solana local validator; môi trường local đã chuyển đổi nên Job mới chỉ đi luồng này. Không có bằng chứng chuyển tiền ngân hàng thật hoặc triển khai Solana devnet/production; các phần đó chưa bắt đầu.
 
 ## Đọc tài liệu theo từng bước
 
