@@ -78,9 +78,10 @@ export interface DisputeDecision { outcome: 'RELEASE_TO_FREELANCER' | 'REFUND_TO
 export interface UnifiedTermsPreview {
   rail: 'UNIFIED_USDC_PAYOUT'; version: number; fingerprint: string;
   grossUsd: DecimalValue; escrowUsdc: DecimalValue; platformFeeUsdc: DecimalValue;
-  usdcVndRate: DecimalValue; estimatedPayoutVnd: DecimalValue; fullRefundUsd: DecimalValue;
+  usdcVndRate: DecimalValue; estimatedTaxableVnd: DecimalValue; estimatedTaxVnd: DecimalValue;
+  estimatedPayoutVnd: DecimalValue; fullRefundUsd: DecimalValue;
   fundingHours: number; reviewWindowHours: number; maxRevisions: number;
-  network: string | null; mint: string | null; simulation: boolean;
+  network: string | null; mint: string | null; simulation: boolean; legacyPayout?: boolean;
 }
 
 export interface Job {

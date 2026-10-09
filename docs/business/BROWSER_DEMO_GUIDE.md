@@ -11,8 +11,7 @@ Thời gian: khoảng 15–20 phút cho nhánh chính, thêm 5 phút cho nhánh 
 3. Tài khoản:
    - **Client** và **Freelancer**: tự đăng ký mới ở `/register`, hoặc dùng tài khoản seed (mật khẩu trong `.env`: `DEMO_CLIENT_PASSWORD`, `DEMO_FREELANCER_PASSWORD`).
    - **Admin**: `admin.e2e@example.test`, mật khẩu `DEMO_ADMIN_PASSWORD` (chỉ có ở profile dev).
-4. Ví Solana: dùng ví trình duyệt hỗ trợ RPC tùy chỉnh `http://127.0.0.1:9123`. Ví mới cần chút SOL local để trả phí:
-   `solana airdrop 2 <địa_chỉ_ví> --url http://127.0.0.1:9123`. USDC của Client đến từ bước on-ramp, không cần nạp tay.
+4. Ví demo local được kết nối tự động khi đăng nhập, cho cả tài khoản seed và tài khoản mới. Giao diện chỉ hiện **“Đã kết nối ví”**; không cần cài tiện ích ví, nhập khóa hoặc nạp SOL. Khóa ví mới được giữ mã hóa ở Marketplace; giao dịch demo do hệ thống ký cho đúng tài khoản đã đăng nhập.
 5. Mở hai cửa sổ trình duyệt (hoặc một cửa sổ thường và một cửa sổ ẩn danh) cho Client và Freelancer. Mỗi tài khoản chỉ giữ một phiên đăng nhập; đăng nhập ở nơi khác sẽ đẩy phiên cũ ra.
 
 > Muốn có ngay một Job đang chờ Client quyết định để trình diễn bước 4, chạy từ `solana-stablecoin-payout`:
@@ -22,22 +21,22 @@ Thời gian: khoảng 15–20 phút cho nhánh chính, thêm 5 phút cho nhánh 
 ## 1. Đăng Job và thống nhất điều khoản
 
 1. **Client** → *Công việc* → *Đăng công việc*: nhập tiêu đề, mô tả, danh mục, ngân sách (ví dụ 12 USD), hạn bàn giao (ít nhất 24 giờ sau), một sản phẩm bàn giao và một điều kiện nghiệm thu. Bấm đăng.
-2. Trang Job hiện khối **"Thanh toán thống nhất · Mô phỏng local"**: số USD Client nộp, USDC khóa vào vault, phí 3% Freelancer chịu, tỷ giá, số VND dự kiến, thời hạn duyệt 72 giờ, quy tắc gia hạn, mint và network.
+2. Trang Job hiện điều khoản thanh toán bằng ngôn ngữ dễ hiểu: giá công việc, phí dịch vụ, số tiền dự kiến nhận và thời hạn duyệt.
 3. **Freelancer** mở cùng Job, tick "Tôi đã đọc và đồng ý điều khoản…", bấm **Ứng tuyển**. Thao tác này dùng được hoàn toàn bằng bàn phím: Tab, Space, Enter.
 4. **Client** → *Ứng tuyển* của Job → **Chọn Freelancer** → tick đồng ý điều khoản → **Xác nhận chọn**. Hai bên đã xác nhận cùng một bản điều khoản (cùng fingerprint).
 
 ## 2. Ký quỹ
 
-1. Cả hai bên mở trang Job, bấm **Kết nối và xác minh ví** và ký thông điệp xác minh.
-2. **Client** điền *Tài khoản ngân hàng Client* (nơi nhận hoàn USD nếu hủy) → **Tạo USD order mô phỏng** → **Xem và xác nhận nộp USD** → **Xác nhận nộp USD mô phỏng**.
-3. Đợi vài giây cho tới khi hiện "USDC đã vào ví Client theo receipt on-ramp". Khối **Ký quỹ USDC** xuất hiện: **Chuẩn bị giao dịch ký quỹ** → tick kiểm tra mint, số tiền, hai ví → **Ký và gửi giao dịch**.
-4. Job chuyển sang *Đang làm*. Freelancer chỉ thấy form bàn giao khi vault đã có tiền.
+1. Cả hai bên mở trang Job và thấy **Đã kết nối ví**. Nếu dịch vụ vừa khởi động lại, bấm **Thử lại** khi trạng thái chưa cập nhật. Không cần thao tác với tiện ích ví.
+2. **Client** điền *Tài khoản ngân hàng Client* (nơi nhận hoàn tiền nếu hủy) → **Bắt đầu thanh toán** → **Xem và xác nhận thanh toán** → **Xác nhận thanh toán**.
+3. Đợi đến khi thẻ **Tiền vào ví** chuyển xanh. Trong phần **Giữ tiền cho công việc**, bấm **Chuẩn bị giữ tiền** → tick đồng ý điều khoản → **Xác nhận giữ tiền**.
+4. Job chuyển sang *Đang làm* sau khi khoản tiền được xác nhận. Freelancer thấy form bàn giao. Các thẻ thanh toán nối mũi tên từ đầu đến cuối; thẻ hoàn tất chuyển xanh.
 
-Nếu đối tác chậm xác nhận USD, trang chỉ báo đang chờ và không mở công việc. Nếu Client từ chối ký trong ví, trang báo lỗi và không gửi giao dịch nào; bấm ký lại là được.
+Nếu đối tác chậm xác nhận thanh toán, trang hiển thị **Đang chờ** và chưa mở công việc.
 
 ## 3. Bàn giao
 
-**Freelancer** → trang Job → khối *Gửi bàn giao*: nhập tóm tắt, tick sản phẩm và tiêu chí, dán URL HTTPS bằng chứng → **Gửi bàn giao** → ký trong ví.
+**Freelancer** → trang Job → khối *Gửi bàn giao*: nhập tóm tắt, tick sản phẩm và tiêu chí, dán URL HTTPS bằng chứng → **Gửi bàn giao**. Hệ thống tự xác nhận bằng ví đã kết nối.
 
 ## 4. Màn quyết định: nút lựa chọn và đếm ngược tự duyệt
 
@@ -53,11 +52,11 @@ Ngay bên dưới là khối **"Quyết định của bạn"** với ba lựa ch
 
 | Nút | Kết quả |
 | --- | --- |
-| **Duyệt bàn giao** | Ký trong ví → USDC chuyển từ vault vào ví Freelancer; Job *Hoàn thành* |
+| **Duyệt bàn giao** | Xác nhận → USDC chuyển từ vault vào ví Freelancer; Job *Hoàn thành* |
 | **Yêu cầu chỉnh sửa** | Nhập phản hồi và chọn tiêu chí/sản phẩm liên quan; tối đa 2 lần; đồng hồ review bắt đầu lại khi có bản mới |
-| **Mở tranh chấp** | Nhập mã lý do và mô tả → ký trong ví → vault bị khóa, chờ Admin (xem bước 5) |
+| **Mở tranh chấp** | Nhập mã lý do và mô tả → **Xác nhận mở tranh chấp** → vault bị khóa, chờ Admin (xem bước 5) |
 
-Để trình diễn nhánh chính, bấm **Duyệt bàn giao** → **Xác nhận duyệt** → ký, rồi chuyển sang bước 6. Thời hạn 72 giờ là thật. Bằng chứng tự duyệt khi hết hạn được kiểm chứng bằng script `local-unified-timeout-e2e.ts` trên bản sao ledger, xem [VERIFICATION](VERIFICATION.md).
+Để trình diễn nhánh chính, bấm **Duyệt bàn giao** → **Xác nhận duyệt**, rồi chuyển sang bước 6. Thời hạn 72 giờ là thật. Bằng chứng tự duyệt khi hết hạn được kiểm chứng bằng script `local-unified-timeout-e2e.ts` trên bản sao ledger, xem [VERIFICATION](VERIFICATION.md).
 
 ## 5. Nhánh tranh chấp (Admin quyết định)
 
@@ -78,11 +77,11 @@ Ngay bên dưới là khối **"Quyết định của bạn"** với ba lựa ch
    ![Admin chọn quyết định](images/06-admin-quyet-dinh.png)
 
    - *Release cho Freelancer*: USDC vào ví Freelancer, tiếp tục ở bước 6.
-   - *Hoàn tiền cho Client*: USDC về ví Client. Client vào *Thanh toán* của Job → **Chuẩn bị hoàn USD sau khi gửi USDC về treasury** → **Ký withdrawal bằng ví**. Đối tác hoàn đủ USD, phí 0.
+   - *Hoàn tiền cho Client*: USDC về ví Client. Client vào *Thanh toán* của Job → **Xem khoản hoàn tiền** → **Xác nhận hoàn tiền**. Đối tác hoàn đủ USD, phí 0.
 
 ## 6. Freelancer rút VND
 
-**Freelancer** → *Thu nhập* → mở Job (hoặc `/finance?jobId=<id>`). Khối **"Luồng thanh toán của Job"** liệt kê từng bước kèm trạng thái và reference. Bấm **Chuẩn bị đổi USDC sang VND**: quote khóa 1 USDC = 25.000 VND và hiển thị phí 3%. Bấm **Ký withdrawal bằng ví**. Vài giây sau, "VND chi cho Freelancer" và "Phí FreelaX" chuyển sang *Đã xác nhận*, đi kèm link **Xem chứng từ thuế**.
+**Freelancer** → *Thu nhập* → mở Job (hoặc `/finance?jobId=<id>`). Các thẻ thanh toán cho biết công đoạn nào đã hoàn tất và công đoạn nào đang chờ. Bấm **Xem số tiền sẽ nhận**, kiểm tra số VND thực nhận sau phí dịch vụ và thuế mô phỏng, rồi bấm **Xác nhận nhận tiền**. Khi tiền được chi, thẻ **Người làm nhận tiền** chuyển xanh và có liên kết **Xem chứng từ thuế**.
 
 ## 7. Xuất chứng từ thuế
 
@@ -96,7 +95,7 @@ Khoảng 30 giây sau khi đối tác xác nhận chi VND, MISA mô phỏng phá
 
    ![Chi tiết chứng từ và nút tải PDF/XML](images/08-chung-tu-chi-tiet.png)
 
-   Ví dụ Job 5 USD: thu nhập chịu thuế 125.000 VND (5 × 25.000), thuế đã khấu trừ 12.500 VND.
+   Ví dụ Job 5 USD: phí 0,15 USD; thu nhập chịu thuế 121.250 VND (4,85 × 25.000); thuế đã khấu trừ 12.125 VND; Freelancer thực nhận 109.125 VND. Job đã khóa khoản chi theo cách tính cũ (trước 2026-10-10) có cảnh báo riêng trên trang Job.
 
 ## 8. Admin xem tiền đang ở đâu
 

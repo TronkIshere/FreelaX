@@ -24,16 +24,18 @@ import java.util.UUID;
 public class UnifiedFiatExitMockService {
     private static final BigDecimal VND_RATE = new BigDecimal("25000.00");
     private static final BigDecimal FEE_RATE = new BigDecimal("0.03");
+    private static final BigDecimal WITHHOLDING_RATE = new BigDecimal("0.10");
     private final UnifiedFiatExitMockRepository exits;
     private final UnifiedMockStatementRepository statements;
 
     public record ExitRequest(UUID paymentFlowId, UUID jobId, UUID contractId, UUID milestoneId,
             String kind, String idempotencyKey, String withdrawalReference, String beneficiary,
-            BigDecimal grossUsdc, BigDecimal grossUsd) { }
+            BigDecimal grossUsdc, BigDecimal grossUsd, BigDecimal expectedPayoutVnd) { }
     public record ExitView(UUID paymentFlowId, UUID jobId, UUID contractId, UUID milestoneId,
             String kind, String idempotencyKey, String withdrawalReference, String beneficiary,
             BigDecimal grossUsdc, BigDecimal feeUsdc, BigDecimal grossUsd, BigDecimal vndRate,
-            BigDecimal payoutVnd, String status, Instant updatedAt, boolean simulation) { }
+            BigDecimal taxableVnd, BigDecimal taxWithheldVnd, BigDecimal payoutVnd,
+            String status, Instant updatedAt, boolean simulation) { }
     public record StatementRow(String eventKey, UUID paymentFlowId, String kind,
             BigDecimal amount, String currency, String reference, Instant occurredAt) { }
     public record StatementView(UUID paymentFlowId, List<StatementRow> entries,
@@ -50,8 +52,23 @@ public class UnifiedFiatExitMockService {
                 || input.grossUsdc() == null || input.grossUsdc().signum() <= 0
                 || input.grossUsdc().scale() > 6 || input.grossUsd() == null
                 || input.grossUsd().signum() <= 0 || input.grossUsd().scale() > 2
-                || input.grossUsdc().compareTo(input.grossUsd()) != 0)
+                || input.grossUsdc().compareTo(input.grossUsd()) != 0
+                || input.expectedPayoutVnd() == null || input.expectedPayoutVnd().scale() > 0)
             throw new ApplicationException(ErrorCode.INVALID_DATA);
+        BigDecimal fee = "PAYOUT".equals(input.kind())
+                ? input.grossUsd().multiply(FEE_RATE).setScale(2, RoundingMode.HALF_UP).setScale(6)
+                : BigDecimal.ZERO.setScale(6);
+        BigDecimal taxableVnd = input.grossUsdc().subtract(fee).multiply(VND_RATE)
+                .setScale(0, RoundingMode.HALF_UP);
+        BigDecimal netPayout = taxableVnd.subtract(taxableVnd.multiply(WITHHOLDING_RATE)
+                .setScale(0, RoundingMode.HALF_UP));
+        // Existing locked quotes may still be in flight. Preserve their fee-only amount,
+        // while every newly prepared quote uses the tax-inclusive amount.
+        boolean validPayout = "REFUND".equals(input.kind())
+                ? input.expectedPayoutVnd().signum() == 0
+                : input.expectedPayoutVnd().compareTo(netPayout) == 0
+                    || input.expectedPayoutVnd().compareTo(taxableVnd) == 0;
+        if (!validPayout) throw new ApplicationException(ErrorCode.INVALID_DATA);
         UnifiedFiatExitMock prior = exits.findWithLockByPaymentFlowId(input.paymentFlowId()).orElse(null);
         if (prior != null) {
             if (!Objects.equals(prior.getJobId(), input.jobId())
@@ -62,7 +79,8 @@ public class UnifiedFiatExitMockService {
                     || !Objects.equals(prior.getWithdrawalReference(), input.withdrawalReference())
                     || !Objects.equals(prior.getBeneficiary(), input.beneficiary())
                     || prior.getGrossUsdc().compareTo(input.grossUsdc()) != 0
-                    || prior.getGrossUsd().compareTo(input.grossUsd()) != 0)
+                    || prior.getGrossUsd().compareTo(input.grossUsd()) != 0
+                    || prior.getPayoutVnd().compareTo(input.expectedPayoutVnd()) != 0)
                 throw new ApplicationException(ErrorCode.INVALID_TRANSACTION_STATUS);
             return view(prior);
         }
@@ -77,14 +95,9 @@ public class UnifiedFiatExitMockService {
         row.setBeneficiary(input.beneficiary());
         row.setGrossUsdc(input.grossUsdc().setScale(6));
         row.setGrossUsd(input.grossUsd().setScale(2));
-        row.setFeeUsdc("PAYOUT".equals(input.kind())
-                ? input.grossUsd().multiply(FEE_RATE).setScale(2, RoundingMode.HALF_UP).setScale(6)
-                : BigDecimal.ZERO.setScale(6));
+        row.setFeeUsdc(fee);
         row.setVndRate(VND_RATE);
-        row.setPayoutVnd("PAYOUT".equals(input.kind())
-                ? row.getGrossUsdc().subtract(row.getFeeUsdc()).multiply(VND_RATE)
-                    .setScale(0, RoundingMode.HALF_UP)
-                : BigDecimal.ZERO.setScale(0));
+        row.setPayoutVnd(input.expectedPayoutVnd());
         row.setStatus("PENDING");
         row.setCreatedAt(Instant.now());
         row.setUpdatedAt(row.getCreatedAt());
@@ -101,6 +114,8 @@ public class UnifiedFiatExitMockService {
             if ("PAYOUT".equals(row.getKind())) {
                 statement(row, "VND_PAYOUT", row.getPayoutVnd(), "VND", now);
                 statement(row, "PLATFORM_FEE", row.getFeeUsdc(), "USDC", now);
+                BigDecimal tax = taxableVnd(row).subtract(row.getPayoutVnd());
+                if (tax.signum() > 0) statement(row, "TAX_WITHHELD", tax, "VND", now);
             } else {
                 statement(row, "USD_REFUND", row.getGrossUsd(), "USD", now);
             }
@@ -119,7 +134,7 @@ public class UnifiedFiatExitMockService {
     @Transactional(readOnly = true)
     public StatementView statement(UUID flowId) {
         return new StatementView(flowId, statements.findByPaymentFlowIdOrderByOccurredAtAsc(flowId)
-                .stream().filter(s -> List.of("VND_PAYOUT", "PLATFORM_FEE", "USD_REFUND")
+                .stream().filter(s -> List.of("VND_PAYOUT", "PLATFORM_FEE", "TAX_WITHHELD", "USD_REFUND")
                         .contains(s.getKind()))
                 .map(s -> new StatementRow(s.getEventKey(), s.getPaymentFlowId(), s.getKind(),
                         s.getAmount(), s.getCurrency(), s.getReference(), s.getOccurredAt()))
@@ -140,10 +155,17 @@ public class UnifiedFiatExitMockService {
     }
 
     private ExitView view(UnifiedFiatExitMock row) {
+        BigDecimal taxable = "PAYOUT".equals(row.getKind()) ? taxableVnd(row) : BigDecimal.ZERO;
+        BigDecimal tax = taxable.subtract(row.getPayoutVnd());
         return new ExitView(row.getPaymentFlowId(), row.getJobId(), row.getContractId(),
                 row.getMilestoneId(), row.getKind(), row.getIdempotencyKey(),
                 row.getWithdrawalReference(), row.getBeneficiary(), row.getGrossUsdc(),
-                row.getFeeUsdc(), row.getGrossUsd(), row.getVndRate(), row.getPayoutVnd(),
+                row.getFeeUsdc(), row.getGrossUsd(), row.getVndRate(), taxable, tax, row.getPayoutVnd(),
                 row.getStatus(), row.getUpdatedAt(), true);
+    }
+
+    private BigDecimal taxableVnd(UnifiedFiatExitMock row) {
+        return row.getGrossUsdc().subtract(row.getFeeUsdc()).multiply(row.getVndRate())
+                .setScale(0, RoundingMode.HALF_UP);
     }
 }

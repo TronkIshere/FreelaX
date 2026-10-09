@@ -100,13 +100,15 @@ describe('unified payment flow draft', () => {
     await act(async () => root.render(<FundingPanel job={unified} user={client} onJobUpdated={updated} />));
 
     expect(timeline).toHaveBeenCalledWith('contract', 'milestone');
-    expect(host.textContent).toContain('flow-1');
-    expect(host.textContent).toContain('Điều khoản và quote đang chờ khóa');
+    expect(host.textContent).toContain('Bắt đầu thanh toán');
+    expect(host.textContent).toContain('Giữ tiền cho công việc');
+    expect(host.querySelectorAll('.payment-journey-stage')).toHaveLength(8);
+    expect(host.textContent).not.toContain('flow-1');
     expect(button('Funding mô phỏng')).toBeUndefined();
     expect(button('Chọn ký quỹ Solana')).toBeUndefined();
     expect(button('Chọn ký quỹ đối tác mock')).toBeUndefined();
     expect(api.funding).not.toHaveBeenCalled();
-    expect(button('Tạo USD order mô phỏng')?.disabled).toBe(false);
+    expect(button('Bắt đầu thanh toán')?.disabled).toBe(false);
   });
 
   it('asks a new Client for the payer bank before the USD order can be opened', async () => {
@@ -125,7 +127,7 @@ describe('unified payment flow draft', () => {
     });
 
     await act(async () => root.render(<FundingPanel job={unified} user={client} onJobUpdated={updated} />));
-    expect(button('Tạo USD order mô phỏng')?.disabled).toBe(true);
+    expect(button('Bắt đầu thanh toán')?.disabled).toBe(true);
     const form = host.querySelector<HTMLFormElement>('form[aria-label="Tài khoản ngân hàng Client"]')!;
     const [number, holder] = Array.from(form.querySelectorAll<HTMLInputElement>('input'));
     const setValue = (input: HTMLInputElement, value: string) => {
@@ -136,6 +138,6 @@ describe('unified payment flow draft', () => {
     await act(async () => { form.requestSubmit(); });
 
     expect(save).toHaveBeenCalledWith({ bankCode: 'VIETCOMBANK', bankAccountNumber: '123456789', bankAccountHolderName: 'CLIENT NAME' });
-    expect(button('Tạo USD order mô phỏng')?.disabled).toBe(false);
+    expect(button('Bắt đầu thanh toán')?.disabled).toBe(false);
   });
 });

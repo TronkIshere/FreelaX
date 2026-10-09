@@ -15,6 +15,7 @@ import java.util.UUID;
 public interface EscrowContractRepository extends JpaRepository<EscrowContract, UUID> {
     Optional<EscrowContract> findByContractId(UUID contractId);
     Optional<EscrowContract> findByMilestoneId(UUID milestoneId);
+    List<EscrowContract> findByClientWalletOrFreelancerWallet(String clientWallet, String freelancerWallet);
     boolean existsByContractId(UUID contractId);
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<EscrowContract> findWithLockById(UUID id);

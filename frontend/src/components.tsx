@@ -57,6 +57,7 @@ export function StatePanel({ kind, title, body, action }: {
 }) {
   return <section className={'state-panel state-' + kind} role={kind === 'error' ? 'alert' : 'status'} aria-live="polite">
     <span className="eyebrow">{kind === 'error' ? 'Không thể tải' : kind === 'loading' ? 'Đang xử lý' : 'Chưa có dữ liệu'}</span>
+    {kind === 'loading' && <span className="loading-spinner" aria-hidden="true" />}
     <h2>{title}</h2>
     <p>{body}</p>
     {kind === 'loading' && <div className="skeleton-stack" aria-hidden="true"><span /><span /><span /></div>}

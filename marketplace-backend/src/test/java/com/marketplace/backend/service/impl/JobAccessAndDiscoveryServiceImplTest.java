@@ -11,6 +11,7 @@ import com.marketplace.backend.entity.Job;
 import com.marketplace.backend.entity.JobApplication;
 import com.marketplace.backend.entity.JobApplicationStatus;
 import com.marketplace.backend.entity.JobStatus;
+import com.marketplace.backend.entity.PaymentFlow;
 import com.marketplace.backend.entity.User;
 import com.marketplace.backend.entity.UserType;
 import com.marketplace.backend.entity.ContractStatus;
@@ -231,7 +232,7 @@ class JobAccessAndDiscoveryServiceImplTest {
         assertThat(preview.grossUsd()).isEqualByComparingTo("100.00");
         assertThat(preview.escrowUsdc()).isEqualByComparingTo("100.000000");
         assertThat(preview.platformFeeUsdc()).isEqualByComparingTo("3.000000");
-        assertThat(preview.estimatedPayoutVnd()).isEqualByComparingTo("2425000");
+        assertThat(preview.estimatedPayoutVnd()).isEqualByComparingTo("2182500");
         assertThat(preview.fullRefundUsd()).isEqualByComparingTo("100.00");
         assertThatThrownBy(() -> service.apply(freelancer.getId(), job.getId(), null))
                 .isInstanceOf(ApplicationException.class);
@@ -256,6 +257,26 @@ class JobAccessAndDiscoveryServiceImplTest {
         verify(contractRepository).save(org.mockito.ArgumentMatchers.argThat(contract ->
                 preview.fingerprint().equals(contract.getAcceptedTermsFingerprint())
                         && contract.getClientTermsAcceptedAt() != null));
+    }
+
+    @Test
+    void completedOldQuoteShowsTheHistoricalPayoutInsteadOfTheNewEstimate() {
+        User client = user(UserType.CLIENT);
+        Job job = job(client.getId(), JobStatus.COMPLETED);
+        job.setPaymentFlowVersion(1);
+        WorkContract contract = new WorkContract();
+        contract.setId(UUID.randomUUID());
+        contract.setPaymentRail(PaymentFlow.RAIL);
+        contract.setStatus(ContractStatus.COMPLETED);
+        contract.setBudgetUsd(job.getBudgetUsd());
+        when(jobRepository.findById(job.getId())).thenReturn(Optional.of(job));
+        when(contractRepository.findByJobId(job.getId())).thenReturn(Optional.of(contract));
+        when(paymentFlowService.usesLegacyFeeOnlyQuote(contract.getId())).thenReturn(true);
+
+        var preview = service.getByIdForParticipant(client.getId(), job.getId()).getLocalPaymentTerms();
+        assertThat(preview.legacyPayout()).isTrue();
+        assertThat(preview.estimatedTaxableVnd()).isEqualByComparingTo("2500000");
+        assertThat(preview.estimatedPayoutVnd()).isEqualByComparingTo("2425000");
     }
 
     @Test

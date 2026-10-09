@@ -239,7 +239,7 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
     try {
       await signedEscrowAction('request-extension', { newDueAt: String(seconds) }, 'Funded',
         undefined, state => state.requestedDeliveryDueAt === String(seconds));
-      setNotice('Đã ghi nhận yêu cầu gia hạn on-chain; chờ Client chấp thuận.');
+      setNotice('Đã ghi nhận yêu cầu gia hạn; đang chờ khách hàng chấp thuận.');
     } catch (cause) { setError(cause instanceof Error ? cause.message : errorText(cause)); }
     finally { lock.current = false; setBusy(false); }
   }
@@ -249,7 +249,7 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
     try {
       await signedEscrowAction('approve-extension', {}, 'Funded', undefined,
         state => state.extensionUsed);
-      setNotice('Đã chấp thuận hạn mới on-chain.');
+      setNotice('Đã chấp thuận hạn mới.');
     } catch (cause) { setError(cause instanceof Error ? cause.message : errorText(cause)); }
     finally { lock.current = false; setBusy(false); }
   }
@@ -258,7 +258,7 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
     lock.current = true; setBusy(true); setError('');
     try {
       await signedEscrowAction('claim', {}, 'Released');
-      setNotice('Vault đã giải ngân on-chain; Marketplace đang đối soát Job.');
+      setNotice('Đã gửi khoản thanh toán; đang xác nhận trạng thái công việc.');
       await synchronize();
     } catch (cause) { setError(cause instanceof Error ? cause.message : errorText(cause)); }
     finally { lock.current = false; setBusy(false); }
@@ -410,7 +410,7 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
           });
         else if (body.decision === 'OPEN_DISPUTE' && saved.onchainHash
             && current.disputeHash !== saved.onchainHash) {
-          throw new Error('Tranh chấp on-chain có nội dung khác lần gửi trước.');
+          throw new Error('Nội dung tranh chấp khác lần gửi trước.');
         }
       }
       const returned = await api.decideSubmission(contract.id, latest.id, body);
@@ -467,19 +467,15 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
         contract.status === 'UNDER_REVIEW' && contract.milestoneStatus === 'SUBMITTED' && job.status === 'SUBMITTED_FOR_REVIEW' && latest?.status === 'SUBMITTED' && freelancer)}
       blocked={busy || fundingBusy || cancellation.busy || cancellation.uncertain} operationLock={lock} onRefresh={synchronize} onBusy={setDisputeBusy}
       onOpenOnChain={escrowRail ? openEscrowDispute : undefined} />
-    {escrowRail && escrowView && <section className="settlement-document" aria-label="Trạng thái escrow Solana">
-      <SectionHeading title="Escrow Solana" aside="On-chain" />
-      <p role="status">Trạng thái: {escrowView.status} · {escrowView.settlementStatus}</p>
-      <FactGrid facts={[{ label: 'Escrow PDA', value: escrowView.escrowAddress },
-        { label: 'Vault ATA', value: escrowView.vaultAddress || 'Chưa xác minh' },
-        { label: 'Số dư vault (base units)', value: escrowView.vaultBalanceBaseUnits || 'Chưa xác minh' },
-        { label: 'Mint', value: escrowView.mint || 'Đang đối soát' },
-        { label: 'Hash bàn giao on-chain', value: escrowView.submissionHash || 'Chưa bàn giao' },
-        { label: 'Hạn bàn giao có hiệu lực', value: escrowView.deliveryDueAt ? localInstant(new Date(Number(escrowView.deliveryDueAt) * 1000).toISOString()) : 'Chưa xác minh' },
-        { label: 'Review deadline', value: escrowView.reviewDueAt ? localInstant(new Date(Number(escrowView.reviewDueAt) * 1000).toISOString()) : 'Chưa bàn giao' },
-        { label: 'Funding signature', value: escrowView.fundSignature || 'Đang chờ' }]} />
+    {escrowRail && escrowView && <section className="settlement-document" aria-label="Trạng thái tiền công việc">
+      <SectionHeading title="Tiền của công việc" />
+      <p role="status">{escrowView.status === 'Released' ? 'Đã chuyển tiền cho người làm.'
+        : escrowView.status === 'Refunded' ? 'Đã hoàn tiền cho khách hàng.'
+          : ['Funded', 'Submitted', 'Revision'].includes(escrowView.status) ? 'Tiền đang được giữ an toàn.' : 'Đang chờ xác nhận thanh toán.'}</p>
+      <FactGrid facts={[{ label: 'Hạn bàn giao', value: escrowView.deliveryDueAt ? localInstant(new Date(Number(escrowView.deliveryDueAt) * 1000).toISOString()) : 'Đang cập nhật' },
+        { label: 'Hạn duyệt', value: escrowView.reviewDueAt ? localInstant(new Date(Number(escrowView.reviewDueAt) * 1000).toISOString()) : 'Đang chờ bàn giao' }]} />
       {freelancer && escrowView.status === 'Submitted' && !!escrowView.reviewDueAt
-        && now >= Number(escrowView.reviewDueAt) * 1000 && <button className="button" disabled={busy} onClick={() => void claimEscrow()}>Nhận tiền sau hạn review</button>}
+        && now >= Number(escrowView.reviewDueAt) * 1000 && <button className="button" disabled={busy} onClick={() => void claimEscrow()}>Nhận tiền sau hạn duyệt</button>}
     </section>}
     {escrowRail && escrowView && <MutualRefundPanel contractId={contract.id} escrow={escrowView}
       client={client} freelancer={freelancer} onRefresh={synchronize} onBusy={setFundingBusy} />}
@@ -487,9 +483,9 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
       <SectionHeading title="Hạn bàn giao" />
       {escrowView.requestedDeliveryDueAt && !escrowView.extensionUsed && <p>Freelancer đã xin hạn mới: {localInstant(new Date(Number(escrowView.requestedDeliveryDueAt) * 1000).toISOString())}</p>}
       {freelancer && !escrowView.extensionUsed && !escrowView.requestedDeliveryDueAt && contract.deliveryDueAt
-        && now < new Date(contract.deliveryDueAt).getTime() && <ActionGroup><label>Xin gia hạn một lần<input type="datetime-local" value={extensionDue} onChange={event => setExtensionDue(event.target.value)} disabled={busy} /></label><button className="button" disabled={busy || !extensionDue} onClick={() => void requestExtension()}>Gửi yêu cầu on-chain</button></ActionGroup>}
+        && now < new Date(contract.deliveryDueAt).getTime() && <ActionGroup><label>Xin gia hạn một lần<input type="datetime-local" value={extensionDue} onChange={event => setExtensionDue(event.target.value)} disabled={busy} /></label><button className="button" disabled={busy || !extensionDue} onClick={() => void requestExtension()}>Gửi yêu cầu</button></ActionGroup>}
       {client && !!escrowView.requestedDeliveryDueAt && !escrowView.extensionUsed && contract.deliveryDueAt
-        && now < new Date(contract.deliveryDueAt).getTime() && <button className="button" disabled={busy} onClick={() => void approveExtension()}>Chấp thuận gia hạn on-chain</button>}
+        && now < new Date(contract.deliveryDueAt).getTime() && <button className="button" disabled={busy} onClick={() => void approveExtension()}>Chấp thuận gia hạn</button>}
       {now > Number(escrowView.deliveryDueAt) * 1000 && <p role="status">Đã quá hạn bàn giao. Hệ thống không nhận bản bàn giao đầu tiên mới; cần xử lý tranh chấp.</p>}
     </section>}
     {!escrowRail && releaseRelevant && <section className="settlement-document" aria-label="Quyết toán hợp đồng">

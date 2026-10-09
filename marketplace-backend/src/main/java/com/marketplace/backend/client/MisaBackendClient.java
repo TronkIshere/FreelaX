@@ -101,19 +101,27 @@ public class MisaBackendClient {
     public MisaPayoutTransactionResult recordPayoutTransaction(UUID taxpayerId, UUID payoutReference,
                                                                BigDecimal amountUsd, BigDecimal usdToVndRate,
                                                                String transactionHash, String blockchain) {
+        return recordPayoutTransaction(taxpayerId, payoutReference, amountUsd,
+                usdToVndRate, transactionHash, blockchain, false);
+    }
+
+    public MisaPayoutTransactionResult recordPayoutTransaction(UUID taxpayerId, UUID payoutReference,
+                                                               BigDecimal sourceAmount, BigDecimal vndRate,
+                                                               String transactionHash, String blockchain,
+                                                               boolean sourceIsUsdc) {
         Map<String, Object> body = new HashMap<>();
         body.put("platformPayoutId", payoutReference.toString());
         body.put("transactionHash", transactionHash);
         body.put("blockchain", blockchain);
-        body.put("sourceCurrency", "USD");
-        body.put("sourceAmount", amountUsd);
-        body.put("exchangeRatePair", "USD/VND");
-        body.put("exchangeRate", usdToVndRate);
-        // MISA's field name is amountUsdc, but the agreed tax base is gross Job USD.
-        body.put("amountUsdc", amountUsd);
+        body.put("sourceCurrency", sourceIsUsdc ? "USDC" : "USD");
+        body.put("sourceAmount", sourceAmount);
+        body.put("exchangeRatePair", sourceIsUsdc ? "USDC/VND" : "USD/VND");
+        body.put("exchangeRate", vndRate);
+        body.put("amountUsdc", sourceAmount);
         body.put("paymentDate", LocalDate.now());
         body.put("description", "Thanh toán thù lao công việc " + payoutReference
-                + ". Tỷ giá quy đổi: " + formatRate(usdToVndRate) + " VND/USD");
+                + ". Tỷ giá quy đổi: " + formatRate(vndRate)
+                + (sourceIsUsdc ? " VND/USDC sau phí dịch vụ" : " VND/USD"));
 
         ResponseEntity<ResponseAPI<MisaPayoutTransactionResult>> response = restTemplate.exchange(
                 baseUrl + "/api/v1/taxpayers/" + taxpayerId + "/payouts",

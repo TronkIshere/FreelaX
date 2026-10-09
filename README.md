@@ -10,12 +10,12 @@ FreelaX là marketplace hai phía cho **Client** (thuê việc) và **Freelancer
 
 | Nhóm | Đã có |
 | --- | --- |
-| Tài khoản | Đăng ký/đăng nhập Client hoặc Freelancer; Admin cấp riêng; profile, kỹ năng, portfolio, hồ sơ công khai; liên kết ví Solana bằng chữ ký |
+| Tài khoản | Đăng ký/đăng nhập Client hoặc Freelancer; Admin cấp riêng; profile, kỹ năng, portfolio, hồ sơ công khai; ví Solana demo tự động cấp cho mỗi tài khoản trên local (không cần tiện ích ví) |
 | Job và hợp đồng | Job có sản phẩm bàn giao, tiêu chí nghiệm thu, hạn, số lần sửa; tìm việc và ứng tuyển; hai bên xác nhận cùng một bản điều khoản (fingerprint) trước khi giao việc |
 | Ký quỹ | Client nộp USD → đối tác mô phỏng xác nhận → Mock USDC vào ví Client → Client ký chuyển vào vault của Milestone; công việc chỉ mở khi vault đã có tiền |
 | Làm việc và nghiệm thu | Bàn giao có bằng chứng và phiên bản; Client **Duyệt / Yêu cầu chỉnh sửa / Mở tranh chấp**, kèm **đồng hồ đếm ngược**; hết 72 giờ không quyết định thì tự duyệt; gia hạn bàn giao một lần ≤ 7 ngày |
 | Tranh chấp | Mở tranh chấp sẽ khóa vault; Admin tiếp nhận rồi quyết định toàn phần: release cho Freelancer hoặc hoàn tiền cho Client |
-| Chi trả và hoàn tiền | Freelancer ký rút USDC → đối tác chi VND, giữ phí 3%; hủy trước release thì hoàn đủ USD cho Client, phí 0 |
+| Chi trả và hoàn tiền | Freelancer ký rút USDC → đối tác chi VND sau khi trừ phí 3% và khấu trừ thuế 10% trên phần còn lại (100 USD → 2.182.500 VND); hủy trước release thì hoàn đủ USD cho Client, phí 0 |
 | Chứng từ thuế | Sau khi chi VND, MISA (mô phỏng) phát hành chứng từ khấu trừ thuế; Freelancer tải PDF/XML |
 | Quản trị | Đối soát 4 ranh giới tiền; bảng "Tiền đang ở đâu" tách theo USD/USDC/VND; quyết định Admin có audit; hủy hợp đồng quá hạn ký quỹ |
 | Độ tin cậy | Mỗi bước tiền có idempotency key; trạng thái `UNKNOWN` thì tra cứu lại, không gửi lệnh mới; hồi phục khi đối tác hoặc RPC sập mà không chi trùng; Flyway quản lý schema |
@@ -107,7 +107,7 @@ Lệnh `--prepare` còn tạo 2 Job QA bằng tài khoản seed; cần flag cuto
 curl -fsS -H 'Content-Type: application/json' --data '{"jsonrpc":"2.0","id":1,"method":"getHealth"}' http://127.0.0.1:9123
 ```
 
-**Bước 6 — Dùng thử:** mở `http://localhost:8080` và làm theo [guide trình diễn](docs/business/BROWSER_DEMO_GUIDE.md). Tài khoản seed: Freelancer `freelancer.seed@example.com`, Admin `admin.e2e@example.test`, Client seed khai báo trong `marketplace-backend/.../configuration/DataInitializer.java`; mật khẩu lấy trong `.env`.
+**Bước 6 — Dùng thử:** mở `http://localhost:8080`, tự đăng ký tài khoản Client và Freelancer (ví demo được cấp tự động khi đăng nhập) và làm theo [guide trình diễn](docs/business/BROWSER_DEMO_GUIDE.md). Tài khoản seed: Freelancer `freelancer.seed@example.com`, Admin `admin.e2e@example.test`, Client seed khai báo trong `marketplace-backend/.../configuration/DataInitializer.java`; mật khẩu lấy trong `.env`.
 
 **Bước 7 — Chạy kiểm chứng tự động (tùy chọn):** lệnh ở [VERIFICATION](docs/business/VERIFICATION.md#chạy-lại-kiểm-chứng).
 
@@ -119,7 +119,7 @@ curl -fsS -H 'Content-Type: application/json' --data '{"jsonrpc":"2.0","id":1,"m
 | --- | --- |
 | Tiền thật và đối tác thật | On-ramp USD và off-ramp VND qua provider thật; cơ chế thu phí 3% và bằng chứng phí riêng; bảo đảm hoàn đủ USD |
 | Solana devnet/production | Triển khai program, quản lý authority và nâng cấp, giám sát RPC |
-| Ví và khóa cho người dùng thật | Cấp phát, bảo vệ, khôi phục ví; bỏ khóa demo ở backend |
+| Ví và khóa cho người dùng thật | Cấp phát, bảo vệ, khôi phục ví; bỏ ví demo tự động và endpoint ký thay ở backend (chỉ dành cho localnet) |
 | Chứng từ thuế thật | Kết nối MISA hoặc cơ quan thuế thật; Flyway cho `misa-backend` (hiện vẫn `ddl-auto: update`) |
 | Sản phẩm | Nhiều Milestone trong một Job; chat làm bằng chứng tranh chấp; lịch ngày lễ cho hạn; tối ưu mobile |
 | Vận hành | Cảnh báo cho khoản `UNKNOWN`/lệch kéo dài; báo cáo đối soát định kỳ theo từng loại tiền |

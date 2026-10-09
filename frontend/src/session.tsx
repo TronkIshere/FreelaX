@@ -28,7 +28,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       if (active) setSession({ status: 'guest', reason: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.' });
     };
     api.restore().then(
-      user => { if (active) setSession({ status: 'ready', user }); },
+      async user => {
+        if (import.meta.env.VITE_SOLANA_CLUSTER === 'localnet') await api.autoSolanaWallet().catch(() => undefined);
+        if (active) setSession({ status: 'ready', user });
+      },
       error => {
         if (!active) return;
         api.clear();
@@ -50,6 +53,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     },
     signIn: async (email, password) => {
       const user = await api.signIn(email, password);
+      if (import.meta.env.VITE_SOLANA_CLUSTER === 'localnet') await api.autoSolanaWallet().catch(() => undefined);
       setSession({ status: 'ready', user });
     },
     signOut: async () => {

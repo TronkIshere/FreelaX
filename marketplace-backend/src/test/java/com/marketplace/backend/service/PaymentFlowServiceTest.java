@@ -85,6 +85,23 @@ class PaymentFlowServiceTest {
     }
 
     @Test
+    void identifiesOnlyAnActuallyLockedOldFeeOnlyWithdrawalAsLegacy() {
+        PaymentFlow flow = service.createDraft(contract, milestone);
+        flow.setTermsVersion(1);
+        PaymentFlowStep withdrawal = new PaymentFlowStep();
+        withdrawal.setKind("WITHDRAWAL");
+        withdrawal.setFeeUsdc(new BigDecimal("3.000000"));
+        withdrawal.setVndRate(new BigDecimal("25000.00"));
+        withdrawal.setPayoutVnd(new BigDecimal("2425000"));
+        when(flows.findByContractId(contract.getId())).thenReturn(Optional.of(flow));
+        when(steps.findByPaymentFlowIdOrderByCreatedAtAsc(flow.getId())).thenReturn(List.of(withdrawal));
+
+        assertThat(service.usesLegacyFeeOnlyQuote(contract.getId())).isTrue();
+        withdrawal.setPayoutVnd(new BigDecimal("2182500"));
+        assertThat(service.usesLegacyFeeOnlyQuote(contract.getId())).isFalse();
+    }
+
+    @Test
     void timelineIsVisibleOnlyToParticipantAndDoesNotInventConfirmation() {
         PaymentFlow flow = service.createDraft(contract, milestone);
         when(contracts.findById(contract.getId())).thenReturn(Optional.of(contract));

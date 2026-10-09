@@ -131,7 +131,8 @@ class UnifiedExitServiceTest {
         UnifiedFiatExitResult exit = new UnifiedFiatExitResult(flowId, flow.getJobId(), contractId,
                 milestoneId, "PAYOUT", withdrawal.getIdempotencyKey(), withdrawal.getReference(),
                 withdrawal.getBeneficiary(), flow.getEscrowUsdc(), withdrawal.getFeeUsdc(),
-                flow.getGrossUsd(), withdrawal.getVndRate(), withdrawal.getPayoutVnd(),
+                flow.getGrossUsd(), withdrawal.getVndRate(), new BigDecimal("2425000"),
+                BigDecimal.ZERO, withdrawal.getPayoutVnd(),
                 "CONFIRMED", Instant.now(), true);
         when(payment.getUnifiedFiatExit(flowId)).thenReturn(exit);
         var payoutRow = new UnifiedFiatExitStatementResult.Entry("unified-exit:" + flowId + ":VND_PAYOUT",
@@ -225,7 +226,8 @@ class UnifiedExitServiceTest {
         return new UnifiedFiatExitResult(x.flowId(), x.flow().getJobId(), x.contractId(), x.milestoneId(),
                 "PAYOUT", x.withdrawal().getIdempotencyKey(), x.withdrawal().getReference(),
                 x.withdrawal().getBeneficiary(), x.flow().getEscrowUsdc(), x.withdrawal().getFeeUsdc(),
-                x.flow().getGrossUsd(), x.withdrawal().getVndRate(), x.withdrawal().getPayoutVnd(),
+                x.flow().getGrossUsd(), x.withdrawal().getVndRate(), new BigDecimal("2425000"),
+                BigDecimal.ZERO, x.withdrawal().getPayoutVnd(),
                 status, Instant.now(), true);
     }
 
@@ -248,7 +250,7 @@ class UnifiedExitServiceTest {
         Payout x = payoutFixture("CONFIRMED");
         when(payment.getUnifiedFiatExit(x.flowId())).thenThrow(notFound())
                 .thenReturn(exit(x, "CONFIRMED"));
-        when(payment.requestUnifiedFiatExit(any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+        when(payment.requestUnifiedFiatExit(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenThrow(new org.springframework.web.client.ResourceAccessException("read timed out"));
         when(payment.getUnifiedFiatExitStatement(x.flowId())).thenReturn(paidStatement(x.flowId()));
 
@@ -259,7 +261,7 @@ class UnifiedExitServiceTest {
         assertThat(x.payout().getStatus()).isEqualTo("CONFIRMED");
         assertThat(x.fee().getStatus()).isEqualTo("CONFIRMED");
         verify(payment, times(1)).requestUnifiedFiatExit(eq(x.flowId()), any(), any(), any(), eq("PAYOUT"),
-                eq("unified-exit-" + x.flowId()), eq("withdrawal-pda"), eq("bank:account:holder"), any(), any());
+                eq("unified-exit-" + x.flowId()), eq("withdrawal-pda"), eq("bank:account:holder"), any(), any(), any());
     }
 
     @Test
@@ -271,7 +273,7 @@ class UnifiedExitServiceTest {
                 .when(reconciliation).requireMatched(x.flow(), 3);
 
         assertThatThrownBy(() -> service.reconcileFiat(x.flowId())).isInstanceOf(RuntimeException.class);
-        verify(payment, never()).requestUnifiedFiatExit(any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+        verify(payment, never()).requestUnifiedFiatExit(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
         assertThat(x.payout().getStatus()).isEqualTo("PENDING");
     }
 

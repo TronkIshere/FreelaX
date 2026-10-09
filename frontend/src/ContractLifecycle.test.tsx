@@ -53,8 +53,10 @@ describe('unified contract lifecycle', () => {
     await mount(unified, client);
 
     expect(escrow).toHaveBeenCalledWith('contract', 'milestone');
-    expect(host.querySelector('[aria-label="Trạng thái escrow Solana"]')).toBeTruthy();
-    expect(host.querySelector('[aria-label="Hoàn tiền escrow theo thỏa thuận"]')).toBeTruthy();
+    expect(host.querySelector('[aria-label="Trạng thái tiền công việc"]')).toBeTruthy();
+    expect(host.querySelector('[aria-label="Hoàn tiền theo thỏa thuận"]')).toBeTruthy();
+    expect(host.textContent).toContain('Tiền đang được giữ an toàn.');
+    expect(host.textContent).not.toContain('Vault ATA');
     expect(api.cancellation).not.toHaveBeenCalled();
     expect(api.settlement).not.toHaveBeenCalled();
   });

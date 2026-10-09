@@ -59,22 +59,28 @@ function JobDocument({ job }: { job: Detail }) {
     <p className="work-description">{job.description}</p>
     <p>Điều khoản công việc được chốt khi Freelancer ứng tuyển và Client giao việc.</p>
     {job.localPaymentTerms ? <section className="job-terms-document" aria-label="Điều khoản thanh toán thống nhất">
-      <SectionHeading title="Thanh toán thống nhất · Mô phỏng local" level={3} />
-      <p>Client nộp USD; đối tác đổi thành Mock USDC để khóa trong escrow. Khi nghiệm thu, Freelancer nhận USDC rồi đổi sang VND. Đây là số tiền theo mẫu local; mint và network bên dưới là phần của điều khoản, quote USD được khóa khi mở USD order.</p>
+      <SectionHeading title="Tiền của công việc đi như thế nào?" level={3} />
+      <p>Khách thanh toán bằng USD. Hệ thống giữ số tiền tương đương trong ví cho đến khi kết quả được duyệt. Sau đó tiền được đổi sang VND để trả cho người làm.</p>
+      {job.localPaymentTerms.legacyPayout && <p role="alert" className="finance-inline-error">Công việc này đã khóa khoản chi theo cách tính cũ. Khoản đã chi chỉ trừ phí dịch vụ; số thuế trên chứng từ cũ chưa được trừ khỏi tiền nhận. Xem chứng từ để đối chiếu.</p>}
+      <ol className="job-payment-explainer">
+        <li><strong>1. Khách thanh toán</strong><span>{money(Number(job.localPaymentTerms.grossUsd))}</span></li>
+        <li><strong>2. Giữ tiền cho công việc</strong><span>{Number(job.localPaymentTerms.escrowUsdc).toFixed(2)} USDC mô phỏng</span></li>
+        <li><strong>3. Người làm nhận tiền</strong><span>{Number(job.localPaymentTerms.estimatedPayoutVnd).toLocaleString('vi-VN')} VND {job.localPaymentTerms.legacyPayout ? 'theo khoản chi cũ, sau phí dịch vụ' : 'dự kiến, sau phí và thuế'}</span></li>
+      </ol>
       <FactGrid facts={[
-        { label: 'Client nộp', value: money(Number(job.localPaymentTerms.grossUsd)) },
-        { label: 'USDC phải vào escrow', value: Number(job.localPaymentTerms.escrowUsdc).toFixed(6) + ' Mock USDC' },
-        { label: 'Phí Freelancer chịu khi payout', value: Number(job.localPaymentTerms.platformFeeUsdc).toFixed(6) + ' Mock USDC (3%)' },
-        { label: 'Tỷ giá VND ước tính', value: '1 USDC = ' + Number(job.localPaymentTerms.usdcVndRate).toLocaleString('vi-VN') + ' VND' },
-        { label: 'Freelancer dự kiến nhận', value: Number(job.localPaymentTerms.estimatedPayoutVnd).toLocaleString('vi-VN') + ' VND' },
-        { label: 'Hủy trước release', value: 'Client nhận đủ ' + money(Number(job.localPaymentTerms.fullRefundUsd)) + '; phí FreelaX bằng 0' },
-        { label: 'Hạn funding', value: job.localPaymentTerms.fundingHours + ' giờ từ khi giao việc' },
-        { label: 'Thời hạn duyệt', value: job.localPaymentTerms.reviewWindowHours + ' giờ sau bàn giao hợp lệ, không gia hạn' },
+        { label: 'Tỷ giá dùng để ước tính', value: '1 USD = 1 USDC mô phỏng; 1 USDC = ' + Number(job.localPaymentTerms.usdcVndRate).toLocaleString('vi-VN') + ' VND' },
+        { label: 'Giá trị quy đổi', value: (Number(job.localPaymentTerms.escrowUsdc) * Number(job.localPaymentTerms.usdcVndRate)).toLocaleString('vi-VN') + ' VND' },
+        { label: 'Phí dịch vụ (3%)', value: (Number(job.localPaymentTerms.platformFeeUsdc) * Number(job.localPaymentTerms.usdcVndRate)).toLocaleString('vi-VN') + ' VND' },
+        { label: job.localPaymentTerms.legacyPayout ? 'Chứng từ cũ tính thuế trên' : 'Số tiền dùng để tính thuế sau phí', value: Number(job.localPaymentTerms.estimatedTaxableVnd).toLocaleString('vi-VN') + ' VND' },
+        { label: job.localPaymentTerms.legacyPayout ? 'Thuế trên chứng từ cũ (chưa trừ khi chi)' : 'Thuế dự kiến (10%)', value: Number(job.localPaymentTerms.estimatedTaxVnd).toLocaleString('vi-VN') + ' VND' },
+        { label: job.localPaymentTerms.legacyPayout ? 'Khoản chi theo cách cũ' : 'Người làm dự kiến thực nhận', value: Number(job.localPaymentTerms.estimatedPayoutVnd).toLocaleString('vi-VN') + ' VND' },
+        { label: 'Nếu hủy trước khi trả tiền', value: 'Khách nhận lại đủ ' + money(Number(job.localPaymentTerms.fullRefundUsd)) },
+        { label: 'Hạn thanh toán', value: job.localPaymentTerms.fundingHours + ' giờ từ khi giao việc' },
+        { label: 'Thời hạn duyệt', value: job.localPaymentTerms.reviewWindowHours + ' giờ sau bàn giao hợp lệ' },
         { label: 'Số lần sửa tối đa', value: String(job.localPaymentTerms.maxRevisions) },
-        { label: 'Gia hạn bàn giao', value: 'Một lần, tối đa 7 ngày sau hạn gốc, trước bản bàn giao đầu tiên; chỉ khi Client duyệt on-chain' },
-        ...(job.localPaymentTerms.mint ? [{ label: 'Token escrow', value: 'Mock USDC · ' + job.localPaymentTerms.network + ' · mint ' + job.localPaymentTerms.mint }] : []),
+        { label: 'Gia hạn bàn giao', value: 'Một lần, tối đa 7 ngày sau hạn gốc, trước lần bàn giao đầu tiên' },
       ]} />
-      <p className="metadata">Hai bên xác nhận cùng phiên bản điều khoản trước khi phân công. Số VND cuối cùng theo quote được khóa khi withdrawal; mô phỏng không dùng tiền thật.</p>
+      <p className="metadata">Số VND cuối cùng dùng tỷ giá được xác nhận lúc rút tiền. Đây là giao dịch mô phỏng.</p>
     </section> : <p>Với ký quỹ đối tác mock, Freelancer chịu phí FreelaX 3% chỉ khi được giải ngân; nếu hoàn trước giải ngân Client nhận đủ USD.</p>}
     {job.category && <p>Danh mục: {jobCategories[job.category] ?? 'Khác'}</p>}
     {!!job.skills?.length && <p>Kỹ năng: {job.skills.join(', ')}</p>}
@@ -530,7 +536,7 @@ export function ClientApplicants({ user }: { user: User }) {
                   <div><h4>Xác nhận lựa chọn</h4>
                     <p>Khi xác nhận, hồ sơ này sẽ được chấp nhận và các hồ sơ đang chờ còn lại sẽ được đóng (không được chọn).
                       Công việc chuyển sang bước funding. Freelancer chỉ bắt đầu sau khi milestone được funding.</p></div>
-                  {job?.localPaymentTerms && <div><p>Điều khoản thanh toán: {money(Number(job.localPaymentTerms.grossUsd))} → {Number(job.localPaymentTerms.escrowUsdc).toFixed(6)} Mock USDC; phí Freelancer {Number(job.localPaymentTerms.platformFeeUsdc).toFixed(6)} USDC; payout dự kiến {Number(job.localPaymentTerms.estimatedPayoutVnd).toLocaleString('vi-VN')} VND. Hủy trước release hoàn đủ {money(Number(job.localPaymentTerms.fullRefundUsd))}.</p>
+                  {job?.localPaymentTerms && <div><p>Khách thanh toán {money(Number(job.localPaymentTerms.grossUsd))}. Người làm {job.localPaymentTerms.legacyPayout ? 'nhận theo cách tính cũ' : 'dự kiến thực nhận'} {Number(job.localPaymentTerms.estimatedPayoutVnd).toLocaleString('vi-VN')} VND {job.localPaymentTerms.legacyPayout ? 'sau phí dịch vụ' : 'sau phí dịch vụ và thuế'}. Nếu hủy trước khi trả tiền, khách được hoàn đủ {money(Number(job.localPaymentTerms.fullRefundUsd))}.</p>
                     <label><input type="checkbox" checked={termsAccepted} onChange={event => setTermsAccepted(event.target.checked)} /> Tôi đã đọc và đồng ý điều khoản thanh toán mô phỏng local này.</label></div>}
                   <ActionGroup><button className="button" type="button" disabled={busy || (!!job?.localPaymentTerms && !termsAccepted)} onClick={() => assign(application.freelancerId)}>
                     {busy ? 'Đang phân công…' : 'Xác nhận chọn'}</button>

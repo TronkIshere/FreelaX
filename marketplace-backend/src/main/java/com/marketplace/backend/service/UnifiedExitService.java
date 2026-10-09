@@ -37,6 +37,7 @@ import java.util.UUID;
 @Slf4j
 public class UnifiedExitService {
     private static final BigDecimal VND_RATE = new BigDecimal("25000.00");
+    private static final BigDecimal WITHHOLDING_RATE = new BigDecimal("0.10");
     private static final int RATE_READ_ATTEMPTS = 6;
     private static final long RATE_READ_DELAY_MS = 500;
     private final PaymentFlowRepository flows;
@@ -56,7 +57,7 @@ public class UnifiedExitService {
 
     public record BuildView(UUID paymentFlowId, String kind, String buildSessionId,
             String transactionBase64, String wallet, String withdrawalId,
-            BigDecimal grossUsdc, BigDecimal feeUsdc, BigDecimal payoutVnd,
+            BigDecimal grossUsdc, BigDecimal feeUsdc, BigDecimal vndRate, BigDecimal payoutVnd,
             Instant quoteExpiresAt, boolean simulation) { }
 
     public BuildView prepare(UUID actorId, UUID contractId, UUID milestoneId) {
@@ -117,9 +118,11 @@ public class UnifiedExitService {
                     ? flow.getPlatformFeeUsd().setScale(6) : BigDecimal.ZERO.setScale(6);
             step.setFeeUsdc(fee);
             step.setVndRate(VND_RATE);
+            BigDecimal taxableVnd = flow.getEscrowUsdc().subtract(fee).multiply(VND_RATE)
+                    .setScale(0, RoundingMode.HALF_UP);
             step.setPayoutVnd("PAYOUT".equals(kind)
-                    ? flow.getEscrowUsdc().subtract(fee).multiply(VND_RATE)
-                        .setScale(0, RoundingMode.HALF_UP) : BigDecimal.ZERO.setScale(0));
+                    ? taxableVnd.subtract(taxableVnd.multiply(WITHHOLDING_RATE)
+                        .setScale(0, RoundingMode.HALF_UP)) : BigDecimal.ZERO.setScale(0));
             step.setIdempotencyKey("unified-exit-" + flow.getId());
             step.setStatus("PROCESSING");
             return step;
@@ -177,7 +180,7 @@ public class UnifiedExitService {
         });
         return new BuildView(flow.getId(), kind, built.buildSessionId(),
                 built.transactionBase64(), wallet, withdrawalId, flow.getEscrowUsdc(),
-                snapshot.getFeeUsdc(), snapshot.getPayoutVnd(), snapshot.getQuoteExpiresAt(), true);
+                snapshot.getFeeUsdc(), snapshot.getVndRate(), snapshot.getPayoutVnd(), snapshot.getQuoteExpiresAt(), true);
     }
 
     public PaymentFlowService.Timeline submit(UUID actorId, UUID contractId,
@@ -297,7 +300,7 @@ public class UnifiedExitService {
             exit = payment.requestUnifiedFiatExit(flowId, flow.getJobId(), flow.getContractId(),
                     flow.getMilestoneId(), kind, withdrawal.getIdempotencyKey(),
                     withdrawal.getReference(), withdrawal.getBeneficiary(),
-                    flow.getEscrowUsdc(), flow.getGrossUsd());
+                    flow.getEscrowUsdc(), flow.getGrossUsd(), withdrawal.getPayoutVnd());
         }
         if (!matches(flow, withdrawal, kind, exit)) { markUnknown(flowId, kind); return; }
         if (!"CONFIRMED".equals(exit.status())) return;
@@ -308,7 +311,13 @@ public class UnifiedExitService {
                 payoutAmount, "PAYOUT".equals(kind) ? "VND" : "USD", withdrawal.getReference());
         boolean feeMatched = "REFUND".equals(kind) || statementMatches(statement, flowId,
                 "PLATFORM_FEE", withdrawal.getFeeUsdc(), "USDC", withdrawal.getReference());
-        if (!payoutMatched || !feeMatched) { markUnknown(flowId, kind); return; }
+        BigDecimal taxableVnd = flow.getEscrowUsdc().subtract(withdrawal.getFeeUsdc())
+                .multiply(withdrawal.getVndRate()).setScale(0, RoundingMode.HALF_UP);
+        BigDecimal taxVnd = "PAYOUT".equals(kind)
+                ? taxableVnd.subtract(withdrawal.getPayoutVnd()) : BigDecimal.ZERO;
+        boolean taxMatched = taxVnd.signum() == 0 || statementMatches(statement, flowId,
+                "TAX_WITHHELD", taxVnd, "VND", withdrawal.getReference());
+        if (!payoutMatched || !feeMatched || !taxMatched) { markUnknown(flowId, kind); return; }
         transactions.executeWithoutResult(tx -> {
             PaymentFlowStep payout = locked(flowId, payoutKind);
             if (!"CONFIRMED".equals(payout.getStatus())) {
@@ -370,7 +379,13 @@ public class UnifiedExitService {
                 && exit.grossUsd() != null && flow.getGrossUsd().compareTo(exit.grossUsd()) == 0
                 && exit.feeUsdc() != null && step.getFeeUsdc().compareTo(exit.feeUsdc()) == 0
                 && exit.vndRate() != null && step.getVndRate().compareTo(exit.vndRate()) == 0
-                && exit.payoutVnd() != null && step.getPayoutVnd().compareTo(exit.payoutVnd()) == 0;
+                && exit.payoutVnd() != null && step.getPayoutVnd().compareTo(exit.payoutVnd()) == 0
+                && exit.taxableVnd() != null && exit.taxWithheldVnd() != null
+                && ("REFUND".equals(kind)
+                    ? exit.taxableVnd().signum() == 0 && exit.taxWithheldVnd().signum() == 0
+                    : exit.taxableVnd().compareTo(flow.getEscrowUsdc().subtract(step.getFeeUsdc())
+                        .multiply(step.getVndRate()).setScale(0, RoundingMode.HALF_UP)) == 0
+                        && exit.taxWithheldVnd().compareTo(exit.taxableVnd().subtract(exit.payoutVnd())) == 0);
     }
 
     private boolean statementMatches(UnifiedFiatExitStatementResult statement, UUID flowId,

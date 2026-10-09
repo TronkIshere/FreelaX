@@ -137,7 +137,15 @@ public class JobServiceImpl implements JobService {
         }
         requireUnifiedTermsAcceptance(job, acceptedTermsFingerprint);
 
-        if (jobApplicationRepository.findByJobIdAndFreelancerId(jobId, freelancerId).isPresent()) {
+        JobApplication prior = jobApplicationRepository.findByJobIdAndFreelancerId(jobId, freelancerId).orElse(null);
+        if (prior != null) {
+            if (Integer.valueOf(1).equals(job.getPaymentFlowVersion())
+                    && prior.getStatus() == JobApplicationStatus.PENDING
+                    && !acceptedTermsFingerprint.equals(prior.getAcceptedTermsFingerprint())) {
+                prior.setAcceptedTermsFingerprint(acceptedTermsFingerprint);
+                prior.setTermsAcceptedAt(Instant.now());
+                return toApplicationResponse(jobApplicationRepository.save(prior));
+            }
             throw new ApplicationException(ErrorCode.ALREADY_APPLIED, jobId);
         }
 
@@ -856,17 +864,26 @@ public class JobServiceImpl implements JobService {
 
     private UnifiedTermsPreviewResponse unifiedTermsPreview(Job job) {
         if (!Integer.valueOf(1).equals(job.getPaymentFlowVersion())) return null;
+        boolean legacyPayout = workContractRepository.findByJobId(job.getId())
+                .filter(contract -> PaymentFlow.RAIL.equals(contract.getPaymentRail()))
+                .map(contract -> paymentFlowService.usesLegacyFeeOnlyQuote(contract.getId()))
+                .orElse(false);
         BigDecimal grossUsd = job.getBudgetUsd().setScale(2, RoundingMode.HALF_UP);
         BigDecimal escrowUsdc = grossUsd.setScale(6);
         BigDecimal feeUsdc = grossUsd.multiply(new BigDecimal("0.03"))
                 .setScale(2, RoundingMode.HALF_UP).setScale(6);
         BigDecimal rate = new BigDecimal("25000.00");
-        BigDecimal payoutVnd = escrowUsdc.subtract(feeUsdc).multiply(rate)
+        BigDecimal taxableVnd = (legacyPayout ? escrowUsdc : escrowUsdc.subtract(feeUsdc)).multiply(rate)
                 .setScale(0, RoundingMode.HALF_UP);
+        BigDecimal taxVnd = taxableVnd.multiply(new BigDecimal("0.10"))
+                .setScale(0, RoundingMode.HALF_UP);
+        BigDecimal payoutVnd = legacyPayout
+                ? escrowUsdc.subtract(feeUsdc).multiply(rate).setScale(0, RoundingMode.HALF_UP)
+                : taxableVnd.subtract(taxVnd);
         return new UnifiedTermsPreviewResponse(PaymentFlow.RAIL, 1, termsFingerprint(job),
-                grossUsd, escrowUsdc, feeUsdc, rate, payoutVnd, grossUsd, 48,
+                grossUsd, escrowUsdc, feeUsdc, rate, taxableVnd, taxVnd, payoutVnd, grossUsd, 48,
                 job.getReviewWindowHours(), job.getMaxRevisions(),
-                job.getPaymentNetwork(), job.getPaymentMint(), true);
+                job.getPaymentNetwork(), job.getPaymentMint(), true, legacyPayout);
     }
 
     private void requireUnifiedTermsAcceptance(Job job, String acceptedFingerprint) {
@@ -877,7 +894,7 @@ public class JobServiceImpl implements JobService {
     }
 
     private String termsFingerprint(Job job) {
-        StringBuilder canonical = new StringBuilder("UNIFIED_USDC_PAYOUT|terms-v1|mock-usdc-1:1|vnd-25000|fee-3pct|refund-full|funding-48h");
+        StringBuilder canonical = new StringBuilder("UNIFIED_USDC_PAYOUT|terms-v2|mock-usdc-1:1|vnd-25000|fee-3pct|tax-after-fee-10pct|refund-full|funding-48h");
         appendTerm(canonical, job.getId());
         appendTerm(canonical, job.getClientUserId());
         appendTerm(canonical, job.getTitle());

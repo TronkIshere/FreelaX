@@ -100,13 +100,14 @@ public class PaymentBackendClient {
     public UnifiedFiatExitResult requestUnifiedFiatExit(UUID paymentFlowId, UUID jobId,
             UUID contractId, UUID milestoneId, String kind, String idempotencyKey,
             String withdrawalReference, String beneficiary, BigDecimal grossUsdc,
-            BigDecimal grossUsd) {
+            BigDecimal grossUsd, BigDecimal expectedPayoutVnd) {
         return unifiedExchange("/internal/unified-mock/fiat-exits", HttpMethod.POST,
-                Map.of("paymentFlowId", paymentFlowId, "jobId", jobId,
-                        "contractId", contractId, "milestoneId", milestoneId,
-                        "kind", kind, "idempotencyKey", idempotencyKey,
-                        "withdrawalReference", withdrawalReference, "beneficiary", beneficiary,
-                        "grossUsdc", grossUsdc, "grossUsd", grossUsd),
+                Map.ofEntries(Map.entry("paymentFlowId", paymentFlowId), Map.entry("jobId", jobId),
+                        Map.entry("contractId", contractId), Map.entry("milestoneId", milestoneId),
+                        Map.entry("kind", kind), Map.entry("idempotencyKey", idempotencyKey),
+                        Map.entry("withdrawalReference", withdrawalReference), Map.entry("beneficiary", beneficiary),
+                        Map.entry("grossUsdc", grossUsdc), Map.entry("grossUsd", grossUsd),
+                        Map.entry("expectedPayoutVnd", expectedPayoutVnd)),
                 new ParameterizedTypeReference<ResponseAPI<UnifiedFiatExitResult>>() {});
     }
 

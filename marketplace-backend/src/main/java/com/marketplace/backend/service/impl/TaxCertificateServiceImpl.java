@@ -41,6 +41,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.HttpClientErrorException;
 
+import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.EnumSet;
@@ -75,6 +76,7 @@ public class TaxCertificateServiceImpl implements TaxCertificateService {
     PaymentFlowStepRepository paymentFlowStepRepository;
 
     private static final String UNIFIED_REFERENCE = "unified:";
+    private static final BigDecimal UNIFIED_WITHHOLDING_RATE = new BigDecimal("0.10");
 
     @Override
     @Transactional
@@ -96,24 +98,35 @@ public class TaxCertificateServiceImpl implements TaxCertificateService {
         PaymentFlow flow = paymentFlowRepository.findById(paymentFlowId)
                 .orElseThrow(() -> new ApplicationException(ErrorCode.TAX_RECORD_INVALID_STATUS, "payment flow"));
         PaymentFlowStep withdrawal = unifiedStep(flow.getId(), "WITHDRAWAL");
-        if (!unifiedPayoutConfirmed(flow.getId()) || withdrawal == null || withdrawal.getVndRate() == null)
+        PaymentFlowStep payout = unifiedStep(flow.getId(), "VND_PAYOUT");
+        if (payout == null || !"CONFIRMED".equals(payout.getStatus())
+                || withdrawal == null || withdrawal.getVndRate() == null || withdrawal.getFeeUsdc() == null
+                || withdrawal.getPayoutVnd() == null || payout.getAmount() == null)
             throw new ApplicationException(ErrorCode.TAX_RECORD_INVALID_STATUS, "payout not completed");
         Job job = jobRepository.findById(flow.getJobId())
                 .orElseThrow(() -> new ApplicationException(ErrorCode.JOB_NOT_FOUND, flow.getJobId()));
         TaxCertificateRecord taxRecord = taxCertificateRecordRepository.findByJobId(job.getId()).orElse(null);
+        if (taxRecord != null && taxRecord.getMisaCertificateId() != null) return;
+        BigDecimal taxableUsdc = flow.getEscrowUsdc().subtract(withdrawal.getFeeUsdc());
+        BigDecimal taxableVnd = taxableUsdc.multiply(withdrawal.getVndRate())
+                .setScale(0, RoundingMode.HALF_UP);
+        BigDecimal withheldVnd = taxableVnd.multiply(UNIFIED_WITHHOLDING_RATE)
+                .setScale(0, RoundingMode.HALF_UP);
+        if (taxableUsdc.signum() <= 0 || payout.getAmount().compareTo(taxableVnd.subtract(withheldVnd)) != 0
+                || withdrawal.getPayoutVnd().compareTo(payout.getAmount()) != 0)
+            throw new ApplicationException(ErrorCode.TAX_RECORD_INVALID_STATUS, "payout and tax do not reconcile");
         if (taxRecord == null) {
             taxRecord = new TaxCertificateRecord();
             taxRecord.setJobId(job.getId());
             taxRecord.setFreelancerId(flow.getFreelancerId());
             taxRecord.setClientUserId(flow.getClientId());
-            // Income is the Job price released to the Freelancer, at the quote locked on the withdrawal;
-            // the FreelaX fee is collected at off-ramp and does not change the income being certified.
-            taxRecord.setAmountUsd(flow.getGrossUsd());
+            // The local mock withholds tax from income after the platform fee.
+            // Its USDC/USD parity is fixed at 1:1 in the locked on-chain rate.
+            taxRecord.setAmountUsd(taxableUsdc.setScale(2, RoundingMode.HALF_UP));
             taxRecord.setUsdToVndRate(withdrawal.getVndRate());
             taxRecord.setRateSource(ExchangeRateSource.LOCKED_PAYOUT_QUOTE);
             taxRecord.setRateObservedAt(withdrawal.getConfirmedAt());
-            taxRecord.setTaxableIncomeVnd(flow.getGrossUsd().multiply(withdrawal.getVndRate())
-                    .setScale(0, RoundingMode.HALF_UP));
+            taxRecord.setTaxableIncomeVnd(taxableVnd);
             taxRecord.setTransactionReference(UNIFIED_REFERENCE + flow.getId());
             taxRecord = taxCertificateRecordRepository.saveAndFlush(taxRecord);
         } else if (!(UNIFIED_REFERENCE + flow.getId()).equals(taxRecord.getTransactionReference())) {
@@ -299,13 +312,14 @@ public class TaxCertificateServiceImpl implements TaxCertificateService {
             }
 
             if (taxRecord.getMisaPayoutTransactionId() == null) {
-                MisaPayoutTransactionResult payoutTx = misaBackendClient.recordPayoutTransaction(
-                        taxRecord.getMisaTaxpayerId(),
-                        job.getId(),
-                        taxRecord.getAmountUsd(),
-                        taxRecord.getUsdToVndRate(),
-                        taxRecord.getTransactionReference(),
-                        TAX_RECORD_BLOCKCHAIN);
+                MisaPayoutTransactionResult payoutTx =
+                        taxRecord.getRateSource() == ExchangeRateSource.LOCKED_PAYOUT_QUOTE
+                        ? misaBackendClient.recordPayoutTransaction(taxRecord.getMisaTaxpayerId(),
+                            job.getId(), taxRecord.getAmountUsd(), taxRecord.getUsdToVndRate(),
+                            taxRecord.getTransactionReference(), TAX_RECORD_BLOCKCHAIN, true)
+                        : misaBackendClient.recordPayoutTransaction(taxRecord.getMisaTaxpayerId(),
+                            job.getId(), taxRecord.getAmountUsd(), taxRecord.getUsdToVndRate(),
+                            taxRecord.getTransactionReference(), TAX_RECORD_BLOCKCHAIN);
                 taxRecord.setMisaPayoutTransactionId(payoutTx.getId());
                 taxCertificateRecordRepository.save(taxRecord);
             }
