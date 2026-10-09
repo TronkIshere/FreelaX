@@ -71,7 +71,8 @@ class JobWorkflowServiceImplTest {
         DeliverableRequirementRepository deliverableRepository = mock(DeliverableRequirementRepository.class);
         service = new JobServiceImpl(userRepository, jobRepository, applicationRepository, submissionRepository,
                 paymentBackendClient, misaBackendClient, notificationService, payoutService, payoutRecordRepository,
-                contractRepository, milestoneRepository, criterionRepository, deliverableRepository);
+                contractRepository, milestoneRepository, criterionRepository, deliverableRepository,
+                mock(com.marketplace.backend.service.PaymentFlowService.class));
         when(submissionRepository.save(any(JobSubmission.class))).thenAnswer(invocation -> {
             JobSubmission submission = invocation.getArgument(0);
             if (submission.getId() == null) {

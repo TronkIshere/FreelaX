@@ -62,8 +62,8 @@ class ContractSubmissionServiceTest {
         savedEvidence = new ArrayList<>();
         service = new ContractSubmissionService(contracts, milestones, jobs, submissions, evidence,
                 requirements, criteria, funding, escrows,
-                solana, disputes, disputeAudit,
-                mock(NotificationService.class), new ObjectMapper());
+                solana, mock(com.marketplace.backend.client.PaymentBackendClient.class), disputes, disputeAudit,
+                mock(NotificationService.class), new BusinessDayClock(), new ObjectMapper());
 
         contract = new WorkContract();
         contract.setId(UUID.randomUUID());
@@ -398,4 +398,35 @@ class ContractSubmissionServiceTest {
         input.setAcceptanceEvidence(List.of(criterionInput));
         return input;
     }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({"UNIFIED_USDC_PAYOUT,Released", "SOLANA_ESCROW,RELEASED_RECONCILED"})
+    void approvalAfterChainReleaseLeavesUnifiedRecordForTheMoneyReconciler(String rail, String expected) {
+        contract.setPaymentRail(rail);
+        contract.setStatus(ContractStatus.UNDER_REVIEW);
+        milestone.setStatus(MilestoneStatus.SUBMITTED);
+        job.setStatus(JobStatus.SUBMITTED_FOR_REVIEW);
+        saved = new JobSubmission();
+        saved.setId(UUID.randomUUID());
+        saved.setContractId(contract.getId());
+        saved.setVersion(1);
+        saved.setStatus(JobSubmissionStatus.SUBMITTED);
+        EscrowContract record = new EscrowContract();
+        record.setLastChainStatus("Released");
+        when(escrows.existsByContractId(contract.getId())).thenReturn(true);
+        when(escrows.findByContractId(contract.getId())).thenReturn(Optional.of(record));
+        com.marketplace.backend.dto.response.solana.SolanaEscrowResult chain =
+                mock(com.marketplace.backend.dto.response.solana.SolanaEscrowResult.class);
+        when(chain.status()).thenReturn("Released");
+        when(solana.findEscrow(milestone.getId().toString())).thenReturn(Optional.of(chain));
+        ReviewSubmissionRequest decision = new ReviewSubmissionRequest();
+        decision.setDecision(ReviewSubmissionRequest.Decision.APPROVE);
+
+        service.decide(contract.getClientUserId(), contract.getId(), saved.getId(), decision);
+
+        assertThat(contract.getStatus()).isEqualTo(ContractStatus.COMPLETED);
+        // The escrow reconciler picks up "Released" and records USDC_RELEASE before reconciling.
+        assertThat(record.getLastChainStatus()).isEqualTo(expected);
+    }
+
 }

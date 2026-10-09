@@ -219,6 +219,10 @@ public class SolanaCprClient {
         return submitOperation("request-offramp", properties.getBaseUrl() + "/api/v1/solana/withdrawals", request);
     }
 
+    public SolanaBuildResult buildUnifiedOfframp(RequestOfframpRequest request) {
+        return buildEscrow("build-unified-offramp", "/api/v1/solana/withdrawals", request);
+    }
+
     public Optional<SolanaWithdrawalResult> findWithdrawal(String freelancer, String withdrawalId) {
         String url = UriComponentsBuilder.fromUriString(properties.getBaseUrl())
                 .path("/api/v1/solana/withdrawals/{freelancer}/{withdrawalId}")

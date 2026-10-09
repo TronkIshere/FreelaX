@@ -8,6 +8,12 @@ import com.marketplace.backend.dto.response.bofa.PaymentReleaseResult;
 import com.marketplace.backend.dto.request.bofa.CreateReleaseRequest;
 import com.marketplace.backend.dto.request.bofa.CreateRefundRequest;
 import com.marketplace.backend.dto.response.bofa.PaymentRefundResult;
+import com.marketplace.backend.dto.response.partner.PartnerEscrowResult;
+import com.marketplace.backend.dto.response.partner.PartnerStatementResult;
+import com.marketplace.backend.dto.response.payment.UnifiedUsdOrderResult;
+import com.marketplace.backend.dto.response.payment.UnifiedUsdStatementResult;
+import com.marketplace.backend.dto.response.payment.UnifiedFiatExitResult;
+import com.marketplace.backend.dto.response.payment.UnifiedFiatExitStatementResult;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.marketplace.backend.exception.ApplicationException;
@@ -56,6 +62,78 @@ public class PaymentBackendClient {
                 body,
                 new ParameterizedTypeReference<ResponseAPI<CheckoutOrderResult>>() {}
         );
+    }
+
+    public UnifiedUsdOrderResult openUnifiedUsdOrder(UUID paymentFlowId, UUID jobId,
+            UUID contractId, UUID milestoneId, UUID clientId, BigDecimal grossUsd,
+            BigDecimal escrowUsdc, String payerBankCode, String payerBankAccountNumber,
+            String payerBankAccountHolderName, String fundKey) {
+        return unifiedExchange("/internal/unified-mock/usd-orders", HttpMethod.POST,
+                Map.ofEntries(Map.entry("paymentFlowId", paymentFlowId), Map.entry("jobId", jobId),
+                        Map.entry("contractId", contractId), Map.entry("milestoneId", milestoneId),
+                        Map.entry("clientId", clientId), Map.entry("grossUsd", grossUsd),
+                        Map.entry("escrowUsdc", escrowUsdc), Map.entry("payerBankCode", payerBankCode),
+                        Map.entry("payerBankAccountNumber", payerBankAccountNumber),
+                        Map.entry("payerBankAccountHolderName", payerBankAccountHolderName),
+                        Map.entry("fundKey", fundKey)),
+                new ParameterizedTypeReference<ResponseAPI<UnifiedUsdOrderResult>>() {});
+    }
+
+    public UnifiedUsdOrderResult getUnifiedUsdOrder(UUID paymentFlowId) {
+        return unifiedExchange("/internal/unified-mock/usd-orders/" + paymentFlowId,
+                HttpMethod.GET, null,
+                new ParameterizedTypeReference<ResponseAPI<UnifiedUsdOrderResult>>() {});
+    }
+
+    public UnifiedUsdOrderResult submitUnifiedUsdOrder(UUID paymentFlowId, String fundKey) {
+        return unifiedExchange("/internal/unified-mock/usd-orders/" + paymentFlowId + "/submit",
+                HttpMethod.POST, Map.of("fundKey", fundKey),
+                new ParameterizedTypeReference<ResponseAPI<UnifiedUsdOrderResult>>() {});
+    }
+
+    public UnifiedUsdStatementResult getUnifiedUsdStatement(UUID paymentFlowId) {
+        return unifiedExchange("/internal/unified-mock/usd-orders/" + paymentFlowId + "/statement",
+                HttpMethod.GET, null,
+                new ParameterizedTypeReference<ResponseAPI<UnifiedUsdStatementResult>>() {});
+    }
+
+    public UnifiedFiatExitResult requestUnifiedFiatExit(UUID paymentFlowId, UUID jobId,
+            UUID contractId, UUID milestoneId, String kind, String idempotencyKey,
+            String withdrawalReference, String beneficiary, BigDecimal grossUsdc,
+            BigDecimal grossUsd) {
+        return unifiedExchange("/internal/unified-mock/fiat-exits", HttpMethod.POST,
+                Map.of("paymentFlowId", paymentFlowId, "jobId", jobId,
+                        "contractId", contractId, "milestoneId", milestoneId,
+                        "kind", kind, "idempotencyKey", idempotencyKey,
+                        "withdrawalReference", withdrawalReference, "beneficiary", beneficiary,
+                        "grossUsdc", grossUsdc, "grossUsd", grossUsd),
+                new ParameterizedTypeReference<ResponseAPI<UnifiedFiatExitResult>>() {});
+    }
+
+    public UnifiedFiatExitResult getUnifiedFiatExit(UUID paymentFlowId) {
+        return unifiedExchange("/internal/unified-mock/fiat-exits/" + paymentFlowId,
+                HttpMethod.GET, null,
+                new ParameterizedTypeReference<ResponseAPI<UnifiedFiatExitResult>>() {});
+    }
+
+    public UnifiedFiatExitStatementResult getUnifiedFiatExitStatement(UUID paymentFlowId) {
+        return unifiedExchange("/internal/unified-mock/fiat-exits/" + paymentFlowId + "/statement",
+                HttpMethod.GET, null,
+                new ParameterizedTypeReference<ResponseAPI<UnifiedFiatExitStatementResult>>() {});
+    }
+
+    private <T> T unifiedExchange(String path, HttpMethod method, Object body,
+            ParameterizedTypeReference<ResponseAPI<T>> type) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("X-Internal-Api-Key", properties.getInternalApiKey());
+        RequestCorrelation.add(headers);
+        ResponseEntity<ResponseAPI<T>> response = restTemplate.exchange(
+                properties.getBaseUrl() + path, method, new HttpEntity<>(body, headers), type);
+        if (response.getBody() == null || response.getBody().getCode() != 200
+                || response.getBody().getData() == null)
+            throw new RestClientException("Invalid unified mock response");
+        return response.getBody().getData();
     }
 
     public CheckoutOrderResult captureCheckoutOrder(UUID checkoutOrderId) {
@@ -120,6 +198,63 @@ public class PaymentBackendClient {
 
     public PaymentRefundResult createRefund(CreateRefundRequest request) {
         return refundExchange("/internal/BofA/refunds", HttpMethod.POST, request);
+    }
+
+    public PartnerEscrowResult openPartnerEscrow(UUID milestoneId, UUID contractId, UUID jobId,
+            UUID clientId, UUID freelancerId, BigDecimal grossUsd, String fundKey) {
+        return partnerEscrowExchange("/internal/partner-mock/escrows", HttpMethod.POST,
+                Map.of("milestoneId", milestoneId, "contractId", contractId, "jobId", jobId,
+                        "clientId", clientId, "freelancerId", freelancerId,
+                        "grossUsd", grossUsd, "fundKey", fundKey));
+    }
+
+    public PartnerEscrowResult getPartnerEscrow(UUID milestoneId) {
+        return partnerEscrowExchange("/internal/partner-mock/escrows/" + milestoneId,
+                HttpMethod.GET, null);
+    }
+
+    public PartnerEscrowResult freezePartnerEscrow(UUID milestoneId) {
+        return partnerEscrowExchange("/internal/partner-mock/escrows/" + milestoneId + "/freeze",
+                HttpMethod.POST, null);
+    }
+
+    public PartnerEscrowResult releasePartnerEscrow(UUID milestoneId, String releaseKey,
+            String bankCode, String bankAccountNumber, boolean adminResolution) {
+        return partnerEscrowExchange("/internal/partner-mock/escrows/" + milestoneId + "/release?adminResolution="
+                + adminResolution, HttpMethod.POST, Map.of("releaseKey", releaseKey,
+                "bankCode", bankCode, "bankAccountNumber", bankAccountNumber));
+    }
+
+    public PartnerEscrowResult refundPartnerEscrow(UUID milestoneId, String refundKey,
+            boolean adminResolution) {
+        return partnerEscrowExchange("/internal/partner-mock/escrows/" + milestoneId + "/refund?adminResolution="
+                + adminResolution, HttpMethod.POST, Map.of("refundKey", refundKey));
+    }
+
+    public PartnerStatementResult getPartnerStatement() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("X-Internal-Api-Key", properties.getInternalApiKey());
+        RequestCorrelation.add(headers);
+        ResponseEntity<ResponseAPI<PartnerStatementResult>> response = restTemplate.exchange(
+                properties.getBaseUrl() + "/internal/partner-mock/escrows/statement", HttpMethod.GET,
+                new HttpEntity<>(headers),
+                new ParameterizedTypeReference<ResponseAPI<PartnerStatementResult>>() {});
+        if (response.getBody() == null || response.getBody().getCode() != 200
+                || response.getBody().getData() == null) throw new RestClientException("Invalid partner statement");
+        return response.getBody().getData();
+    }
+
+    private PartnerEscrowResult partnerEscrowExchange(String path, HttpMethod method, Object body) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("X-Internal-Api-Key", properties.getInternalApiKey());
+        RequestCorrelation.add(headers);
+        ResponseEntity<ResponseAPI<PartnerEscrowResult>> response = restTemplate.exchange(
+                properties.getBaseUrl() + path, method, new HttpEntity<>(body, headers),
+                new ParameterizedTypeReference<ResponseAPI<PartnerEscrowResult>>() {});
+        if (response.getBody() == null || response.getBody().getCode() != 200
+                || response.getBody().getData() == null) throw new RestClientException("Invalid partner escrow response");
+        return response.getBody().getData();
     }
 
     public PaymentRefundResult findRefund(String key) {

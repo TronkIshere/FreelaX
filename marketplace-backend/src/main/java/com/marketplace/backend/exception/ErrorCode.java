@@ -79,6 +79,7 @@ public enum ErrorCode {
     REVIEW_INELIGIBLE(4061, "Hợp đồng chưa đủ điều kiện đánh giá", HttpStatus.CONFLICT),
     REVIEW_CONFLICT(4062, "Review đã gửi hoặc nội dung yêu cầu không khớp", HttpStatus.CONFLICT),
     REVIEW_INVALID(4063, "Nội dung đánh giá không hợp lệ", HttpStatus.UNPROCESSABLE_ENTITY),
+    PAYMENT_RECONCILIATION_BLOCKED(4064, "Đối soát ranh giới tiền trước đó chưa khớp; cần Admin kiểm tra", HttpStatus.CONFLICT),
 
     MISA_BACKEND_CALL_FAILED(5000, "Gọi misa-backend thất bại: %s", HttpStatus.BAD_GATEWAY),
 

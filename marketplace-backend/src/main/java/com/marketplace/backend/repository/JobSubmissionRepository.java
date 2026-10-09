@@ -35,4 +35,13 @@ public interface JobSubmissionRepository extends JpaRepository<JobSubmission, UU
             order by s.reviewDueAt asc, s.id asc
             """)
     List<UUID> findExpiredReviewIds(@Param("now") Instant now, Pageable pageable);
+
+    @Query("""
+            select s.id from JobSubmission s join WorkContract c on c.id = s.contractId
+            where c.paymentRail = 'PARTNER_ESCROW_MOCK'
+              and s.status = com.marketplace.backend.entity.JobSubmissionStatus.SUBMITTED
+              and s.reviewReminderCount < 2 and s.submittedAt <= :now
+            order by s.submittedAt asc, s.id asc
+            """)
+    List<UUID> findPartnerReminderCandidates(@Param("now") Instant now, Pageable pageable);
 }

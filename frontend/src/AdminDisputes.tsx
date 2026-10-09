@@ -88,7 +88,8 @@ function AdminCase({ id, user }: { id: string; user: User }) {
   }, [read, scope]);
   const dispute = detail?.dispute;
   const participant = detail?.contract.clientId === user.id || detail?.contract.freelancerId === user.id;
-  const canClaim = recoveryReady && verified && !participant && dispute?.status === 'OPEN';
+  const canClaim = recoveryReady && verified && !participant && dispute?.status === 'OPEN'
+    && (!dispute.negotiationUntil || Date.now() >= new Date(dispute.negotiationUntil).getTime());
   const canResolve = recoveryReady && verified && !participant && dispute?.status === 'UNDER_REVIEW' && dispute.claimedBy === user.id;
   useEffect(() => {
     if (!dispute || !['DECISION_PENDING_RELEASE', 'DECISION_PENDING_REFUND'].includes(dispute.status)) return;
@@ -133,6 +134,7 @@ function AdminCase({ id, user }: { id: string; user: User }) {
     <DisputeError error={error} />
     {detail && <div className="admin-case-document">
       <DisputeRecord dispute={detail.dispute} />
+      {dispute?.negotiationUntil && <p>Hai bên tự thương lượng đến {localInstant(dispute.negotiationUntil)}. {dispute.moderationDueAt && <>Điều phối quyết định trước {localInstant(dispute.moderationDueAt)}.</>}</p>}
       <section><SectionHeading title="Hợp đồng tại thời điểm đối chiếu" /><p>{detail.contract.description}</p>
         <FactGrid facts={[{ label: 'Giá trị hợp đồng', value: String(detail.contract.amount) + ' ' + detail.contract.currency },
           { label: 'Hạn bàn giao', value: localInstant(detail.contract.deliveryDueAt) },

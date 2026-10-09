@@ -1,5 +1,7 @@
 # FreelaX — Ghi chú nâng cấp và xác minh escrow
 
+> **Lưu trữ theo mốc ngày.** Xem [tổng quan hiện tại](../README.md) và [trạng thái kiểm chứng](../VERIFICATION.md) trước khi dùng các kết luận bên dưới.
+
 **Ngày ghi:** 2026-10-08
 
 **Phạm vi ban đầu:** đánh giá baseline sản phẩm P06 và đề xuất cho giai đoạn sau P06.
@@ -8,7 +10,7 @@
 
 Sau khi chốt baseline P06, track `feat/solana-milestone-escrow` đã bổ sung implementation escrow theo Milestone trên Solana và nối vào Gateway, Marketplace, frontend. Phạm vi code gồm vault PDA, funding có chữ ký Client, submission hash, review/revision, gia hạn một lần, dispute, mutual refund và release sau hạn review; Marketplace chỉ hoàn tất Job/refund sau khi xác minh chuyển token. Rail `SOLANA_ESCROW` có persistence và trạng thái riêng, tách khỏi ledger mô phỏng.
 
-**Quyết định nghiệp vụ mới:** thêm luồng mục tiêu đối tác nhận/giữ USD, đổi và chi VND trực tiếp cho Freelancer hoặc hoàn USD cho Client. MVP sẽ mock đối tác và đối soát; luồng này **chưa có code** và không trộn tiền với vault Solana. Phí FreelaX **3% giá Job, do Freelancer chịu, chỉ ghi nhận khi giải ngân thành công**; hoàn trước giải ngân không thu phí. Tỷ giá khóa lúc tạo lệnh chi, phí đối tác bằng 0 trong mock. Toàn bộ công thức và trạng thái ở [tài liệu luồng đối tác](PARTNER_ESCROW_BUSINESS_GAP_20261008.md).
+**Quyết định nghiệp vụ mới:** rail `PARTNER_ESCROW_MOCK` mô phỏng đối tác giữ USD, đổi và chi VND cho Freelancer hoặc hoàn USD cho Client; có sao kê và đối soát riêng, không trộn tiền với vault Solana. Phí FreelaX **3% giá Job, do Freelancer chịu, chỉ ghi nhận khi giải ngân thành công**; hoàn trước giải ngân không thu phí. Tỷ giá khóa lúc tạo lệnh chi, phí đối tác bằng 0 trong mock. Toàn bộ công thức và trạng thái ở [tài liệu luồng đối tác](PARTNER_ESCROW_BUSINESS_GAP_20261008.md).
 
 **Implementation đã có trên nhánh escrow; chưa hoàn tất kiểm chứng E2E.** Local-validator E2E đã xác minh Client duyệt rồi release, mutual refund và permissionless release kèm Marketplace reconcile. Scheduler Marketplace tự khởi tạo timeout release, Admin dispute refund xuyên Marketplace, browser UI E2E và devnet demo vẫn mở. Vì vậy chưa tuyên bố đã deploy hoặc đang nhận tiền thật. Chi tiết: [Solana escrow implementation plan](SOLANA_ESCROW_IMPLEMENTATION_PLAN.md) và [kết quả E2E local](SOLANA_ESCROW_LOCAL_E2E_20261008.md).
 
@@ -89,8 +91,8 @@ Lưu ý triển khai gia hạn: yêu cầu và quyết định phải được l
 
 **Quyết định cho Client im lặng:** review deadline nằm trong Escrow account, được tính từ submission đã xác nhận on-chain. Sau hạn, instruction release không cần Client ký và chỉ thành công nếu không có revision/dispute on-chain. Solana không tự chạy instruction theo đồng hồ: backend scheduler hoặc Freelancer phải gửi giao dịch và trả phí. Chỉ công bố "đã giải ngân" sau khi đối soát giao dịch và số dư vault. Một dispute mới ghi ở database nhưng chưa lên chain không thể chặn giao dịch release; giao diện phải hiển thị rủi ro này. Chính sách hiện tại là review window do Job cấu hình (mặc định 72 giờ), cộng 24 giờ nếu milestone trên 500 USD.
 
-## 6. Hướng cập nhật nghiệp vụ qua đối tác (chưa triển khai)
+## 6. Nghiệp vụ qua đối tác mock và giới hạn còn lại
 
 Luồng USD→VND qua đối tác là **rail riêng** cho một Job/Milestone: (1) chốt yêu cầu nghiệm thu và phí 3% trước khi nhận việc; (2) Client nộp đủ USD, đối tác mock xác nhận và FreelaX đối soát rồi mới cho Freelancer làm; (3) sau bàn giao hợp lệ, Client duyệt hoặc hệ thống tự duyệt theo chính sách được công bố; (4) đối tác chốt tỷ giá khi nhận lệnh, chi phần Freelancer bằng VND và ghi nhận phí FreelaX; (5) nếu hoàn trước chi, trả đủ USD cho Client và phí FreelaX bằng 0. `RELEASE_PENDING`/`REFUND_PENDING` không đồng nghĩa `PAID`/`REFUNDED`.
 
-Màn hình Admin cần so sánh sao kê đối tác mock với tổng nghĩa vụ ledger theo USD và hiển thị khoản lệch, khoản chờ, thời điểm cập nhật. Bằng chứng Solana không thay sao kê đối tác. **Chưa triển khai** lệnh nhận/chi/hoàn của đối tác, phí 3%, đối soát tổng, ngày làm việc cho tự duyệt, thời hạn thương lượng/điều phối và nhiều milestone. Các mốc 3 ngày tự duyệt, 2 lần nhắc, 3 ngày thương lượng, 5 ngày điều phối vẫn là đề xuất; 2 vòng sửa đang được Job hỗ trợ. Xem [đối chiếu chi tiết](PARTNER_ESCROW_BUSINESS_GAP_20261008.md).
+Màn hình Admin so sánh sao kê đối tác mock với tổng nghĩa vụ ledger theo USD và hiển thị khoản lệch, khoản chờ, thời điểm cập nhật. Bằng chứng Solana không thay sao kê đối tác. Luồng mock có lệnh nhận/chi/hoàn, phí 3%, đối soát tổng, 3 ngày làm việc tự duyệt, 2 lần nhắc, 3 ngày thương lượng và hạn 5 ngày điều phối. Chưa có đối tác fiat thật, lịch ngày lễ, tự gom chat/bằng chứng tin nhắn hoặc nhiều milestone trong một Job. Xem [đối chiếu chi tiết](PARTNER_ESCROW_BUSINESS_GAP_20261008.md).

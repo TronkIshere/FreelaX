@@ -11,7 +11,7 @@ pub use events::*;
 pub use instructions::*;
 pub use state::*;
 
-declare_id!("4Wd6umju26vej2ftzwR6J55pjkUqDQsxfVkt46UqDb1b");
+declare_id!("2Tx2faZU1siV1xvKMxbRN1VesgXftjM3Lff3Nwn69oqb");
 
 #[program]
 pub mod invoice_payments {
@@ -142,10 +142,11 @@ pub mod invoice_payments {
     pub fn fund_milestone_escrow(
         ctx: Context<FundMilestoneEscrow>, milestone_id: [u8; 16],
         freelancer: Pubkey, amount: u64, funding_expires_at: i64, delivery_due_at: i64,
-        review_window_hours: u16, max_revisions: u8,
+        review_window_hours: u16, max_revisions: u8, high_value_review_grace: bool,
     ) -> Result<()> {
         crate::instructions::milestone_escrow::fund(ctx, milestone_id, freelancer,
-            amount, funding_expires_at, delivery_due_at, review_window_hours, max_revisions)
+            amount, funding_expires_at, delivery_due_at, review_window_hours, max_revisions,
+            high_value_review_grace)
     }
 
     pub fn request_escrow_extension(ctx: Context<FreelancerEscrowAction>, new_due_at: i64) -> Result<()> {

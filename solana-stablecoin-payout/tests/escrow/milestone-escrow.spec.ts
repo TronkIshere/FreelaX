@@ -21,7 +21,7 @@ describe("Milestone escrow", () => {
     }
   });
 
-  async function createEscrow(amount: number, fundingExpiresAt?: number) {
+  async function createEscrow(amount: number, fundingExpiresAt?: number, highValueReviewGrace = true) {
     const freelancer = Keypair.generate();
     const sig = await env.provider.connection.requestAirdrop(freelancer.publicKey, LAMPORTS_PER_SOL);
     await env.provider.connection.confirmTransaction(sig, "confirmed");
@@ -36,7 +36,7 @@ describe("Milestone escrow", () => {
     const due = Math.floor(Date.now() / 1000) + 3600;
     await env.program.methods.fundMilestoneEscrow(
       id, freelancer.publicKey, new anchor.BN(amount), new anchor.BN(fundingExpiresAt ?? due),
-      new anchor.BN(due), 72, 2,
+      new anchor.BN(due), 72, 2, highValueReviewGrace,
     ).accountsStrict({
       client: env.mockUsdc.client.publicKey,
       marketplaceAuthority: env.payer.publicKey,
@@ -192,6 +192,20 @@ describe("Milestone escrow", () => {
       .signers([env.mockUsdc.client, x.freelancer]).rpc();
     expect((await getAccount(env.provider.connection, x.vault)).amount).eq(0n);
     expect((await env.program.account.milestoneEscrow.fetch(x.escrow)).status).deep.eq({ refunded: {} });
+  });
+
+  it("adds the high-value review grace only when the funding terms ask for it", async () => {
+    for (const [grace, hours] of [[false, 72], [true, 96]] as const) {
+      const x = await createEscrow(501_000_000, undefined, grace);
+      const escrow = await env.program.account.milestoneEscrow.fetch(x.escrow);
+      expect(escrow.reviewWindowSeconds.toNumber()).eq(hours * 3600);
+      await env.program.methods.refundMutualEscrow().accountsStrict({
+          client: env.mockUsdc.client.publicKey, freelancer: x.freelancer.publicKey,
+          escrow: x.escrow, mint: env.mockUsdc.mint, vault: x.vault,
+          clientAta: env.mockUsdc.clientAta, tokenProgram: TOKEN_PROGRAM_ID,
+        })
+        .signers([env.mockUsdc.client, x.freelancer]).rpc();
+    }
   });
 
   it("freezes a submitted escrow on dispute and lets only Admin resolve it", async () => {

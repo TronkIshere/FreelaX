@@ -77,7 +77,8 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
   const contract = job.contract!;
   const client = user.userType === 'CLIENT' && job.clientUserId === user.id;
   const freelancer = user.userType === 'FREELANCER' && job.freelancerId === user.id;
-  const escrowRail = contract.paymentRail === 'SOLANA_ESCROW';
+  // Unified contracts hold USDC in the same Solana vault, so work actions are wallet-signed escrow actions.
+  const escrowRail = contract.paymentRail === 'SOLANA_ESCROW' || contract.paymentRail === 'UNIFIED_USDC_PAYOUT';
   const scope = attemptScope('submit', user.id, contract.id, contract.milestoneId || 'missing');
   const escrowReviewScope = attemptScope('escrow-review', user.id, contract.id,
     contract.milestoneId || 'missing');
@@ -156,6 +157,11 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
     const timer = window.setInterval(() => setNow(Date.now()), 30000);
     return () => window.clearInterval(timer);
   }, [escrowRail]);
+  // Before the Client signs funding no escrow record exists yet (404): that is "no vault", not a failure.
+  const readEscrow = () => escrowRail && contract.milestoneId
+    ? api.escrowFunding(contract.id, contract.milestoneId)
+      .catch(cause => cause instanceof ApiError && cause.status === 404 ? null : Promise.reject(cause))
+    : Promise.resolve(null);
   useEffect(() => {
     if (!client && !freelancer) { setLoading(false); return; }
     let active = true;
@@ -165,7 +171,7 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
       if (saved && (!saved.key || !saved.payload || !Number.isInteger(saved.baselineVersion))) throw new Error();
       recovery.current = saved; setPending(saved);
       const [returned, currentDispute, chain] = await Promise.all([api.contractSubmissions(contract.id), api.dispute(contract.id),
-        escrowRail && contract.milestoneId ? api.escrowFunding(contract.id, contract.milestoneId) : Promise.resolve(null)]);
+        readEscrow()]);
       if (!active) return;
       const ordered = [...returned].sort((a, b) => b.version - a.version); setList(ordered); setDispute(currentDispute); setEscrowView(chain); setVerified(true);
       if (saved && (ordered[0]?.version || 0) > saved.baselineVersion) { clearAttempt(scope); recovery.current = null; setPending(null); const fresh = await api.job(job.id); if (active) onJobUpdated(fresh); }
@@ -177,7 +183,7 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
     if (syncing.current) return syncing.current;
     const work = (async () => {
       const [fresh, returned, currentDispute, chain] = await Promise.all([api.job(job.id), api.contractSubmissions(contract.id), api.dispute(contract.id),
-        escrowRail && contract.milestoneId ? api.escrowFunding(contract.id, contract.milestoneId) : Promise.resolve(null)]);
+        readEscrow()]);
       if (!alive.current) return;
       const ordered = [...returned].sort((a, b) => b.version - a.version);
       setList(ordered); setDispute(currentDispute); setEscrowView(chain); setVerified(true); onJobUpdated(fresh);
@@ -493,6 +499,12 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
         {releaseConfirmed && <p>{settlement.simulation ? financialCopy.releaseSimulation : 'Marketplace đã xác nhận release. Chi trả ngân hàng cần bằng chứng riêng.'}</p>}
         {!releaseConfirmed && <p>{financialCopy.fundingVsRelease}</p>}
         <FactGrid facts={[{ label: 'Giá trị release', value: String(settlement.amount) + ' ' + settlement.currency },
+          ...(contract.paymentRail === 'PARTNER_ESCROW_MOCK' ? [
+            { label: 'Phí FreelaX khi giải ngân (3%)', value: settlement.platformFeeUsd == null ? 'Chưa ghi nhận' : String(settlement.platformFeeUsd) + ' USD' },
+            { label: 'Freelancer nhận', value: settlement.freelancerUsd == null ? 'Chưa ghi nhận' : String(settlement.freelancerUsd) + ' USD' },
+            { label: 'Tỷ giá USD/VND khóa', value: settlement.lockedUsdVndRate == null ? 'Chưa khóa' : String(settlement.lockedUsdVndRate) },
+            { label: 'Đối tác mock chi VND', value: settlement.partnerPayoutVnd == null ? 'Chưa xác nhận' : String(settlement.partnerPayoutVnd) + ' VND' },
+          ] : []),
           { label: 'Bằng chứng on-chain', value: settlementStageLabel(settlement.onChainStatus) },
           { label: 'Off-ramp', value: settlementStageLabel(settlement.offRampStatus) },
           { label: 'Tạo / Khôi phục chứng từ', value: settlementStageLabel(settlement.taxStatus) }]} />

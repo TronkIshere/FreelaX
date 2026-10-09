@@ -155,6 +155,18 @@ class FundingServiceTest {
     }
 
     @Test
+    void unifiedFlowCannotBeFundedByLegacySimulatedCheckout() {
+        contract.setPaymentRail(PaymentFlow.RAIL);
+        assertThatThrownBy(() -> service.fund(client.getId(), contract.getId(), milestone.getId(),
+                "key-1", request("500.00")))
+                .isInstanceOf(ApplicationException.class)
+                .extracting(ex -> ((ApplicationException) ex).getErrorCode())
+                .isEqualTo(ErrorCode.FUNDING_INVALID_STATE);
+        verifyNoInteractions(payment);
+        verify(transactions, never()).saveAndFlush(any());
+    }
+
+    @Test
     void definitiveProviderRejectionFailsWithoutFundingMilestone() {
         when(payment.findFundingOrder(anyString())).thenReturn(null);
         when(payment.createFundingOrder(any(), any(), any(), anyString(), anyString(), anyString(), anyString()))

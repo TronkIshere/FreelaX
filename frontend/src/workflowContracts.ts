@@ -40,7 +40,7 @@ export function validateSubmission(payload: SubmissionPayload, contract: Contrac
   return null;
 }
 
-export function attemptScope(kind: 'fund' | 'submit' | 'escrow-review', userId: string, contractId: string, milestoneId: string) {
+export function attemptScope(kind: 'fund' | 'submit' | 'escrow-review' | 'unified-usd-order', userId: string, contractId: string, milestoneId: string) {
   return 'freelax:' + kind + ':' + userId + ':' + contractId + ':' + milestoneId;
 }
 export function readAttempt<T>(scope: string): T | null {

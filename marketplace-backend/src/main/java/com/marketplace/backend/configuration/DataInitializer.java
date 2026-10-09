@@ -19,6 +19,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.math.BigDecimal;
@@ -34,6 +36,7 @@ public class DataInitializer {
 
     private static final String SEED_CLIENT_EMAIL = "nguyenhuutrong11133@gmail.com";
     private static final String SEED_FREELANCER_EMAIL = "freelancer.seed@example.com";
+    private static final String SEED_ADMIN_EMAIL = "admin.e2e@example.test";
     private static final BankCode SEED_FREELANCER_BANK_CODE = BankCode.BIDV;
     private static final String SEED_FREELANCER_TAX_CODE = "DEMO-TAX-000001";
     private static final String SEED_FREELANCER_IDENTITY_NUMBER = "DEMO-ID-000001";
@@ -50,8 +53,10 @@ public class DataInitializer {
                                       DeliverableRequirementRepository deliverableRequirementRepository,
                                       DemoWalletSeeder demoWalletSeeder,
                                       PasswordEncoder passwordEncoder,
+                                      Environment environment,
                                       @Value("${DEMO_CLIENT_PASSWORD:}") String clientPassword,
-                                      @Value("${DEMO_FREELANCER_PASSWORD:}") String freelancerPassword) {
+                                      @Value("${DEMO_FREELANCER_PASSWORD:}") String freelancerPassword,
+                                      @Value("${DEMO_ADMIN_PASSWORD:}") String adminPassword) {
         return args -> {
             requireStrongSeedPassword("DEMO_CLIENT_PASSWORD", clientPassword);
             requireStrongSeedPassword("DEMO_FREELANCER_PASSWORD", freelancerPassword);
@@ -72,6 +77,47 @@ public class DataInitializer {
 
             Role userRole = roleRepository.findByName("ROLE_USER")
                     .orElseThrow(() -> new IllegalStateException("ROLE_USER not found after seeding"));
+
+            if (adminPassword != null && !adminPassword.isBlank()) {
+                if (!environment.acceptsProfiles(Profiles.of("dev"))
+                        || environment.acceptsProfiles(Profiles.of("prod"))) {
+                    throw new IllegalStateException("DEMO_ADMIN_PASSWORD is allowed only in the dev profile");
+                }
+                requireStrongSeedPassword("DEMO_ADMIN_PASSWORD", adminPassword);
+                if (adminPassword.equals(clientPassword) || adminPassword.equals(freelancerPassword)) {
+                    throw new IllegalStateException("Demo Admin password must be distinct");
+                }
+                Role adminRole = roleRepository.findByName("ROLE_ADMIN").orElseThrow();
+                User admin = userRepository.findByEmail(SEED_ADMIN_EMAIL).orElseGet(() -> {
+                    User u = new User();
+                    u.setEmail(SEED_ADMIN_EMAIL);
+                    u.setPassword(passwordEncoder.encode(adminPassword));
+                    u.setDisplayName("E2E Demo Admin");
+                    u.setAuthProvider(AuthProvider.LOCAL);
+                    u.setEnabled(true);
+                    u.setRoles(Set.of(userRole, adminRole));
+                    u.setUserType(UserType.CLIENT);
+                    return userRepository.save(u);
+                });
+                if (admin.getRoles().stream()
+                        .noneMatch(role -> "ROLE_ADMIN".equals(role.getName()))) {
+                    throw new IllegalStateException("Reserved E2E Admin account has incompatible state");
+                }
+                if (!admin.isEnabled()) {
+                    admin.setEnabled(true);
+                    userRepository.save(admin);
+                }
+                rotateSeedPassword(admin, adminPassword, userRepository, passwordEncoder);
+            } else {
+                userRepository.findByEmail(SEED_ADMIN_EMAIL).ifPresent(admin -> {
+                    if (admin.isEnabled() && admin.getRoles() != null && admin.getRoles().stream()
+                            .anyMatch(role -> "ROLE_ADMIN".equals(role.getName()))) {
+                        admin.setEnabled(false);
+                        admin.setRefreshToken(null);
+                        userRepository.save(admin);
+                    }
+                });
+            }
 
             User client = userRepository.findByEmail(SEED_CLIENT_EMAIL).orElseGet(() -> {
                 User u = new User();

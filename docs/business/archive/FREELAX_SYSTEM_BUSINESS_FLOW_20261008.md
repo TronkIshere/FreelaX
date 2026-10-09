@@ -1,5 +1,7 @@
 # FreelaX — Hệ thống và luồng nghiệp vụ tổng thể
 
+> **Lưu trữ theo mốc ngày.** Xem [tổng quan hiện tại](../README.md) và [trạng thái kiểm chứng](../VERIFICATION.md) trước khi dùng các kết luận bên dưới.
+
 > Phần 1–10 bên dưới ghi lại **baseline P06 tại thời điểm freeze**. Để đọc trạng thái nhánh hiện tại và luồng USD→VND đã chốt về nghiệp vụ, xem phần 0 ngay dưới đây. Một số ca escrow token local đã qua E2E; toàn bộ gate và devnet chưa hoàn tất. Xem [báo cáo E2E](SOLANA_ESCROW_LOCAL_E2E_20261008.md).
 
 **Ngày chốt:** 2026-10-08
@@ -18,7 +20,7 @@
 | --- | --- | --- | --- |
 | P06 Payment simulation | Ledger mô phỏng của Payment Backend; không có USD ngân hàng được xác minh | Funding `SUCCEEDED` mới mở việc; primary settlement mô phỏng `SUCCEEDED` mới hoàn tất Job | Đã có và E2E P06; không phải ký quỹ tiền thật. |
 | `SOLANA_ESCROW` | Mock token trong vault PDA riêng của một Milestone; không phải USD ở ngân hàng | Vault được xác minh đã nhận token mới mở việc; chỉ hoàn tất sau chuyển token release được xác minh | Có code và một số ca E2E local đã qua; còn gate mở. |
-| Đối tác giữ USD → trả VND | Đối tác có phạm vi hoạt động phù hợp sẽ giữ USD và chi/hoàn theo lệnh FreelaX; MVP dùng đối tác/sao kê **mock** | Sao kê đối tác xác nhận đủ USD mới mở việc; xác nhận chi VND/hoàn USD mới tất toán | **Luồng mục tiêu chưa có code/E2E.** Quy tắc tiền đã chốt trong [tài liệu đối tác](PARTNER_ESCROW_BUSINESS_GAP_20261008.md). |
+| `PARTNER_ESCROW_MOCK` | Payment Backend giữ sao kê **mock** riêng; về sau cần đối tác có phạm vi hoạt động phù hợp để giữ USD và chi/hoàn | Đối tác mock xác nhận đủ USD mới mở việc; xác nhận chi VND/hoàn USD mới tất toán | API E2E chi/hoàn và browser E2E seed account đã qua trên local; fiat thật chưa có. Xem [tài liệu đối tác](PARTNER_ESCROW_BUSINESS_GAP_20261008.md). |
 
 Luồng nghiệp vụ mục tiêu qua đối tác, không dùng token Solana cho cùng một khoản tiền:
 
@@ -34,7 +36,7 @@ Client và Freelancer chốt đầu ra, tiêu chí, hạn, tối đa 2 vòng s�
 
 **Ranh giới trạng thái:** `Đã ký quỹ` đòi hỏi bằng chứng nhận tiền; `Đã duyệt` chỉ cho phép tạo lệnh chi; `Đang giải ngân` chưa phải `Đã thanh toán`. Tiền chờ đối soát hoặc đang tranh chấp không được giải ngân/hoàn theo một kết quả phỏng đoán. Số dư đối tác mock phải đối soát với tổng nghĩa vụ chưa quyết toán theo USD; không cộng USD và VND làm một số dư. Mọi màn hình demo đối tác ghi rõ **mô phỏng**.
 
-Quy tắc phí đã chốt cho luồng mục tiêu là **3% giá Job, do Freelancer chịu, chỉ ghi nhận sau giải ngân thành công**. Tỷ giá khóa lúc tạo lệnh chi; MVP mock không tính phí đối tác; hoàn trước giải ngân trả đủ USD và không tính phí FreelaX. Các mốc tự duyệt 3 ngày làm việc, 2 lần nhắc, thương lượng 3 ngày, điều phối 5 ngày **vẫn là đề xuất chưa triển khai**. Một Job hiện chỉ có một Milestone; trả theo nhiều giai đoạn là hướng sau MVP.
+Rail đối tác mock thu **3% giá Job, do Freelancer chịu, chỉ ghi nhận sau giải ngân thành công**. Tỷ giá khóa lúc tạo lệnh chi; mock không tính phí đối tác; hoàn trước giải ngân trả đủ USD và không tính phí FreelaX. Rail này tự duyệt sau 3 ngày làm việc, nhắc 2 lần; tranh chấp đóng băng tiền, dành 3 ngày làm việc tự thương lượng, sau đó Admin có mốc 5 ngày làm việc để quyết định. Một Job hiện chỉ có một Milestone; trả theo nhiều giai đoạn là hướng sau MVP.
 
 ## 1. FreelaX giải quyết bài toán gì?
 

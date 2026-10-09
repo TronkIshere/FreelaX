@@ -27,12 +27,15 @@ export function DisputeRecord({ dispute }: { dispute: Dispute }) {
     <p className="metadata">Lý do: {dispute.reasonCode}</p><p className="submission-summary">{dispute.description}</p>
     <FactGrid facts={[
       { label: 'Mở hồ sơ', value: localInstant(dispute.openedAt) },
+      ...(dispute.negotiationUntil ? [{ label: 'Hạn tự thương lượng', value: localInstant(dispute.negotiationUntil) }] : []),
+      ...(dispute.moderationDueAt ? [{ label: 'Hạn điều phối quyết định', value: localInstant(dispute.moderationDueAt) }] : []),
       { label: 'Admin tiếp nhận', value: dispute.claimedAt ? localInstant(dispute.claimedAt) : 'Chưa tiếp nhận' },
       ...(dispute.decisionAt ? [{ label: 'Quyết định', value: localInstant(dispute.decisionAt) }] : []),
       ...(dispute.resolvedAt ? [{ label: 'Hoàn tất hồ sơ', value: localInstant(dispute.resolvedAt) }] : []),
     ]} />
     {dispute.resolutionReason && <section className="feedback-document"><SectionHeading title="Lý do quyết định" level={3} /><p>{dispute.resolutionReason}</p></section>}
-    {dispute.status === 'OPEN' && <p>Chờ Admin tiếp nhận. Hai bên có thể bổ sung bằng chứng.</p>}
+    {dispute.status === 'OPEN' && <p>{dispute.negotiationUntil ? 'Tiền đang đóng băng; hai bên có thể tự thương lượng trước hạn. Nếu không thống nhất, Admin tiếp nhận sau hạn.' : 'Chờ Admin tiếp nhận.'} Hai bên có thể bổ sung bằng chứng.</p>}
+    {dispute.negotiationOutcome && dispute.status === 'OPEN' && <p>Đề xuất: {dispute.negotiationOutcome === 'REFUND_TO_CLIENT' ? 'Hoàn đủ USD cho Client' : 'Giải ngân cho Freelancer (phí 3%)'} · {dispute.negotiationReason}</p>}
     {dispute.status === 'UNDER_REVIEW' && <p>Admin đã tiếp nhận; bằng chứng đã khóa.</p>}
     {dispute.status === 'DECISION_PENDING_RELEASE' && <p>Quyết định release đã lưu. Chưa xác nhận release thành công; các chặng tài chính được đối soát riêng.</p>}
     {dispute.status === 'RESOLVED_RELEASE' && <p>Hồ sơ đã giải quyết. Xem bản ghi settlement để đối chiếu release; không suy ra chi trả ngân hàng từ quyết định Admin.</p>}
@@ -70,6 +73,8 @@ export function ContractDispute({ contractId, user, dispute, ready, eligible, bl
   const [openIntent, setOpenIntent] = useState<OpenDisputeInput | null>(null);
   const [busy, setBusy] = useState(false); const [error, setError] = useState<unknown>(null); const [notice, setNotice] = useState('');
   const [storageReady, setStorageReady] = useState(false);
+  const [negotiationOutcome, setNegotiationOutcome] = useState<'RELEASE_TO_FREELANCER' | 'REFUND_TO_CLIENT'>('REFUND_TO_CLIENT');
+  const [negotiationReason, setNegotiationReason] = useState('');
   const alive = useRef(true); const scope = 'freelax:dispute-evidence:' + user.id + ':' + contractId;
   useEffect(() => {
     alive.current = true;
@@ -129,9 +134,33 @@ export function ContractDispute({ contractId, user, dispute, ready, eligible, bl
       }
     } finally { operationLock.current = false; if (alive.current) { setBusy(false); onBusy(false); } }
   }
+  async function negotiate() {
+    if (!dispute || !enabled || operationLock.current || dispute.status !== 'OPEN'
+      || !dispute.negotiationUntil || Date.now() >= new Date(dispute.negotiationUntil).getTime()) return;
+    const outcome = dispute.negotiationOutcome || negotiationOutcome;
+    const reason = dispute.negotiationReason || negotiationReason.trim();
+    if (!reason || reason.length > 2000 || dispute.negotiationProposedBy === user.id) return;
+    operationLock.current = true; setBusy(true); onBusy(true); setError(null);
+    try {
+      const fresh = await api.dispute(contractId);
+      if (!fresh || fresh.status !== 'OPEN' || fresh.negotiationProposedBy !== dispute.negotiationProposedBy) return;
+      await api.negotiateDispute(contractId, dispute.disputeId, outcome, reason);
+      if (alive.current) { setNotice(dispute.negotiationProposedBy ? 'Hai bên đã đồng ý; đang đối soát tiền.' : 'Đã gửi đề xuất dàn xếp.'); await onRefresh(); }
+    } catch (cause) { if (alive.current) setError(cause); await onRefresh().catch(() => {}); }
+    finally { operationLock.current = false; if (alive.current) { setBusy(false); onBusy(false); } }
+  }
   const formVisible = (!dispute && opening && eligible) || dispute?.status === 'OPEN';
   return <section className="dispute-document" id="contract-dispute" aria-label="Hồ sơ tranh chấp">
     {dispute ? <DisputeRecord dispute={dispute} /> : <SectionHeading title="Tranh chấp hợp đồng" description={ready ? 'Chưa có hồ sơ tranh chấp.' : 'Đang đối chiếu hồ sơ từ Marketplace.'} />}
+    {dispute?.status === 'OPEN' && dispute.negotiationUntil && Date.now() < new Date(dispute.negotiationUntil).getTime() && <section aria-label="Tự thương lượng">
+      <SectionHeading title="Tự thương lượng" level={3} />
+      {!dispute.negotiationProposedBy && <>
+        <label>Kết quả đề xuất<select value={negotiationOutcome} onChange={e => setNegotiationOutcome(e.target.value as typeof negotiationOutcome)}><option value="REFUND_TO_CLIENT">Hoàn đủ USD cho Client</option><option value="RELEASE_TO_FREELANCER">Giải ngân cho Freelancer, trừ phí 3%</option></select></label>
+        <label>Lý do thỏa thuận<textarea value={negotiationReason} maxLength={2000} onChange={e => setNegotiationReason(e.target.value)} /></label>
+      </>}
+      {dispute.negotiationProposedBy === user.id ? <p>Đang chờ bên còn lại đồng ý đúng nội dung đề xuất.</p>
+        : <button className="button" type="button" disabled={!enabled || (!dispute.negotiationProposedBy && !negotiationReason.trim())} onClick={() => void negotiate()}>{dispute.negotiationProposedBy ? 'Đồng ý đề xuất' : 'Gửi đề xuất'}</button>}
+    </section>}
     {!dispute && eligible && !opening && <button className="button button-secondary" disabled={!enabled} onClick={() => setOpening(true)}>Mở hồ sơ tranh chấp</button>}
     {formVisible && <form className="dispute-form" onSubmit={mutate}>
       {!dispute && <><p>Xác nhận mở tranh chấp sẽ khóa bàn giao và review để Admin xem xét.</p>

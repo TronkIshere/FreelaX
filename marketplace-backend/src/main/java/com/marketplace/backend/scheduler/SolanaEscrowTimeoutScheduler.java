@@ -29,5 +29,14 @@ public class SolanaEscrowTimeoutScheduler {
                 log.warn("Escrow reconciliation will retry record {}", escrow.getId());
             }
         }
+        // Safety net: a work-state path may mark the escrow reconciled before the unified
+        // payment flow records USDC_RELEASE/USDC_REFUND; re-read the chain for those.
+        for (var escrow : escrows.findUnifiedTerminalAwaitingFlow(org.springframework.data.domain.PageRequest.of(0, 50))) {
+            try {
+                service.process(escrow.getId());
+            } catch (RuntimeException ex) {
+                log.warn("Unified terminal reconciliation will retry record {}", escrow.getId());
+            }
+        }
     }
 }

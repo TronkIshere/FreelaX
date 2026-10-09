@@ -1,5 +1,7 @@
 # FreelaX — Solana đã được dùng để giải quyết bài toán nghiệp vụ gì?
 
+> **Lưu trữ theo mốc ngày.** Xem [tổng quan hiện tại](../README.md) và [trạng thái kiểm chứng](../VERIFICATION.md) trước khi dùng các kết luận bên dưới.
+
 **Mục tiêu tài liệu:** giải thích vai trò của Solana theo góc nhìn sản phẩm/nghiệp vụ, hạn chế đi sâu vào code.
 
 **Trạng thái:** phần 1–9 dưới đây chủ yếu mô tả kiến trúc và giới hạn **baseline P06.7/P06.8**. Track escrow sau P06 có implementation riêng trên `feat/solana-milestone-escrow`; một số ca local-validator E2E đã qua, toàn bộ gate và devnet chưa xong. Xem [kế hoạch](SOLANA_ESCROW_IMPLEMENTATION_PLAN.md) và [kết quả E2E](SOLANA_ESCROW_LOCAL_E2E_20261008.md).
@@ -12,7 +14,7 @@
 | `SOLANA_ESCROW` trên nhánh hiện tại | Vault PDA giữ mock token của **một Milestone/Job**, ghi submission, review, revision, dispute và chuyển token release/refund | Trạng thái vault và giao dịch chuyển token đã xác minh. Đây không phải USD ngân hàng hoặc payout VND. |
 | Đối tác giữ USD → chi VND, mục tiêu MVP | **Không tham gia khoản tiền của luồng này**; không được tính cùng một khoản ở vault Solana và sổ đối tác | Sao kê/xác nhận của đối tác mock; khi có đối tác thật phải tích hợp và đối soát riêng. |
 
-Quy tắc phí **FreelaX 3% chỉ khi giải ngân thành công** thuộc luồng đối tác USD→VND đã chốt về nghiệp vụ, **chưa có code**. Instruction release của rail Solana hiện chuyển toàn bộ token cho Freelancer và không thực hiện phép trừ 3%. Xem [luồng đối tác](PARTNER_ESCROW_BUSINESS_GAP_20261008.md).
+Quy tắc phí **FreelaX 3% chỉ khi giải ngân thành công** đã được mã hóa cho `PARTNER_ESCROW_MOCK`. Instruction release của rail Solana hiện chuyển toàn bộ token cho Freelancer và không thực hiện phép trừ 3%. Xem [luồng đối tác](PARTNER_ESCROW_BUSINESS_GAP_20261008.md).
 
 ## 1. Vấn đề nghiệp vụ trước khi có lớp Solana
 
@@ -82,7 +84,7 @@ Một quyết định quan trọng của FreelaX là:
 
 > **Ở rail P06 simulation**, Payment/primary settlement success là mốc tiền mô phỏng chính; lỗi Solana/MISA downstream không được biến một release đã xác nhận thành thất bại nghiệp vụ.
 
-Với `SOLANA_ESCROW`, kết luận tiền đảo chiều: Marketplace **chưa** được đánh dấu release/refund thành công cho đến khi chuyển token từ vault được xác minh. Với luồng đối tác USD→VND mục tiêu, cần xác nhận chi/hoàn từ đối tác trước khi đánh dấu `PAID`/`REFUNDED`.
+Với `SOLANA_ESCROW`, kết luận tiền đảo chiều: Marketplace **chưa** được đánh dấu release/refund thành công cho đến khi chuyển token từ vault được xác minh. Với `PARTNER_ESCROW_MOCK`, cần xác nhận chi/hoàn từ đối tác mock trước khi đánh dấu `PAID`/`REFUNDED`.
 
 Điều này giải quyết bài toán reliability:
 
@@ -193,7 +195,7 @@ Stablecoin/on-chain có thể trở thành rail chuyển giá trị; off-ramp v�
 
 ## 7. Cách nói ngắn khi thuyết trình
 
-> FreelaX có rail escrow Solana giữ mock token cho từng Milestone, với bằng chứng funding, release và refund on-chain. Đây là luồng token riêng, chưa phải tài khoản USD của đối tác hay chuyển khoản VND. Luồng đối tác USD→VND cho MVP sẽ được mô phỏng và đối soát bằng sao kê riêng; phí FreelaX 3% chỉ phát sinh khi giải ngân thành công. Các màn hình phải nói đúng tiền đang nằm ở rail nào và bước nào đã được xác nhận.
+> FreelaX có rail escrow Solana giữ mock token cho từng Milestone, với bằng chứng funding, release và refund on-chain. Đây là luồng token riêng, chưa phải tài khoản USD của đối tác hay chuyển khoản VND. Rail `PARTNER_ESCROW_MOCK` dùng sao kê mock riêng; phí FreelaX 3% chỉ phát sinh khi giải ngân thành công. Các màn hình phải nói đúng tiền đang nằm ở rail nào và bước nào đã được xác nhận.
 
 ## 8. Source paths liên quan
 
@@ -211,7 +213,7 @@ Stablecoin/on-chain có thể trở thành rail chuyển giá trị; off-ramp v�
 `solana-stablecoin-payout/docs/bao-cao-tich-hop-freelax-solana.md` chứa cả đánh giá lịch sử và kiến trúc đích ở thời điểm trước. Khi nội dung cũ mâu thuẫn với hiện trạng hoặc quy tắc đã chốt, đọc theo phạm vi:
 
 1. Source trên nhánh hiện tại cùng [báo cáo E2E local](SOLANA_ESCROW_LOCAL_E2E_20261008.md) quyết định điều **đã triển khai/kiểm chứng**.
-2. [Luồng đối tác](PARTNER_ESCROW_BUSINESS_GAP_20261008.md) quyết định nghiệp vụ **đã chốt nhưng chưa triển khai** cho phí 3% và USD→VND.
+2. [Luồng đối tác](PARTNER_ESCROW_BUSINESS_GAP_20261008.md) mô tả nghiệp vụ và mã mock hiện có cho phí 3% và USD→VND; chưa phải fiat thật.
 3. `docs/ui/FREELAX_FINAL_FREEZE_HANDOFF_20261008.md` và `docs/mvp-functional-spec.md` là bằng chứng/thiết kế **lịch sử P06**, không ghi đè track sau P06.
 
 ## 10. Skill Verification / Solana Attestation — tách khỏi hiện tại

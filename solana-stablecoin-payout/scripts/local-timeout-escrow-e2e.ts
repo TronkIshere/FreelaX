@@ -128,14 +128,21 @@ async function finish() {
   const freelancerAta = getAssociatedTokenAddressSync(new PublicKey(proof.mint),
     freelancerWallet.publicKey);
   const after = (await getAccount(rpc, freelancerAta)).amount;
+  const transaction = escrow.releaseSignature
+    ? await rpc.getSignatureStatus(escrow.releaseSignature, { searchTransactionHistory: true }) : null;
   if (escrow.status !== "Released" || escrow.vaultBalanceBaseUnits !== "0"
       || completed.contract.status !== "COMPLETED"
+      || !escrow.releaseSignature || transaction?.value?.err
       || after !== BigInt(proof.freelancerBalanceBefore) + 20_000_000n) {
-    throw new Error("Timeout release did not reconcile with vault and Freelancer token balance");
+    throw new Error(`Timeout release proof mismatch: ${JSON.stringify({ escrowStatus: escrow.status,
+      vaultBalance: escrow.vaultBalanceBaseUnits, jobStatus: completed.status,
+      contractStatus: completed.contract.status, releaseSignature: escrow.releaseSignature,
+      transaction: transaction?.value, freelancerReceived: String(after - BigInt(proof.freelancerBalanceBefore)) })}`);
   }
   console.log(JSON.stringify({ ...proof, jobStatus: completed.status,
     releaseSignature: escrow.releaseSignature, vaultAfter: escrow.vaultBalanceBaseUnits,
-    freelancerReceivedBaseUnits: String(after - BigInt(proof.freelancerBalanceBefore)) }, null, 2));
+    freelancerReceivedBaseUnits: String(after - BigInt(proof.freelancerBalanceBefore)),
+    signatureInRpcHistory: !!transaction?.value }, null, 2));
 }
 
 async function claim() {
@@ -151,6 +158,8 @@ async function claim() {
   console.log(JSON.stringify({ milestoneId: proof.milestoneId, ...result }, null, 2));
 }
 
-(process.argv[2] === "finish" ? finish()
-  : process.argv[2] === "claim" ? claim() : setup())
-  .catch(error => { console.error(error); process.exitCode = 1; });
+describe("Marketplace scheduler timeout release", function () {
+  this.timeout(120_000);
+  const phase = process.env.ESCROW_E2E_PHASE ?? "setup";
+  it(phase, phase === "finish" ? finish : phase === "claim" ? claim : setup);
+});
