@@ -71,6 +71,7 @@ function JobDocument({ job }: { job: Detail }) {
         { label: 'Hạn funding', value: job.localPaymentTerms.fundingHours + ' giờ từ khi giao việc' },
         { label: 'Thời hạn duyệt', value: job.localPaymentTerms.reviewWindowHours + ' giờ sau bàn giao hợp lệ, không gia hạn' },
         { label: 'Số lần sửa tối đa', value: String(job.localPaymentTerms.maxRevisions) },
+        { label: 'Gia hạn bàn giao', value: 'Một lần, tối đa 7 ngày sau hạn gốc, trước bản bàn giao đầu tiên; chỉ khi Client duyệt on-chain' },
         ...(job.localPaymentTerms.mint ? [{ label: 'Token escrow', value: 'Mock USDC · ' + job.localPaymentTerms.network + ' · mint ' + job.localPaymentTerms.mint }] : []),
       ]} />
       <p className="metadata">Hai bên xác nhận cùng phiên bản điều khoản trước khi phân công. Số VND cuối cùng theo quote được khóa khi withdrawal; mô phỏng không dùng tiền thật.</p>

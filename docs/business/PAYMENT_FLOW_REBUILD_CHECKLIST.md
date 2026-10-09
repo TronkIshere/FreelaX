@@ -11,11 +11,11 @@
 - [x] Chốt nguồn quote USD/USDC (local 1:1, hạn 15 phút) và USDC/USD/VND (25.000, khóa theo withdrawal), làm tròn USD 2 chữ số, USDC 6 chữ số, VND `HALF_UP`; vault thiếu một đơn vị nhỏ nhất thì không mở việc.
 - [x] Chốt cơ chế thu phí 3% **cho local mock**: toàn bộ USDC release về ví Freelancer, Freelancer ký withdrawal toàn bộ vào treasury FreelaX; đối tác mock chỉ đổi phần sau phí sang VND. Phí chỉ được ghi khi WithdrawalRecord on-chain (toàn bộ USDC vào treasury) **và** hai sao kê độc lập `VND_PAYOUT` + `PLATFORM_FEE` cùng khớp; thiếu một trong hai thì giữ `UNKNOWN`, không tạo lệnh thu lần hai. Provider thật cần cơ chế riêng (gate production).
 - [x] Chốt cách hoàn **đủ gross USD** trước release, gồm bên chịu phí on-ramp/off-ramp và chênh lệch tỷ giá. Nếu chưa bảo đảm được, phải sửa điều khoản trước khi bật flow.
-- [ ] Chốt một chính sách hạn funding, bàn giao/gia hạn, review, tự duyệt/nhắc, tranh chấp và Admin cho flow mới; ánh xạ cùng điều khoản sang server và chain. **Đã làm:** hạn funding 48 giờ lưu một lần trên `PaymentFlow` và dùng cho server lẫn chain; review cố định 72 giờ, không grace (`high_value_review_grace=false`); timer không hủy khi USD có thể đã vào; Admin hủy quá hạn có audit. **Còn lại:** chủ sản phẩm xác nhận quy tắc gia hạn bàn giao on-chain hiện có (một lần, ≤ 7 ngày, Client duyệt) là điều khoản của flow mới.
+- [x] Chốt một chính sách hạn funding, bàn giao/gia hạn, review, tự duyệt/nhắc, tranh chấp và Admin cho flow mới; ánh xạ cùng điều khoản sang server và chain: hạn funding 48 giờ lưu một lần trên `PaymentFlow` cho server lẫn chain; review cố định 72 giờ, không grace (`high_value_review_grace=false`); gia hạn bàn giao một lần, ≤ hạn gốc + 7 ngày, Client duyệt on-chain (chủ sản phẩm chốt 2026-10-10); timer không hủy khi USD có thể đã vào; tranh chấp chặn auto release; Admin resolve toàn phần và hủy quá hạn có audit.
 - [x] Chốt quy tắc Job `COMPLETED` khi công việc/release USDC xong, còn Finance `VND_PAID` chỉ khi đối tác xác nhận VND; tax/review không thay thế payout evidence.
 - [x] Liệt kê Job đang `PENDING/UNKNOWN` trên từng rail cũ và quy tắc xử lý riêng: [runbook](CUTOVER_RUNBOOK.md#khoản-đang-dở-trên-db-local-đọc-ngày-2026-10-09-sau-e2e). Không migrate tiền/vault/withdrawal đang dở bằng cập nhật DB.
 
-**Gate 0: chưa đạt** chỉ vì quy tắc gia hạn bàn giao chờ chủ sản phẩm xác nhận. Tài khoản mới đã thấy cùng điều khoản (gồm mint/network, review 72 giờ) và xác nhận cùng fingerprint trên browser.
+**Gate 0: đạt ở local mock.** Tài khoản mới đã thấy cùng điều khoản (gồm mint/network, review 72 giờ, quy tắc gia hạn) và xác nhận cùng fingerprint trên browser.
 
 ## 1. Backend — mô hình dữ liệu, API và bảo toàn trạng thái
 
@@ -99,6 +99,8 @@
 - [x] **Failure/recovery:** Payment Backend sập lúc nộp USD và lúc chi fiat, RPC mất lúc đối soát và lúc gửi withdrawal, giao dịch on-ramp bị rơi khi validator dừng, restart Marketplace: hồi phục cùng reference, một sao kê, treasury tăng đúng một lần.
 - [x] **Security:** rà soát endpoint mới (participant/Client/người nhận/Admin, chữ ký do server build và Gateway so hash, beneficiary không lộ ra API); ẩn tài khoản ngân hàng Client khỏi Freelancer; test 401/403/danh tính.
 - [x] **Reconciliation:** trên stack chạy thật Admin thấy `MATCHED`, `MISMATCH` (flow timeout chỉ tồn tại trên bản sao ledger: `TERMINAL_CHAIN_MISMATCH`, withdrawal bị chặn, không thể “xóa” khi chưa có bằng chứng) và `UNKNOWN` (RPC mất); quyết định Admin có audit.
-- [ ] **Docs/evidence:** VERIFICATION đã cập nhật; README chỉ đổi thành “đã triển khai” sau khi chủ sản phẩm xác nhận quy tắc gia hạn (Gate 0).
+- [x] **Docs/evidence:** VERIFICATION có lệnh chạy, ID và giới hạn; README đổi thành “đã triển khai ở local mock” sau khi chủ sản phẩm chốt quy tắc gia hạn (2026-10-10).
+
+**Gate hoàn tất: đạt ở local mock (2026-10-10).**
 
 **Local mock PASS** không đồng nghĩa đã vận hành với USD/USDC/VND thật. Devnet, provider thật, quản lý khóa và vận hành production có gate riêng.

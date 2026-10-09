@@ -2,7 +2,7 @@
 
 **Vai trò chính thức:** Solana là lớp **giữ và chuyển USDC có thể xác minh** ở giữa on-ramp USD và off-ramp VND. Một Job có **một luồng tiền**: `USD Client → USDC Client → vault escrow của Milestone → USDC Freelancer → VND Freelancer`. `paymentFlowId` ở Marketplace liên kết các bước; Solana không nhận USD, không tự đổi USDC thành VND và không xác nhận tiền đã đến ngân hàng.
 
-**Trạng thái 2026-10-09 (cuối ngày):** Marketplace nối USD order → on-ramp → escrow → withdrawal → VND mock payout và nhánh hoàn USD; browser E2E từ tài khoản mới PASS cả hai nhánh, bốn ranh giới đối soát `MATCHED`. Flag cutover vẫn tắt vì các gate dispute/timeout trên flow unified, failure injection, test đồng thời và tổng hợp theo đồng tiền chưa đạt. Xem [nghiệp vụ chính thức](README.md), [luồng tiền và đối soát](PAYMENT_FLOW.md), [checklist](PAYMENT_FLOW_REBUILD_CHECKLIST.md) và [bằng chứng](VERIFICATION.md).
+**Trạng thái 2026-10-10:** luồng USD order → on-ramp → escrow → withdrawal → VND mock payout và nhánh hoàn USD **đã triển khai ở local mock**: browser từ tài khoản mới, tranh chấp, hết hạn review, drill sự cố và đối soát bốn ranh giới đều đạt; môi trường local đã chuyển đổi. Devnet, tiền thật và đối tác thật chưa bắt đầu.
 
 ## Vị trí của Solana
 
