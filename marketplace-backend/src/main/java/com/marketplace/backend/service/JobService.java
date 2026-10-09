@@ -56,7 +56,7 @@ public interface JobService {
 
     JobResponse assignFreelancer(UUID clientUserId, UUID jobId, AssignFreelancerRequest request);
 
-    JobApplicationResponse apply(UUID freelancerId, UUID jobId);
+    JobApplicationResponse apply(UUID freelancerId, UUID jobId, String acceptedTermsFingerprint);
 
     List<JobApplicationResponse> listApplications(UUID clientUserId, UUID jobId);
 

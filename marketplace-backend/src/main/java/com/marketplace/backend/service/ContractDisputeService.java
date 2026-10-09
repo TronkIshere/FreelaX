@@ -1,7 +1,10 @@
 package com.marketplace.backend.service;
 
+import com.marketplace.backend.client.SolanaCprClient;
+import com.marketplace.backend.client.PaymentBackendClient;
 import com.marketplace.backend.dto.request.dispute.*;
 import com.marketplace.backend.dto.response.dispute.*;
+import com.marketplace.backend.dto.response.solana.SolanaEscrowResult;
 import com.marketplace.backend.entity.*;
 import com.marketplace.backend.exception.*;
 import com.marketplace.backend.repository.*;
@@ -9,6 +12,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.transaction.TransactionDefinition;
@@ -38,10 +44,18 @@ public class ContractDisputeService {
     private final DeliverableRequirementRepository requirements;
     private final AcceptanceCriterionRepository criteria;
     private final FundingTransactionRepository funding;
+    private final EscrowContractRepository escrowContracts;
+    private final SolanaCprClient solana;
+    private final PaymentBackendClient payment;
     private final ContractSettlementRepository settlements;
     private final ContractCancellationRepository cancellations;
     private final NotificationService notifications;
+    private final BusinessDayClock businessDays;
     private final TransactionTemplate transactions;
+    private final Environment environment;
+
+    @Value("${partner-mock.e2e-negotiation-seconds:0}")
+    private int e2eNegotiationSeconds;
 
     @Transactional
     public DisputeResponse open(UUID actor, UUID contractId, OpenDisputeRequest request) {
@@ -56,6 +70,9 @@ public class ContractDisputeService {
                 || cancellations.findByContractId(contractId).filter(x ->
                 x.getStatus() == CancellationStatus.REFUND_PENDING || x.getStatus() == CancellationStatus.CANCELLED).isPresent())
             throw ineligible();
+        if (escrowContracts.existsByContractId(contractId)) {
+            return openEscrow(actor, c, m, j, request, items);
+        }
         FundingTransaction f = funding.findFirstByMilestoneIdOrderByCreatedAtDesc(m.getId()).orElseThrow(this::ineligible);
         if (f.getStatus() != FundingStatus.SUCCEEDED || f.getCheckoutOrderId() == null
                 || !Objects.equals(f.getContractId(), contractId) || !Objects.equals(f.getMilestoneId(), m.getId())
@@ -78,11 +95,21 @@ public class ContractDisputeService {
                 && j.getStatus() == JobStatus.REVISION_REQUESTED && latest != null
                 && latest.getStatus() == JobSubmissionStatus.REVISION_REQUESTED;
         if (!beforeSubmission && !review && !revision) throw ineligible();
+        if (PartnerEscrowFundingService.RAIL.equals(c.getPaymentRail())) {
+            var frozen = payment.freezePartnerEscrow(m.getId());
+            if (!"FROZEN".equals(frozen.status())) throw ineligible();
+        }
         ContractDispute d = new ContractDispute();
         d.setContractId(contractId); d.setMilestoneId(m.getId()); d.setJobId(j.getId());
         d.setSubmissionId(latest == null ? null : latest.getId()); d.setOpenedBy(actor);
         d.setReasonCode(request.reasonCode().trim()); d.setDescription(request.description().trim());
         d.setOpenedAt(Instant.now()); d.setStatus(DisputeStatus.OPEN);
+        if (PartnerEscrowFundingService.RAIL.equals(c.getPaymentRail()))
+            d.setNegotiationUntil(e2eNegotiationSeconds > 0
+                    && environment.acceptsProfiles(Profiles.of("dev"))
+                    && !environment.acceptsProfiles(Profiles.of("prod"))
+                    ? d.getOpenedAt().plusSeconds(e2eNegotiationSeconds)
+                    : businessDays.add(d.getOpenedAt(), 3));
         disputes.saveAndFlush(d);
         if (review) latest.setStatus(JobSubmissionStatus.DISPUTED);
         c.setStatus(ContractStatus.DISPUTED); m.setStatus(MilestoneStatus.DISPUTED);
@@ -98,6 +125,72 @@ public class ContractDisputeService {
     public DisputeResponse get(UUID actor, UUID contractId) {
         participant(actor, contractId);
         return disputes.findByContractId(contractId).map(this::response).orElse(null);
+    }
+
+    /** Each participant must approve the same all-or-nothing outcome during the negotiation window. */
+    public DisputeResponse negotiate(UUID actor, UUID contractId, UUID disputeId, NegotiateDisputeRequest request) {
+        if (request == null || request.outcome() == null || !StringUtils.hasText(request.reason())
+                || request.reason().trim().length() > 2000) throw new ApplicationException(ErrorCode.INVALID_DATA);
+        return committed(() -> {
+            Milestone m = milestones.findWithLockByContractId(contractId).orElseThrow(this::notFound);
+            WorkContract c = participant(actor, contractId);
+            ContractDispute d = disputes.findById(disputeId)
+                    .filter(row -> contractId.equals(row.getContractId())).orElseThrow(this::notFound);
+            if (!PartnerEscrowFundingService.RAIL.equals(c.getPaymentRail())
+                    || d.getStatus() != DisputeStatus.OPEN || m.getStatus() != MilestoneStatus.DISPUTED
+                    || d.getNegotiationUntil() == null || !Instant.now().isBefore(d.getNegotiationUntil()))
+                throw new ApplicationException(ErrorCode.DISPUTE_CONFLICT);
+            String reason = request.reason().trim();
+            if (d.getNegotiationProposedBy() == null) {
+                d.setNegotiationProposedBy(actor);
+                d.setNegotiationOutcome(request.outcome().name());
+                d.setNegotiationReason(reason);
+                d.setNegotiationProposedAt(Instant.now());
+                disputes.saveAndFlush(d);
+                log(d, actor, "NEGOTIATION_PROPOSED", DisputeStatus.OPEN.name(), DisputeStatus.OPEN.name(), reason, null);
+                notifications.notify(actor.equals(c.getClientUserId()) ? c.getFreelancerId() : c.getClientUserId(),
+                        NotificationType.DISPUTE_OPENED, "Đề xuất dàn xếp tranh chấp",
+                        "Đối tác đã đề xuất giải quyết; xem kết quả và lý do trước khi đồng ý.", c.getJobId());
+                return response(d);
+            }
+            if (actor.equals(d.getNegotiationProposedBy())) {
+                if (d.getNegotiationOutcome().equals(request.outcome().name())
+                        && d.getNegotiationReason().equals(reason)) return response(d);
+                throw new ApplicationException(ErrorCode.DISPUTE_CONFLICT);
+            }
+            if (!d.getNegotiationOutcome().equals(request.outcome().name())
+                    || !d.getNegotiationReason().equals(reason)) throw new ApplicationException(ErrorCode.DISPUTE_CONFLICT);
+            Job j = jobs.findById(c.getJobId()).orElseThrow(this::notFound);
+            FundingTransaction f = funding.findFirstByMilestoneIdOrderByCreatedAtDesc(m.getId()).orElseThrow(this::ineligible);
+            if (c.getStatus() != ContractStatus.DISPUTED || f.getStatus() != FundingStatus.SUCCEEDED
+                    || !Objects.equals(f.getContractId(), contractId) || !Objects.equals(f.getMilestoneId(), m.getId())
+                    || !Objects.equals(f.getClientUserId(), c.getClientUserId())
+                    || !Objects.equals(f.getCheckoutOrderId(), j.getCheckoutOrderId())
+                    || !same(f.getAmount(), m.getAmount()) || !same(c.getBudgetUsd(), m.getAmount())
+                    || settlements.findByMilestoneId(m.getId()).isPresent()) throw ineligible();
+            d.setResolvedBy(actor); d.setDecisionAt(Instant.now()); d.setResolutionReason(reason);
+            d.setResolutionKey("negotiated-" + disputeId);
+            d.setResolutionHash(hash(request.outcome().name() + ":" + reason));
+            if (request.outcome() == ResolveDisputeRequest.Outcome.RELEASE_TO_FREELANCER) {
+                d.setStatus(DisputeStatus.DECISION_PENDING_RELEASE);
+                m.setStatus(MilestoneStatus.RELEASE_PENDING);
+            } else {
+                d.setStatus(DisputeStatus.DECISION_PENDING_REFUND);
+                d.setFundingTransactionId(f.getId()); d.setCheckoutOrderId(f.getCheckoutOrderId());
+                d.setAmount(m.getAmount()); d.setCurrency(m.getCurrency());
+                d.setRefundKey("marketplace-refund-" + m.getId());
+                d.setRefundStatus(SettlementMoneyStatus.PENDING);
+                d.setRetryable(true); d.setNextAttemptAt(Instant.EPOCH);
+                m.setStatus(MilestoneStatus.REFUND_PENDING);
+            }
+            disputes.saveAndFlush(d);
+            log(d, actor, "NEGOTIATION_ACCEPTED", DisputeStatus.OPEN.name(), d.getStatus().name(), reason, null);
+            notifications.notify(c.getClientUserId(), NotificationType.DISPUTE_DECIDED,
+                    "Hai bên đã thống nhất", "Thỏa thuận đã lưu; đang đối soát lệnh chi hoặc hoàn tiền mock.", c.getJobId());
+            notifications.notify(c.getFreelancerId(), NotificationType.DISPUTE_DECIDED,
+                    "Hai bên đã thống nhất", "Thỏa thuận đã lưu; đang đối soát lệnh chi hoặc hoàn tiền mock.", c.getJobId());
+            return response(d);
+        });
     }
 
     @Transactional
@@ -170,7 +263,10 @@ public class ContractDisputeService {
         forbidParticipantAdmin(adminId, d);
         if (d.getStatus() == DisputeStatus.UNDER_REVIEW && adminId.equals(d.getClaimedBy())) return response(d);
         if (d.getStatus() != DisputeStatus.OPEN) throw new ApplicationException(ErrorCode.DISPUTE_CONFLICT);
+        if (d.getNegotiationUntil() != null && Instant.now().isBefore(d.getNegotiationUntil()))
+            throw new ApplicationException(ErrorCode.DISPUTE_CONFLICT, "chưa hết thời hạn tự thương lượng");
         d.setClaimedBy(adminId); d.setClaimedAt(Instant.now()); d.setStatus(DisputeStatus.UNDER_REVIEW);
+        if (d.getNegotiationUntil() != null) d.setModerationDueAt(businessDays.add(d.getClaimedAt(), 5));
         log(d, adminId, "CLAIMED", DisputeStatus.OPEN.name(), d.getStatus().name(), null, null);
         return response(d);
     }
@@ -198,6 +294,9 @@ public class ContractDisputeService {
                 || m.getStatus() != MilestoneStatus.DISPUTED) throw ineligible();
         WorkContract c = contracts.findById(d.getContractId()).orElseThrow(this::notFound);
         Job j = jobs.findById(c.getJobId()).orElseThrow(this::notFound);
+        if (escrowContracts.existsByContractId(c.getId())) {
+            return resolveEscrow(adminId, d, c, m, j, key, request, hash);
+        }
         FundingTransaction f = funding.findFirstByMilestoneIdOrderByCreatedAtDesc(m.getId()).orElseThrow(this::ineligible);
         if (c.getStatus() != ContractStatus.DISPUTED || f.getStatus() != FundingStatus.SUCCEEDED
                 || (j.getStatus() != JobStatus.IN_PROGRESS && j.getStatus() != JobStatus.REVISION_REQUESTED
@@ -242,6 +341,77 @@ public class ContractDisputeService {
         WorkContract c = contracts.findById(d.getContractId()).orElseThrow(this::notFound);
         if (admin.equals(c.getClientUserId()) || admin.equals(c.getFreelancerId()))
             throw new ApplicationException(ErrorCode.DISPUTE_CONFLICT);
+    }
+
+    private DisputeResponse openEscrow(UUID actor, WorkContract c, Milestone m, Job j,
+            OpenDisputeRequest request, List<DisputeEvidenceInput> items) {
+        JobSubmission latest = submissions.findFirstByContractIdOrderByVersionDesc(c.getId()).orElse(null);
+        String expectedHash = escrowDisputeHash(c.getId(), latest == null ? null : latest.getId(),
+                request.reasonCode(), request.description());
+        SolanaEscrowResult chain = solana.findEscrow(m.getId().toString()).orElseThrow(this::ineligible);
+        EscrowContract escrow = escrowContracts.findByContractId(c.getId()).orElseThrow(this::ineligible);
+        if (!"Disputed".equals(chain.status())
+                || !expectedHash.equalsIgnoreCase(chain.disputeHash())
+                || !Objects.equals(chain.address(), escrow.getEscrowAddress())
+                || !Objects.equals(chain.client(), escrow.getClientWallet())
+                || !Objects.equals(chain.freelancer(), escrow.getFreelancerWallet())
+                || !Objects.equals(chain.arbiter(), escrow.getArbiterWallet())) throw ineligible();
+        boolean beforeSubmission = c.getStatus() == ContractStatus.ACTIVE
+                && (m.getStatus() == MilestoneStatus.FUNDED || m.getStatus() == MilestoneStatus.IN_PROGRESS)
+                && j.getStatus() == JobStatus.IN_PROGRESS && latest == null;
+        boolean review = c.getStatus() == ContractStatus.UNDER_REVIEW
+                && m.getStatus() == MilestoneStatus.SUBMITTED && latest != null
+                && latest.getStatus() == JobSubmissionStatus.SUBMITTED;
+        boolean revision = c.getStatus() == ContractStatus.REVISION
+                && m.getStatus() == MilestoneStatus.IN_PROGRESS && latest != null
+                && latest.getStatus() == JobSubmissionStatus.REVISION_REQUESTED;
+        if (!beforeSubmission && !review && !revision) throw ineligible();
+        ContractDispute d = new ContractDispute();
+        d.setContractId(c.getId()); d.setMilestoneId(m.getId()); d.setJobId(j.getId());
+        d.setSubmissionId(latest == null ? null : latest.getId()); d.setOpenedBy(actor);
+        d.setReasonCode(request.reasonCode().trim()); d.setDescription(request.description().trim());
+        d.setOpenedAt(Instant.now()); d.setStatus(DisputeStatus.OPEN);
+        disputes.saveAndFlush(d);
+        if (review) latest.setStatus(JobSubmissionStatus.DISPUTED);
+        c.setStatus(ContractStatus.DISPUTED); m.setStatus(MilestoneStatus.DISPUTED);
+        saveEvidence(d.getId(), actor, items);
+        log(d, actor, "OPENED", null, d.getStatus().name(), d.getDescription(), null);
+        notifications.notify(actor.equals(c.getClientUserId()) ? c.getFreelancerId() : c.getClientUserId(),
+                NotificationType.DISPUTE_OPENED, "Tranh chấp escrow đã mở",
+                "Escrow đã khóa on-chain để chờ Admin xử lý.", j.getId());
+        return response(d);
+    }
+
+    private DisputeResponse resolveEscrow(UUID adminId, ContractDispute d, WorkContract c,
+            Milestone m, Job j, String key, ResolveDisputeRequest request, String hash) {
+        if (c.getStatus() != ContractStatus.DISPUTED || m.getStatus() != MilestoneStatus.DISPUTED) throw ineligible();
+        EscrowContract record = escrowContracts.findByContractId(c.getId()).orElseThrow(this::ineligible);
+        SolanaEscrowResult chain = solana.findEscrow(m.getId().toString()).orElseThrow(this::ineligible);
+        boolean release = request.outcome() == ResolveDisputeRequest.Outcome.RELEASE_TO_FREELANCER;
+        String expectedTerminal = release ? "Released" : "Refunded";
+        if (!Objects.equals(chain.address(), record.getEscrowAddress())
+                || !Objects.equals(chain.arbiter(), record.getArbiterWallet())
+                || !"Disputed".equals(chain.status()) && (!expectedTerminal.equals(chain.status())
+                || !hash.equalsIgnoreCase(chain.resolutionHash()))) throw ineligible();
+        d.setResolvedBy(adminId); d.setDecisionAt(Instant.now());
+        d.setResolutionReason(request.reason().trim()); d.setResolutionKey(key); d.setResolutionHash(hash);
+        d.setStatus(release ? DisputeStatus.DECISION_PENDING_RELEASE : DisputeStatus.DECISION_PENDING_REFUND);
+        d.setRetryable(false); // The simulated payment scheduler must never handle this escrow.
+        m.setStatus(release ? MilestoneStatus.RELEASE_PENDING : MilestoneStatus.REFUND_PENDING);
+        disputes.saveAndFlush(d);
+        log(d, adminId, "DECIDED", DisputeStatus.UNDER_REVIEW.name(), d.getStatus().name(),
+                d.getResolutionReason(), key);
+        notifications.notify(c.getClientUserId(), NotificationType.DISPUTE_DECIDED,
+                "Admin đã quyết định tranh chấp escrow", "Đang chờ xác nhận giao dịch Solana.", j.getId());
+        notifications.notify(c.getFreelancerId(), NotificationType.DISPUTE_DECIDED,
+                "Admin đã quyết định tranh chấp escrow", "Đang chờ xác nhận giao dịch Solana.", j.getId());
+        return response(d);
+    }
+
+    public String escrowDisputeHash(UUID contractId, UUID submissionId,
+            String reasonCode, String description) {
+        return hash(contractId + ":" + (submissionId == null ? "" : submissionId) + ":"
+                + reasonCode.trim() + ":" + description.trim());
     }
 
     private void validateReason(OpenDisputeRequest r) {

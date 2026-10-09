@@ -1,7 +1,7 @@
 import type { DiscoverJob, DiscoveryFilters, Job, JobApplication, JobPaymentStatus, JobSubmission, MyApplication, Notification as MarketplaceNotification, Page, RegisterInput, TaxRecord, User, UserType } from './types';
 import type { CreateJobInput, UpdateJobInput } from './types';
 
-import type { ClientBankAccount, ClientBankInput, FundingResponse, SubmissionPayload, ContractSubmission, ReviewDecision, ContractSettlement, ContractCancellationRecord, CancellationRequest, CancellationDecision } from './types';
+import type { ClientBankAccount, ClientBankInput, DecimalValue, FundingResponse, PaymentFlowTimeline, EscrowFundingView, EscrowFundingBuild, EscrowActionBuild, EscrowActionStatus, EscrowMutualRefund, SubmissionPayload, ContractSubmission, ReviewDecision, ContractSettlement, ContractCancellationRecord, CancellationRequest, CancellationDecision } from './types';
 
 import type { AdminDisputeDetail, Dispute, DisputeDecision, DisputeEvidenceInput, DisputeStatus, OpenDisputeInput, SpringPage } from './types';
 import type { AdminReviewDetail, ModerationAction, PortfolioInput, PortfolioItem, Profile, ProfilePatch, Review, ReviewInput } from './types';
@@ -220,9 +220,9 @@ export class MarketplaceApi {
     return null;
   }
 
-  async apply(jobId: string): Promise<JobApplication> {
+  async apply(jobId: string, acceptedTermsFingerprint?: string): Promise<JobApplication> {
     return this.authorized<JobApplication>('/marketplace/jobs/' + encodeURIComponent(jobId) + '/apply',
-      { method: 'POST', body: '{}' });
+      { method: 'POST', body: JSON.stringify({ acceptedTermsFingerprint }) });
   }
 
   async myApplications(page: number, status: string = 'ALL', size = 10): Promise<Page<MyApplication>> {
@@ -235,9 +235,9 @@ export class MarketplaceApi {
     return this.authorized<JobApplication[]>('/marketplace/jobs/' + encodeURIComponent(jobId) + '/applications');
   }
 
-  async assign(jobId: string, freelancerId: string): Promise<Job> {
+  async assign(jobId: string, freelancerId: string, acceptedTermsFingerprint?: string): Promise<Job> {
     return this.authorized<Job>('/marketplace/jobs/' + encodeURIComponent(jobId) + '/assignments',
-      { method: 'POST', body: JSON.stringify({ freelancerId }) });
+      { method: 'POST', body: JSON.stringify({ freelancerId, acceptedTermsFingerprint }) });
   }
   async submissions(jobId: string): Promise<JobSubmission[]> {
     return this.authorized<JobSubmission[]>('/marketplace/jobs/' + encodeURIComponent(jobId) + '/submissions');
@@ -271,9 +271,132 @@ export class MarketplaceApi {
     return this.authorized('/contracts/' + encodeURIComponent(contractId) + '/milestones/' + encodeURIComponent(milestoneId)
       + '/fund' + (transactionId ? '/' + encodeURIComponent(transactionId) : ''));
   }
+  async paymentFlow(contractId: string, milestoneId: string): Promise<PaymentFlowTimeline> {
+    return this.authorized('/contracts/' + encodeURIComponent(contractId) + '/milestones/'
+      + encodeURIComponent(milestoneId) + '/payment-flow');
+  }
+  async openUnifiedUsdOrder(contractId: string, milestoneId: string, key: string): Promise<PaymentFlowTimeline> {
+    return this.authorized('/contracts/' + encodeURIComponent(contractId) + '/milestones/'
+      + encodeURIComponent(milestoneId) + '/payment-flow/usd-order',
+      { method: 'POST', headers: { 'Idempotency-Key': key } });
+  }
+  async submitUnifiedUsdOrder(contractId: string, milestoneId: string): Promise<PaymentFlowTimeline> {
+    return this.authorized('/contracts/' + encodeURIComponent(contractId) + '/milestones/'
+      + encodeURIComponent(milestoneId) + '/payment-flow/usd-order/submit', { method: 'POST' });
+  }
+  async prepareUnifiedWithdrawal(contractId: string, milestoneId: string): Promise<{
+    paymentFlowId: string; kind: 'PAYOUT' | 'REFUND'; buildSessionId: string;
+    transactionBase64: string; wallet: string; withdrawalId: string;
+    grossUsdc: DecimalValue; feeUsdc: DecimalValue; payoutVnd: DecimalValue;
+    quoteExpiresAt: string; simulation: boolean;
+  }> {
+    return this.authorized('/contracts/' + encodeURIComponent(contractId) + '/milestones/'
+      + encodeURIComponent(milestoneId) + '/payment-flow/withdrawal/prepare', { method: 'POST' });
+  }
+  async submitUnifiedWithdrawal(contractId: string, milestoneId: string,
+    buildSessionId: string, transactionBase64: string): Promise<PaymentFlowTimeline> {
+    return this.authorized('/contracts/' + encodeURIComponent(contractId) + '/milestones/'
+      + encodeURIComponent(milestoneId) + '/payment-flow/withdrawal/submit',
+      { method: 'POST', body: JSON.stringify({ buildSessionId, transactionBase64 }) });
+  }
   async fund(contractId: string, milestoneId: string, key: string, amount: string, currency: string): Promise<FundingResponse> {
     return this.authorized('/contracts/' + encodeURIComponent(contractId) + '/milestones/' + encodeURIComponent(milestoneId) + '/fund',
       { method: 'POST', headers: { 'Idempotency-Key': key }, body: JSON.stringify({ paymentMethodId: 'BANK_ACCOUNT_ON_FILE', expectedAmount: { amount, currency } }) });
+  }
+  async partnerFunding(contractId: string, milestoneId: string): Promise<FundingResponse | null> {
+    return this.authorized('/contracts/' + encodeURIComponent(contractId) + '/milestones/' + encodeURIComponent(milestoneId) + '/partner-escrow/fund');
+  }
+  async fundPartner(contractId: string, milestoneId: string, key: string): Promise<FundingResponse> {
+    return this.authorized('/contracts/' + encodeURIComponent(contractId) + '/milestones/' + encodeURIComponent(milestoneId) + '/partner-escrow/fund',
+      { method: 'POST', headers: { 'Idempotency-Key': key } });
+  }
+  async partnerReconciliation(): Promise<{
+    partnerBalanceUsd: number | string; ledgerLiabilityUsd: number | string; differenceUsd: number | string;
+    matched: boolean; pendingFunding: number; differences: { milestoneId: string; reason: string; amountUsd: number | string }[];
+    statementAt: string; simulation: boolean;
+  }> { return this.authorized('/admin/partner-reconciliation'); }
+  async unifiedReconciliation(): Promise<{
+    paymentFlowId: string; jobId: string; contractId: string; milestoneId: string;
+    grossUsd: DecimalValue; escrowUsdc: DecimalValue; simulation: boolean;
+    usdToClientUsdc: { code: string; status: string; evidenceSource: string; observedAt: string; blocksNextAction: boolean };
+    clientUsdcToVault: { code: string; status: string; evidenceSource: string; observedAt: string; blocksNextAction: boolean };
+    vaultToRecipient: { code: string; status: string; evidenceSource: string; observedAt: string; blocksNextAction: boolean };
+    withdrawalToFiat: { code: string; status: string; evidenceSource: string; observedAt: string; blocksNextAction: boolean };
+    reviews?: { boundary: string; decision: string; note: string; adminId: string; reviewedAt: string }[];
+  }[]> { return this.authorized('/admin/payment-flows/reconciliation'); }
+  async unifiedLedgerSummary(): Promise<{ observedAt: string; flows: number; simulation: boolean;
+    currencies: { currency: 'USD' | 'USDC' | 'VND'; unknownSteps: number;
+      buckets: { code: string; label: string; amount: DecimalValue; flows: number }[] }[] }> {
+    return this.authorized('/admin/payment-flows/summary');
+  }
+  async cancelExpiredUnifiedFunding(contractId: string, note: string): Promise<unknown> {
+    return this.authorized('/admin/contracts/' + encodeURIComponent(contractId) + '/payment-flow/expired-funding-cancel',
+      { method: 'POST', body: JSON.stringify({ note }) });
+  }
+  async reviewUnifiedReconciliation(paymentFlowId: string, boundary: string, decision: string, note: string): Promise<unknown> {
+    return this.authorized('/admin/payment-flows/' + encodeURIComponent(paymentFlowId) + '/reconciliation-reviews',
+      { method: 'POST', body: JSON.stringify({ boundary, decision, note }) });
+  }
+  async escrowFunding(contractId: string, milestoneId: string): Promise<EscrowFundingView> {
+    return this.authorized('/contracts/' + encodeURIComponent(contractId) + '/milestones/'
+      + encodeURIComponent(milestoneId) + '/escrow');
+  }
+  async boundSolanaWallet(): Promise<{ walletAddress: string } | null> {
+    return this.authorized('/solana/wallet-link');
+  }
+  async solanaWalletChallenge(walletAddress: string): Promise<{
+    challengeId: string; walletAddress: string; message: string; expiresAt: string;
+  }> {
+    return this.authorized('/solana/wallet-link/challenge',
+      { method: 'POST', body: JSON.stringify({ walletAddress }) });
+  }
+  async verifySolanaWallet(challengeId: string, signatureBase64: string): Promise<{ walletAddress: string }> {
+    return this.authorized('/solana/wallet-link/verify',
+      { method: 'POST', body: JSON.stringify({ challengeId, signatureBase64 }) });
+  }
+  async prepareEscrowFunding(contractId: string, milestoneId: string, walletAddress: string): Promise<EscrowFundingBuild> {
+    return this.authorized('/contracts/' + encodeURIComponent(contractId) + '/milestones/'
+      + encodeURIComponent(milestoneId) + '/escrow/fund/build',
+    { method: 'POST', body: JSON.stringify({ walletAddress }) });
+  }
+  async submitEscrowFunding(contractId: string, milestoneId: string, buildSessionId: string,
+    transactionBase64: string): Promise<EscrowFundingView> {
+    return this.authorized('/contracts/' + encodeURIComponent(contractId) + '/milestones/'
+      + encodeURIComponent(milestoneId) + '/escrow/fund/submit',
+    { method: 'POST', body: JSON.stringify({ buildSessionId, transactionBase64 }) });
+  }
+  async buildEscrowAction(contractId: string, action: string, payload: {
+    submission?: SubmissionPayload; review?: ReviewDecision; newDueAt?: string;
+    reasonCode?: string; description?: string;
+  }): Promise<EscrowActionBuild> {
+    return this.authorized('/contracts/' + encodeURIComponent(contractId) + '/escrow/actions/'
+      + encodeURIComponent(action) + '/build', { method: 'POST', body: JSON.stringify(payload) });
+  }
+  async submitEscrowAction(contractId: string, intentId: string,
+    transactionBase64: string): Promise<EscrowActionStatus> {
+    return this.authorized('/contracts/' + encodeURIComponent(contractId) + '/escrow/actions/'
+      + encodeURIComponent(intentId) + '/submit',
+    { method: 'POST', body: JSON.stringify({ transactionBase64 }) });
+  }
+  async buildMutualRefund(contractId: string): Promise<EscrowMutualRefund> {
+    return this.authorized('/contracts/' + encodeURIComponent(contractId)
+      + '/escrow/actions/mutual-refund/build', { method: 'POST' });
+  }
+  async signMutualRefund(contractId: string, intentId: string,
+    transactionBase64: string): Promise<EscrowMutualRefund> {
+    return this.authorized('/contracts/' + encodeURIComponent(contractId)
+      + '/escrow/actions/mutual-refund/' + encodeURIComponent(intentId) + '/client-sign',
+    { method: 'POST', body: JSON.stringify({ transactionBase64 }) });
+  }
+  async pendingMutualRefund(contractId: string): Promise<EscrowMutualRefund | null> {
+    return this.authorized('/contracts/' + encodeURIComponent(contractId)
+      + '/escrow/actions/mutual-refund/pending');
+  }
+  async finishMutualRefund(contractId: string, intentId: string,
+    transactionBase64: string): Promise<EscrowActionStatus> {
+    return this.authorized('/contracts/' + encodeURIComponent(contractId)
+      + '/escrow/actions/mutual-refund/' + encodeURIComponent(intentId) + '/finish',
+    { method: 'POST', body: JSON.stringify({ transactionBase64 }) });
   }
   async contractSubmissions(contractId: string): Promise<ContractSubmission[]> {
     return this.authorized('/contracts/' + encodeURIComponent(contractId) + '/submissions');
@@ -293,6 +416,11 @@ export class MarketplaceApi {
 
   async dispute(contractId: string): Promise<Dispute | null> {
     return (await this.authorized<Dispute | undefined>('/contracts/' + encodeURIComponent(contractId) + '/disputes')) ?? null;
+  }
+  async negotiateDispute(contractId: string, disputeId: string,
+    outcome: 'RELEASE_TO_FREELANCER' | 'REFUND_TO_CLIENT', reason: string): Promise<Dispute> {
+    return this.authorized('/contracts/' + encodeURIComponent(contractId) + '/disputes/' + encodeURIComponent(disputeId)
+      + '/negotiation', { method: 'POST', body: JSON.stringify({ outcome, reason }) });
   }
   async openDispute(contractId: string, payload: OpenDisputeInput): Promise<Dispute> {
     return this.authorized('/contracts/' + encodeURIComponent(contractId) + '/disputes', { method: 'POST', body: JSON.stringify(payload) });
@@ -351,6 +479,9 @@ export class MarketplaceApi {
   async requestCancellation(contractId: string, payload: CancellationRequest): Promise<ContractCancellationRecord> {
     return this.authorized('/contracts/' + encodeURIComponent(contractId) + '/cancellations',
       { method: 'POST', body: JSON.stringify(payload) });
+  }
+  async requestLateRefund(contractId: string): Promise<ContractCancellationRecord> {
+    return this.authorized('/contracts/' + encodeURIComponent(contractId) + '/cancellations/late-delivery', { method: 'POST' });
   }
   async decideCancellation(contractId: string, cancellationId: string, decision: CancellationDecision): Promise<ContractCancellationRecord> {
     return this.authorized('/contracts/' + encodeURIComponent(contractId) + '/cancellations/' + encodeURIComponent(cancellationId) + '/decisions',

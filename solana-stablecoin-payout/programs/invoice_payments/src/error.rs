@@ -132,4 +132,31 @@ pub enum ErrorCode {
 
     #[msg("Mock on-ramp amount exceeds the configured per-purchase limit")]
     MockOnrampAmountTooLarge,
+
+    #[msg("Invalid milestone escrow terms")]
+    InvalidEscrowTerms,
+    #[msg("Only an escrow participant can perform this action")]
+    UnauthorizedEscrowParticipant,
+    #[msg("Escrow is not in the required state")]
+    InvalidEscrowState,
+    #[msg("The delivery deadline has passed")]
+    DeliveryDeadlinePassed,
+    #[msg("The review deadline has passed")]
+    ReviewDeadlinePassed,
+    #[msg("The review deadline has not passed")]
+    ReviewDeadlineNotPassed,
+    #[msg("The submission hash must not be empty")]
+    InvalidSubmissionHash,
+    #[msg("Only one delivery extension is allowed")]
+    ExtensionAlreadyUsed,
+    #[msg("The requested extension is invalid")]
+    InvalidExtension,
+    #[msg("The revision limit has been reached")]
+    RevisionLimitReached,
+    #[msg("Only the escrow arbiter may resolve a dispute")]
+    UnauthorizedEscrowArbiter,
+    #[msg("The escrow recipient is invalid")]
+    InvalidEscrowRecipient,
+    #[msg("Escrow arithmetic overflowed")]
+    EscrowOverflow,
 }

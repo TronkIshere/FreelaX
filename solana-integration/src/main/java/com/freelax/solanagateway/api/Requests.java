@@ -152,4 +152,26 @@ public final class Requests {
             Commitment preflightCommitment
     ) {
     }
+
+    public record FundEscrowRequest(
+            @NotBlank String client, @NotBlank String freelancer,
+            @NotBlank String amount, @NotBlank String fundingExpiresAt,
+            @NotBlank String deliveryDueAt,
+            int reviewWindowHours, int maxRevisions,
+            ExecutionMode mode, Commitment commitment, Boolean skipPreflight,
+            Boolean highValueReviewGrace
+    ) implements TransactionOptions {
+    }
+
+    public record EscrowActionRequest(
+            @NotBlank String actor, String hash, String newDueAt,
+            ExecutionMode mode, Commitment commitment, Boolean skipPreflight
+    ) implements TransactionOptions {
+    }
+
+    public record EscrowMutualRefundRequest(
+            @NotBlank String client, @NotBlank String freelancer,
+            ExecutionMode mode, Commitment commitment, Boolean skipPreflight
+    ) implements TransactionOptions {
+    }
 }

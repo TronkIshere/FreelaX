@@ -3,6 +3,9 @@ package com.marketplace.backend.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.marketplace.backend.client.SolanaCprClient;
+import com.marketplace.backend.client.PaymentBackendClient;
+import com.marketplace.backend.dto.response.solana.SolanaEscrowResult;
 import com.marketplace.backend.dto.request.submission.CreateContractSubmissionRequest;
 import com.marketplace.backend.dto.request.submission.ReviewSubmissionRequest;
 import com.marketplace.backend.dto.response.submission.ContractSubmissionResponse;
@@ -41,9 +44,13 @@ public class ContractSubmissionService {
     private final DeliverableRequirementRepository deliverableRequirements;
     private final AcceptanceCriterionRepository criteria;
     private final FundingTransactionRepository funding;
+    private final EscrowContractRepository escrowContracts;
+    private final SolanaCprClient solana;
+    private final PaymentBackendClient payment;
     private final ContractDisputeRepository disputes;
     private final DisputeAuditRepository disputeAudit;
     private final NotificationService notifications;
+    private final BusinessDayClock businessDays;
     private final ObjectMapper objectMapper;
 
     @Transactional
@@ -75,7 +82,9 @@ public class ContractSubmissionService {
             }
             return response(prior);
         }
-        if (!funding.existsByMilestoneIdAndStatusIn(milestone.getId(), EnumSet.of(FundingStatus.SUCCEEDED))) {
+        boolean onChainEscrow = escrowContracts.existsByContractId(contractId);
+        if (!onChainEscrow && !funding.existsByMilestoneIdAndStatusIn(
+                milestone.getId(), EnumSet.of(FundingStatus.SUCCEEDED))) {
             throw new ApplicationException(ErrorCode.SUBMISSION_NOT_FUNDED);
         }
         if ((milestone.getStatus() != MilestoneStatus.FUNDED && milestone.getStatus() != MilestoneStatus.IN_PROGRESS)
@@ -91,7 +100,16 @@ public class ContractSubmissionService {
 
         int nextVersion = submissions.findFirstByJobIdOrderByVersionDesc(job.getId())
                 .map(previous -> previous.getVersion() + 1).orElse(1);
-        Instant now = Instant.now();
+        SolanaEscrowResult chain = onChainEscrow ? escrowState(milestone.getId()) : null;
+        if (chain != null && (!("Submitted".equals(chain.status())
+                    || "Released".equals(chain.status()))
+                || !payloadHash.equalsIgnoreCase(chain.submissionHash())
+                || chain.submissionCount() != nextVersion)) {
+            throw new ApplicationException(ErrorCode.SUBMISSION_INVALID_STATE);
+        }
+        Instant now = chain == null ? Instant.now()
+                : Instant.ofEpochSecond(Long.parseLong(chain.reviewDueAt())
+                    - Long.parseLong(chain.reviewWindowSeconds()));
         JobSubmission submission = new JobSubmission();
         submission.setJobId(job.getId());
         submission.setContractId(contractId);
@@ -103,8 +121,12 @@ public class ContractSubmissionService {
         submission.setSummary(request.getSummary().trim());
         submission.setStatus(JobSubmissionStatus.SUBMITTED);
         submission.setSubmittedAt(now);
-        submission.setSubmittedLate(contract.getDeliveryDueAt() != null && now.isAfter(contract.getDeliveryDueAt()));
-        submission.setReviewDueAt(now.plus(contract.getReviewWindowHours(), ChronoUnit.HOURS));
+        submission.setSubmittedLate(chain == null && contract.getDeliveryDueAt() != null
+                && now.isAfter(contract.getDeliveryDueAt()));
+        submission.setReviewDueAt(chain == null
+                ? PartnerEscrowFundingService.RAIL.equals(contract.getPaymentRail())
+                    ? businessDays.add(now, 3) : now.plus(contract.getReviewWindowHours(), ChronoUnit.HOURS)
+                : Instant.ofEpochSecond(Long.parseLong(chain.reviewDueAt())));
         submissions.saveAndFlush(submission);
 
         List<SubmissionEvidence> rows = new ArrayList<>();
@@ -153,14 +175,36 @@ public class ContractSubmissionService {
         }
         Job job = jobs.findById(contract.getJobId())
                 .orElseThrow(() -> new ApplicationException(ErrorCode.CONTRACT_SUBMISSION_NOT_FOUND));
+        boolean onChainEscrow = escrowContracts.existsByContractId(contractId);
+        SolanaEscrowResult chain = onChainEscrow ? escrowState(milestone.getId()) : null;
         submission.setReviewedAt(LocalDateTime.now());
         if (request.getDecision() == ReviewSubmissionRequest.Decision.APPROVE) {
+            if (chain != null && !"Released".equals(chain.status())) {
+                throw new ApplicationException(ErrorCode.SUBMISSION_INVALID_STATE);
+            }
             submission.setStatus(JobSubmissionStatus.APPROVED);
             submission.setReviewerFeedback(StringUtils.hasText(request.getNote()) ? request.getNote().trim() : null);
-            milestone.setStatus(MilestoneStatus.RELEASE_PENDING);
+            milestone.setStatus(chain == null ? MilestoneStatus.RELEASE_PENDING : MilestoneStatus.RELEASED);
+            if (chain != null) {
+                contract.setStatus(ContractStatus.COMPLETED);
+                job.setStatus(JobStatus.COMPLETED);
+                escrowContracts.findByContractId(contractId).ifPresent(record -> {
+                    // A unified flow must record USDC_RELEASE first; the escrow reconciler does
+                    // that from the "Released" state and only then marks the record reconciled.
+                    if (!com.marketplace.backend.entity.PaymentFlow.RAIL.equals(contract.getPaymentRail()))
+                        record.setLastChainStatus("RELEASED_RECONCILED");
+                    if (record.getReleasedAt() == null) record.setReleasedAt(Instant.now());
+                });
+            }
             notifications.notify(contract.getFreelancerId(), NotificationType.WORK_APPROVED,
                     "Bàn giao đã được duyệt", "Client đã duyệt bản bàn giao #" + submission.getVersion() + ".", job.getId());
         } else if (request.getDecision() == ReviewSubmissionRequest.Decision.REQUEST_REVISION) {
+            if (chain != null && (!"Revision".equals(chain.status())
+                    || chain.revisionsUsed() != contract.getRevisionsUsed() + 1
+                    || !escrowRevisionHash(contractId, submissionId, request)
+                        .equalsIgnoreCase(chain.revisionHash()))) {
+                throw new ApplicationException(ErrorCode.SUBMISSION_INVALID_STATE);
+            }
             if (contract.getRevisionsUsed() >= contract.getMaxRevisions()) {
                 throw new ApplicationException(ErrorCode.SUBMISSION_REVISION_LIMIT);
             }
@@ -184,6 +228,11 @@ public class ContractSubmissionService {
             notifications.notify(contract.getFreelancerId(), NotificationType.REVISION_REQUESTED,
                     "Client yêu cầu chỉnh sửa", "Bản bàn giao #" + submission.getVersion() + " cần chỉnh sửa.", job.getId());
         } else if (request.getDecision() == ReviewSubmissionRequest.Decision.OPEN_DISPUTE) {
+            if (chain != null && (!"Disputed".equals(chain.status())
+                    || !escrowDisputeHash(contractId, submissionId, request)
+                        .equalsIgnoreCase(chain.disputeHash()))) {
+                throw new ApplicationException(ErrorCode.SUBMISSION_INVALID_STATE);
+            }
             if (!StringUtils.hasText(request.getReasonCode()) || !StringUtils.hasText(request.getDescription())
                     || request.getDescription().length() > 2000) {
                 throw new ApplicationException(ErrorCode.DISPUTE_REASON_REQUIRED);
@@ -191,6 +240,11 @@ public class ContractSubmissionService {
             if (disputes.existsByContractIdAndStatusIn(contractId,
                     EnumSet.of(DisputeStatus.OPEN, DisputeStatus.UNDER_REVIEW))) {
                 throw new ApplicationException(ErrorCode.DISPUTE_ALREADY_OPEN);
+            }
+            if (PartnerEscrowFundingService.RAIL.equals(contract.getPaymentRail())) {
+                var frozen = payment.freezePartnerEscrow(milestone.getId());
+                if (!"FROZEN".equals(frozen.status()))
+                    throw new ApplicationException(ErrorCode.SUBMISSION_INVALID_STATE);
             }
             ContractDispute dispute = new ContractDispute();
             dispute.setContractId(contractId);
@@ -201,6 +255,8 @@ public class ContractSubmissionService {
             dispute.setReasonCode(request.getReasonCode().trim());
             dispute.setDescription(request.getDescription().trim());
             dispute.setOpenedAt(Instant.now());
+            if (PartnerEscrowFundingService.RAIL.equals(contract.getPaymentRail()))
+                dispute.setNegotiationUntil(businessDays.add(dispute.getOpenedAt(), 3));
             dispute.setStatus(DisputeStatus.OPEN);
             disputes.save(dispute);
             DisputeAudit opened = new DisputeAudit();
@@ -248,7 +304,12 @@ public class ContractSubmissionService {
         }
         Job job = jobs.findById(contract.getJobId())
                 .orElseThrow(() -> new ApplicationException(ErrorCode.CONTRACT_SUBMISSION_NOT_FOUND));
-        if (milestone.getAmount().compareTo(new BigDecimal("500.00")) > 0) {
+        // The escrow reconciler approves only after verifying the on-chain vault transfer.
+        if (escrowContracts.existsByContractId(contract.getId())) {
+            return AutoReviewOutcome.SKIPPED;
+        }
+        if (!PartnerEscrowFundingService.RAIL.equals(contract.getPaymentRail())
+                && milestone.getAmount().compareTo(new BigDecimal("500.00")) > 0) {
             Instant graceDueAt = submission.getReviewDueAt().plus(24, ChronoUnit.HOURS);
             if (now.isBefore(graceDueAt)) {
                 if (submission.getReviewGraceDueAt() == null) {
@@ -278,6 +339,89 @@ public class ContractSubmissionService {
     }
 
     public enum AutoReviewOutcome { SKIPPED, GRACE_STARTED, APPROVED }
+
+    @Transactional
+    public void remindPartnerReview(UUID submissionId, Instant now) {
+        UUID milestoneId = submissions.findReviewMilestoneId(submissionId).orElse(null);
+        if (milestoneId == null) return;
+        Milestone milestone = milestones.findWithLockById(milestoneId).orElse(null);
+        JobSubmission submission = submissions.findWithLockById(submissionId).orElse(null);
+        if (milestone == null || submission == null || submission.getStatus() != JobSubmissionStatus.SUBMITTED
+                || submission.getReviewReminderCount() >= 2 || submission.getSubmittedAt() == null) return;
+        WorkContract contract = contracts.findById(submission.getContractId()).orElse(null);
+        if (contract == null || !PartnerEscrowFundingService.RAIL.equals(contract.getPaymentRail())
+                || contract.getStatus() != ContractStatus.UNDER_REVIEW || milestone.getStatus() != MilestoneStatus.SUBMITTED
+                || submissions.findFirstByContractIdOrderByVersionDesc(contract.getId())
+                    .filter(latest -> latest.getId().equals(submissionId)).isEmpty()) return;
+        int next = submission.getReviewReminderCount() + 1;
+        if (now.isBefore(businessDays.add(submission.getSubmittedAt(), next))
+                || !now.isBefore(submission.getReviewDueAt())) return;
+        submission.setReviewReminderCount(next);
+        notifications.notify(contract.getClientUserId(), NotificationType.REVIEW_REMINDER,
+                "Nhắc duyệt bản bàn giao", "Nhắc lần " + next + "/2: phản hồi trước hạn 3 ngày làm việc để tránh tự duyệt.", contract.getJobId());
+    }
+
+    public String escrowPayloadHash(UUID contractId, CreateContractSubmissionRequest request) {
+        if (request == null) throw new ApplicationException(ErrorCode.INVALID_DATA);
+        return hash(contractId + ":" + json(request));
+    }
+
+    public void validateEscrowDraft(UUID contractId, CreateContractSubmissionRequest request) {
+        if (request == null || !StringUtils.hasText(request.getSummary())
+                || request.getSummary().length() > 10000) {
+            throw new ApplicationException(ErrorCode.INVALID_DATA);
+        }
+        var deliverables = request.getDeliverables() == null ? List.<CreateContractSubmissionRequest.DeliverableInput>of()
+                : request.getDeliverables();
+        var acceptance = request.getAcceptanceEvidence() == null ? List.<CreateContractSubmissionRequest.CriterionInput>of()
+                : request.getAcceptanceEvidence();
+        if (deliverables.isEmpty() && acceptance.isEmpty()) {
+            throw new ApplicationException(ErrorCode.SUBMISSION_EVIDENCE_INVALID, "cần ít nhất một bằng chứng");
+        }
+        validateEvidence(contractId, deliverables, acceptance);
+    }
+
+    public String escrowDisputeHash(UUID contractId, UUID submissionId, ReviewSubmissionRequest request) {
+        if (request == null || !StringUtils.hasText(request.getReasonCode())
+                || !StringUtils.hasText(request.getDescription())) throw new ApplicationException(ErrorCode.INVALID_DATA);
+        return hash(contractId + ":" + submissionId + ":"
+                + request.getReasonCode().trim() + ":" + request.getDescription().trim());
+    }
+
+    public String escrowRevisionHash(UUID contractId, UUID submissionId,
+            ReviewSubmissionRequest request) {
+        validateEscrowReviewDraft(contractId, request);
+        return hash(contractId + ":" + submissionId + ":" + json(request));
+    }
+
+    public void validateEscrowReviewDraft(UUID contractId, ReviewSubmissionRequest request) {
+        if (request == null || request.getDecision() == null) {
+            throw new ApplicationException(ErrorCode.INVALID_DATA);
+        }
+        if (request.getDecision() == ReviewSubmissionRequest.Decision.REQUEST_REVISION) {
+            if (!StringUtils.hasText(request.getFeedback())) {
+                throw new ApplicationException(ErrorCode.SUBMISSION_EVIDENCE_INVALID, "thiếu phản hồi chỉnh sửa");
+            }
+            List<UUID> criterionIds = request.getCriterionIds() == null ? List.of() : request.getCriterionIds();
+            List<UUID> deliverableIds = request.getDeliverableIds() == null ? List.of() : request.getDeliverableIds();
+            if (criterionIds.isEmpty() && deliverableIds.isEmpty()) {
+                throw new ApplicationException(ErrorCode.SUBMISSION_EVIDENCE_INVALID,
+                        "chưa chọn tiêu chí hoặc sản phẩm liên quan");
+            }
+            validateReferences(contractId, criterionIds, deliverableIds);
+        } else if (request.getDecision() == ReviewSubmissionRequest.Decision.OPEN_DISPUTE) {
+            if (!StringUtils.hasText(request.getReasonCode())
+                    || !StringUtils.hasText(request.getDescription())
+                    || request.getReasonCode().length() > 60 || request.getDescription().length() > 2000) {
+                throw new ApplicationException(ErrorCode.DISPUTE_REASON_REQUIRED);
+            }
+        }
+    }
+
+    private SolanaEscrowResult escrowState(UUID milestoneId) {
+        return solana.findEscrow(milestoneId.toString())
+                .orElseThrow(() -> new ApplicationException(ErrorCode.SUBMISSION_INVALID_STATE));
+    }
 
     private WorkContract participantContract(UUID actorId, UUID contractId) {
         return contracts.findById(contractId)

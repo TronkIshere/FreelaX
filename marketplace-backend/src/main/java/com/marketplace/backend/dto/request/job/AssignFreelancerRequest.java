@@ -14,4 +14,5 @@ import java.util.UUID;
 public class AssignFreelancerRequest {
     @NotNull(message = "freelancerId không được để trống")
     UUID freelancerId;
+    String acceptedTermsFingerprint;
 }

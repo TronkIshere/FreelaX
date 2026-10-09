@@ -38,6 +38,13 @@ public class ContractDisputeController {
         return wrap(service.addEvidence(user.getId(), contractId, disputeId, key, request));
     }
 
+    @PostMapping("/{disputeId}/negotiation")
+    public ResponseAPI<DisputeResponse> negotiate(@AuthenticationPrincipal UserPrincipal user,
+            @PathVariable UUID contractId, @PathVariable UUID disputeId,
+            @Valid @RequestBody NegotiateDisputeRequest request) {
+        return wrap(service.negotiate(user.getId(), contractId, disputeId, request));
+    }
+
     private ResponseAPI<DisputeResponse> wrap(DisputeResponse value) {
         return ResponseAPI.<DisputeResponse>builder().code(200).data(value).build();
     }

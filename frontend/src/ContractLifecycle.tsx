@@ -7,13 +7,17 @@ import { ContractDispute } from './ContractDispute';
 import { ContractReviews } from './ContractReviews';
 import { activeDispute } from './disputeContracts';
 import { FundingPanel } from './Funding';
+import { MutualRefundPanel } from './MutualRefund';
+import { connectSolanaWallet, signEscrowTransaction } from './escrowWallet';
 import { financialCopy, financialMoneyTone, settlementMoneyLabel, settlementNeedsRefresh, settlementStageLabel } from './financeStatus';
 import { disputeLabel, submissionLabel } from './status';
 import { attemptScope, clearAttempt, httpsUrl, localInstant, readAttempt, saveAttempt, smallReview, validateSubmission } from './workflowContracts';
-import type { Dispute, ContractSettlement, ContractSubmission, ContractSummary, Job, Requirement, ReviewDecision, SubmissionPayload, User } from './types';
+import type { Dispute, ContractSettlement, ContractSubmission, ContractSummary, EscrowFundingView, Job, OpenDisputeInput, Requirement, ReviewDecision, SubmissionPayload, User } from './types';
 import { ArrowRight, ClipboardCheck } from 'lucide-react';
 
-type SubmissionAttempt = { key: string; payload: SubmissionPayload; baselineVersion: number };
+type SubmissionAttempt = { key: string; payload: SubmissionPayload; baselineVersion: number;
+  onchainSubmitted?: boolean; onchainHash?: string };
+type ReviewAttempt = { submissionId: string; body: ReviewDecision; onchainHash?: string };
 type DraftEvidence = Record<string, { selected: boolean; url: string; text: string }>;
 // Presentation only; ContractReviews owns eligibility and the parent supplies participant-derived copy.
 export function CompletedReviewCallout({ counterpart }: { counterpart: 'Client' | 'Freelancer' }) {
@@ -73,7 +77,11 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
   const contract = job.contract!;
   const client = user.userType === 'CLIENT' && job.clientUserId === user.id;
   const freelancer = user.userType === 'FREELANCER' && job.freelancerId === user.id;
+  // Unified contracts hold USDC in the same Solana vault, so work actions are wallet-signed escrow actions.
+  const escrowRail = contract.paymentRail === 'SOLANA_ESCROW' || contract.paymentRail === 'UNIFIED_USDC_PAYOUT';
   const scope = attemptScope('submit', user.id, contract.id, contract.milestoneId || 'missing');
+  const escrowReviewScope = attemptScope('escrow-review', user.id, contract.id,
+    contract.milestoneId || 'missing');
   const [list, setList] = useState<ContractSubmission[]>([]);
   const [dispute, setDispute] = useState<Dispute | null>(null);
   const [disputeBusy, setDisputeBusy] = useState(false);
@@ -87,6 +95,7 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
   const [acceptance, setAcceptance] = useState<DraftEvidence>({});
   const [pending, setPending] = useState<SubmissionAttempt | null>(null);
   const [decision, setDecision] = useState<ReviewDecision['decision'] | null>(null);
+  const [reviewAttempt, setReviewAttempt] = useState<ReviewAttempt | null>(null);
   const [feedback, setFeedback] = useState('');
   const [criterionIds, setCriterionIds] = useState<string[]>([]);
   const [deliverableIds, setDeliverableIds] = useState<string[]>([]);
@@ -94,9 +103,11 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
   const [description, setDescription] = useState('');
   const [decisionUncertain, setDecisionUncertain] = useState(false);
   const [now, setNow] = useState(Date.now());
+  const [extensionDue, setExtensionDue] = useState('');
   const [cancellation, setCancellation] = useState<CancellationState>({ record: null, ready: false, busy: false, uncertain: false });
   const [fundingBusy, setFundingBusy] = useState(false);
   const [settlement, setSettlement] = useState<ContractSettlement | null>(null);
+  const [escrowView, setEscrowView] = useState<EscrowFundingView | null>(null);
   const [settlementLoading, setSettlementLoading] = useState(false);
   const [settlementError, setSettlementError] = useState('');
   const [settlementTick, setSettlementTick] = useState(0);
@@ -119,14 +130,38 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
   const releasedPending = releaseRelevant && !releaseConfirmed && !completed;
   const refundPending = dispute?.status === 'DECISION_PENDING_REFUND' || contract.milestoneStatus === 'REFUND_PENDING' || cancellation.record?.cancellationStatus === 'REFUND_PENDING';
   const cancelled = contract.status === 'CANCELLED' || job.status === 'CANCELLED' || cancellation.record?.cancellationStatus === 'CANCELLED';
-  const workAllowed = cancellation.ready && !cancellation.busy && !cancellation.uncertain && !refundPending && !cancelled && !fundingBusy && !disputeBusy && !dispute;
+  const workAllowed = (escrowRail || cancellation.ready) && !cancellation.busy && !cancellation.uncertain && !refundPending && !cancelled && !fundingBusy && !disputeBusy && !dispute;
   const canSubmit = freelancer && workAllowed && verified && !disputed && !releaseRelevant && !loading &&
     ['ACTIVE', 'REVISION'].includes(contract.status) && ['FUNDED', 'IN_PROGRESS'].includes(contract.milestoneStatus || '') &&
-    ['IN_PROGRESS', 'REVISION_REQUESTED'].includes(job.status) && (!latest || latest.status === 'REVISION_REQUESTED');
-  const canReview = client && workAllowed && verified && !disputed && !releaseRelevant && !loading && !decisionUncertain && latest?.status === 'SUBMITTED' && contract.status === 'UNDER_REVIEW' && contract.milestoneStatus === 'SUBMITTED';
+    ['IN_PROGRESS', 'REVISION_REQUESTED'].includes(job.status) && (!latest || latest.status === 'REVISION_REQUESTED') &&
+    (!escrowRail || !!pending?.onchainHash && escrowView?.status === 'Submitted'
+      || (escrowView?.status === 'Funded' || escrowView?.status === 'Revision')
+        && (contract.status === 'REVISION' || !!escrowView?.deliveryDueAt
+          && now <= Number(escrowView.deliveryDueAt) * 1000));
+  const canReview = client && workAllowed && verified && !disputed && !releaseRelevant && !loading && !decisionUncertain && latest?.status === 'SUBMITTED' && contract.status === 'UNDER_REVIEW' && contract.milestoneStatus === 'SUBMITTED'
+    && (!escrowRail || reviewAttempt?.submissionId === latest.id
+      || escrowView?.status === 'Submitted' && !!escrowView.reviewDueAt
+        && now < Number(escrowView.reviewDueAt) * 1000);
   const revisionAvailable = contract.revisionsUsed < contract.maxRevisions;
 
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
+  useEffect(() => {
+    if (!escrowRail || !client) return;
+    try {
+      const saved = readAttempt<ReviewAttempt>(escrowReviewScope);
+      if (saved?.submissionId && saved.body?.decision) setReviewAttempt(saved);
+    } catch { setError('Không đọc được lần duyệt escrow trước.'); }
+  }, [escrowRail, client, escrowReviewScope]);
+  useEffect(() => {
+    if (!escrowRail) return;
+    const timer = window.setInterval(() => setNow(Date.now()), 30000);
+    return () => window.clearInterval(timer);
+  }, [escrowRail]);
+  // Before the Client signs funding no escrow record exists yet (404): that is "no vault", not a failure.
+  const readEscrow = () => escrowRail && contract.milestoneId
+    ? api.escrowFunding(contract.id, contract.milestoneId)
+      .catch(cause => cause instanceof ApiError && cause.status === 404 ? null : Promise.reject(cause))
+    : Promise.resolve(null);
   useEffect(() => {
     if (!client && !freelancer) { setLoading(false); return; }
     let active = true;
@@ -135,25 +170,97 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
       const saved = freelancer ? readAttempt<SubmissionAttempt>(scope) : null;
       if (saved && (!saved.key || !saved.payload || !Number.isInteger(saved.baselineVersion))) throw new Error();
       recovery.current = saved; setPending(saved);
-      const [returned, currentDispute] = await Promise.all([api.contractSubmissions(contract.id), api.dispute(contract.id)]);
+      const [returned, currentDispute, chain] = await Promise.all([api.contractSubmissions(contract.id), api.dispute(contract.id),
+        readEscrow()]);
       if (!active) return;
-      const ordered = [...returned].sort((a, b) => b.version - a.version); setList(ordered); setDispute(currentDispute); setVerified(true);
+      const ordered = [...returned].sort((a, b) => b.version - a.version); setList(ordered); setDispute(currentDispute); setEscrowView(chain); setVerified(true);
       if (saved && (ordered[0]?.version || 0) > saved.baselineVersion) { clearAttempt(scope); recovery.current = null; setPending(null); const fresh = await api.job(job.id); if (active) onJobUpdated(fresh); }
     })().catch(() => { if (active) setError('Không thể đối chiếu lịch sử hoặc lần gửi trước. Hãy tải lại.'); }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [contract.id, scope, client, freelancer, job.id]);
+  }, [contract.id, contract.milestoneId, escrowRail, scope, client, freelancer, job.id]);
 
   const synchronize = useCallback((): Promise<void> => {
     if (syncing.current) return syncing.current;
     const work = (async () => {
-      const [fresh, returned, currentDispute] = await Promise.all([api.job(job.id), api.contractSubmissions(contract.id), api.dispute(contract.id)]);
+      const [fresh, returned, currentDispute, chain] = await Promise.all([api.job(job.id), api.contractSubmissions(contract.id), api.dispute(contract.id),
+        readEscrow()]);
       if (!alive.current) return;
       const ordered = [...returned].sort((a, b) => b.version - a.version);
-      setList(ordered); setDispute(currentDispute); setVerified(true); onJobUpdated(fresh); setDecision(null); setDecisionUncertain(false);
+      setList(ordered); setDispute(currentDispute); setEscrowView(chain); setVerified(true); onJobUpdated(fresh);
+      if (!escrowRail || ordered[0]?.status !== 'SUBMITTED') setDecision(null);
+      if (escrowRail && ordered[0]?.status !== 'SUBMITTED') {
+        clearAttempt(escrowReviewScope); setReviewAttempt(null);
+      }
+      setDecisionUncertain(false);
       if (recovery.current && (ordered[0]?.version || 0) > recovery.current.baselineVersion) { clearAttempt(scope); recovery.current = null; setPending(null); }
     })().catch(cause => { if (alive.current) setVerified(false); throw cause; }).finally(() => { syncing.current = null; });
     syncing.current = work; return work;
-  }, [contract.id, job.id, scope, onJobUpdated]);
+  }, [contract.id, contract.milestoneId, escrowRail, escrowReviewScope, job.id, scope, onJobUpdated]);
+
+  async function signedEscrowAction(action: string, payload: {
+    submission?: SubmissionPayload; review?: ReviewDecision; newDueAt?: string;
+    reasonCode?: string; description?: string;
+  }, expectedStatus: string, onSubmitted?: () => void,
+  verified?: (state: EscrowFundingView) => boolean,
+  onBuilt?: (hash: string | null) => void): Promise<EscrowFundingView> {
+    if (!contract.milestoneId) throw new Error('Thiếu Milestone ID.');
+    const built = await api.buildEscrowAction(contract.id, action, payload);
+    onBuilt?.(built.payloadHash);
+    const connected = await connectSolanaWallet();
+    if (connected.address !== built.actorWallet) throw new Error('Ví kết nối không khớp ví đã đăng ký cho hợp đồng.');
+    const signed = await signEscrowTransaction(connected.wallet, built.transactionBase64);
+    await api.submitEscrowAction(contract.id, built.intentId, signed);
+    onSubmitted?.();
+    for (let attempt = 0; attempt < 8; attempt++) {
+      const state = await api.escrowFunding(contract.id, contract.milestoneId);
+      if (state.status === expectedStatus && (!verified || verified(state))) { setEscrowView(state); return state; }
+      await new Promise(resolve => window.setTimeout(resolve, 1500));
+    }
+    throw new Error('Giao dịch đã gửi nhưng chain chưa xác nhận trạng thái. Hãy đối soát trước khi thử lại.');
+  }
+  async function openEscrowDispute(input: OpenDisputeInput) {
+    if (!contract.milestoneId) throw new Error('Thiếu Milestone ID.');
+    const current = await api.escrowFunding(contract.id, contract.milestoneId);
+    if (current.status === 'Disputed') return;
+    await signedEscrowAction('open-dispute', {
+      reasonCode: input.reasonCode, description: input.description,
+    }, 'Disputed');
+  }
+  async function requestExtension() {
+    if (lock.current || !freelancer || !escrowRail || !contract.deliveryDueAt) return;
+    const seconds = Math.floor(new Date(extensionDue).getTime() / 1000);
+    const original = Math.floor(new Date(contract.deliveryDueAt).getTime() / 1000);
+    if (!Number.isFinite(seconds) || seconds <= original || seconds > original + 7 * 86400) {
+      setError('Hạn gia hạn phải sau hạn gốc và không quá 7 ngày.'); return;
+    }
+    lock.current = true; setBusy(true); setError('');
+    try {
+      await signedEscrowAction('request-extension', { newDueAt: String(seconds) }, 'Funded',
+        undefined, state => state.requestedDeliveryDueAt === String(seconds));
+      setNotice('Đã ghi nhận yêu cầu gia hạn on-chain; chờ Client chấp thuận.');
+    } catch (cause) { setError(cause instanceof Error ? cause.message : errorText(cause)); }
+    finally { lock.current = false; setBusy(false); }
+  }
+  async function approveExtension() {
+    if (lock.current || !client || !escrowRail) return;
+    lock.current = true; setBusy(true); setError('');
+    try {
+      await signedEscrowAction('approve-extension', {}, 'Funded', undefined,
+        state => state.extensionUsed);
+      setNotice('Đã chấp thuận hạn mới on-chain.');
+    } catch (cause) { setError(cause instanceof Error ? cause.message : errorText(cause)); }
+    finally { lock.current = false; setBusy(false); }
+  }
+  async function claimEscrow() {
+    if (lock.current || !freelancer || !escrowRail) return;
+    lock.current = true; setBusy(true); setError('');
+    try {
+      await signedEscrowAction('claim', {}, 'Released');
+      setNotice('Vault đã giải ngân on-chain; Marketplace đang đối soát Job.');
+      await synchronize();
+    } catch (cause) { setError(cause instanceof Error ? cause.message : errorText(cause)); }
+    finally { lock.current = false; setBusy(false); }
+  }
   async function refresh() {
     if (lock.current) return;
     setBusy(true);
@@ -243,6 +350,20 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
       }
       const saved = recovery.current || { key: crypto.randomUUID(), payload: value, baselineVersion: latest?.version || 0 };
       saveAttempt(scope, saved); recovery.current = saved; setPending(saved);
+      if (escrowRail && !saved.onchainSubmitted) {
+        const current = saved.onchainHash && contract.milestoneId
+          ? await api.escrowFunding(contract.id, contract.milestoneId) : null;
+        if (current?.status === 'Submitted' && current.submissionHash === saved.onchainHash
+            && current.submissionCount === saved.baselineVersion + 1) {
+          saved.onchainSubmitted = true; saveAttempt(scope, saved); recovery.current = saved;
+        } else {
+          await signedEscrowAction('submit', { submission: saved.payload }, 'Submitted', () => {
+            saved.onchainSubmitted = true; saveAttempt(scope, saved); recovery.current = saved;
+          }, undefined, hash => {
+            if (hash) { saved.onchainHash = hash; saveAttempt(scope, saved); recovery.current = saved; }
+          });
+        }
+      }
       const returned = await api.submitContract(contract.id, saved.key, saved.payload);
       if (!alive.current) return;
       clearAttempt(scope); recovery.current = null; setPending(null);
@@ -258,9 +379,12 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
     } finally { lock.current = false; if (alive.current) setBusy(false); }
   }
   async function decide(event: React.FormEvent) {
-    event.preventDefault(); if (lock.current || !canReview || !latest || !decision) return;
+    event.preventDefault(); if (lock.current || !canReview || !latest || (!decision && !reviewAttempt)) return;
     let body: ReviewDecision;
-    if (decision === 'REQUEST_REVISION') {
+    if (reviewAttempt) {
+      if (reviewAttempt.submissionId !== latest.id) { setError('Bản bàn giao đã thay đổi. Hãy đối soát lại.'); return; }
+      body = reviewAttempt.body;
+    } else if (decision === 'REQUEST_REVISION') {
       if (!revisionAvailable || !feedback.trim() || feedback.length > 10000 || (!criterionIds.length && !deliverableIds.length)) { setError('Cần phản hồi và ít nhất một tiêu chí hoặc sản phẩm liên quan trong số lượt sửa còn lại.'); return; }
       body = { decision, feedback: feedback.trim(), criterionIds, deliverableIds };
     } else if (decision === 'OPEN_DISPUTE') {
@@ -269,7 +393,26 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
     } else body = { decision: 'APPROVE' };
     lock.current = true; setBusy(true); setError(''); setDecisionUncertain(true);
     try {
+      if (escrowRail) {
+        const saved = reviewAttempt || { submissionId: latest.id, body };
+        if (!reviewAttempt) { saveAttempt(escrowReviewScope, saved); setReviewAttempt(saved); }
+        const expected = body.decision === 'APPROVE' ? 'Released'
+          : body.decision === 'REQUEST_REVISION' ? 'Revision' : 'Disputed';
+        const action = body.decision === 'APPROVE' ? 'release'
+          : body.decision === 'REQUEST_REVISION' ? 'request-revision' : 'review-dispute';
+        const current = contract.milestoneId
+          ? await api.escrowFunding(contract.id, contract.milestoneId) : null;
+        if (current?.status !== expected) await signedEscrowAction(action, { review: body }, expected,
+          undefined, undefined, hash => {
+            if (hash) { saved.onchainHash = hash; saveAttempt(escrowReviewScope, saved); setReviewAttempt(saved); }
+          });
+        else if (body.decision === 'OPEN_DISPUTE' && saved.onchainHash
+            && current.disputeHash !== saved.onchainHash) {
+          throw new Error('Tranh chấp on-chain có nội dung khác lần gửi trước.');
+        }
+      }
       const returned = await api.decideSubmission(contract.id, latest.id, body);
+      if (escrowRail) { clearAttempt(escrowReviewScope); setReviewAttempt(null); }
       if (alive.current) { setList(current => [returned, ...current.filter(s => s.id !== returned.id)]); setNotice('Đã ghi nhận quyết định từ máy chủ.'); }
       await synchronize();
     } catch (cause) { if (alive.current) setError(errorText(cause)); try { await synchronize(); } catch { /* Keep stale decisions disabled until state can be read. */ } }
@@ -316,11 +459,38 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
     {disputed && <p role="status">Tranh chấp đang mở. Các thao tác bàn giao và review đã khóa; chờ Admin xử lý.</p>}
     <ContractDispute key={'dispute:' + contract.id + ':' + user.id} contractId={contract.id} user={user} dispute={dispute} ready={verified}
       eligible={verified && workAllowed && !busy && !releaseRelevant && !disputed && (
-        contract.status === 'ACTIVE' && ['FUNDED', 'IN_PROGRESS'].includes(contract.milestoneStatus || '') && job.status === 'IN_PROGRESS' && !latest ||
+        contract.status === 'ACTIVE' && ['FUNDED', 'IN_PROGRESS'].includes(contract.milestoneStatus || '') && job.status === 'IN_PROGRESS' && !latest
+          && (!escrowRail || !!escrowView?.deliveryDueAt && now > Number(escrowView.deliveryDueAt) * 1000) ||
         contract.status === 'REVISION' && contract.milestoneStatus === 'IN_PROGRESS' && job.status === 'REVISION_REQUESTED' && latest?.status === 'REVISION_REQUESTED' ||
         contract.status === 'UNDER_REVIEW' && contract.milestoneStatus === 'SUBMITTED' && job.status === 'SUBMITTED_FOR_REVIEW' && latest?.status === 'SUBMITTED' && freelancer)}
-      blocked={busy || fundingBusy || cancellation.busy || cancellation.uncertain} operationLock={lock} onRefresh={synchronize} onBusy={setDisputeBusy} />
-    {releaseRelevant && <section className="settlement-document" aria-label="Quyết toán hợp đồng">
+      blocked={busy || fundingBusy || cancellation.busy || cancellation.uncertain} operationLock={lock} onRefresh={synchronize} onBusy={setDisputeBusy}
+      onOpenOnChain={escrowRail ? openEscrowDispute : undefined} />
+    {escrowRail && escrowView && <section className="settlement-document" aria-label="Trạng thái escrow Solana">
+      <SectionHeading title="Escrow Solana" aside="On-chain" />
+      <p role="status">Trạng thái: {escrowView.status} · {escrowView.settlementStatus}</p>
+      <FactGrid facts={[{ label: 'Escrow PDA', value: escrowView.escrowAddress },
+        { label: 'Vault ATA', value: escrowView.vaultAddress || 'Chưa xác minh' },
+        { label: 'Số dư vault (base units)', value: escrowView.vaultBalanceBaseUnits || 'Chưa xác minh' },
+        { label: 'Mint', value: escrowView.mint || 'Đang đối soát' },
+        { label: 'Hash bàn giao on-chain', value: escrowView.submissionHash || 'Chưa bàn giao' },
+        { label: 'Hạn bàn giao có hiệu lực', value: escrowView.deliveryDueAt ? localInstant(new Date(Number(escrowView.deliveryDueAt) * 1000).toISOString()) : 'Chưa xác minh' },
+        { label: 'Review deadline', value: escrowView.reviewDueAt ? localInstant(new Date(Number(escrowView.reviewDueAt) * 1000).toISOString()) : 'Chưa bàn giao' },
+        { label: 'Funding signature', value: escrowView.fundSignature || 'Đang chờ' }]} />
+      {freelancer && escrowView.status === 'Submitted' && !!escrowView.reviewDueAt
+        && now >= Number(escrowView.reviewDueAt) * 1000 && <button className="button" disabled={busy} onClick={() => void claimEscrow()}>Nhận tiền sau hạn review</button>}
+    </section>}
+    {escrowRail && escrowView && <MutualRefundPanel contractId={contract.id} escrow={escrowView}
+      client={client} freelancer={freelancer} onRefresh={synchronize} onBusy={setFundingBusy} />}
+    {escrowRail && escrowView?.status === 'Funded' && contract.status === 'ACTIVE' && !latest && <section className="review-action" aria-label="Gia hạn bàn giao">
+      <SectionHeading title="Hạn bàn giao" />
+      {escrowView.requestedDeliveryDueAt && !escrowView.extensionUsed && <p>Freelancer đã xin hạn mới: {localInstant(new Date(Number(escrowView.requestedDeliveryDueAt) * 1000).toISOString())}</p>}
+      {freelancer && !escrowView.extensionUsed && !escrowView.requestedDeliveryDueAt && contract.deliveryDueAt
+        && now < new Date(contract.deliveryDueAt).getTime() && <ActionGroup><label>Xin gia hạn một lần<input type="datetime-local" value={extensionDue} onChange={event => setExtensionDue(event.target.value)} disabled={busy} /></label><button className="button" disabled={busy || !extensionDue} onClick={() => void requestExtension()}>Gửi yêu cầu on-chain</button></ActionGroup>}
+      {client && !!escrowView.requestedDeliveryDueAt && !escrowView.extensionUsed && contract.deliveryDueAt
+        && now < new Date(contract.deliveryDueAt).getTime() && <button className="button" disabled={busy} onClick={() => void approveExtension()}>Chấp thuận gia hạn on-chain</button>}
+      {now > Number(escrowView.deliveryDueAt) * 1000 && <p role="status">Đã quá hạn bàn giao. Hệ thống không nhận bản bàn giao đầu tiên mới; cần xử lý tranh chấp.</p>}
+    </section>}
+    {!escrowRail && releaseRelevant && <section className="settlement-document" aria-label="Quyết toán hợp đồng">
       <SectionHeading title="Release hợp đồng" aside={settlement?.simulation ? 'Mô phỏng' : undefined} />
       {settlementLoading && <p role="status">Đang đọc trạng thái release…</p>}
       {!settlement && !settlementLoading && !settlementError && <p className="financial-status financial-status-pending" role="status">Chưa có bản ghi release để xác nhận. Đang đối soát với Marketplace.</p>}
@@ -329,6 +499,12 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
         {releaseConfirmed && <p>{settlement.simulation ? financialCopy.releaseSimulation : 'Marketplace đã xác nhận release. Chi trả ngân hàng cần bằng chứng riêng.'}</p>}
         {!releaseConfirmed && <p>{financialCopy.fundingVsRelease}</p>}
         <FactGrid facts={[{ label: 'Giá trị release', value: String(settlement.amount) + ' ' + settlement.currency },
+          ...(contract.paymentRail === 'PARTNER_ESCROW_MOCK' ? [
+            { label: 'Phí FreelaX khi giải ngân (3%)', value: settlement.platformFeeUsd == null ? 'Chưa ghi nhận' : String(settlement.platformFeeUsd) + ' USD' },
+            { label: 'Freelancer nhận', value: settlement.freelancerUsd == null ? 'Chưa ghi nhận' : String(settlement.freelancerUsd) + ' USD' },
+            { label: 'Tỷ giá USD/VND khóa', value: settlement.lockedUsdVndRate == null ? 'Chưa khóa' : String(settlement.lockedUsdVndRate) },
+            { label: 'Đối tác mock chi VND', value: settlement.partnerPayoutVnd == null ? 'Chưa xác nhận' : String(settlement.partnerPayoutVnd) + ' VND' },
+          ] : []),
           { label: 'Bằng chứng on-chain', value: settlementStageLabel(settlement.onChainStatus) },
           { label: 'Off-ramp', value: settlementStageLabel(settlement.offRampStatus) },
           { label: 'Tạo / Khôi phục chứng từ', value: settlementStageLabel(settlement.taxStatus) }]} />
@@ -342,8 +518,9 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
       {settlementError && <p className="form-error" role="alert">{settlementError}</p>}
       <button className="text-button" disabled={settlementLoading || busy || cancellation.busy} onClick={() => setSettlementAttempt(value => value + 1)}>Đối chiếu release</button>
     </section>}
-    <ContractCancellation key={contract.id + ':' + user.id} job={job} user={user} submissionCount={verified ? list.length : null}
+    {!escrowRail && <ContractCancellation key={contract.id + ':' + user.id} job={job} user={user} submissionCount={verified ? list.length : null}
       workflowBusy={busy || fundingBusy || disputeBusy} operationLock={lock} onJobUpdated={onJobUpdated} onStateChange={setCancellation} />
+    }
     {canSubmit && <section className="work-composer" id="work-primary-action" tabIndex={-1}><SectionHeading title={job.status === 'REVISION_REQUESTED' ? 'Gửi bản sửa' : 'Gửi bàn giao'} />
       {pending && <p role="status">Giữ nguyên nội dung lần gửi trước để đối chiếu. Không tạo phiên bản mới khi kết quả chưa rõ.</p>}
       <form onSubmit={submit}><label>Tóm tắt bàn giao<textarea required maxLength={10000} value={pending?.payload.summary ?? summary} disabled={busy || !!pending} onChange={e => setSummary(e.target.value)} /></label>
@@ -352,13 +529,16 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
       </form></section>}
     {canReview && <section className="review-action" id="work-primary-action" tabIndex={-1}><SectionHeading title="Quyết định của bạn" />
       <p className="metadata">Chỉnh sửa đã dùng: {contract.revisionsUsed}/{contract.maxRevisions}</p>
-      {!decision ? <ActionGroup><button className="button" disabled={busy} onClick={() => setDecision('APPROVE')}>Duyệt bàn giao</button><button className="button button-secondary" disabled={busy || !revisionAvailable} onClick={() => setDecision('REQUEST_REVISION')}>Yêu cầu chỉnh sửa</button><button className="text-button" disabled={busy} onClick={() => setDecision('OPEN_DISPUTE')}>Mở tranh chấp</button></ActionGroup>
+      {reviewAttempt && <p role="status">Đang đối soát quyết định escrow đã gửi. Giữ nguyên nội dung trước khi ký lại.</p>}
+      {!decision && !reviewAttempt ? <ActionGroup><button className="button" disabled={busy} onClick={() => setDecision('APPROVE')}>Duyệt bàn giao</button><button className="button button-secondary" disabled={busy || !revisionAvailable} onClick={() => setDecision('REQUEST_REVISION')}>Yêu cầu chỉnh sửa</button><button className="text-button" disabled={busy} onClick={() => setDecision('OPEN_DISPUTE')}>Mở tranh chấp</button></ActionGroup>
         : <form className="decision-form" onSubmit={decide} aria-label="Xác nhận quyết định">
+          {reviewAttempt ? <p>Tiếp tục đối soát quyết định {reviewAttempt.body.decision} cho bản #{latest.version}.</p> : <>
           {decision === 'APPROVE' && <p>Duyệt bản #{latest.version}? Phần việc được duyệt; tiền chuyển sang chờ xử lý, chưa giải ngân.</p>}
           {decision === 'REQUEST_REVISION' && <><label>Phản hồi chỉnh sửa<textarea required maxLength={10000} disabled={busy} value={feedback} onChange={e => setFeedback(e.target.value)} /></label>
             {([['Tiêu chí liên quan', contract.acceptanceCriteria, criterionIds, setCriterionIds], ['Sản phẩm liên quan', contract.deliverables, deliverableIds, setDeliverableIds]] as const).map(([title, items, ids, setIds]) => <fieldset key={title}><legend>{title}</legend>{items.map(item => <label className="selection-label" key={item.id}><input type="checkbox" disabled={busy} checked={ids.includes(item.id)} onChange={e => setIds(e.target.checked ? [...ids, item.id] : ids.filter(id => id !== item.id))} />{item.title || item.description}</label>)}</fieldset>)}</>}
           {decision === 'OPEN_DISPUTE' && <><p>Mở tranh chấp cho bản #{latest.version} và khóa review để chờ Admin.</p><label>Mã lý do<input required maxLength={60} value={reason} disabled={busy} onChange={e => setReason(e.target.value)} /></label><label>Mô tả tranh chấp<textarea required maxLength={2000} value={description} disabled={busy} onChange={e => setDescription(e.target.value)} /></label></>}
-          <ActionGroup><button className="button" disabled={busy}>{busy ? 'Đang ghi nhận…' : decision === 'APPROVE' ? 'Xác nhận duyệt' : decision === 'REQUEST_REVISION' ? 'Gửi yêu cầu chỉnh sửa' : 'Xác nhận mở tranh chấp'}</button><button className="button button-secondary" type="button" disabled={busy} onClick={() => setDecision(null)}>Quay lại</button></ActionGroup>
+          </>}
+          <ActionGroup><button className="button" disabled={busy}>{busy ? 'Đang ghi nhận…' : reviewAttempt ? 'Đối soát và tiếp tục' : decision === 'APPROVE' ? 'Xác nhận duyệt' : decision === 'REQUEST_REVISION' ? 'Gửi yêu cầu chỉnh sửa' : 'Xác nhận mở tranh chấp'}</button>{!reviewAttempt && <button className="button button-secondary" type="button" disabled={busy} onClick={() => setDecision(null)}>Quay lại</button>}</ActionGroup>
         </form>}
     </section>}
     {notice && <p role="status" className="lifecycle-success">{notice}</p>}{error && <p role="alert" className="form-error">{error}</p>}
@@ -369,7 +549,7 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
       {list.slice(1).map(item => <details className="ledger-row" key={item.id}><summary><strong>#{item.version}</strong><span>{submissionLabel(item.status)}</span><time>{localInstant(item.submittedAt)}</time></summary><div className="ledger-body"><EvidenceRecord submission={item} contract={contract} /></div></details>)}
     </section>
     {footer}
-    {completed && (client || freelancer) && <ContractReviews key={'reviews:' + contract.id + ':' + user.id} job={job} user={user} settlement={settlement} blocked={!cancellation.ready || cancellation.uncertain || refundPending || cancelled || disputed || !!settlementError} onOpportunityChange={onReviewOpportunityChange} />}
+    {completed && (client || freelancer) && <ContractReviews key={'reviews:' + contract.id + ':' + user.id} job={job} user={user} settlement={settlement} blocked={(!escrowRail && !cancellation.ready) || cancellation.uncertain || refundPending || cancelled || disputed || (!escrowRail && !!settlementError)} onOpportunityChange={onReviewOpportunityChange} />}
     {list.length > 0 && <EvidenceDisclosure summary="Tham chiếu bàn giao"><dl className="reference-list">{list.map(item => <div key={item.id}><dt>Bản #{item.version}</dt><dd><code>{item.id}</code>{item.disputeId && <p>Dispute: <code>{item.disputeId}</code></p>}</dd></div>)}</dl></EvidenceDisclosure>}
   </div>;
 }

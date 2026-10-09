@@ -22,7 +22,7 @@ The accepted source chain is preserved in [visual handoff](UI_VISUAL_POLISH_HAND
 
 ### Business documentation
 
-Business-first reading: [index](../business/README.md) → [system/business flow](../business/FREELAX_SYSTEM_BUSINESS_FLOW_20261008.md) → [Solana business role](../business/FREELAX_SOLANA_BUSINESS_ROLE_20261008.md) → [issues/fixes](../business/FREELAX_IMPLEMENTATION_ISSUES_FIXES_20261008.md) → [source path index](../business/FREELAX_SOURCE_PATH_INDEX_20261008.md). This documentation addendum does not change product/source authority, runtime evidence or the P06 freeze.
+Business-first reading for the working branch: [index](../business/README.md) → [unified payment flow](../business/PAYMENT_FLOW.md) → [Solana architecture](../business/SOLANA_ARCHITECTURE.md) → [verification](../business/VERIFICATION.md). P06 detail remains in the [dated archive](../business/archive/README.md). This documentation addendum does not change product/source authority, runtime evidence or the P06 freeze.
 
 ## 3. Frozen scope
 

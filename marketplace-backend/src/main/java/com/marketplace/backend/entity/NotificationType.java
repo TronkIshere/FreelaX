@@ -3,6 +3,7 @@ package com.marketplace.backend.entity;
 public enum NotificationType {
     JOB_ASSIGNED,
     FUNDING_CONFIRMED,
+    FUNDING_REMINDER,
     RELEASE_CONFIRMED,
     CANCELLATION_REQUESTED,
     CANCELLATION_REJECTED,
@@ -12,6 +13,7 @@ public enum NotificationType {
     WORK_SUBMITTED,
     REVISION_REQUESTED,
     WORK_APPROVED,
+    REVIEW_REMINDER,
     REVIEW_GRACE_STARTED,
     REVIEW_AUTO_APPROVED,
     DISPUTE_OPENED,

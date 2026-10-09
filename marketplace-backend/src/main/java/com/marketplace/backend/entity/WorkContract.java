@@ -41,6 +41,14 @@ public class WorkContract extends AbstractEntity<UUID> {
     private int maxRevisions;
     @Column(nullable = false)
     private int revisionsUsed;
+    @Column(name = "payment_rail", length = 30)
+    private String paymentRail;
+    @Column(name = "accepted_terms_fingerprint", length = 64)
+    private String acceptedTermsFingerprint;
+    @Column(name = "client_terms_accepted_at")
+    private Instant clientTermsAcceptedAt;
+    @Column(name = "funding_reminder_sent_at")
+    private Instant fundingReminderSentAt;
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private ContractStatus status;

@@ -161,7 +161,7 @@ export function JobEditor({ user }: { user: User }) {
             <label>Hạn bàn giao<input type="datetime-local" required value={due} onChange={event => setDue(event.target.value)} aria-describedby="job-due-help" />
               <span className="job-editor-help" id="job-due-help">Ít nhất 24 giờ từ hiện tại.</span></label>
             <label>Thời hạn review (giờ)<input type="number" min="24" max="168" required value={reviewWindow} onChange={event => setReviewWindow(event.target.value)} aria-describedby="job-review-help" />
-              <span className="job-editor-help" id="job-review-help">24–168 giờ.</span></label>
+              <span className="job-editor-help" id="job-review-help">24–168 giờ. Job theo luồng thanh toán thống nhất luôn dùng 72 giờ.</span></label>
             <label>Số lần chỉnh sửa tối đa<input type="number" min="0" max="2" required value={maxRevisions} onChange={event => setMaxRevisions(event.target.value)} aria-describedby="job-revisions-help" />
               <span className="job-editor-help" id="job-revisions-help">0–2 lần.</span></label>
           </div>

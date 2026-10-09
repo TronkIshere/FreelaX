@@ -26,6 +26,7 @@ public class ContractReviewService {
     private final MilestoneRepository milestones;
     private final JobRepository jobs;
     private final ContractSettlementRepository settlements;
+    private final EscrowContractRepository escrows;
     private final ContractCancellationRepository cancellations;
     private final ContractReviewRepository reviews;
     private final ReviewAuditRepository audit;
@@ -146,23 +147,29 @@ public class ContractReviewService {
         Milestone milestone = milestones.findWithLockByContractId(contractId).orElseThrow(this::notFound);
         WorkContract contract = contracts.findById(contractId).orElseThrow(this::notFound);
         Job job = jobs.findById(contract.getJobId()).orElseThrow(this::notFound);
-        ContractSettlement settlement = settlements.findByContractId(contractId).orElseThrow(this::ineligible);
+        EscrowContract escrow = escrows.findByContractId(contractId).orElse(null);
+        ContractSettlement settlement = escrow == null
+                ? settlements.findByContractId(contractId).orElseThrow(this::ineligible) : null;
+        Instant completedAt = escrow == null ? settlement.getMoneySucceededAt() : escrow.getReleasedAt();
         if (contract.getStatus() != ContractStatus.COMPLETED || milestone.getStatus() != MilestoneStatus.RELEASED
-                || job.getStatus() != JobStatus.COMPLETED || settlement.getMoneyStatus() != SettlementMoneyStatus.SUCCEEDED
-                || settlement.getMoneySucceededAt() == null || settlement.getMoneySucceededAt().isAfter(Instant.now())
+                || job.getStatus() != JobStatus.COMPLETED || completedAt == null
+                || completedAt.isAfter(Instant.now())
+                || (escrow == null && settlement.getMoneyStatus() != SettlementMoneyStatus.SUCCEEDED)
+                || (escrow != null && (!"RELEASED_RECONCILED".equals(escrow.getLastChainStatus())
+                    || !Objects.equals(escrow.getMilestoneId(), milestone.getId())))
                 || !Objects.equals(contract.getId(), milestone.getContractId())
-                || !Objects.equals(contract.getId(), settlement.getContractId())
+                || (settlement != null && !Objects.equals(contract.getId(), settlement.getContractId()))
                 || !Objects.equals(contract.getJobId(), job.getId())
-                || !Objects.equals(contract.getJobId(), settlement.getJobId())
-                || !Objects.equals(milestone.getId(), settlement.getMilestoneId())
+                || (settlement != null && !Objects.equals(contract.getJobId(), settlement.getJobId()))
+                || (settlement != null && !Objects.equals(milestone.getId(), settlement.getMilestoneId()))
                 || !Objects.equals(contract.getClientUserId(), job.getClientUserId())
                 || !Objects.equals(contract.getFreelancerId(), job.getFreelancerId())
-                || !Objects.equals(contract.getFreelancerId(), settlement.getFreelancerId())
+                || (settlement != null && !Objects.equals(contract.getFreelancerId(), settlement.getFreelancerId()))
                 || Objects.equals(contract.getClientUserId(), contract.getFreelancerId())
                 || cancellations.findByContractId(contractId).filter(x ->
                     x.getStatus() == CancellationStatus.REFUND_PENDING || x.getStatus() == CancellationStatus.CANCELLED).isPresent())
             throw ineligible();
-        return new Context(contract, job, settlement);
+        return new Context(contract, job, completedAt, escrow == null);
     }
 
     private void ensureInvitations(Context context) {
@@ -173,7 +180,7 @@ public class ContractReviewService {
             if (existing != null) {
                 if (!Objects.equals(existing.getRevieweeId(), reviewee)
                         || !Objects.equals(existing.getJobId(), contract.getJobId())
-                        || !Objects.equals(existing.getCompletedAt(), context.settlement().getMoneySucceededAt()))
+                        || !Objects.equals(existing.getCompletedAt(), context.completedAt()))
                     throw new ApplicationException(ErrorCode.REVIEW_CONFLICT);
                 continue;
             }
@@ -181,17 +188,17 @@ public class ContractReviewService {
             row.setContractId(contract.getId()); row.setJobId(contract.getJobId());
             row.setReviewerId(actor);
             row.setRevieweeId(reviewee);
-            row.setCompletedAt(context.settlement().getMoneySucceededAt());
+            row.setCompletedAt(context.completedAt());
             reviews.saveAndFlush(row);
             notifications.notify(actor, NotificationType.REVIEW_INVITED, "Mời đánh giá hợp đồng",
-                    "Hợp đồng đã hoàn thành sau release mô phỏng; bạn có thể đánh giá đối tác.", contract.getJobId());
+                    "Hợp đồng đã hoàn thành sau giải ngân; bạn có thể đánh giá đối tác.", contract.getJobId());
         }
     }
 
     private void publishIfReady(Context context) {
         List<ContractReview> rows = reviews.findByContractIdOrderByCreatedAtAsc(context.contract().getId());
         boolean bothSubmitted = rows.size() == 2 && rows.stream().allMatch(x -> x.getSubmittedAt() != null);
-        boolean timeout = !Instant.now().isBefore(context.settlement().getMoneySucceededAt().plus(PUBLICATION_DELAY));
+        boolean timeout = !Instant.now().isBefore(context.completedAt().plus(PUBLICATION_DELAY));
         if (!bothSubmitted && !timeout) return;
         for (ContractReview row : rows) {
             if (row.getSubmittedAt() == null || row.getPublishedAt() != null) continue;
@@ -234,5 +241,5 @@ public class ContractReviewService {
     private ApplicationException invalid() { return new ApplicationException(ErrorCode.REVIEW_INVALID); }
     private ApplicationException notFound() { return new ApplicationException(ErrorCode.REVIEW_NOT_FOUND); }
     private ApplicationException ineligible() { return new ApplicationException(ErrorCode.REVIEW_INELIGIBLE); }
-    private record Context(WorkContract contract, Job job, ContractSettlement settlement) {}
+    private record Context(WorkContract contract, Job job, Instant completedAt, boolean simulated) {}
 }

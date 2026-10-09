@@ -13,10 +13,16 @@ spring:
     password: ${DB_PASSWORD:marketplace}
     url: ${DB_URL:jdbc:mysql://localhost:3307/marketplace?useUnicode=true&characterEncoding=UTF-8}
     driver-class-name: com.mysql.cj.jdbc.Driver
+  flyway:
+    enabled: ${FLYWAY_ENABLED:true}
+    # Databases created by the former ddl-auto=update are adopted at V1 and receive later migrations.
+    baseline-on-migrate: true
+    baseline-version: 1
   jpa:
     show-sql: false
     hibernate:
-      ddl-auto: update
+      # Schema changes ship as Flyway migrations; Hibernate only checks the result.
+      ddl-auto: ${JPA_DDL_AUTO:validate}
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
@@ -70,6 +76,13 @@ demo:
   wallet:
     client-public-key: ${DEMO_CLIENT_SOLANA_PUBLIC_KEY:}
     freelancer-public-key: ${DEMO_FREELANCER_SOLANA_PUBLIC_KEY:}
+
+partner-mock:
+  e2e-negotiation-seconds: ${PARTNER_MOCK_E2E_NEGOTIATION_SECONDS:0}
+
+payment-flow:
+  # Enable only after all local mock gates in the rebuild checklist pass.
+  cutover-enabled: ${PAYMENT_FLOW_CUTOVER_ENABLED:false}
 
 http-client:
   connect-timeout-ms: 3000

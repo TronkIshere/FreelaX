@@ -19,6 +19,8 @@ Open `http://localhost:3000`. Vite proxies `/api/v1` to Marketplace. The browser
 
 `frontend/Dockerfile` builds static assets and serves them with Caddy. The default `VITE_MARKETPLACE_API_ORIGIN` is blank, so all browser API calls stay on the current origin. Caddy proxies only `/api/v1/*` to `marketplace-backend:9191` and serves `index.html` for React Router deep links.
 
+Set `VITE_SOLANA_CLUSTER=localnet` for local testing or `devnet` for a devnet escrow demo. The Finance page shows Solana Explorer transaction links only when the build is explicitly labeled `devnet` or `mainnet-beta`.
+
 ```bash
 docker compose --profile deploy config --quiet
 docker compose --profile deploy up -d

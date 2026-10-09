@@ -1,14 +1,42 @@
 # FreelaX — Hệ thống và luồng nghiệp vụ tổng thể
 
+> **Lưu trữ theo mốc ngày.** Xem [tổng quan hiện tại](../README.md) và [trạng thái kiểm chứng](../VERIFICATION.md) trước khi dùng các kết luận bên dưới.
+
+> Phần 1–10 bên dưới ghi lại **baseline P06 tại thời điểm freeze**. Để đọc trạng thái nhánh hiện tại và luồng USD→VND đã chốt về nghiệp vụ, xem phần 0 ngay dưới đây. Một số ca escrow token local đã qua E2E; toàn bộ gate và devnet chưa hoàn tất. Xem [báo cáo E2E](SOLANA_ESCROW_LOCAL_E2E_20261008.md).
+
 **Ngày chốt:** 2026-10-08
 
-**Trạng thái:** BUSINESS HANDOFF / SOURCE-BACKED
+**Trạng thái baseline:** BUSINESS HANDOFF / SOURCE-BACKED
 
 **Final product/source authority:** `7fc31555b9cd3f50a23872401968ee67c5275f30`
 
 **Final documentation authority trước business addendum:** `519e77c5d689319009ddcd288de932d617fe78d0`
 
-**Branch:** `feat/ui-visual-polish-20261006`
+**Branch của baseline P06:** `feat/ui-visual-polish-20261006`
+
+## 0. Bản đồ nghiệp vụ tại thời điểm cập nhật
+
+| Luồng | Tiền/chứng từ nằm ở đâu | Điều kiện bắt đầu làm và kết thúc | Trạng thái |
+| --- | --- | --- | --- |
+| P06 Payment simulation | Ledger mô phỏng của Payment Backend; không có USD ngân hàng được xác minh | Funding `SUCCEEDED` mới mở việc; primary settlement mô phỏng `SUCCEEDED` mới hoàn tất Job | Đã có và E2E P06; không phải ký quỹ tiền thật. |
+| `SOLANA_ESCROW` | Mock token trong vault PDA riêng của một Milestone; không phải USD ở ngân hàng | Vault được xác minh đã nhận token mới mở việc; chỉ hoàn tất sau chuyển token release được xác minh | Có code và một số ca E2E local đã qua; còn gate mở. |
+| `PARTNER_ESCROW_MOCK` | Payment Backend giữ sao kê **mock** riêng; về sau cần đối tác có phạm vi hoạt động phù hợp để giữ USD và chi/hoàn | Đối tác mock xác nhận đủ USD mới mở việc; xác nhận chi VND/hoàn USD mới tất toán | API E2E chi/hoàn và browser E2E seed account đã qua trên local; fiat thật chưa có. Xem [tài liệu đối tác](PARTNER_ESCROW_BUSINESS_GAP_20261008.md). |
+
+Luồng nghiệp vụ mục tiêu qua đối tác, không dùng token Solana cho cùng một khoản tiền:
+
+```text
+Client và Freelancer chốt đầu ra, tiêu chí, hạn, tối đa 2 vòng sửa và giá USD
+    → Client nộp đủ USD cho đối tác mock
+    → xác nhận + đối soát đủ tiền → Job “Đã ký quỹ”, Freelancer bắt đầu
+    → Freelancer bàn giao → Client duyệt / yêu cầu sửa / tranh chấp
+    → duyệt hợp lệ → đối tác chốt tỷ giá và nhận lệnh chi
+    → đối tác xác nhận chi VND cho Freelancer → Job hoàn tất, FreelaX ghi phí 3%
+    ↘ nếu hủy/hoàn trước giải ngân → đối tác hoàn đủ USD cho Client, phí FreelaX 0
+```
+
+**Ranh giới trạng thái:** `Đã ký quỹ` đòi hỏi bằng chứng nhận tiền; `Đã duyệt` chỉ cho phép tạo lệnh chi; `Đang giải ngân` chưa phải `Đã thanh toán`. Tiền chờ đối soát hoặc đang tranh chấp không được giải ngân/hoàn theo một kết quả phỏng đoán. Số dư đối tác mock phải đối soát với tổng nghĩa vụ chưa quyết toán theo USD; không cộng USD và VND làm một số dư. Mọi màn hình demo đối tác ghi rõ **mô phỏng**.
+
+Rail đối tác mock thu **3% giá Job, do Freelancer chịu, chỉ ghi nhận sau giải ngân thành công**. Tỷ giá khóa lúc tạo lệnh chi; mock không tính phí đối tác; hoàn trước giải ngân trả đủ USD và không tính phí FreelaX. Rail này tự duyệt sau 3 ngày làm việc, nhắc 2 lần; tranh chấp đóng băng tiền, dành 3 ngày làm việc tự thương lượng, sau đó Admin có mốc 5 ngày làm việc để quyết định. Một Job hiện chỉ có một Milestone; trả theo nhiều giai đoạn là hướng sau MVP.
 
 ## 1. FreelaX giải quyết bài toán gì?
 
@@ -88,7 +116,7 @@ Marketplace Backend
 
 **Nguyên tắc kiến trúc quan trọng:** trình duyệt chỉ giao tiếp với **Marketplace**. Payment, Solana Gateway, MISA và Solana RPC là hệ thống phía sau. Điều này giữ quyền, trạng thái và business rule tập trung tại Marketplace thay vì để frontend tự phối hợp nhiều backend.
 
-## 4. Luồng nghiệp vụ end-to-end đã được kiểm chứng
+## 4. Luồng nghiệp vụ end-to-end đã được kiểm chứng ở baseline P06
 
 P06.7 đã chứng minh một Job mới đi xuyên **workflow contract-backed thật**, không dùng legacy Job `contract:null` và không INSERT/UPDATE DB để tạo trạng thái giả.
 
@@ -268,7 +296,7 @@ Các bề mặt này đã được đóng băng trong P06; không nên mở lạ
 - Public profile không được lộ email session, account UUID hoặc dữ liệu ngân hàng/tax private.
 - Simulation/local demo phải luôn được mô tả đúng là mô phỏng/local, không phải chuyển tiền thật.
 
-## 9. Trạng thái cuối hiện tại
+## 9. Trạng thái cuối của baseline P06
 
 - P06 visual/product UI stream: **COMPLETE / FROZEN**.
 - Test evidence accepted: **793/793 PASS**, 22 files.

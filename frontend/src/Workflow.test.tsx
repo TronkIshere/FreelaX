@@ -20,6 +20,11 @@ const pending: JobApplication = { id: 'application-1', jobId: job.id, freelancer
 const myApplication: MyApplication = { id: pending.id, status: 'PENDING', createdAt: pending.createdAt,
   updatedAt: pending.createdAt, job: { id: job.id, title: job.title, description: job.description,
     budgetUsd: job.budgetUsd, status: 'OPEN', clientDisplayName: 'Client', createdAt: job.createdAt } };
+const localPaymentTerms = { rail: 'UNIFIED_USDC_PAYOUT' as const, version: 1,
+  fingerprint: 'a'.repeat(64), grossUsd: 100, escrowUsdc: 100, platformFeeUsdc: 3,
+  usdcVndRate: 25000, estimatedPayoutVnd: 2425000, fullRefundUsd: 100,
+  fundingHours: 48, reviewWindowHours: 72, maxRevisions: 2,
+  network: 'localnet', mint: 'MockMint111', simulation: true };
 
 let host: HTMLDivElement;
 let root: Root;
@@ -188,6 +193,20 @@ describe('Client C3 candidate decision desk', () => {
     expect(button('Chọn Freelancer')).toBeUndefined();
   });
 
+  it('requires Client consent to the same local payment fingerprint before assignment', async () => {
+    const unified = { ...job, budgetUsd: 100, localPaymentTerms };
+    vi.spyOn(api, 'job').mockResolvedValue(unified);
+    vi.spyOn(api, 'applicants').mockResolvedValue([pending]);
+    const assign = vi.spyOn(api, 'assign').mockResolvedValue({ ...unified, status: 'AWAITING_PAYMENT' });
+    await render(<ClientApplicants user={client} />, '/work/job-1/applications');
+    await click('Chọn Freelancer');
+    expect(host.textContent).toContain('2.425.000 VND');
+    expect(button('Xác nhận chọn')?.disabled).toBe(true);
+    await act(async () => { host.querySelector<HTMLInputElement>('.candidate-confirmation input[type="checkbox"]')!.click(); });
+    await click('Xác nhận chọn');
+    expect(assign).toHaveBeenCalledExactlyOnceWith(job.id, freelancer.id, localPaymentTerms.fingerprint);
+  });
+
   it('keeps mutation error and reconciles a job closed by another request', async () => {
     vi.spyOn(api, 'job').mockResolvedValueOnce(job).mockResolvedValue({ ...job, status: 'AWAITING_PAYMENT' });
     vi.spyOn(api, 'applicants').mockResolvedValueOnce([pending]).mockResolvedValue([{ ...pending, status: 'REJECTED' }]);
@@ -237,6 +256,21 @@ async function click(label: string) {
 }
 
 describe('P05.2 job detail and workflow', () => {
+  it('shows the server payment terms and requires Freelancer consent before Apply', async () => {
+    const unified = { ...discover, budgetUsd: 100, localPaymentTerms };
+    vi.spyOn(api, 'findDiscoverJob').mockResolvedValue(unified);
+    const apply = vi.spyOn(api, 'apply').mockResolvedValue(pending);
+    await render(<JobDetail user={freelancer} />, undefined, { job: unified });
+    expect(host.textContent).toContain('2.425.000 VND');
+    expect(host.textContent).toContain('3.000000 Mock USDC');
+    expect(host.textContent).toContain('72 giờ sau bàn giao hợp lệ, không gia hạn');
+    expect(host.textContent).toContain('Một lần, tối đa 7 ngày sau hạn gốc');
+    expect(host.textContent).toContain('localnet · mint MockMint111');
+    expect(button('Ứng tuyển')?.disabled).toBe(true);
+    await act(async () => { host.querySelector<HTMLInputElement>('input[type="checkbox"]')!.click(); });
+    await click('Ứng tuyển');
+    expect(apply).toHaveBeenCalledExactlyOnceWith(job.id, localPaymentTerms.fingerprint);
+  });
   it('opens a discovered job using the real discovery contract, with Apply for OPEN/unapplied', async () => {
     vi.spyOn(api, 'findDiscoverJob').mockResolvedValue(discover);
     const participant = vi.spyOn(api, 'job');

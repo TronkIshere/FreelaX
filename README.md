@@ -1,109 +1,104 @@
 # FreelaX
 
-FreelaX là marketplace hai phía dành cho Client và Freelancer, ghi nhận phạm vi công việc, hợp đồng, bàn giao, quyết định nghiệm thu, bằng chứng tài chính và đánh giá sau hoàn thành.
+FreelaX là marketplace hai phía cho Client và Freelancer: đăng việc, chốt hợp đồng, xác nhận funding, bàn giao, nghiệm thu, giải ngân/hoàn tiền và đánh giá sau hoàn thành. **Luồng tiền sản phẩm hướng tới là USD của Client → USDC trong ví Client → khóa USDC cho Job → USDC trong ví Freelancer sau nghiệm thu → đổi/chi VND cho Freelancer.** Rail `UNIFIED_USDC_PAYOUT` **đã triển khai ở phạm vi local mock** (2026-10-10): mọi gate trong [checklist](docs/business/PAYMENT_FLOW_REBUILD_CHECKLIST.md) đạt với USD/VND mô phỏng, Mock USDC và Solana local validator; môi trường local đã chuyển đổi nên Job mới chỉ đi luồng này. Không có bằng chứng chuyển tiền ngân hàng thật hoặc triển khai Solana devnet/production; các phần đó chưa bắt đầu.
 
-> **LOCAL MVP / DEMO — P06 UI COMPLETE / FROZEN.** Financial flows include simulation/local infrastructure. Đây không phải banking production, khai thuế production, bằng chứng chuyển tiền fiat thật hay triển khai Solana production.
+## Đọc tài liệu theo từng bước
 
-Điểm bắt đầu hiện tại: [Final Freeze / Handoff — 2026-10-08](docs/ui/FREELAX_FINAL_FREEZE_HANDOFF_20261008.md). Product/source authority: `7fc31555b9cd3f50a23872401968ee67c5275f30`. P06.7 docs authority: `44987c7e16dcc785845adbf8d05df6be44bf25cd`. Các docs commit sau đó không thay đổi source authority này.
+1. **Hiểu nghiệp vụ:** đọc [hệ thống hiện đáp ứng những gì](docs/business/README.md#hệ-thống-đáp-ứng-những-gì), [vai trò và vòng đời Job](docs/business/README.md#vai-trò-và-luồng-công-việc), rồi [ranh giới hệ thống](docs/business/README.md#ranh-giới-hệ-thống).
+2. **Hiểu tiền:** đọc [luồng USD → USDC → escrow → USDC → VND](docs/business/PAYMENT_FLOW.md), gồm bằng chứng và đối soát tại từng điểm chuyển tiền.
+3. **Hiểu Solana:** đọc [Solana trong kiến trúc hiện tại và luồng đích](docs/business/SOLANA_ARCHITECTURE.md) để thấy on-ramp, vault, release và off-ramp nằm ở đâu.
+4. **Xem tiến độ thực tế:** đọc [trạng thái kiểm chứng](docs/business/VERIFICATION.md) để thấy E2E local và các gate còn thiếu.
+5. **Xây lại thanh toán:** dùng [checklist backend, Solana, frontend và E2E](docs/business/PAYMENT_FLOW_REBUILD_CHECKLIST.md) theo thứ tự phụ thuộc; chỉ đánh dấu xong khi có bằng chứng.
+6. **Chạy demo hiện có:** làm lần lượt các bước ở [Chạy demo local](#chạy-demo-local-theo-từng-bước), rồi theo [guide demo cũ trong archive](docs/business/archive/LOCAL_TWO_SIDED_E2E_GUIDE.md). Guide đi qua nhánh đối tác mock cũ, chưa phải luồng thống nhất.
+7. **Tra source/lịch sử:** dùng [bản đồ mã nguồn](docs/business/README.md#mã-nguồn-theo-nghiệp-vụ) và [biên bản theo ngày](docs/business/archive/README.md) khi cần ID giao dịch hoặc lỗi cũ.
 
-## Tài liệu nghiệp vụ & bàn giao
+Mốc P06 UI/source frozen và bằng chứng tại mốc đó ở [final handoff](docs/ui/FREELAX_FINAL_FREEZE_HANDOFF_20261008.md). Các luồng Solana escrow và đối tác mock được thêm sau P06; không dùng handoff P06 để suy chúng đã qua E2E.
 
-Đọc [Business documentation](docs/business/README.md) để hiểu hệ thống, luồng Client/Freelancer, contract/funding/review, vai trò Solana, các lỗi đã gặp và cách xử lý, cùng source path traceability. Bộ tài liệu diễn giải baseline P06 frozen, không mở thêm phạm vi sản phẩm.
+## Kiến trúc nhanh
 
-## 1. Sản phẩm hiện đã triển khai — CURRENTLY IMPLEMENTED
+`Browser → React/TypeScript → /api/v1 → Marketplace → Payment / Solana Gateway / MISA`
 
-Marketplace quyết định vai trò, quyền tham gia và trạng thái. UI dùng dữ liệu thật từ API; tính năng dưới đây chỉ khả dụng khi role, ownership và server state cho phép.
+Browser chỉ gọi Marketplace. Marketplace giữ auth, quyền và trạng thái nghiệp vụ; Payment giữ ledger mô phỏng và sao kê đối tác mock; Solana Gateway gọi Anchor/RPC; MISA tạo chứng từ tax demo. Compose dùng frontend `:8080`, Marketplace `:9191`, Payment `:9190`, MISA `:9192`, Gateway `:9193`, MySQL `:3307`, Redis `:6380`; local validator dùng RPC `:9123`. Host ports của Compose mặc định bind `127.0.0.1`.
 
-| Client | Freelancer |
-| --- | --- |
-| Đăng nhập theo vai trò; Overview | Đăng nhập theo vai trò; Overview |
-| Tạo Job với category, skills, deliverables, acceptance criteria, deadline, review window và revision limit | Explore với category/skill/keyword/budget/application filters từ server |
-| Sửa metadata của Job OPEN thuộc mình; điều khoản hợp đồng không sửa qua form này | Ứng tuyển; Applications; My Work |
-| Xem hồ sơ ứng viên và chọn Freelancer; tạo WorkContract + Milestone | Chờ funding được xác nhận trước khi bàn giao contract-backed |
-| Bank setup được mask sau lưu; funding mô phỏng Milestone | Bàn giao bằng chứng gắn scope IDs; lịch sử phiên bản; revision loop |
-| Review bàn giao: Approve / Request Revision / Dispute theo eligibility | Xem phản hồi, quota revision và hạn review do server trả |
-| Cancellation/refund theo trạng thái; dispute bằng chứng và xử lý Admin được bảo vệ quyền | Participant dispute/cancellation theo policy và server state |
-| Finance, Tax evidence, Activity, Account/Profile, public partner profile có xác thực | Income/Finance, Tax evidence, Activity, Account/Profile, portfolio, public profile có xác thực |
-| Đánh giá Freelancer sau hoàn thành/release khi có invitation | Đánh giá Client sau hoàn thành/release khi có invitation |
+## Chạy demo local theo từng bước
 
-Profiles/skills/portfolio có persistence và kiểm soát version theo API. Reputation dùng review đã công bố từ server, không phải điểm UI tự tính. Admin dispute claim/resolution và review moderation được backend phân quyền; đăng ký Client/Freelancer không tự cấp quyền Admin.
+Các bước dưới đây chạy localnet với Mock USDC và dữ liệu đối tác mô phỏng. Cần Git, Docker/Compose; nếu chạy phần Solana, cần thêm Solana CLI/test-validator, Anchor, Node và Yarn. Dùng dữ liệu và khóa **demo**, không đưa password, API key, private key hoặc seed phrase vào Git hay ảnh chụp.
 
-Revision limit và review window là điều khoản thực tế; không mặc định mọi Job có cùng số vòng hay deadline. Khi hết hạn, scheduler server áp dụng chính sách review: <=500 USD đủ điều kiện tự duyệt tại hạn; >500 USD thêm 24 giờ grace trước khi tự duyệt nếu vẫn đủ điều kiện. UI không tự approve hoặc giải ngân bằng timer.
+### Bước 1 — Cấu hình `.env`
 
-## 2. Vòng đời contract-backed hiện tại
+Từ thư mục gốc repo, nếu chưa có `.env`, tạo bằng `cp .env.example .env`, rồi điền các giá trị bắt buộc theo chú thích trong file. `.env` được Git bỏ qua. Giữ nguyên Marketplace JWT secret giữa các lần tạo lại container để phiên đăng nhập còn hợp lệ. Cho Solana local, kiểm tra `SOLANA_NETWORK=localnet`, `SOLANA_RPC_HTTP_URL=http://host.docker.internal:9123` và `SOLANA_PROGRAM_ID=2Tx2faZU1siV1xvKMxbRN1VesgXftjM3Lff3Nwn69oqb`. `VITE_SOLANA_CLUSTER` có thể để trống để Compose dùng `localnet`. `SOLANA_LOCAL_PRIVATE_KEYS` chỉ dành cho demo local.
 
-`Client tạo Job → Freelancer ứng tuyển → Client chọn → WorkContract + Milestone → Client funding → Contract ACTIVE → Freelancer submit evidence → Client review`
+### Bước 2 — Bật validator Solana (chỉ khi thử `SOLANA_ESCROW`)
 
-- **Approve:** work decision → RELEASE_PENDING → scheduler settlement → primary release SUCCEEDED → Milestone RELEASED → Contract/Job COMPLETED.
-- **Revision:** phản hồi gắn deliverable/acceptance-criterion IDs → phiên bản tiếp theo, trong quota server.
-- **Dispute:** participant mở case khi đủ điều kiện → trusted Admin xử lý bằng chứng → release/refund được backend điều phối.
-- **Cancellation/refund:** phụ thuộc trạng thái/decision; REFUND_PENDING chưa phải hoàn tiền thành công.
-- **Trust close:** scheduler tạo invitation → hai bên gửi review → publication theo quy tắc server → public reputation. Review là post-completion feedback, **không phải điều kiện để hoàn tất release/payment**.
+Chạy từ thư mục gốc repo. Build chỉ cần lần đầu hoặc sau khi sửa program. Ledger demo là `solana-stablecoin-payout/target/demo-ledger-20261009`; dùng cùng đường dẫn qua các lần chạy và không dùng `--reset` nếu muốn giữ giao dịch. Ledger `target/runtime-ledger` là chứng cứ ca time warp cũ, không dùng cho demo thường ngày.
 
-P06.7 đã kiểm chứng happy path bằng Job contract-backed thật, không dùng legacy `contract:null` làm proof và không INSERT/UPDATE DB để tạo trạng thái. Chi tiết IDs/timestamps nằm trong final handoff và P06.7 authority docs. Legacy records vẫn có đường hiển thị tương thích, không bị coi là modern contract.
+```bash
+cd solana-stablecoin-payout
+yarn install --frozen-lockfile
+anchor build --ignore-keys
+cd ..
+solana-test-validator \
+  --ledger solana-stablecoin-payout/target/demo-ledger-20261009 \
+  --rpc-port 9123 --faucet-port 9125 --bind-address 127.0.0.1 \
+  --upgradeable-program 2Tx2faZU1siV1xvKMxbRN1VesgXftjM3Lff3Nwn69oqb \
+    solana-stablecoin-payout/target/deploy/invoice_payments.so "$(solana address -k ~/.config/solana/id.json)" \
+  --quiet
+```
 
-## 3. Sự thật tài chính và giới hạn demo
+Giữ terminal này chạy. Khi ledger đã tồn tại, validator tiếp tục ledger cũ và bỏ qua tham số nạp program ở genesis. Trên host khác, cần xác nhận container Gateway truy cập được RPC qua `host.docker.internal:9123`.
 
-**Primary Marketplace release** độc lập với **on-chain**, **off-ramp** và **tax/MISA**. Funding SUCCEEDED không đồng nghĩa release; Job COMPLETED không chứng minh ngân hàng đã trả tiền. Mỗi lớp cần bằng chứng/trạng thái riêng.
+### Bước 3 — Bật ứng dụng
 
-P06.7 primary release/review đã PASS. Downstream của Job QA vẫn: on-chain `UNKNOWN / ON_RAMP_AWAITING_RECONCILIATION`, off-ramp `NOT_STARTED`, tax `NOT_STARTED`. Solana RPC local không khả dụng trong regression đó; không có tuyên bố production stablecoin settlement hoặc chuyển khoản fiat thật.
-
-TaxRecord chưa tồn tại có thể trả HTTP 404 / frontend ApiError code 4010. Chỉ endpoint `/api/v1/marketplace/tax-records/jobs/{jobId}`, được `missingTax(...)` xử lý thành tax=null, taxError trống và “Chưa có chứng từ”, mới là expected absence khi trạng thái tài chính xác nhận tax chưa hoàn tất. Không miễn trừ arbitrary 404, asset failure, JS exception, CORS hay 5xx. Existing ACCEPTED certificate PDF/XML download là bằng chứng riêng của record đó, không chứng minh Job QA mới đã có chứng từ.
-
-Seed/demo accounts có thể dùng wallet/signer được cấu hình ở runtime local. Account đăng ký mới chưa được bảo đảm tự provision wallet/signer production-safe. Không có UI wallet balance/send/receive/Phantom/manual withdrawal.
-
-## 4. Kiến trúc và ranh giới API
-
-`Browser → React/TypeScript → same-origin /api/v1 → Marketplace`
-
-Marketplace điều phối Payment, MISA, Solana Gateway/RPC ở backend. **Browser chỉ gọi Marketplace**, không gọi trực tiếp Payment/MISA/Solana Gateway/Solana RPC. Vite local proxy hiện trỏ localhost:9191; production-style local origin dùng Caddy :8080 với SPA fallback và /api/v1 proxy.
-
-| Thành phần | Công nghệ / local host port | Trách nhiệm |
-| --- | --- | --- |
-| Frontend | React 18, TypeScript, Vite; Caddy :8080 | Role UI, workflow, evidence |
-| Marketplace | Java 17, Spring Boot 3; :9191 | Public business facade, auth, permissions, orchestration |
-| Payment | Java 17, Spring Boot 3; :9190 | Simulated funding/release/refund records |
-| MISA | Java 17, Spring Boot 3; :9192 | Local/demo tax and PDF/XML certificate provider |
-| Solana Gateway | Java 17, Spring Boot 3, SolanaJ; :9193 | Backend-only signing/RPC boundary |
-| Anchor program | Rust/Anchor; local RPC :9123 | Existing local on-chain program; validator outside Compose |
-| Data | MySQL 8.4 :3307; Redis 7 :6380 | Persistence/session support |
-
-Compose host ports default to 127.0.0.1. Internal API keys, signing material and auth secrets belong in ignored runtime config, never VITE_* or Git. Keep the existing Marketplace JWT secret across container recreation to preserve session compatibility. This configuration is local-demo setup, not production wallet/key management.
-
-## 5. Chạy local
-
-Yêu cầu: Git, Docker/Compose; ignored root .env được điền từ .env.example. On-chain end-to-end cần validator/toolchain/program/chain bootstrap riêng. Không commit .env, passwords, JWTs, internal API keys, private keys hoặc seed phrases.
+Mở terminal khác tại thư mục gốc repo:
 
 ```bash
 docker compose --profile deploy config --quiet
-docker compose --profile deploy up -d --build
+docker compose --profile deploy up -d --build --wait
 docker compose --profile deploy ps
 ```
 
-Mở http://localhost:8080. Development frontend: chạy `npm ci`, `npm run dev` trong frontend (localhost:3000; giữ proxy Marketplace localhost:9191). Không reset dữ liệu hay validator để trình diễn bản frozen.
+Nếu chỉ thử `PARTNER_ESCROW_MOCK`, dùng giao diện với frontend, Marketplace, Payment, MySQL và Redis; validator ở bước 2 chỉ phục vụ luồng Solana.
+
+### Bước 4 — Bootstrap Mock USDC (chỉ với ledger Solana mới)
+
+Chạy từ `solana-stablecoin-payout`. Script kiểm tra trước và khi chạy lại trên cùng ledger chỉ đọc số dư. Chạy thêm lần nữa ngay sau bootstrap; RPC local có thể trả `0` khi đọc quá sớm. Kết quả `mode: existing` phải cho số dư Client lớn hơn `0`.
 
 ```bash
-curl -I http://localhost:8080
-curl -i http://localhost:8080/api/v1/auth/me
+cd solana-stablecoin-payout
+ANCHOR_PROVIDER_URL=http://127.0.0.1:9123 \
+ANCHOR_WALLET="$HOME/.config/solana/id.json" \
+./node_modules/.bin/ts-mocha -p tsconfig.json -t 120000 scripts/bootstrap-local-demo.ts
 ```
 
-HTTP 401 UNAUTHENTICATED trước login là đúng; sau login /auth/me phải xác nhận đúng role. Demo credentials chỉ lấy từ local runtime config được phép, không xuất hiện trong docs. `docker compose --profile deploy down` dừng stack, không dùng -v nếu muốn giữ dữ liệu.
+### Bước 5 — Kiểm tra hệ thống và thao tác UI
 
-## 6. Frozen UI và validation
+Mở `http://localhost:8080`. `curl -I http://localhost:8080` phải trả HTTP 200; `curl -i http://localhost:8080/api/v1/auth/me` trả HTTP 401 trước đăng nhập là bình thường. Nếu đã bật validator, kiểm tra RPC:
 
-KINETIC EDITORIAL BRUTALISM: hard Ink borders, zero-blur offset shadows, cut-paper editorial grammar, semantic colors, deterministic graphics, restrained/reduced motion và keyboard focus. Desktop/laptop **1440/1024** đã validate; **mobile optimization deferred**.
+```bash
+curl -fsS -H 'Content-Type: application/json' \
+  --data '{"jsonrpc":"2.0","id":1,"method":"getHealth"}' http://127.0.0.1:9123
+```
 
-**Prior accepted P06.7 evidence:** real modern contract E2E/review/reputation PASS; focused 99/99; full frontend 793/793, 22 files; production build PASS. P06.8 docs-only, không rerun tests/build. P06.8 compact read-only smoke: 22 checks PASS, unexpected JS/network/runtime errors 0, overflow 0, 4 handled missing-TaxRecord 404s; no business mutations/new screenshots.
+RPC trả `"result":"ok"`. Sau đăng nhập, `/auth/me` phải trả đúng role. Xem [guide demo cũ hai phía](docs/business/archive/LOCAL_TWO_SIDED_E2E_GUIDE.md) để chạy nhánh đối tác mock với hai phiên Client/Freelancer; mật khẩu tài khoản seed nằm trong `.env` local.
 
-Delayed review invitations now reconcile without hard reload (source 7fc3155). Time/focus triggers a read, never grants eligibility or advances financial state. Chi tiết trong [final handoff](docs/ui/FREELAX_FINAL_FREEZE_HANDOFF_20261008.md) và [session log](docs/ui/UI_VISUAL_POLISH_SESSION_LOG_20261006.md).
+### Bước 6 — Chạy Solana escrow E2E (tùy chọn)
 
-## 7. KNOWN NEXT-GENERATION WORK — ngoài freeze
+Trên ledger đã bootstrap, từ `solana-stablecoin-payout` chạy:
 
-- Production-safe wallet/signer provisioning và quản lý secrets.
-- Production payment/off-ramp/tax-provider integration; không suy từ mô phỏng thành giao dịch thật.
-- Public-network Solana operationalization và downstream reconciliation.
-- Operational observability sâu hơn; bundle-size optimization (warning >500kB hiện non-blocking).
-- Mobile optimization.
-- Skill Verification work-sample assessment, GitHub/GitLab supporting evidence, scoped results/evidenceHash, possible Solana Attestation Service, async attestation, revocation/supersession và portability: **FUTURE / CONCEPT ONLY; PROPOSED_NOT_APPROVED; IMPLEMENTATION NOT_STARTED**. SAS integration chưa triển khai.
+```bash
+ANCHOR_PROVIDER_URL=http://127.0.0.1:9123 \
+ANCHOR_WALLET="$HOME/.config/solana/id.json" \
+./node_modules/.bin/ts-mocha -p tsconfig.json -t 120000 scripts/local-marketplace-escrow-e2e.ts --existing
+```
 
-Không mở lại P06 để subjective polish. Chỉ sửa khi có reproducible functional/accessibility/security/privacy/source-contract/responsive regression hoặc yêu cầu sản phẩm mới được duyệt. Future work dùng **NEW explicit track/branch**. Không tự merge master hoặc tạo tag.
+Script tạo hai Job QA bằng Mock USDC cho release và mutual refund; mỗi lần chạy tiêu thụ 15 Mock USDC ròng từ ví Client demo. Kết quả mong đợi: `1 passing`, Job `COMPLETED`/`CANCELLED`, hai vault bằng `0`. Đây là ca local token; [các gate khác và giới hạn](docs/business/VERIFICATION.md) được ghi riêng.
+
+Luồng thống nhất `UNIFIED_USDC_PAYOUT` (USD → USDC → vault → VND) có hai bài kiểm tra: `scripts/local-unified-flow-e2e.ts` (API, tài khoản seed) và `frontend/scripts/unified-new-account-e2e.mjs` (browser, tài khoản mới đăng ký, ví thử nghiệm). Cả hai cần Marketplace chạy với `PAYMENT_FLOW_CUTOVER_ENABLED=true` khi tạo Job; lệnh đầy đủ, rollback và khoản đang dở ở [runbook chuyển đổi](docs/business/CUTOVER_RUNBOOK.md) và [VERIFICATION](docs/business/VERIFICATION.md). Schema Marketplace do Flyway quản lý (`marketplace-backend/src/main/resources/db/migration`); DB cũ được baseline tự động ở V1.
+
+### Bước 7 — Dừng và giữ dữ liệu demo
+
+Dừng validator bằng `Ctrl+C`; chạy `docker compose --profile deploy stop` ở thư mục gốc. Tránh `down -v` nếu muốn giữ MySQL/Redis và dữ liệu Caddy. Nếu đổi sang ledger mới, các Job QA gắn với ledger cũ không còn account chain tương ứng.
+
+## Phạm vi chưa có trong demo
+
+Chưa có tích hợp payment/off-ramp/tax provider production, đối tác fiat thật, Solana devnet/production đã kiểm chứng, cấp phát ví/signer production cho tài khoản mới hoặc tối ưu mobile. Chi tiết từng luồng và phạm vi test nằm trong [tài liệu nghiệp vụ](docs/business/README.md).

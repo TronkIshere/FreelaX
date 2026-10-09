@@ -33,6 +33,7 @@ public class FundingService {
     private static final String BANK_ACCOUNT_ON_FILE = "BANK_ACCOUNT_ON_FILE";
     private final FundingTransactionRepository transactions;
     private final WorkContractRepository contracts;
+    private final EscrowContractRepository escrowContracts;
     private final MilestoneRepository milestones;
     private final JobRepository jobs;
     private final UserRepository users;
@@ -68,6 +69,11 @@ public class FundingService {
             Milestone milestone = milestones.findWithLockById(milestoneId)
                     .filter(m -> m.getContractId().equals(contractId))
                     .orElseThrow(() -> new ApplicationException(ErrorCode.FUNDING_NOT_FOUND));
+            if (escrowContracts.existsByContractId(contractId)
+                    || "PARTNER_ESCROW_MOCK".equals(contract.getPaymentRail())
+                    || PaymentFlow.RAIL.equals(contract.getPaymentRail())) {
+                throw new ApplicationException(ErrorCode.FUNDING_INVALID_STATE);
+            }
             FundingTransaction prior = transactions.findByClientUserIdAndIdempotencyKey(clientId, key).orElse(null);
             if (prior != null) {
                 if (!prior.getPayloadHash().equals(hash)) {
@@ -149,6 +155,7 @@ public class FundingService {
         for (FundingTransaction record : transactions.findTop50ByStatusInAndUpdatedAtBeforeOrderByUpdatedAtAsc(
                 EnumSet.of(FundingStatus.PENDING, FundingStatus.PROCESSING, FundingStatus.UNKNOWN),
                 LocalDateTime.now().minusSeconds(30))) {
+            if ("PARTNER_ESCROW_MOCK".equals(record.getPaymentMethodId())) continue;
             try {
                 process(record.getId());
             } catch (RuntimeException ex) {
@@ -158,6 +165,12 @@ public class FundingService {
     }
 
     private void process(UUID transactionId) {
+        FundingTransaction existing = transactions.findById(transactionId).orElseThrow();
+        if (contracts.findById(existing.getContractId())
+                .map(c -> PaymentFlow.RAIL.equals(c.getPaymentRail())).orElse(false)) {
+            mark(transactionId, FundingStatus.UNKNOWN);
+            return;
+        }
         FundingTransaction record = transactionTemplate.execute(status -> {
             FundingTransaction locked = transactions.findWithLockById(transactionId).orElseThrow();
             if (locked.getStatus() == FundingStatus.SUCCEEDED || locked.getStatus() == FundingStatus.FAILED) return null;

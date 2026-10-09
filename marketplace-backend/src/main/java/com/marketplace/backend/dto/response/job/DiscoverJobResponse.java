@@ -18,6 +18,7 @@ public class DiscoverJobResponse {
     com.marketplace.backend.entity.JobCategory category;
     List<String> skills;
     BigDecimal budgetUsd;
+    UnifiedTermsPreviewResponse localPaymentTerms;
     String status;
     JobClientSummaryResponse client;
     boolean hasApplied;

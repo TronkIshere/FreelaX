@@ -10,6 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
+import java.util.UUID;
 
 public final class SolanaValueCodec {
 
@@ -64,6 +65,17 @@ public final class SolanaValueCodec {
 
     public static byte[] i64Le(long value) {
         return ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN).putLong(value).array();
+    }
+
+    public static byte[] u16Le(int value, String field) {
+        if (value < 0 || value > 65535) throw new IllegalArgumentException(field + " must fit u16");
+        return ByteBuffer.allocate(2).order(ByteOrder.LITTLE_ENDIAN).putShort((short) value).array();
+    }
+
+    public static byte[] uuid16(String value) {
+        UUID uuid = UUID.fromString(value);
+        return ByteBuffer.allocate(16).putLong(uuid.getMostSignificantBits())
+                .putLong(uuid.getLeastSignificantBits()).array();
     }
 
     public static byte[] hash32(String value, String field, boolean rejectZero) {

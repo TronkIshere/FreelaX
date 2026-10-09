@@ -4,6 +4,7 @@ import com.freelax.solanagateway.api.ApiTypes.Commitment;
 import com.freelax.solanagateway.api.Responses.AccountResponse;
 import com.freelax.solanagateway.api.Responses.ConfigDto;
 import com.freelax.solanagateway.api.Responses.InvoiceDto;
+import com.freelax.solanagateway.api.Responses.EscrowDto;
 import com.freelax.solanagateway.api.Responses.MockOnrampReceiptDto;
 import com.freelax.solanagateway.api.Responses.RateSnapshotDto;
 import com.freelax.solanagateway.api.Responses.TokenBalanceResponse;
@@ -41,6 +42,30 @@ public class SolanaGatewayController {
     AccountResponse<InvoiceDto> invoice(@PathVariable String freelancer, @PathVariable String invoiceId,
                                         @RequestParam(required = false) Commitment commitment) {
         return service.invoice(freelancer, invoiceId, commitment);
+    }
+
+    @GetMapping("/escrows/{milestoneId}")
+    AccountResponse<EscrowDto> escrow(@PathVariable String milestoneId,
+                                      @RequestParam(required = false) Commitment commitment) {
+        return service.escrow(milestoneId, commitment);
+    }
+
+    @PostMapping("/escrows/{milestoneId}/fund")
+    TransactionOperationResponse fundEscrow(@PathVariable String milestoneId,
+            @Valid @RequestBody Requests.FundEscrowRequest request) {
+        return service.fundEscrow(milestoneId, request);
+    }
+
+    @PostMapping("/escrows/{milestoneId}/actions/{action}")
+    TransactionOperationResponse escrowAction(@PathVariable String milestoneId,
+            @PathVariable String action, @Valid @RequestBody Requests.EscrowActionRequest request) {
+        return service.escrowAction(milestoneId, action, request);
+    }
+
+    @PostMapping("/escrows/{milestoneId}/mutual-refund")
+    TransactionOperationResponse refundMutualEscrow(@PathVariable String milestoneId,
+            @Valid @RequestBody Requests.EscrowMutualRefundRequest request) {
+        return service.refundMutualEscrow(milestoneId, request);
     }
 
     @GetMapping("/rates/{rateId}")

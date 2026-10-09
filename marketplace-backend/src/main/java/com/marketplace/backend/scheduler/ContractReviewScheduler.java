@@ -2,6 +2,7 @@ package com.marketplace.backend.scheduler;
 
 import com.marketplace.backend.repository.ContractReviewRepository;
 import com.marketplace.backend.repository.ContractSettlementRepository;
+import com.marketplace.backend.repository.EscrowContractRepository;
 import com.marketplace.backend.service.ContractReviewService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,6 +19,7 @@ import java.util.UUID;
 @Slf4j
 public class ContractReviewScheduler {
     private final ContractSettlementRepository settlements;
+    private final EscrowContractRepository escrows;
     private final ContractReviewRepository reviews;
     private final ContractReviewService service;
 
@@ -27,6 +29,10 @@ public class ContractReviewScheduler {
         for (UUID contractId : settlements.findUninvitedCompletedContractIds(PageRequest.of(0, 50))) {
             try { service.invite(contractId); }
             catch (RuntimeException ex) { log.warn("Review invitation requires another attempt: {}", contractId); }
+        }
+        for (UUID contractId : escrows.findUninvitedReleasedContractIds(PageRequest.of(0, 50))) {
+            try { service.invite(contractId); }
+            catch (RuntimeException ex) { log.warn("Escrow review invitation requires another attempt: {}", contractId); }
         }
         for (UUID contractId : reviews.findDuePublication(Instant.now().minus(14, ChronoUnit.DAYS), PageRequest.of(0, 50))) {
             try { service.publishDue(contractId); }

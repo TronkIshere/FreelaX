@@ -40,6 +40,41 @@ async function input(selector: string, value: string) {
 async function submit(selector = '.work-composer form') { await act(async () => host.querySelector(selector)!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))); }
 async function fill() { await input('.work-composer textarea', 'Delivered'); await act(async () => (host.querySelector('.evidence-input input[type=checkbox]') as HTMLInputElement).click()); await input('.evidence-input input[type=url]', 'https://example.test/source'); }
 
+describe('unified contract lifecycle', () => {
+  it('uses the wallet-signed Solana escrow path, not the simulated ledger or legacy cancellation', async () => {
+    const unified: Job = { ...working, contract: { ...contract, paymentRail: 'UNIFIED_USDC_PAYOUT' } };
+    const escrow = vi.spyOn(api, 'escrowFunding').mockResolvedValue({ paymentRail: 'UNIFIED_USDC_PAYOUT', status: 'Funded',
+      settlementStatus: 'FUNDED', escrowAddress: 'escrow-pda', clientWallet: 'client-wallet', freelancerWallet: 'freelancer-wallet',
+      mint: 'mint', amountBaseUnits: '500000000', vaultAddress: 'vault', vaultBalanceBaseUnits: '500000000',
+      deliveryDueAt: '1893456000' } as never);
+    vi.spyOn(api, 'pendingMutualRefund').mockResolvedValue(null);
+    vi.mocked(api.job).mockResolvedValue(unified);
+
+    await mount(unified, client);
+
+    expect(escrow).toHaveBeenCalledWith('contract', 'milestone');
+    expect(host.querySelector('[aria-label="Trạng thái escrow Solana"]')).toBeTruthy();
+    expect(host.querySelector('[aria-label="Hoàn tiền escrow theo thỏa thuận"]')).toBeTruthy();
+    expect(api.cancellation).not.toHaveBeenCalled();
+    expect(api.settlement).not.toHaveBeenCalled();
+  });
+});
+
+describe('unified contract awaiting funding', () => {
+  it('treats a missing escrow record as no vault yet instead of a reconciliation failure', async () => {
+    const pending: Job = { ...working, status: 'AWAITING_PAYMENT', contract: { ...contract, status: 'PENDING_FUNDING',
+      milestoneStatus: 'PENDING_FUNDING', paymentRail: 'UNIFIED_USDC_PAYOUT' } };
+    vi.spyOn(api, 'escrowFunding').mockRejectedValue(new ApiError('not found', 404));
+    vi.spyOn(api, 'pendingMutualRefund').mockResolvedValue(null);
+    vi.mocked(api.job).mockResolvedValue(pending);
+
+    await mount(pending, client);
+
+    expect(host.textContent).not.toContain('Không thể đối chiếu lịch sử');
+    expect(host.querySelector('[aria-label="Trạng thái escrow Solana"]')).toBeNull();
+  });
+});
+
 describe('P06.4B contract workflow', () => {
   it('uses structured contract API and server version, never legacy mutation', async () => {
     const legacy = vi.spyOn(api, 'submitWork'); const returned = { ...v1, version: 7 };

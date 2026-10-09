@@ -11,7 +11,7 @@ pub use events::*;
 pub use instructions::*;
 pub use state::*;
 
-declare_id!("4Wd6umju26vej2ftzwR6J55pjkUqDQsxfVkt46UqDb1b");
+declare_id!("2Tx2faZU1siV1xvKMxbRN1VesgXftjM3Lff3Nwn69oqb");
 
 #[program]
 pub mod invoice_payments {
@@ -137,5 +137,44 @@ pub mod invoice_payments {
         usd_amount_e6: u64,
     ) -> Result<()> {
         crate::instructions::mock_onramp::handle_mock_onramp(ctx, purchase_id, usd_amount_e6)
+    }
+
+    pub fn fund_milestone_escrow(
+        ctx: Context<FundMilestoneEscrow>, milestone_id: [u8; 16],
+        freelancer: Pubkey, amount: u64, funding_expires_at: i64, delivery_due_at: i64,
+        review_window_hours: u16, max_revisions: u8, high_value_review_grace: bool,
+    ) -> Result<()> {
+        crate::instructions::milestone_escrow::fund(ctx, milestone_id, freelancer,
+            amount, funding_expires_at, delivery_due_at, review_window_hours, max_revisions,
+            high_value_review_grace)
+    }
+
+    pub fn request_escrow_extension(ctx: Context<FreelancerEscrowAction>, new_due_at: i64) -> Result<()> {
+        crate::instructions::milestone_escrow::request_extension(ctx, new_due_at)
+    }
+
+    pub fn approve_escrow_extension(ctx: Context<ClientEscrowAction>) -> Result<()> {
+        crate::instructions::milestone_escrow::approve_extension(ctx)
+    }
+
+    pub fn submit_escrow_work(ctx: Context<SubmitEscrowWork>, evidence_hash: [u8; 32]) -> Result<()> {
+        crate::instructions::milestone_escrow::submit(ctx, evidence_hash)
+    }
+
+    pub fn request_escrow_revision(ctx: Context<ClientEscrowRevisionAction>, feedback_hash: [u8; 32]) -> Result<()> {
+        crate::instructions::milestone_escrow::request_revision(ctx, feedback_hash)
+    }
+
+    pub fn open_escrow_dispute(ctx: Context<ParticipantEscrowAction>, reason_hash: [u8; 32]) -> Result<()> {
+        crate::instructions::milestone_escrow::open_dispute(ctx, reason_hash)
+    }
+
+    pub fn settle_milestone_escrow(ctx: Context<SettleMilestoneEscrow>, release: bool,
+        resolution_hash: [u8; 32]) -> Result<()> {
+        crate::instructions::milestone_escrow::settle(ctx, release, resolution_hash)
+    }
+
+    pub fn refund_mutual_escrow(ctx: Context<RefundMutualEscrow>) -> Result<()> {
+        crate::instructions::milestone_escrow::refund_mutual(ctx)
     }
 }

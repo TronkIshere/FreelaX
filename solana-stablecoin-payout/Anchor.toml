@@ -6,7 +6,7 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-invoice_payments = "4Wd6umju26vej2ftzwR6J55pjkUqDQsxfVkt46UqDb1b"
+invoice_payments = "2Tx2faZU1siV1xvKMxbRN1VesgXftjM3Lff3Nwn69oqb"
 
 [provider]
 cluster = "localnet"

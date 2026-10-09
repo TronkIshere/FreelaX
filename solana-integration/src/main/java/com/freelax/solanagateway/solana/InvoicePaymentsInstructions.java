@@ -146,6 +146,62 @@ public class InvoicePaymentsInstructions {
         ), new byte[]{1});
     }
 
+    public TransactionInstruction fundMilestoneEscrow(PublicKey client, PublicKey marketplaceAuthority,
+            PublicKey freelancer, PublicKey mint, String milestoneId, String amount,
+            long fundingExpiresAt, long deliveryDueAt, int reviewWindowHours, int maxRevisions,
+            boolean highValueReviewGrace) {
+        PublicKey escrow = addresses.milestoneEscrow(milestoneId);
+        return instruction("fund_milestone_escrow", List.of(
+                writableSigner(client), signer(marketplaceAuthority), readonly(addresses.config()),
+                readonly(mint), writable(escrow), writable(addresses.ata(escrow, mint)),
+                writable(addresses.ata(client, mint)), readonly(SolanaAddresses.TOKEN_PROGRAM),
+                readonly(SolanaAddresses.ASSOCIATED_TOKEN_PROGRAM), readonly(SolanaAddresses.SYSTEM_PROGRAM)
+        ), SolanaValueCodec.uuid16(milestoneId), freelancer.toByteArray(),
+                SolanaValueCodec.u64Le(amount, "amount"), SolanaValueCodec.i64Le(fundingExpiresAt),
+                SolanaValueCodec.i64Le(deliveryDueAt),
+                SolanaValueCodec.u16Le(reviewWindowHours, "reviewWindowHours"),
+                new byte[]{(byte) maxRevisions}, bool(highValueReviewGrace));
+    }
+
+    public TransactionInstruction escrowPartyAction(String name, PublicKey actor,
+            String milestoneId, byte[]... args) {
+        return instruction(name, List.of(signer(actor), writable(addresses.milestoneEscrow(milestoneId))), args);
+    }
+
+    public TransactionInstruction submitEscrowWork(PublicKey freelancer,
+            PublicKey marketplaceAuthority, String milestoneId, byte[] evidenceHash) {
+        return escrowCoSignedAction("submit_escrow_work", freelancer,
+                marketplaceAuthority, milestoneId, evidenceHash);
+    }
+
+    public TransactionInstruction escrowCoSignedAction(String name, PublicKey actor,
+            PublicKey marketplaceAuthority, String milestoneId, byte[] hash) {
+        return instruction(name, List.of(signer(actor),
+                signer(marketplaceAuthority), writable(addresses.milestoneEscrow(milestoneId))),
+                hash);
+    }
+
+    public TransactionInstruction settleMilestoneEscrow(PublicKey actor, String milestoneId,
+            PublicKey mint, PublicKey recipient, boolean release, byte[] resolutionHash) {
+        PublicKey escrow = addresses.milestoneEscrow(milestoneId);
+        return instruction("settle_milestone_escrow", List.of(
+                writableSigner(actor), writable(escrow), readonly(mint),
+                writable(addresses.ata(escrow, mint)), readonly(recipient),
+                writable(addresses.ata(recipient, mint)), readonly(SolanaAddresses.TOKEN_PROGRAM),
+                readonly(SolanaAddresses.ASSOCIATED_TOKEN_PROGRAM), readonly(SolanaAddresses.SYSTEM_PROGRAM)
+        ), bool(release), resolutionHash);
+    }
+
+    public TransactionInstruction refundMutualEscrow(PublicKey client, PublicKey freelancer,
+            PublicKey mint, String milestoneId) {
+        PublicKey escrow = addresses.milestoneEscrow(milestoneId);
+        return instruction("refund_mutual_escrow", List.of(
+                writableSigner(client), signer(freelancer), writable(escrow), readonly(mint),
+                writable(addresses.ata(escrow, mint)), writable(addresses.ata(client, mint)),
+                readonly(SolanaAddresses.TOKEN_PROGRAM)
+        ));
+    }
+
     private TransactionInstruction instruction(String name, List<AccountMeta> accounts, byte[]... args) {
         return new TransactionInstruction(addresses.programId(), accounts,
                 SolanaValueCodec.instructionData(name, args));
