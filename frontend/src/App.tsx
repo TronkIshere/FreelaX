@@ -83,7 +83,7 @@ function RoleShell({ user }: { user: User }) {
         {nav.map(item => <PrimaryNavigationItem key={item.path} path={item.path} label={item.label} end={item.end} />)}
       </nav>
       <div className="shell-account">
-        <div className="identity"><span>{role === 'CLIENT' ? 'Client' : 'Freelancer'}</span><strong>{user.displayName}</strong></div>
+        <div className="identity"><span>{hasAuthority(user, 'ROLE_ADMIN') ? 'Admin' : role === 'CLIENT' ? 'Client' : 'Freelancer'}</span><strong>{user.displayName}</strong></div>
         <ActionGroup label="Phiên làm việc">
           {hasAuthority(user, 'ROLE_ADMIN') && <NavLink className="text-link admin-entry" to="/admin/disputes">Quản trị</NavLink>}
           <button className="text-button sign-out" type="button" onClick={() => void logout()} disabled={loggingOut}>

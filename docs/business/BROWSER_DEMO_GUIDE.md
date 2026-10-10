@@ -99,7 +99,7 @@ Khoảng 30 giây sau khi đối tác xác nhận chi VND, MISA mô phỏng phá
 
 ## 8. Admin xem tiền đang ở đâu
 
-**Admin** → `/admin/unified-reconciliation`. Bảng **"Tiền đang ở đâu"** tách riêng USD, USDC và VND (không quy đổi cộng chung). Bên dưới là từng flow với 4 ranh giới đối soát (`MATCHED` / `PENDING` / `MISMATCH` / `UNKNOWN`), lịch sử quyết định, và form ghi quyết định có audit:
+**Admin** → `/admin/unified-reconciliation`. Bốn ô đầu trang đếm flow theo nhóm **Cần xử lý / Đang chạy / Đã khớp đủ / Tất cả**; bấm vào một ô để lọc danh sách (mặc định mở nhóm Cần xử lý nếu có). Ba thẻ **"Tiền đang ở đâu"** tách riêng USD, USDC và VND (không quy đổi cộng chung). Mỗi flow là một dòng gọn với 4 chặng tiền (*Khớp / Đang chờ / Lệch / Chưa rõ*); ô tìm kiếm lọc theo mã Job hoặc flow. Bấm **Chi tiết** để xem mã đối soát, nguồn bằng chứng, mã tham chiếu, lịch sử quyết định và form ghi quyết định có audit:
 
 ![Tổng hợp theo đồng tiền](images/09-admin-tien-dang-o-dau.png)
 

@@ -16,6 +16,7 @@ import org.springframework.util.StringUtils;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.*;
 
 @Service
@@ -108,7 +109,8 @@ public class ContractReviewService {
         return new AdminReviewDetail(ReviewResponse.from(row, true, true),
                 audit.findByReviewIdOrderByCreatedAtAsc(reviewId).stream()
                         .map(a -> new AdminReviewDetail.Audit(a.getActorId(), a.getAction(),
-                                a.getBeforeState(), a.getAfterState(), a.getReason(), a.getRequestId(), a.getCreatedAt()))
+                                a.getBeforeState(), a.getAfterState(), a.getReason(), a.getRequestId(),
+                                a.getCreatedAt() == null ? null : a.getCreatedAt().toInstant(ZoneOffset.UTC)))
                         .toList());
     }
 

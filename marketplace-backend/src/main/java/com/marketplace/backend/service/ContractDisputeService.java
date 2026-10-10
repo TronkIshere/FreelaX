@@ -26,6 +26,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.*;
 import java.util.function.Supplier;
 
@@ -233,7 +234,8 @@ public class ContractDisputeService {
         Milestone m = milestones.findByContractId(c.getId()).orElseThrow(this::notFound);
         List<AdminDisputeDetail.Submission> history = submissions.findByContractIdOrderByVersionAsc(c.getId()).stream()
                 .map(s -> new AdminDisputeDetail.Submission(s.getId(), s.getVersion(), s.getStatus().name(),
-                        s.getSummary(), s.getReviewerFeedback(), s.getSubmittedAt(), s.getReviewedAt(),
+                        s.getSummary(), s.getReviewerFeedback(), s.getSubmittedAt(),
+                        s.getReviewedAt() == null ? null : s.getReviewedAt().toInstant(ZoneOffset.UTC),
                         submissionEvidence.findBySubmissionIdOrderByCreatedAtAsc(s.getId()).stream()
                                 .map(e -> new AdminDisputeDetail.SubmissionItem(e.getRequirementId(), e.getKind().name(),
                                         e.getDescription(), e.getUrl())).toList())).toList();
@@ -248,7 +250,8 @@ public class ContractDisputeService {
                 history, funding.findFirstByMilestoneIdOrderByCreatedAtDesc(m.getId()).map(FundingTransaction::getStatus).orElse(null),
                 audit.findByDisputeIdOrderByCreatedAtAsc(id).stream()
                         .map(a -> new AdminDisputeDetail.Audit(a.getActorId(), a.getAction(), a.getBeforeStatus(),
-                                a.getAfterStatus(), a.getReason(), a.getRequestId(), a.getCreatedAt())).toList());
+                                a.getAfterStatus(), a.getReason(), a.getRequestId(),
+                                a.getCreatedAt() == null ? null : a.getCreatedAt().toInstant(ZoneOffset.UTC))).toList());
     }
 
     public DisputeResponse claim(UUID adminId, UUID id) {

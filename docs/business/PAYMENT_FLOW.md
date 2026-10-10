@@ -61,6 +61,7 @@ Phạm vi: local mock. Số liệu và đối tác đều mô phỏng.
 | Vault → người nhận | Escrow đã chốt + vault bằng 0 + đúng người nhận | `RECIPIENT_BY_ESCROW_INVARIANT` |
 | Withdrawal → fiat | WithdrawalRecord ↔ lệnh đối tác ↔ sao kê VND + phí, hoặc hoàn USD | `FIAT_AND_FEE_MATCH` |
 
+- **Trên màn Admin:** bốn ranh giới hiện là bốn chặng *Nộp USD → ví Client*, *Ví Client → vault*, *Vault → người nhận*, *Rút → VND / hoàn USD*, với nhãn *Khớp* (`MATCHED`), *Đang chờ* (`PENDING`), *Lệch* (`MISMATCH`), *Chưa rõ* (`UNKNOWN`). Flow có chặng Lệch hoặc Chưa rõ nằm trong nhóm **Cần xử lý**; mã đối soát và nguồn bằng chứng xem trong **Chi tiết**.
 - **Chặn bước tiếp theo:** ký escrow cần ranh giới 1 `MATCHED`; rút USDC và gửi lệnh fiat cần ranh giới 1–3 `MATCHED`. Trạng thái `MISMATCH` hoặc `UNKNOWN` sẽ chặn.
 - **Quyết định Admin** (`ACKNOWLEDGED`, `ESCALATED`, `CLEARED_BY_EVIDENCE`) chỉ ghi audit, không chuyển tiền, không ghi đè bằng chứng. Hệ thống từ chối "Đã khớp theo bằng chứng mới" khi bằng chứng hiện tại chưa khớp.
 - **Bảng "Tiền đang ở đâu":** tổng theo từng loại tiền, không bao giờ quy đổi cộng chung. Gồm: USD (đã nhận, chờ on-ramp, phải hoàn, đã hoàn); USDC (ví Client, vault, ví người nhận, treasury chờ chi, phí đã thu); VND (phải chi, đã chi); số bước `UNKNOWN`.
