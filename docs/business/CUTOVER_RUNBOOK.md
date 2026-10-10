@@ -61,7 +61,7 @@ Các Job QA tạo bằng tài khoản thử nghiệm ngẫu nhiên không có ng
 ## Hết hạn funding với Job unified
 
 - Chưa mở USD order, order thất bại, hoặc quote hết hạn mà Client chưa nộp: timer hủy Contract như cũ.
-- USD order đã gửi (`PENDING/PROCESSING/UNKNOWN/CONFIRMED`): timer **không** hủy. Khi USDC đã vào ví Client và chưa có escrow on-chain, Admin vào *Quản trị / Đối soát luồng USDC*, ghi chú và bấm “Hủy hợp đồng quá hạn” (server yêu cầu quá hạn ít nhất 15 phút). Client sau đó ký gửi USDC về treasury và nhận hoàn USD theo đường hoàn tiền thường.
+- USD order đã gửi (`PENDING/PROCESSING/UNKNOWN/CONFIRMED`): timer **không** hủy. Khi USDC đã vào ví Client và chưa có escrow on-chain, Admin vào *Quản trị / Đối soát luồng USDC*, tìm flow theo mã Job, bấm **Chi tiết**, ghi chú và bấm “Hủy hợp đồng quá hạn” (server yêu cầu quá hạn ít nhất 15 phút). Client sau đó ký gửi USDC về treasury và nhận hoàn USD theo đường hoàn tiền thường.
 - USD đã nhận nhưng on-ramp chưa xác nhận: chờ on-ramp tự đối soát; nếu on-ramp kết thúc lỗi có chữ ký, Admin ghi quyết định `ESCALATED` và xử lý với đối tác.
 
 ## Quyết định của Admin

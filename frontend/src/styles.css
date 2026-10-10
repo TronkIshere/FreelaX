@@ -1893,3 +1893,84 @@ a { color: inherit; }
   .completed-review-plate, .completed-review-plate span, .completed-review-cta:is(:hover, :focus-visible) svg { transform: none; }
   .completed-review-cta svg { transition: none; }
 }
+
+/* Admin: unified reconciliation */
+.recon-page { --recon-matched: var(--pale-mint); --recon-pending: var(--pale-acid); --recon-alert: var(--pale-vermilion); }
+.recon-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); margin-block: var(--space-4) var(--space-5); }
+.recon-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-3); margin-bottom: var(--space-6); }
+.recon-kpi { display: grid; gap: var(--space-2); justify-items: start; padding: var(--space-4); border: 2px solid var(--ink); background: var(--cream); color: var(--ink); text-align: left; cursor: pointer; }
+.recon-kpi span { font-size: var(--type-meta); font-weight: 650; }
+.recon-kpi strong { font-size: 36px; line-height: 1; letter-spacing: -.03em; }
+.recon-kpi-attention { border-left: 10px solid var(--vermilion); }
+.recon-kpi-running { border-left: 10px solid var(--acid); }
+.recon-kpi-done { border-left: 10px solid var(--progress-success); }
+.recon-kpi-all { border-left: 10px solid var(--ink); }
+.recon-kpi:hover { background: var(--pale-mint); }
+.recon-kpi.is-active { background: var(--ink); color: var(--cream); }
+.recon-section { margin-bottom: var(--space-7); }
+.recon-section > .metadata { margin: 0 0 var(--space-4); }
+.recon-money { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-4); }
+.recon-money-card { min-width: 0; padding: var(--space-4) var(--space-5); border: 1px solid var(--ink); border-top: var(--rule-strong); background: var(--cream); }
+.recon-money-card header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); margin-bottom: var(--space-3); }
+.recon-money-card h3 { margin: 0; font-size: var(--type-subsection); }
+.recon-money-card dl { margin: 0; }
+.recon-money-card dl > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-3); padding: var(--space-3) 0; border-top: 1px solid var(--line); }
+.recon-money-card dt { color: var(--soft-ink); font-size: var(--type-meta); line-height: 1.4; }
+.recon-money-card dd { display: grid; justify-items: end; margin: 0; text-align: right; }
+.recon-money-card dd span { color: var(--soft-ink); font-size: var(--type-label); }
+.recon-badge { display: inline-flex; align-items: center; padding: 2px 8px; border: 1.5px solid var(--ink); font-size: var(--type-label); font-weight: 700; white-space: nowrap; }
+.recon-matched { background: var(--recon-matched); }
+.recon-pending { background: var(--recon-pending); }
+.recon-alert { background: var(--recon-alert); }
+.recon-search { display: grid; gap: var(--space-2); max-width: 440px; margin-bottom: var(--space-4); font-size: var(--type-meta); font-weight: 650; }
+.recon-search input, .recon-field select, .recon-field textarea { width: 100%; min-width: 0; min-height: 42px; padding: 8px 10px; border: 2px solid var(--ink); background: var(--cream); color: var(--ink); font-weight: 400; }
+.recon-list { display: grid; gap: var(--space-3); margin: 0 0 var(--space-5); padding: 0; list-style: none; }
+.recon-row { border: 1px solid var(--ink); border-left: 8px solid var(--progress-success); background: var(--cream); }
+.recon-row-attention { border-left-color: var(--vermilion); }
+.recon-row-running { border-left-color: var(--acid); }
+.recon-row-main { display: grid; grid-template-columns: minmax(130px, 170px) minmax(80px, 110px) minmax(0, 1fr) auto; align-items: center; gap: var(--space-4); padding: var(--space-4); }
+.recon-row-id { display: grid; gap: 2px; min-width: 0; }
+.recon-row-id .text-link { font-weight: 750; }
+.recon-row-amount { font-size: 18px; }
+.recon-stages { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.recon-stage { display: grid; gap: 2px; min-width: 0; padding: 6px 8px; border: 1px solid var(--ink); }
+.recon-stage span { color: var(--soft-ink); font-size: 12px; line-height: 1.3; }
+.recon-stage strong { font-size: var(--type-meta); }
+.recon-row-actions { display: flex; align-items: center; gap: var(--space-3); justify-self: end; }
+.recon-detail { display: grid; gap: var(--space-4); padding: 0 var(--space-4) var(--space-5); border-top: 1px solid var(--line); }
+.recon-table { width: 100%; margin-top: var(--space-4); border-collapse: collapse; font-size: var(--type-meta); }
+.recon-table th, .recon-table td { padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+.recon-table th { color: var(--soft-ink); font-weight: 650; }
+.recon-table code { font-size: 12px; white-space: normal; }
+.recon-history h4, .recon-form h4 { margin: 0 0 var(--space-2); font-size: 16px; }
+.recon-history ul { display: grid; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.recon-history li { padding: var(--space-2) var(--space-3); border-left: 3px solid var(--ink); background: var(--pale-mint); }
+.recon-history li p { margin: 4px 0 0; overflow-wrap: anywhere; }
+.recon-forms { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: var(--space-4); }
+.recon-form { display: grid; gap: var(--space-3); align-content: start; padding: var(--space-4); border: 1px dashed var(--ink); }
+.recon-form .metadata { margin: 0; }
+.recon-form .button { justify-self: start; min-height: 40px; padding: 8px 16px; }
+.recon-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
+.recon-field { display: grid; gap: var(--space-1); font-size: var(--type-meta); font-weight: 650; }
+.recon-field-wide { grid-column: 1 / -1; }
+.recon-field textarea { min-height: 72px; resize: vertical; }
+.recon-check { display: flex; gap: var(--space-2); align-items: flex-start; font-size: var(--type-meta); }
+@media (max-width: 1120px) {
+  .recon-row-main { grid-template-columns: minmax(0, 1fr) auto; }
+  .recon-stages { grid-column: 1 / -1; grid-row: 2; }
+  .recon-row-actions { grid-column: 1 / -1; justify-self: start; }
+}
+@media (max-width: 760px) {
+  .recon-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .recon-money { grid-template-columns: 1fr; }
+  .recon-stages { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .recon-form-grid { grid-template-columns: 1fr; }
+  .recon-forms { grid-template-columns: 1fr; }
+  .recon-table thead { display: none; }
+  .recon-table tr { display: grid; padding: var(--space-2) 0; border-bottom: 1px solid var(--line); }
+  .recon-table td { padding: 2px 0; border: 0; }
+}
+.recon-kpis-static .recon-kpi { cursor: default; }
+.recon-kpis-static .recon-kpi:hover { background: var(--cream); }
+.recon-kpis-static .recon-kpi strong { font-size: 28px; overflow-wrap: anywhere; }
+.admin-filter select { width: 100%; min-height: 42px; padding: 8px 10px; border: 2px solid var(--ink); background: var(--cream); color: var(--ink); }

@@ -73,9 +73,11 @@ try {
     }
   }
   await admin.page.goto(`${site}/admin/unified-reconciliation`);
-  const releaseCase = admin.page.getByRole('region', { name: /Đối soát flow/ }).filter({
-    hasText: release.jobId });
+  await admin.page.getByRole('button', { name: /^Tất cả/ }).click({ timeout: 15000 });
+  await admin.page.getByRole('searchbox').fill(release.jobId);
+  const releaseCase = admin.page.getByRole('article', { name: /Đối soát flow/ }).first();
   await releaseCase.waitFor({ timeout: 15000 });
+  await releaseCase.getByRole('button', { name: 'Chi tiết' }).click();
   await releaseCase.getByText('RECIPIENT_BY_ESCROW_INVARIANT', { exact: false }).waitFor();
   for (const width of [1440, 390]) {
     await admin.page.setViewportSize({ width, height: 900 });

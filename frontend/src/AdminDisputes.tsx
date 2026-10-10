@@ -139,7 +139,7 @@ function AdminCase({ id, user }: { id: string; user: User }) {
         <FactGrid facts={[{ label: 'Giá trị hợp đồng', value: String(detail.contract.amount) + ' ' + detail.contract.currency },
           { label: 'Hạn bàn giao', value: localInstant(detail.contract.deliveryDueAt) },
           { label: 'Lượt sửa đã dùng', value: detail.contract.revisionsUsed + '/' + detail.contract.maxRevisions },
-          { label: 'Funding', value: detail.fundingStatus ? fundingLabel(detail.fundingStatus) : 'Chưa có bản ghi funding' }]} />
+          { label: 'Funding', value: detail.fundingStatus ? fundingLabel(detail.fundingStatus) : 'Theo luồng USDC · xem Đối soát USDC' }]} />
         <SectionHeading level={3} title="Sản phẩm bàn giao" />{detail.deliverables.map(item => <p key={item.id}>{item.title} · {item.description}{item.required && ' (bắt buộc)'}</p>)}
         <SectionHeading level={3} title="Tiêu chí nghiệm thu" />{detail.acceptanceCriteria.map(item => <p key={item.id}>{item.description}{item.required && ' (bắt buộc)'}</p>)}
         <EvidenceDisclosure summary="Danh tính participant / Hợp đồng"><p>Client: <code>{detail.contract.clientId}</code></p><p>Freelancer: <code>{detail.contract.freelancerId}</code></p><p>Contract: <code>{detail.contract.contractId}</code></p></EvidenceDisclosure>

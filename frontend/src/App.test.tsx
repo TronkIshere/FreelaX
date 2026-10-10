@@ -91,7 +91,7 @@ describe('P06.2 role-aware shell', () => {
     ]);
     expect(links.map(link => link.getAttribute('href'))).toEqual(['/', '/work', '/finance', '/activity', '/account']);
     expect(host.querySelector('.identity strong')?.textContent).toBe(user.displayName);
-    expect(host.querySelector('.identity span')?.textContent).toBe(user.userType === 'CLIENT' ? 'Client' : 'Freelancer');
+    expect(host.querySelector('.identity span')?.textContent).toBe(hasAuthority(user, 'ROLE_ADMIN') ? 'Admin' : user.userType === 'CLIENT' ? 'Client' : 'Freelancer');
     expect(host.querySelector('.masthead select, .masthead input')).toBeNull();
     expect(host.querySelector('.top-context')).toBeNull();
     expect(host.querySelector('.brand small')).toBeNull();
