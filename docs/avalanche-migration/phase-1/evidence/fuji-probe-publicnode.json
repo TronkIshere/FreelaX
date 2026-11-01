@@ -1,0 +1,963 @@
+{
+ "rpc": "https://avalanche-fuji-c-chain-rpc.publicnode.com",
+ "label": "publicnode",
+ "started": "2026-11-01T13:17:07.311559Z",
+ "calls": [
+  {
+   "method": "eth_chainId",
+   "params": "[]",
+   "http": 200,
+   "ms": 440,
+   "resp": "{'jsonrpc': '2.0', 'result': '0xa869', 'id': 1}"
+  },
+  {
+   "method": "net_version",
+   "params": "[]",
+   "http": 200,
+   "ms": 376,
+   "resp": "{'jsonrpc': '2.0', 'id': 2, 'result': '43113'}"
+  },
+  {
+   "method": "eth_getBlockByNumber",
+   "params": "['latest', False]",
+   "http": 200,
+   "ms": 357,
+   "resp": "{'jsonrpc': '2.0', 'result': {'baseFeePerGas': '0xa', 'blobGasUsed': '0x0', 'blockExtraData': '0x', 'blockGasCost': '0x0', 'difficulty': '0x1', 'excessBlobGas': '0x0', 'extDataGasUsed': '0x0', 'extDataHash': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421', 'extraData': '0x000000"
+  },
+  {
+   "method": "eth_gasPrice",
+   "params": "[]",
+   "http": 200,
+   "ms": 358,
+   "resp": "{'jsonrpc': '2.0', 'id': 4, 'result': '0xa0'}"
+  },
+  {
+   "method": "eth_feeHistory",
+   "params": "['0x4', 'latest', [25, 75]]",
+   "http": 200,
+   "ms": 350,
+   "resp": "{'jsonrpc': '2.0', 'id': 5, 'result': {'oldestBlock': '0x398e890', 'reward': [['0x96', '0x96'], ['0x96', '0x96'], ['0x96', '0x96'], ['0x96', '0x96']], 'baseFeePerGas': ['0xa', '0xa', '0xa', '0xa', '0xa'], 'gasUsedRatio': [0.00155475, 0.0018785, 0.00155115625, 0.00171690625]}}"
+  },
+  {
+   "method": "eth_baseFee",
+   "params": "[]",
+   "http": 200,
+   "ms": 360,
+   "resp": "{'jsonrpc': '2.0', 'id': 6, 'result': '0xa'}"
+  },
+  {
+   "method": "eth_suggestPriceOptions",
+   "params": "[]",
+   "http": 200,
+   "ms": 379,
+   "resp": "{'jsonrpc': '2.0', 'id': 7, 'result': {'slow': {'maxPriorityFeePerGas': '0x8e', 'maxFeePerGas': '0xa2'}, 'normal': {'maxPriorityFeePerGas': '0x96', 'maxFeePerGas': '0xaa'}, 'fast': {'maxPriorityFeePerGas': '0x9d', 'maxFeePerGas': '0xb1'}}}"
+  },
+  {
+   "method": "eth_getBalance",
+   "params": "['0x0000000000000000000000000000000000000001', 'latest']",
+   "http": 200,
+   "ms": 373,
+   "resp": "{'jsonrpc': '2.0', 'id': 8, 'result': '0x1e479e4071490179'}"
+  },
+  {
+   "method": "eth_getTransactionCount",
+   "params": "['0x0000000000000000000000000000000000000001', 'latest']",
+   "http": 200,
+   "ms": 377,
+   "resp": "{'jsonrpc': '2.0', 'id': 9, 'result': '0x0'}"
+  },
+  {
+   "method": "eth_getBlockByNumber",
+   "params": "['safe', False]",
+   "http": 200,
+   "ms": 439,
+   "resp": "{'jsonrpc': '2.0', 'id': 10, 'result': {'baseFeePerGas': '0xa', 'blobGasUsed': '0x0', 'blockExtraData': '0x', 'blockGasCost': '0x0', 'difficulty': '0x1', 'excessBlobGas': '0x0', 'extDataGasUsed': '0x0', 'extDataHash': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421', 'extraData':"
+  },
+  {
+   "method": "eth_getBlockByNumber",
+   "params": "['finalized', False]",
+   "http": 200,
+   "ms": 498,
+   "resp": "{'jsonrpc': '2.0', 'id': 11, 'result': {'baseFeePerGas': '0xa', 'blobGasUsed': '0x0', 'blockExtraData': '0x', 'blockGasCost': '0x0', 'difficulty': '0x1', 'excessBlobGas': '0x0', 'extDataGasUsed': '0x0', 'extDataHash': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421', 'extraData':"
+  },
+  {
+   "method": "eth_getBlockByNumber",
+   "params": "['pending', False]",
+   "http": 200,
+   "ms": 326,
+   "resp": "{'jsonrpc': '2.0', 'id': 12, 'result': {'baseFeePerGas': '0xa', 'blobGasUsed': '0x0', 'blockExtraData': '0x', 'blockGasCost': '0x0', 'difficulty': '0x1', 'excessBlobGas': '0x0', 'extDataGasUsed': '0x0', 'extDataHash': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421', 'extraData':"
+  },
+  {
+   "method": "eth_getCode",
+   "params": "['0x5425890298aed601595a70AB815c96711a31Bc65', 'latest']",
+   "http": 200,
+   "ms": 559,
+   "resp": "{'jsonrpc': '2.0', 'id': 13, 'result': '0x60806040526004361061005a5760003560e01c80635c60da1b116100435780635c60da1b146101315780638f2839701461016f578063f851a440146101af5761005a565b80633659cfe6146100645780634f1ef286146100a4575b6100626101c4565b005b34801561007057600080fd5b50610062600480360360208110156100"
+  },
+  {
+   "method": "eth_call",
+   "params": "[{'to': '0x5425890298aed601595a70AB815c96711a31Bc65', 'data': '0x06fdde03'}, 'latest']",
+   "http": 200,
+   "ms": 334,
+   "resp": "{'jsonrpc': '2.0', 'id': 14, 'result': '0x0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000855534420436f696e000000000000000000000000000000000000000000000000'}"
+  },
+  {
+   "method": "eth_call",
+   "params": "[{'to': '0x5425890298aed601595a70AB815c96711a31Bc65', 'data': '0x95d89b41'}, 'latest']",
+   "http": 200,
+   "ms": 370,
+   "resp": "{'jsonrpc': '2.0', 'id': 15, 'result': '0x000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000045553444300000000000000000000000000000000000000000000000000000000'}"
+  },
+  {
+   "method": "eth_call",
+   "params": "[{'to': '0x5425890298aed601595a70AB815c96711a31Bc65', 'data': '0x313ce567'}, 'latest']",
+   "http": 200,
+   "ms": 345,
+   "resp": "{'jsonrpc': '2.0', 'id': 16, 'result': '0x0000000000000000000000000000000000000000000000000000000000000006'}"
+  },
+  {
+   "method": "eth_call",
+   "params": "[{'to': '0x5425890298aed601595a70AB815c96711a31Bc65', 'data': '0x54fd4d50'}, 'latest']",
+   "http": 200,
+   "ms": 342,
+   "resp": "{'jsonrpc': '2.0', 'id': 17, 'result': '0x000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000013200000000000000000000000000000000000000000000000000000000000000'}"
+  },
+  {
+   "method": "eth_call",
+   "params": "[{'to': '0x5425890298aed601595a70AB815c96711a31Bc65', 'data': '0x18160ddd'}, 'latest']",
+   "http": 200,
+   "ms": 370,
+   "resp": "{'jsonrpc': '2.0', 'id': 18, 'result': '0x000000000000000000000000000000000000000000000000014003e34168534b'}"
+  },
+  {
+   "method": "eth_call",
+   "params": "[{'to': '0x5425890298aed601595a70AB815c96711a31Bc65', 'data': '0x70a0823100000000000000000000000000000000000000000000000",
+   "http": 200,
+   "ms": 331,
+   "resp": "{'jsonrpc': '2.0', 'id': 19, 'result': '0x00000000000000000000000000000000000000000000000000000000026a7da2'}"
+  },
+  {
+   "method": "eth_call",
+   "params": "[{'to': '0x5425890298aed601595a70AB815c96711a31Bc65', 'data': '0xdd62ed3e00000000000000000000000000000000000000000000000",
+   "http": 200,
+   "ms": 602,
+   "resp": "{'jsonrpc': '2.0', 'id': 20, 'result': '0x0000000000000000000000000000000000000000000000000000000000000000'}"
+  },
+  {
+   "method": "eth_call",
+   "params": "[{'to': '0x5425890298aed601595a70AB815c96711a31Bc65', 'data': '0x5c975abb'}, 'latest']",
+   "http": 200,
+   "ms": 395,
+   "resp": "{'jsonrpc': '2.0', 'id': 21, 'result': '0x0000000000000000000000000000000000000000000000000000000000000000'}"
+  },
+  {
+   "method": "eth_call",
+   "params": "[{'to': '0x5425890298aed601595a70AB815c96711a31Bc65', 'data': '0x3644e515'}, 'latest']",
+   "http": 200,
+   "ms": 342,
+   "resp": "{'jsonrpc': '2.0', 'id': 22, 'result': '0xfe9fa105a0e9629446730e544caa6b8d05d8d4fc93451750dc50e2ddd6d374b3'}"
+  },
+  {
+   "method": "eth_call",
+   "params": "[{'to': '0x5425890298aed601595a70AB815c96711a31Bc65', 'data': '0x30adf81f'}, 'latest']",
+   "http": 200,
+   "ms": 354,
+   "resp": "{'jsonrpc': '2.0', 'id': 23, 'result': '0x6e71edae12b1b97f4d1f60370fef10105fa2faae0126114a169c64845d6126c9'}"
+  },
+  {
+   "method": "eth_call",
+   "params": "[{'to': '0x5425890298aed601595a70AB815c96711a31Bc65', 'data': '0x7ecebe0000000000000000000000000000000000000000000000000",
+   "http": 200,
+   "ms": 342,
+   "resp": "{'jsonrpc': '2.0', 'id': 24, 'result': '0x0000000000000000000000000000000000000000000000000000000000000000'}"
+  },
+  {
+   "method": "eth_call",
+   "params": "[{'to': '0x5425890298aed601595a70AB815c96711a31Bc65', 'data': '0xa0cc6a68'}, 'latest']",
+   "http": 200,
+   "ms": 357,
+   "resp": "{'jsonrpc': '2.0', 'id': 25, 'result': '0x7c7c6cdb67a18743f49ec6fa9b35f50d52ed05cbed4cc592e13b44501c1a2267'}"
+  },
+  {
+   "method": "eth_call",
+   "params": "[{'to': '0x5425890298aed601595a70AB815c96711a31Bc65', 'data': '0x7f2eecc3'}, 'latest']",
+   "http": 200,
+   "ms": 356,
+   "resp": "{'jsonrpc': '2.0', 'id': 26, 'result': '0xd099cc98ef71107a616c4f0f941f04c322d8e254fe26b3c6668db87aae413de8'}"
+  },
+  {
+   "method": "eth_call",
+   "params": "[{'to': '0x5425890298aed601595a70AB815c96711a31Bc65', 'data': '0xe94a010200000000000000000000000000000000000000000000000",
+   "http": 200,
+   "ms": 398,
+   "resp": "{'jsonrpc': '2.0', 'id': 27, 'result': '0x0000000000000000000000000000000000000000000000000000000000000000'}"
+  },
+  {
+   "method": "eth_call",
+   "params": "[{'to': '0x5425890298aed601595a70AB815c96711a31Bc65', 'data': '0x5a4f5cf2'}, 'latest']",
+   "http": 200,
+   "ms": 333,
+   "resp": "{'jsonrpc': '2.0', 'id': 28, 'error': {'code': -32000, 'message': 'execution reverted'}}"
+  },
+  {
+   "method": "eth_call",
+   "params": "[{'to': '0x5425890298aed601595a70AB815c96711a31Bc65', 'data': '0x35d99f35'}, 'latest']",
+   "http": 200,
+   "ms": 356,
+   "resp": "{'jsonrpc': '2.0', 'id': 29, 'result': '0x0000000000000000000000005b2173b7d3d4592816d9ad520f309b3f443ccbe1'}"
+  },
+  {
+   "method": "eth_getCode",
+   "params": "['0xA7D7079b0FEaD91F3e65f86E8915Cb59c1a4C664', 'latest']",
+   "http": 200,
+   "ms": 327,
+   "resp": "{'jsonrpc': '2.0', 'id': 30, 'result': '0x'}"
+  },
+  {
+   "method": "eth_getStorageAt",
+   "params": "['0x5425890298aed601595a70AB815c96711a31Bc65', '0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc', 'la",
+   "http": 200,
+   "ms": 338,
+   "resp": "{'jsonrpc': '2.0', 'id': 31, 'result': '0x0000000000000000000000000000000000000000000000000000000000000000'}"
+  },
+  {
+   "method": "eth_getLogs",
+   "params": "[{'fromBlock': '0x398e888', 'toBlock': '0x398e891', 'topics': ['0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a",
+   "http": 200,
+   "ms": 358,
+   "resp": "{'jsonrpc': '2.0', 'id': 32, 'result': []}"
+  },
+  {
+   "method": "eth_getLogs",
+   "params": "[{'fromBlock': '0x398e82e', 'toBlock': '0x398e891', 'topics': ['0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a",
+   "http": 200,
+   "ms": 348,
+   "resp": "{'jsonrpc': '2.0', 'id': 33, 'result': [{'address': '0x5425890298aed601595a70ab815c96711a31bc65', 'topics': ['0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef', '0x00000000000000000000000093083f60f1877a6ba974d5ed88bb74943deb8390', '0x00000000000000000000000037e3d5e3492d77355b5b707a"
+  },
+  {
+   "method": "eth_getLogs",
+   "params": "[{'fromBlock': '0x398e4aa', 'toBlock': '0x398e891', 'topics': ['0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a",
+   "http": 200,
+   "ms": 414,
+   "resp": "{'jsonrpc': '2.0', 'id': 34, 'result': [{'address': '0x5425890298aed601595a70ab815c96711a31bc65', 'topics': ['0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef', '0x000000000000000000000000a9bbd0d98696c0b34394f5fb11a1539b6aa727a2', '0x00000000000000000000000093083f60f1877a6ba974d5ed"
+  },
+  {
+   "method": "eth_getLogs",
+   "params": "[{'fromBlock': '0x398e0c2', 'toBlock': '0x398e891', 'topics': ['0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a",
+   "http": 200,
+   "ms": 492,
+   "resp": "{'jsonrpc': '2.0', 'id': 35, 'result': [{'address': '0x5425890298aed601595a70ab815c96711a31bc65', 'topics': ['0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef', '0x00000000000000000000000041b6f31e27bb8be0f9a6ee7cc979b9bc1f50b86a', '0x00000000000000000000000093083f60f1877a6ba974d5ed"
+  },
+  {
+   "method": "eth_getLogs",
+   "params": "[{'fromBlock': '0x398d50a', 'toBlock': '0x398e891', 'topics': ['0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a",
+   "http": 200,
+   "ms": 772,
+   "resp": "{'jsonrpc': '2.0', 'id': 36, 'result': [{'address': '0x5425890298aed601595a70ab815c96711a31bc65', 'topics': ['0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef', '0x000000000000000000000000551dfed720649704e79f4aa6ee6a227ce0139796', '0x000000000000000000000000d8c8cb652e329285519d23d7"
+  },
+  {
+   "method": "eth_getLogs",
+   "params": "[{'fromBlock': '0x398c182', 'toBlock': '0x398e891', 'topics': ['0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a",
+   "http": 200,
+   "ms": 521,
+   "resp": "{'jsonrpc': '2.0', 'id': 37, 'result': [{'address': '0x5425890298aed601595a70ab815c96711a31bc65', 'topics': ['0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef', '0x000000000000000000000000683a2fec4e510e6e8e9cd7ba3f6b83c08d0e1dad', '0x0000000000000000000000005d8981ab75d6e76231178cb6"
+  },
+  {
+   "method": "eth_getLogs",
+   "params": "[{'fromBlock': '0x3982542', 'toBlock': '0x398e891', 'topics': ['0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a",
+   "http": 200,
+   "ms": 795,
+   "resp": "{'jsonrpc': '2.0', 'id': 38, 'result': [{'address': '0x5425890298aed601595a70ab815c96711a31bc65', 'topics': ['0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef', '0x0000000000000000000000000f875601504c9179562506afa34b2d084268869b', '0x0000000000000000000000000eee42ec90eb7d1e53504fb5"
+  },
+  {
+   "method": "eth_getLogs",
+   "params": "[{'fromBlock': '0x39761f2', 'toBlock': '0x398e891', 'topics': ['0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a",
+   "http": 200,
+   "ms": 348,
+   "resp": "{'jsonrpc': '2.0', 'error': {'code': -32701, 'message': 'exceed maximum block range: 50000'}, 'id': 39}"
+  },
+  {
+   "method": "eth_getLogs",
+   "params": "[{'fromBlock': '0x398e82e', 'toBlock': '0x398e891', 'topics': ['0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a",
+   "http": 200,
+   "ms": 326,
+   "resp": "{'jsonrpc': '2.0', 'error': {'code': -32701, 'message': 'Please specify an address in your request or, to remove restrictions, order a dedicated full node here: https://www.allnodes.com/avax/host'}, 'id': 40}"
+  },
+  {
+   "method": "eth_getLogs",
+   "params": "[{'fromBlock': '0x389a652', 'toBlock': '0x389a6b6', 'topics': ['0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a",
+   "http": 200,
+   "ms": 351,
+   "resp": "{'jsonrpc': '2.0', 'id': 41, 'result': []}"
+  },
+  {
+   "method": "eth_getBlockByNumber",
+   "params": "['latest', False]",
+   "http": 200,
+   "ms": 344,
+   "resp": "{'jsonrpc': '2.0', 'id': 42, 'result': {'baseFeePerGas': '0xa', 'blobGasUsed': '0x0', 'blockExtraData': '0x', 'blockGasCost': '0x0', 'difficulty': '0x1', 'excessBlobGas': '0x0', 'extDataGasUsed': '0x0', 'extDataHash': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421', 'extraData':"
+  },
+  {
+   "method": "eth_getBlockByNumber",
+   "params": "['latest', False]",
+   "http": 200,
+   "ms": 352,
+   "resp": "{'jsonrpc': '2.0', 'result': {'baseFeePerGas': '0xa', 'blobGasUsed': '0x0', 'blockExtraData': '0x', 'blockGasCost': '0x0', 'difficulty': '0x1', 'excessBlobGas': '0x0', 'extDataGasUsed': '0x0', 'extDataHash': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421', 'extraData': '0x000000"
+  },
+  {
+   "method": "eth_getBlockByNumber",
+   "params": "['latest', False]",
+   "http": 200,
+   "ms": 353,
+   "resp": "{'jsonrpc': '2.0', 'result': {'baseFeePerGas': '0xa', 'blobGasUsed': '0x0', 'blockExtraData': '0x', 'blockGasCost': '0x0', 'difficulty': '0x1', 'excessBlobGas': '0x0', 'extDataGasUsed': '0x0', 'extDataHash': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421', 'extraData': '0x000000"
+  },
+  {
+   "method": "eth_getBlockByNumber",
+   "params": "['latest', False]",
+   "http": 200,
+   "ms": 438,
+   "resp": "{'jsonrpc': '2.0', 'id': 45, 'result': {'baseFeePerGas': '0xa', 'blobGasUsed': '0x0', 'blockExtraData': '0x', 'blockGasCost': '0x0', 'difficulty': '0x1', 'excessBlobGas': '0x0', 'extDataGasUsed': '0x0', 'extDataHash': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421', 'extraData':"
+  },
+  {
+   "method": "eth_getBlockByNumber",
+   "params": "['latest', False]",
+   "http": 200,
+   "ms": 376,
+   "resp": "{'jsonrpc': '2.0', 'result': {'baseFeePerGas': '0xa', 'blobGasUsed': '0x0', 'blockExtraData': '0x', 'blockGasCost': '0x0', 'difficulty': '0x1', 'excessBlobGas': '0x0', 'extDataGasUsed': '0x0', 'extDataHash': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421', 'extraData': '0x000000"
+  },
+  {
+   "method": "eth_getBlockByNumber",
+   "params": "['latest', False]",
+   "http": 200,
+   "ms": 407,
+   "resp": "{'jsonrpc': '2.0', 'result': {'baseFeePerGas': '0xa', 'blobGasUsed': '0x0', 'blockExtraData': '0x', 'blockGasCost': '0x0', 'difficulty': '0x1', 'excessBlobGas': '0x0', 'extDataGasUsed': '0x0', 'extDataHash': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421', 'extraData': '0x000000"
+  },
+  {
+   "method": "eth_getBlockByNumber",
+   "params": "['latest', False]",
+   "http": 200,
+   "ms": 552,
+   "resp": "{'jsonrpc': '2.0', 'result': {'baseFeePerGas': '0xa', 'blobGasUsed': '0x0', 'blockExtraData': '0x', 'blockGasCost': '0x0', 'difficulty': '0x1', 'excessBlobGas': '0x0', 'extDataGasUsed': '0x0', 'extDataHash': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421', 'extraData': '0x000000"
+  },
+  {
+   "method": "eth_getBlockByNumber",
+   "params": "['latest', False]",
+   "http": 200,
+   "ms": 357,
+   "resp": "{'jsonrpc': '2.0', 'result': {'baseFeePerGas': '0xa', 'blobGasUsed': '0x0', 'blockExtraData': '0x', 'blockGasCost': '0x0', 'difficulty': '0x1', 'excessBlobGas': '0x0', 'extDataGasUsed': '0x0', 'extDataHash': '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421', 'extraData': '0x000000"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 421,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8a9', 'id': 50}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 408,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8a9', 'id': 51}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 388,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8a9', 'id': 52}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 360,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8a9', 'id': 53}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 358,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8a9', 'id': 54}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 403,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8a9', 'id': 55}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 324,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8a9', 'id': 56}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 372,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8a9', 'id': 57}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 363,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8a9', 'id': 58}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 537,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8a9', 'id': 59}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 370,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8a9', 'id': 60}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 659,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8a9', 'id': 61}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 622,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8a9', 'id': 62}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 731,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8a9', 'id': 63}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 393,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8aa', 'id': 64}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 341,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8aa', 'id': 65}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 349,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8aa', 'id': 66}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 400,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8aa', 'id': 67}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 371,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8aa', 'id': 68}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 380,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8aa', 'id': 69}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 353,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8aa', 'id': 70}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 370,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8aa', 'id': 71}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 410,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8aa', 'id': 72}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 344,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8aa', 'id': 73}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 357,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8aa', 'id': 74}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 384,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8aa', 'id': 75}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 389,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8aa', 'id': 76}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 346,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8aa', 'id': 77}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 415,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8aa', 'id': 78}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 392,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8aa', 'id': 79}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 375,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8aa', 'id': 80}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 453,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8aa', 'id': 81}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 340,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8aa', 'id': 82}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 406,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8aa', 'id': 83}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 367,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8ab', 'id': 84}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 361,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8ab', 'id': 85}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 330,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8ab', 'id': 86}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 416,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8ab', 'id': 87}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 378,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8ab', 'id': 88}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 397,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8ab', 'id': 89}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 726,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8ab', 'id': 90}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 391,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8ab', 'id': 91}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 491,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8ab', 'id': 92}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 350,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8ab', 'id': 93}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 556,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8ab', 'id': 94}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 552,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8ac', 'id': 95}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 510,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8ac', 'id': 96}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 385,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8ac', 'id': 97}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 406,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8ac', 'id': 98}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 347,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8ac', 'id': 99}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 342,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8ac', 'id': 100}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 473,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8ac', 'id': 101}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 868,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8ad', 'id': 102}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 359,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8ae', 'id': 103}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 415,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8ae', 'id': 104}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 494,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8af', 'id': 105}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 433,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8af', 'id': 106}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 359,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8af', 'id': 107}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 366,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8b0', 'id': 108}"
+  },
+  {
+   "method": "eth_blockNumber",
+   "params": "[]",
+   "http": 200,
+   "ms": 476,
+   "resp": "{'jsonrpc': '2.0', 'result': '0x398e8b0', 'id': 109}"
+  },
+  {
+   "method": "eth_getTransactionByHash",
+   "params": "['0xabababababababababababababababababababababababababababababababab']",
+   "http": 200,
+   "ms": 384,
+   "resp": "{'jsonrpc': '2.0', 'id': 110, 'result': None}"
+  },
+  {
+   "method": "eth_getTransactionReceipt",
+   "params": "['0xabababababababababababababababababababababababababababababababab']",
+   "http": 200,
+   "ms": 429,
+   "resp": "{'jsonrpc': '2.0', 'id': 111, 'result': None}"
+  }
+ ],
+ "summary": {
+  "chainId": "0xa869",
+  "net_version": "43113",
+  "head": 60352658,
+  "head_ts": 1793539023,
+  "head_keys": [
+   "baseFeePerGas",
+   "blobGasUsed",
+   "blockExtraData",
+   "blockGasCost",
+   "difficulty",
+   "excessBlobGas",
+   "extDataGasUsed",
+   "extDataHash",
+   "extraData",
+   "gasLimit",
+   "gasUsed",
+   "hash",
+   "logsBloom",
+   "minDelayExcess",
+   "minPriceExponent",
+   "miner",
+   "mixHash",
+   "nonce",
+   "number",
+   "parentBeaconBlockRoot",
+   "parentHash",
+   "receiptsRoot",
+   "settledExcess",
+   "settledGasNumerator",
+   "settledGasUnix",
+   "settledHeight",
+   "sha3Uncles",
+   "size",
+   "stateRoot",
+   "targetExponent",
+   "timestamp",
+   "timestampMilliseconds",
+   "totalDifficulty",
+   "transactions",
+   "transactionsRoot",
+   "uncles"
+  ],
+  "head_timestampMilliseconds": "0x1a19741a35e",
+  "wall_minus_head_ts_s": 5.48,
+  "gasPrice": "0xa0",
+  "feeHistory": "{'oldestBlock': '0x398e890', 'reward': [['0x96', '0x96'], ['0x96', '0x96'], ['0x96', '0x96'], ['0x96', '0x96']], 'baseFeePerGas': ['0xa', '0xa', '0xa', '0xa', '0xa'], 'gasUsedRatio': [0.00155475, 0.00",
+  "baseFee_avax": "0xa",
+  "suggestPriceOptions": "{'jsonrpc': '2.0', 'id': 7, 'result': {'slow': {'maxPriorityFeePerGas': '0x8e', 'maxFeePerGas': '0xa2'}, 'normal': {'maxPriorityFeePerGas': '0x96', 'maxFeePerGas': '0xaa'}, 'fast': {'maxPriorityFeePer",
+  "balance_zero_addr": "0x1e479e4071490179",
+  "nonce_zero_addr": "0x0",
+  "safe_block": 60352658,
+  "finalized_block": 60352658,
+  "pending_block": 60352660,
+  "usdc_code_bytes": 1852,
+  "usdc_name": "USD Coin",
+  "usdc_symbol": "USDC",
+  "usdc_decimals": 6,
+  "usdc_version": "2",
+  "usdc_totalSupply_raw": 90076267137225547,
+  "usdc_balanceOf_zero": 40533410,
+  "usdc_allowance_zero": 0,
+  "usdc_paused": "0x0000000000000000000000000000000000000000000000000000000000000000",
+  "usdc_DOMAIN_SEPARATOR": "0xfe9fa105a0e9629446730e544caa6b8d05d8d4fc93451750dc50e2ddd6d374b3",
+  "usdc_PERMIT_TYPEHASH": "0x6e71edae12b1b97f4d1f60370fef10105fa2faae0126114a169c64845d6126c9",
+  "usdc_nonces(0x1)": "0x0000000000000000000000000000000000000000000000000000000000000000",
+  "usdc_TRANSFER_WITH_AUTHORIZATION_TYPEHASH": "0x7c7c6cdb67a18743f49ec6fa9b35f50d52ed05cbed4cc592e13b44501c1a2267",
+  "usdc_RECEIVE_WITH_AUTHORIZATION_TYPEHASH": "0xd099cc98ef71107a616c4f0f941f04c322d8e254fe26b3c6668db87aae413de8",
+  "usdc_authorizationState(0x1,0x0)": "0x0000000000000000000000000000000000000000000000000000000000000000",
+  "usdc_blacklister": null,
+  "usdc_masterMinter": "0x0000000000000000000000005b2173b7d3d4592816d9ad520f309b3f443ccbe1",
+  "usdce_candidate_code_bytes": 0,
+  "usdc_impl_slot": "0x0000000000000000000000000000000000000000000000000000000000000000",
+  "logs_ranges": {
+   "10": [
+    0,
+    ""
+   ],
+   "100": [
+    1,
+    ""
+   ],
+   "1000": [
+    6,
+    ""
+   ],
+   "2000": [
+    8,
+    ""
+   ],
+   "5000": [
+    27,
+    ""
+   ],
+   "10000": [
+    61,
+    ""
+   ],
+   "50000": [
+    668,
+    ""
+   ],
+   "100000": [
+    null,
+    "{'code': -32701, 'message': 'exceed maximum block range: 50000'}"
+   ]
+  },
+  "logs_no_address_100": [
+   null,
+   "{'code': -32701, 'message': 'Please specify an address in your request or, to remove restrictions, order a dedicated full node here: https://www.allnodes.com/av"
+  ],
+  "logs_historical_1M_back_100": [
+   0,
+   ""
+  ],
+  "head_progression": [
+   [
+    60352667,
+    1793539043,
+    "0x1a19741f17e",
+    1793539044.172
+   ],
+   [
+    60352668,
+    1793539044,
+    "0x1a19741f506",
+    1793539046.024
+   ],
+   [
+    60352670,
+    1793539047,
+    "0x1a19741fe67",
+    1793539047.878
+   ],
+   [
+    60352673,
+    1793539049,
+    "0x1a197420957",
+    1793539049.816
+   ],
+   [
+    60352674,
+    1793539051,
+    "0x1a197420e09",
+    1793539051.693
+   ],
+   [
+    60352676,
+    1793539052,
+    "0x1a197421576",
+    1793539053.601
+   ],
+   [
+    60352678,
+    1793539054,
+    "0x1a197421ce2",
+    1793539055.653
+   ],
+   [
+    60352680,
+    1793539057,
+    "0x1a197422770",
+    1793539057.511
+   ]
+  ],
+  "burst60_http_codes": {
+   "200": 60
+  },
+  "burst60_seconds": 25.43,
+  "unknown_tx_by_hash": null,
+  "unknown_receipt": null
+ },
+ "finished": "2026-11-01T13:18:05.255681Z",
+ "eth_blockNumber_latency_ms": {
+  "n": 60,
+  "min": 324,
+  "median": 389,
+  "max": 868
+ }
+}

@@ -1,0 +1,142 @@
+lab.freelax.phase1:java-web3j-prototype:jar:0.0.1-SNAPSHOT
++- org.springframework.boot:spring-boot-starter:jar:3.5.16:compile
+|  +- org.springframework.boot:spring-boot:jar:3.5.16:compile
+|  |  \- org.springframework:spring-context:jar:6.2.19:compile
+|  |     +- org.springframework:spring-aop:jar:6.2.19:compile
+|  |     +- org.springframework:spring-beans:jar:6.2.19:compile
+|  |     +- org.springframework:spring-expression:jar:6.2.19:compile
+|  |     \- io.micrometer:micrometer-observation:jar:1.15.12:compile
+|  |        \- io.micrometer:micrometer-commons:jar:1.15.12:compile
+|  +- org.springframework.boot:spring-boot-autoconfigure:jar:3.5.16:compile
+|  +- org.springframework.boot:spring-boot-starter-logging:jar:3.5.16:compile
+|  |  +- ch.qos.logback:logback-classic:jar:1.5.34:compile
+|  |  |  \- ch.qos.logback:logback-core:jar:1.5.34:compile
+|  |  +- org.apache.logging.log4j:log4j-to-slf4j:jar:2.24.3:compile
+|  |  |  \- org.apache.logging.log4j:log4j-api:jar:2.24.3:compile
+|  |  \- org.slf4j:jul-to-slf4j:jar:2.0.18:compile
+|  +- jakarta.annotation:jakarta.annotation-api:jar:2.1.1:compile
+|  +- org.springframework:spring-core:jar:6.2.19:compile
+|  |  \- org.springframework:spring-jcl:jar:6.2.19:compile
+|  \- org.yaml:snakeyaml:jar:2.4:compile
++- org.web3j:core:jar:6.1.0:compile
+|  +- org.web3j:abi:jar:6.1.0:compile
+|  |  \- org.web3j:utils:jar:6.1.0:compile
+|  |     +- org.bouncycastle:bcprov-jdk18on:jar:1.86:compile
+|  |     \- org.bouncycastle:bcutil-jdk18on:jar:1.86:compile
+|  +- org.web3j:crypto:jar:6.1.0:compile
+|  |  +- org.web3j:rlp:jar:6.1.0:compile
+|  |  \- io.consensys.protocols:jc-kzg-4844:jar:2.1.8:compile
+|  +- org.web3j:tuples:jar:6.1.0:compile
+|  +- com.github.jnr:jnr-unixsocket:jar:0.39.5:compile
+|  |  +- com.github.jnr:jnr-ffi:jar:2.3.3:compile
+|  |  |  +- com.github.jnr:jffi:jar:1.4.3:compile
+|  |  |  +- com.github.jnr:jffi:jar:native:1.4.3:runtime
+|  |  |  +- org.ow2.asm:asm:jar:9.10.1:compile
+|  |  |  +- org.ow2.asm:asm-commons:jar:9.10.1:compile
+|  |  |  +- org.ow2.asm:asm-analysis:jar:9.10.1:compile
+|  |  |  +- org.ow2.asm:asm-tree:jar:9.10.1:compile
+|  |  |  +- org.ow2.asm:asm-util:jar:9.10.1:compile
+|  |  |  +- com.github.jnr:jnr-a64asm:jar:1.0.0:compile
+|  |  |  \- com.github.jnr:jnr-x86asm:jar:1.0.2:compile
+|  |  +- com.github.jnr:jnr-constants:jar:0.11.2:compile
+|  |  +- com.github.jnr:jnr-enxio:jar:0.33.3:compile
+|  |  \- com.github.jnr:jnr-posix:jar:3.2.4:compile
+|  +- com.squareup.okhttp3:okhttp:jar:5.5.0:compile
+|  |  +- org.jetbrains.kotlin:kotlin-stdlib:jar:1.9.25:compile
+|  |  |  \- org.jetbrains:annotations:jar:13.0:compile
+|  |  \- com.squareup.okio:okio:jar:3.18.1:runtime
+|  |     \- com.squareup.okio:okio-jvm:jar:3.18.1:compile
+|  +- com.squareup.okhttp3:logging-interceptor:jar:5.5.0:compile
+|  |  \- com.squareup.okhttp3:okhttp-jvm:jar:5.5.0:compile
+|  +- io.reactivex.rxjava2:rxjava:jar:2.2.21:compile
+|  |  \- org.reactivestreams:reactive-streams:jar:1.0.4:compile
+|  +- org.java-websocket:Java-WebSocket:jar:1.6.0:compile
+|  +- tools.jackson.core:jackson-databind:jar:3.2.3:compile
+|  |  +- com.fasterxml.jackson.core:jackson-annotations:jar:2.21:compile
+|  |  \- tools.jackson.core:jackson-core:jar:3.2.3:compile
+|  +- org.slf4j:slf4j-api:jar:2.0.18:compile
+|  +- io.github.adraffy:ens-normalize:jar:0.3.1:compile
+|  +- io.consensys.tuweni:tuweni-bytes:jar:2.8.0:compile
+|  |  +- org.connid:framework:jar:1.3.2:compile
+|  |  +- org.connid:framework-internal:jar:1.3.2:compile
+|  |  \- io.vertx:vertx-core:jar:5.1.6:compile
+|  |     +- io.vertx:vertx-core-logging:jar:5.1.6:compile
+|  |     +- io.netty:netty-common:jar:4.1.135.Final:compile
+|  |     +- io.netty:netty-buffer:jar:4.1.135.Final:compile
+|  |     +- io.netty:netty-transport:jar:4.1.135.Final:compile
+|  |     +- io.netty:netty-handler:jar:4.1.135.Final:compile
+|  |     |  \- io.netty:netty-transport-native-unix-common:jar:4.1.135.Final:compile
+|  |     +- io.netty:netty-handler-proxy:jar:4.1.135.Final:compile
+|  |     |  \- io.netty:netty-codec-socks:jar:4.1.135.Final:compile
+|  |     +- io.netty:netty-codec-http:jar:4.1.135.Final:compile
+|  |     +- io.netty:netty-codec-http2:jar:4.1.135.Final:compile
+|  |     +- io.netty:netty-codec-classes-quic:jar:4.2.17.Final:compile
+|  |     |  \- io.netty:netty-codec-base:jar:4.2.17.Final:compile
+|  |     +- io.netty:netty-codec-http3:jar:4.2.17.Final:compile
+|  |     +- io.netty:netty-resolver:jar:4.1.135.Final:compile
+|  |     +- io.netty:netty-resolver-dns:jar:4.1.135.Final:compile
+|  |     |  \- io.netty:netty-codec-dns:jar:4.1.135.Final:compile
+|  |     +- com.fasterxml.jackson.core:jackson-core:jar:2.21.4:compile
+|  |     \- io.netty:netty-tcnative-classes:jar:2.0.77.Final:compile
+|  +- io.consensys.tuweni:tuweni-units:jar:2.8.0:compile
+|  \- software.amazon.awssdk:kms:jar:2.55.6:runtime
+|     +- software.amazon.awssdk:aws-json-protocol:jar:2.55.6:runtime
+|     |  \- software.amazon.awssdk:third-party-jackson-core:jar:2.55.6:runtime
+|     +- software.amazon.awssdk:protocol-core:jar:2.55.6:runtime
+|     +- software.amazon.awssdk:http-auth-aws:jar:2.55.6:runtime
+|     |  +- software.amazon.awssdk:checksums-spi:jar:2.55.6:runtime
+|     |  \- software.amazon.awssdk:checksums:jar:2.55.6:runtime
+|     +- software.amazon.awssdk:sdk-core:jar:2.55.6:runtime
+|     |  +- software.amazon.awssdk:profiles:jar:2.55.6:runtime
+|     |  \- software.amazon.awssdk:retries:jar:2.55.6:runtime
+|     +- software.amazon.awssdk:auth:jar:2.55.6:runtime
+|     |  +- software.amazon.awssdk:http-auth-aws-eventstream:jar:2.55.6:runtime
+|     |  \- software.amazon.eventstream:eventstream:jar:1.0.1:runtime
+|     +- software.amazon.awssdk:http-auth-spi:jar:2.55.6:runtime
+|     +- software.amazon.awssdk:http-auth:jar:2.55.6:runtime
+|     +- software.amazon.awssdk:identity-spi:jar:2.55.6:runtime
+|     +- software.amazon.awssdk:http-client-spi:jar:2.55.6:runtime
+|     +- software.amazon.awssdk:regions:jar:2.55.6:runtime
+|     +- software.amazon.awssdk:annotations:jar:2.55.6:runtime
+|     +- software.amazon.awssdk:utils:jar:2.55.6:runtime
+|     +- software.amazon.awssdk:aws-core:jar:2.55.6:runtime
+|     |  \- software.amazon.awssdk:utils-lite:jar:2.55.6:runtime
+|     +- software.amazon.awssdk:metrics-spi:jar:2.55.6:runtime
+|     +- software.amazon.awssdk:json-utils:jar:2.55.6:runtime
+|     +- software.amazon.awssdk:endpoints-spi:jar:2.55.6:runtime
+|     +- software.amazon.awssdk:retries-spi:jar:2.55.6:runtime
+|     +- software.amazon.awssdk:apache5-client:jar:2.55.6:runtime
+|     |  +- org.apache.httpcomponents.client5:httpclient5:jar:5.5.2:runtime
+|     |  |  \- org.apache.httpcomponents.core5:httpcore5-h2:jar:5.3.6:runtime
+|     |  \- org.apache.httpcomponents.core5:httpcore5:jar:5.3.6:runtime
+|     \- software.amazon.awssdk:netty-nio-client:jar:2.55.6:runtime
+|        +- io.netty:netty-codec:jar:4.1.135.Final:compile
+|        \- io.netty:netty-transport-classes-epoll:jar:4.1.135.Final:runtime
+\- org.springframework.boot:spring-boot-starter-test:jar:3.5.16:test
+   +- org.springframework.boot:spring-boot-test:jar:3.5.16:test
+   +- org.springframework.boot:spring-boot-test-autoconfigure:jar:3.5.16:test
+   +- com.jayway.jsonpath:json-path:jar:2.9.0:test
+   +- jakarta.xml.bind:jakarta.xml.bind-api:jar:4.0.5:test
+   |  \- jakarta.activation:jakarta.activation-api:jar:2.1.4:test
+   +- net.minidev:json-smart:jar:2.5.2:test
+   |  \- net.minidev:accessors-smart:jar:2.5.2:test
+   +- org.assertj:assertj-core:jar:3.27.7:test
+   |  \- net.bytebuddy:byte-buddy:jar:1.17.8:test
+   +- org.awaitility:awaitility:jar:4.2.2:test
+   +- org.hamcrest:hamcrest:jar:3.0:test
+   +- org.junit.jupiter:junit-jupiter:jar:5.12.2:test
+   |  +- org.junit.jupiter:junit-jupiter-api:jar:5.12.2:test
+   |  |  +- org.opentest4j:opentest4j:jar:1.3.0:test
+   |  |  +- org.junit.platform:junit-platform-commons:jar:1.12.2:test
+   |  |  \- org.apiguardian:apiguardian-api:jar:1.1.2:test
+   |  +- org.junit.jupiter:junit-jupiter-params:jar:5.12.2:test
+   |  \- org.junit.jupiter:junit-jupiter-engine:jar:5.12.2:test
+   |     \- org.junit.platform:junit-platform-engine:jar:1.12.2:test
+   +- org.mockito:mockito-core:jar:5.17.0:test
+   |  +- net.bytebuddy:byte-buddy-agent:jar:1.17.8:test
+   |  \- org.objenesis:objenesis:jar:3.3:test
+   +- org.mockito:mockito-junit-jupiter:jar:5.17.0:test
+   +- org.skyscreamer:jsonassert:jar:1.5.3:test
+   |  \- com.vaadin.external.google:android-json:jar:0.0.20131108.vaadin1:test
+   +- org.springframework:spring-test:jar:6.2.19:test
+   \- org.xmlunit:xmlunit-core:jar:2.10.4:test

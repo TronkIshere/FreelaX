@@ -1,0 +1,17 @@
+0.11.6
+Multiple frameworks detected: solc, Solc-json. Using solc (highest priority). Use --compile-force-framework to override.
+'solc --version' running
+'solc @openzeppelin/contracts/=oz/contracts/ src/Phase1Lab.sol --combined-json abi,ast,bin,bin-runtime,srcmap,srcmap-runtime,userdoc,devdoc,hashes --evm-version cancun --allow-paths .,/s/src' running
+INFO:Detectors:
+Detector: timestamp
+Phase1Lab.actUntil(uint256) (src/Phase1Lab.sol#50-53) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp > deadline (src/Phase1Lab.sol#51)
+Phase1Lab.actAfter(uint256) (src/Phase1Lab.sol#56-59) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp <= deadline (src/Phase1Lab.sol#57)
+Phase1Lab.useAuthorization(bytes32,uint256,uint256,bytes) (src/Phase1Lab.sol#70-78) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp > deadline (src/Phase1Lab.sol#71)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#block-timestamp
+INFO:Slither:src/Phase1Lab.sol analyzed (22 contracts with 102 detectors), 3 result(s) found

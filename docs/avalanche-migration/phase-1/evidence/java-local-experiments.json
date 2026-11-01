@@ -1,0 +1,109 @@
+{
+  "J1-spring-web3j-connect" : {
+    "status" : "PASS",
+    "at" : "2026-11-01T13:35:14.088790700Z",
+    "chainId" : 31337,
+    "head" : 0,
+    "headTs" : 1793540091,
+    "balanceWei" : 100000000000000000000,
+    "java" : "21.0.2",
+    "springBoot" : "3.5.16"
+  },
+  "J2-deploy-and-roles" : {
+    "status" : "PASS",
+    "at" : "2026-11-01T13:35:14.916132100Z",
+    "contract" : "0xbe2dbc4003a6405b8af797c7bc9b92dc30a0c1b9",
+    "deployTx" : "0xdf851f590f771ddc1fb708eb0b90e82ef85d642d6d5b18b020aaaf329a96f603",
+    "gasUsed" : 983088,
+    "codeBytes" : 4136,
+    "localHashEqualsNodeHash" : true
+  },
+  "J3-success-event-decode" : {
+    "status" : "0x1",
+    "at" : "2026-11-01T13:35:15.179076Z",
+    "tx" : "0x80b40cccb11e4cfe04d4faa4cab8eec91d88302215fadb95303f4d9a76655fa5",
+    "logIndex" : 0,
+    "decodedNewValue" : 7,
+    "gasUsed" : 47735
+  },
+  "J4-revert-detection" : {
+    "status" : "PASS",
+    "at" : "2026-11-01T13:35:15.453978100Z",
+    "tx" : "0x689508013c528997f264ae6c88c60de6728e8f7ab89b050d254b129799a3908d",
+    "submitAccepted" : true,
+    "receiptStatus" : "0x0",
+    "logsOnRevert" : 0,
+    "ethCallRevertData" : "0x1167d8fb...",
+    "estimateGasError" : "execution reverted: custom error 0x1167d8fb: \u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000*",
+    "accessControlSelectorMatch" : true
+  },
+  "J5-nonce-funds-duplicate-pending" : {
+    "status" : "PASS",
+    "at" : "2026-11-01T13:35:15.746015Z",
+    "nonceTooLow" : "nonce too low",
+    "duplicateAfterMined" : "nonce too low",
+    "insufficientFunds" : "Insufficient funds for gas * price + value",
+    "duplicateWhilePending" : "transaction already imported",
+    "pendingTxFoundByHash" : true,
+    "pendingTxBlockNumber" : "null",
+    "pendingTxReceiptPresent" : false,
+    "latestNonceWhilePending" : 1,
+    "pendingNonceWhilePending" : 2,
+    "receiptAfterMine" : true,
+    "NOTE" : "anvil local pool; NOT Helicon accepted-vs-executed semantics"
+  },
+  "J6-nonce-gap-and-replacement" : {
+    "status" : "PASS",
+    "at" : "2026-11-01T13:35:16.003404900Z",
+    "gapTxAccepted" : true,
+    "gapTxFoundByHash" : true,
+    "sameFeeReplacement" : "replacement transaction underpriced",
+    "bumpedReplacement" : "ACCEPTED",
+    "originalVisibleAfterReplacement" : false,
+    "gapFilledReceipt" : true,
+    "replacementMined" : true,
+    "replacementStatus" : "0x1",
+    "replacedOriginalReceipt" : false,
+    "finalLatestNonce" : 2
+  },
+  "J7-timeout-after-submit-and-rpc-recovery" : {
+    "status" : "PASS",
+    "at" : "2026-11-01T13:35:20.126202800Z",
+    "clientSendOutcome" : "InterruptedIOException: timeout",
+    "txMinedDespiteClientTimeout" : true,
+    "lookupByLocallyComputedHash" : true,
+    "rebroadcastAfterMined" : "nonce too low",
+    "nonceAfter" : 1,
+    "temporaryFailureSequence" : [ "InterruptedIOException", "ClientConnectionException", "ok:9", "ok:9" ]
+  },
+  "J8-deadline-boundaries-local-evm" : {
+    "status" : "PASS",
+    "at" : "2026-11-01T13:35:21.050597300Z",
+    "actUntil(ts==deadline)" : "SUCCESS",
+    "blockTimestampEqualsDeadline" : true,
+    "actAfter(ts==deadline)" : "REVERT",
+    "actUntil(ts==deadline+1)" : "REVERT",
+    "actAfter(ts==deadline+2)" : "SUCCESS",
+    "NOTE" : "anvil lets the test choose block.timestamp; proves contract comparison semantics only, not Fuji timestamp behaviour"
+  },
+  "J9-eip712-java-vs-contract" : {
+    "status" : "PASS",
+    "at" : "2026-11-01T13:35:21.374239700Z",
+    "digestMatchesContract" : true,
+    "recoveredSigner" : true,
+    "tamperedRecovered" : "0xddcc0347c86b1e88869b5e500f7555d36e43db86",
+    "replay" : "NonceUsed",
+    "wrongChainId" : "BadSigner",
+    "wrongVerifyingContract" : "BadSigner",
+    "expired" : "Expired",
+    "roguelessSigner" : "BadSigner",
+    "libs" : "web3j StructuredDataEncoder + Sign (secp256k1, low-s)"
+  },
+  "J10-naive-nonce-race" : {
+    "status" : "PASS",
+    "at" : "2026-11-01T13:35:21.612816100Z",
+    "sameNonceReadTwice" : true,
+    "secondSend" : "nonce too low",
+    "implication" : "Two workers reading the node nonce concurrently collide; a DB-backed per-signer allocator is required (Phase 2)"
+  }
+}

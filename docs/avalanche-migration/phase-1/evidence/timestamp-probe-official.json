@@ -1,0 +1,205 @@
+{
+ "url": "https://api.avax-test.network/ext/bc/C/rpc",
+ "runAt": "2026-11-01T13:34:03.232Z",
+ "blocksSampled": 240,
+ "range": [
+  60352955,
+  60353194
+ ],
+ "msFloorEqualsTs": true,
+ "monotonicTs": true,
+ "strictMonotonicMs": true,
+ "sameSecondPairs": 12,
+ "pairs": 239,
+ "deltaMs": {
+  "min": 900,
+  "p50": 900,
+  "p90": 3509,
+  "p99": 8280,
+  "max": 19560
+ },
+ "deltaSecondsHistogram": {
+  "0": 12,
+  "1": 153,
+  "2": 43,
+  "3": 6,
+  "4": 9,
+  "5": 6,
+  "6": 2,
+  "7": 2,
+  "8": 3,
+  "9": 1,
+  "11": 1,
+  "20": 1
+ },
+ "txsPerBlock": {
+  "min": 1,
+  "max": 3,
+  "blocksWithTx": 240
+ },
+ "stubOpcodeAtHistoricalBlocks": [
+  {
+   "block": 60353165,
+   "headerTs": 1793539972,
+   "opcodeTs": 1793539972
+  },
+  {
+   "block": 60353169,
+   "headerTs": 1793539977,
+   "opcodeTs": 1793539977
+  },
+  {
+   "block": 60353173,
+   "headerTs": 1793539982,
+   "opcodeTs": 1793539982
+  },
+  {
+   "block": 60353177,
+   "headerTs": 1793539987,
+   "opcodeTs": 1793539987
+  },
+  {
+   "block": 60353181,
+   "headerTs": 1793539992,
+   "opcodeTs": 1793539992
+  },
+  {
+   "block": 60353185,
+   "headerTs": 1793540002,
+   "opcodeTs": 1793540002
+  },
+  {
+   "block": 60353189,
+   "headerTs": 1793540008,
+   "opcodeTs": 1793540008
+  },
+  {
+   "block": 60353193,
+   "headerTs": 1793540013,
+   "opcodeTs": 1793540013
+  }
+ ],
+ "opcodeEqualsHeaderTsAll": true,
+ "stubAtLatest": 1793540027,
+ "stubAtPending": 1793540027,
+ "wallClockLag": [
+  {
+   "wallMs": 1793540028410,
+   "headTs": 1793540027,
+   "headMs": 1793540027217,
+   "wallMinusHeadMs": 1193
+  },
+  {
+   "wallMs": 1793540029676,
+   "headTs": 1793540029,
+   "headMs": 1793540029119,
+   "wallMinusHeadMs": 557
+  },
+  {
+   "wallMs": 1793540030906,
+   "headTs": 1793540029,
+   "headMs": 1793540029119,
+   "wallMinusHeadMs": 1787
+  },
+  {
+   "wallMs": 1793540032216,
+   "headTs": 1793540029,
+   "headMs": 1793540029119,
+   "wallMinusHeadMs": 3097
+  },
+  {
+   "wallMs": 1793540033502,
+   "headTs": 1793540032,
+   "headMs": 1793540032830,
+   "wallMinusHeadMs": 672
+  },
+  {
+   "wallMs": 1793540034733,
+   "headTs": 1793540034,
+   "headMs": 1793540034630,
+   "wallMinusHeadMs": 103
+  },
+  {
+   "wallMs": 1793540035951,
+   "headTs": 1793540034,
+   "headMs": 1793540034630,
+   "wallMinusHeadMs": 1321
+  },
+  {
+   "wallMs": 1793540037228,
+   "headTs": 1793540037,
+   "headMs": 1793540037132,
+   "wallMinusHeadMs": 96
+  },
+  {
+   "wallMs": 1793540038449,
+   "headTs": 1793540038,
+   "headMs": 1793540038032,
+   "wallMinusHeadMs": 417
+  },
+  {
+   "wallMs": 1793540039759,
+   "headTs": 1793540039,
+   "headMs": 1793540039132,
+   "wallMinusHeadMs": 627
+  },
+  {
+   "wallMs": 1793540040992,
+   "headTs": 1793540040,
+   "headMs": 1793540040932,
+   "wallMinusHeadMs": 60
+  },
+  {
+   "wallMs": 1793540042228,
+   "headTs": 1793540041,
+   "headMs": 1793540041832,
+   "wallMinusHeadMs": 396
+  }
+ ],
+ "wallMinusHeadMs": {
+  "min": 60,
+  "max": 3097
+ },
+ "sampleBlocks": [
+  {
+   "n": 60353190,
+   "ts": 1793540010,
+   "ms": 1793540010831,
+   "txs": 1,
+   "settledHeight": "0x398eaa3",
+   "minDelayExcess": "0x6cd69c"
+  },
+  {
+   "n": 60353191,
+   "ts": 1793540011,
+   "ms": 1793540011731,
+   "txs": 3,
+   "settledHeight": "0x398eaa3",
+   "minDelayExcess": "0x6cd69c"
+  },
+  {
+   "n": 60353192,
+   "ts": 1793540012,
+   "ms": 1793540012633,
+   "txs": 2,
+   "settledHeight": "0x398eaa4",
+   "minDelayExcess": "0x6cd69c"
+  },
+  {
+   "n": 60353193,
+   "ts": 1793540013,
+   "ms": 1793540013533,
+   "txs": 3,
+   "settledHeight": "0x398eaa5",
+   "minDelayExcess": "0x6cd69c"
+  },
+  {
+   "n": 60353194,
+   "ts": 1793540015,
+   "ms": 1793540015839,
+   "txs": 1,
+   "settledHeight": "0x398eaa5",
+   "minDelayExcess": "0x6cd69c"
+  }
+ ]
+}

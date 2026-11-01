@@ -1,0 +1,6 @@
+java_sig = 0xda58dd7168d9179816991f8e65bb58f32523a46bf083946a9ec7ed3f137834373c34a57279ed90b84c882fe1305c15be07493c04f19e97f2ecd16e566e99faaf1b
+cast_sig = 0xda58dd7168d9179816991f8e65bb58f32523a46bf083946a9ec7ed3f137834373c34a57279ed90b84c882fe1305c15be07493c04f19e97f2ecd16e566e99faaf1b
+IDENTICAL signatures (both RFC6979 deterministic, low-s)
+cast verifies java signature: Validation succeeded. Address 0x0D0A409b8d25d7e8709B6Ff2dfF16836f075D9D4 signed this message.
+cast digest = For more information, try '--help'.
+java digest = 0x69dc57febf5bc8e380c1d8f08d286bfe819a6139a57db9ec610e91d6639d310e

@@ -2,6 +2,18 @@
 
 Ordered by dependency; none may begin before Phase 0 approval. Priority P0 critical path, P1 required, P2 optional. "Expected files" are proposals. Phases: [04](04-migration-roadmap.md). Revision 2 adds the contract and signer security tasks (rows 12-18, 27-29, 35).
 
+## Phase 1 execution status (updated after Phase 1; evidence in [phase-1/](phase-1/README.md))
+Only Phase 1 rows are updated. Phase 2+ rows are unchanged and **not started**. "Done" requires evidence; see [phase-1-acceptance-report.md](phase-1/phase-1-acceptance-report.md).
+| # | Phase 1 status | Notes |
+|---|---|---|
+| 1 | **PARTIAL** | Verified live: chain ids, official Fuji RPC, USDC addresses/code (Circle page is the only official address source; behaviour verified on a fork), EVM fork (Cancun, Fuji only), `eth_getLogs` ranges, `newHeads` timing, EIP-2612/EIP-3009 behaviour. Still open: public rate limits, official USDC.e address, Mainnet EVM fork, ACP-283 status, FiatToken version, explorer/verification flow, faucet limits. Delivered as `phase-1/*.md`, not a single `environment.md`. |
+| 2 | **NOT DONE** | Needs DB access and an operator; out of this phase's reach. |
+| 3 | **BLOCKED** | Avalanche/Circle faucets are interactive web flows; no funded Fuji wallet exists. Read-only `balanceOf` works on any address. |
+| 4 | **NOT DONE** | Business/vendor decision; two free public RPCs measured, no KMS tested. |
+| 5 | **DONE (prototype location)** | `forge build`/`forge test` pass with explicit `evm_version = "cancun"` in `phase-1/prototypes/solidity-foundry/`. `avalanche-contracts/` was deliberately **not** created (Phase 3 decision). |
+| 6 | **DONE with a mandatory workaround** | web3j 6.1.0 + Boot 3.5.16 fails at runtime without `jackson-annotations:2.22`. See [java-web3j-evaluation.md](phase-1/java-web3j-evaluation.md). |
+| 7 | **PARTIAL** | Measured read-only on Fuji: acceptance to receipt, acceptance to `finalized` (5.1-8.7 s), `newHeads` vs acceptance, `block.timestamp` replay. **Not done** (no funds): own-transaction timings, accepted-but-unexecuted observation, deadline race on Fuji. |
+
 | # | Task | Phase | Depends on | Priority | Modules | Expected files | Acceptance |
 |---|---|---|---|---|---|---|---|
 | 1 | Re-verify all S/U facts (chain ids, USDC addresses and code, EVM version, RPC limits, `newHeads`) | 1 | approval | P0 | docs | `docs/avalanche-migration/environment.md` | every fact has two sources or "unverifiable" |

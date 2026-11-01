@@ -45,6 +45,24 @@ Technical questions are **not** resolved by these decisions. They remain open be
 - OpenZeppelin, Solidity and EIP pages were not fetched.
 - Core Wallet and `wallet_addEthereumChain` specifics; Reown package names.
 
+## Phase 1 update on the unverified technical facts (technical only; no business question above was closed)
+Details and evidence: [phase-1/](phase-1/README.md).
+| Fact | Phase 1 result |
+|---|---|
+| Public RPC rate limits | **Still unknown.** None seen at ~2.5 req/s; not stress-tested. |
+| `eth_getLogs` range | **Measured:** official Fuji public RPC 100 blocks; publicnode 50,000 (address required). The 2,000-block hypothesis is refuted for the official endpoint. |
+| `newHeads` at acceptance or execution | `newHeads` fired 0-18 ms (median 3) after `newAcceptedTransactions` for the same block on Fuji: appears to fire at acceptance. |
+| `block.timestamp` under Helicon | Header seconds equal `floor(timestampMilliseconds/1000)` for 240 blocks; `eth_call` replay shows the TIMESTAMP opcode equals the header timestamp (8 blocks). Original-execution behaviour and near-deadline inclusion on Fuji **unverified**. |
+| Accepted-but-unexecuted visibility via `eth_getTransactionByHash` | **Not observed; inconclusive.** Docs say receipts/state reads wait for execution. One by-hash miss in 53 observations (provider inconsistency). |
+| EVM fork | Fuji: Cancun opcodes work; Pectra BLS precompile and EIP-2935 absent; Osaka CLZ invalid. Mainnet not probed. |
+| ACP-283, Helicon wording | ACP-283 README still says **Proposed**; not otherwise resolved. |
+| FiatToken version | Unknown. Behaviour verified instead: EIP-2612 and EIP-3009 work on Fuji USDC (fork). Mainnet behaviour unverified. |
+| USDC.e address | On-chain `0xA7D7...C664` is "USDC.e", no `DOMAIN_SEPARATOR`; **no official source checked**. Both tokens report `name()` "USD Coin" (Phase 0 recorded "USDC Coin": corrected). |
+| web3j 6.x on Java 21 / Boot 3.5.16 | Works **only with** `jackson-annotations:2.22` override; Java 17 untested. Release-date discrepancy not explained. |
+| KMS to web3j signing recipe | Not tested (no KMS). Verification half (recover from signature) works in web3j. |
+| Slither version | 0.11.6 ran on the lab contract. |
+| OZ / Solidity / EIP pages | OZ 5.7.0 and solc 0.8.38 installed and used; EIP pages not re-read (behaviour tested instead). |
+
 ## Repository unknowns
 - Which rails hold production data (ADR SQL queries not yet run).
 - Partner rail's path through `SettlementDownstreamService`.

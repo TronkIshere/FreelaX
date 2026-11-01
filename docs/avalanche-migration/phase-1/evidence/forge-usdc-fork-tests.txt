@@ -1,0 +1,19 @@
+Compiling 1 files with Solc 0.8.38
+Solc 0.8.38 finished in 1.61s
+Compiler run successful!
+Ran 7 tests for test/UsdcFork.t.sol:UsdcForkTest
+[PASS] test_domain_separator_matches_eip712_recomputation() (gas: 14412)
+[PASS] test_eip2612_permit_behaviour() (gas: 275612)
+[PASS] test_eip3009_receiveWithAuthorization_payee_only() (gas: 175520)
+[PASS] test_eip3009_transferWithAuthorization_behaviour() (gas: 311917)
+Logs:
+  transferWithAuthorization(v,r,s) ok: true
+[PASS] test_erc20_approve_and_transferFrom_via_contract() (gas: 176537)
+[PASS] test_metadata_and_asset_identity() (gas: 56624)
+[PASS] test_proxy_and_admin_surface_reads() (gas: 25641)
+Logs:
+  zeppelinos implementation slot -> 0x6F3c4787bAB4EeEbf62eFB8C35Dc9259FDc9D9f4
+  isBlacklisted(holder) call ok: true
+  isBlacklisted(holder): false
+Suite result: ok. 7 passed; 0 failed; 0 skipped; finished in 5.17s (4.96s CPU time)
+Ran 1 test suite in 5.51s (5.17s CPU time): 7 tests passed, 0 failed, 0 skipped (7 total tests)

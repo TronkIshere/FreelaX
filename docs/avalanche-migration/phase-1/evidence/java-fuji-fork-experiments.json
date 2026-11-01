@@ -1,0 +1,61 @@
+{
+  "J11-fuji-readonly-web3j" : {
+    "status" : "PASS",
+    "at" : "2026-11-01T13:33:00.962695400Z",
+    "official" : {
+      "chainId" : 43113,
+      "head" : 60353169,
+      "finalized" : 60353164,
+      "headMinusFinalized" : 5,
+      "usdcDecimals" : 6,
+      "usdcSymbol" : "USDC",
+      "usdcBalanceOfProbe" : 40533410
+    },
+    "publicnode" : {
+      "chainId" : 43113,
+      "head" : 60353170,
+      "finalized" : 60353166,
+      "headMinusFinalized" : 4,
+      "usdcDecimals" : 6,
+      "usdcSymbol" : "USDC",
+      "usdcBalanceOfProbe" : 40533410
+    }
+  },
+  "J12-fuji-getlogs-limits-via-web3j" : {
+    "status" : "PASS",
+    "at" : "2026-11-01T13:33:02.130311100Z",
+    "span99" : "OK logs=3",
+    "decodedSample" : {
+      "txHash" : "0x131500d72a25af0e4427ae22f8a9f2aeac2c1fe3bc93fe14edc5ece171e60484",
+      "logIndex" : 0,
+      "from" : "0x21e5e2e10bf660619b7228c0eb682f0204ad5698",
+      "value" : 2000000
+    },
+    "span100" : "OK logs=3",
+    "span101" : "ERROR -32602 block range too large: total block range in this request exceeds the maximum of 100 blocks",
+    "span2000" : "ERROR -32602 block range too large: total block range in this request exceeds the maximum of 100 blocks"
+  },
+  "J13-fuji-errors-timeouts-unfunded-submit" : {
+    "status" : "PASS",
+    "at" : "2026-11-01T13:33:06.297749100Z",
+    "blackhole" : "SocketTimeoutException after 2019ms",
+    "refused" : "ConnectException",
+    "unknownTxPresent" : false,
+    "unknownReceiptPresent" : false,
+    "usdcTransferFromEmptyAccount_ethCall" : "3 execution reverted: ERC20: transfer amount exceeds balance",
+    "unfundedRawSubmit" : "-32000 insufficient funds for gas * price + value: balance 0, tx cost 1800000000000000, overshot 1800000000000000",
+    "unfundedNonceLatest" : 0,
+    "wrongChainIdRawSubmit" : "-32000 invalid sender"
+  },
+  "J14-erc20-usdc-fork-web3j" : {
+    "status" : "PASS",
+    "at" : "2026-11-01T13:33:10.555694200Z",
+    "forkChainId" : 43113,
+    "balanceAfterFundingFromHolder" : 5000000,
+    "allowanceAfterApprove" : 2000000,
+    "approveStatus" : "0x1",
+    "approvalEventDecodedValue" : 2000000,
+    "overTransferEthCall" : "execution reverted: ERC20: transfer amount exceeds balance",
+    "NOTE" : "state changes exist only on the local fork; Fuji untouched"
+  }
+}
