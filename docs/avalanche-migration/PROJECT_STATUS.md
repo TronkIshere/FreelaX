@@ -1,6 +1,6 @@
 # Avalanche migration: project status
 
-Last updated: 2026-11-01 (after M3). Scope: [SIMULATION_SCOPE](../SIMULATION_SCOPE.md) (LOCAL_SIMULATION and AVALANCHE_FUJI only; Mainnet out of scope; no real funds).
+Last updated: 2026-11-02 (after M12). Scope: [SIMULATION_SCOPE](../SIMULATION_SCOPE.md) (LOCAL_SIMULATION and AVALANCHE_FUJI only; Mainnet out of scope; no real funds).
 
 ## Current phase and milestone
 - Phase 2. **P2-M1 ACCEPTED by the owner (2026-11-01)** with the final decisions below. Report: [phase-2/M1-validation-report.md](phase-2/M1-validation-report.md).
@@ -26,7 +26,10 @@ Last updated: 2026-11-01 (after M3). Scope: [SIMULATION_SCOPE](../SIMULATION_SCO
 | P2-M9 | **validated and committed** (additive V6 migration verified on MySQL, authorization-before-submission service behind a flag; marketplace full suite 381 pass; fee, tax, payout and notification wiring NOT done, decisions needed) |
 | P2-M10 | **validated and committed** (EIP-1193 adapter, chain allow-list 31337/43113, 24 tests; 13 pre-existing suites cannot load on Node 22.10 because of ESM uuid, to be re-run on Node >= 22.12) |
 | P2-M11 | **partially implemented and committed** (panel, banners, ten-state display, fund/extension-approve/release; submit, revise, dispute, resolve, extension-request and mutual-refund UI NOT implemented; no browser wallet check) |
-| P2-M12 | not started |
+| P2-M12 | **final regression and acceptance report written** (reactor green on JDK 21, JDK 17 build, Foundry 54 pass; many criteria BLOCKED, PARTIAL or NOT IMPLEMENTED) |
+
+## Phase 2 final status
+**IMPLEMENTATION COMPLETE WITH EXTERNAL VALIDATION PENDING.** See [phase-2/M12-validation-report.md](phase-2/M12-validation-report.md). Phase 1 stays PARTIAL. All commits after `761686d` are local and not pushed.
 
 ## Commits (origin/master)
 `3b12e7a` Phase 0, `1662a80` Phase 0 decisions, `e5127ae` Phase 1 checkpoint, `73b5d14` simulation scope, `cf61c0f` Phase 1 Part B (pushed to origin).
