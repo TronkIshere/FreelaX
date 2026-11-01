@@ -1,0 +1,31 @@
+{
+ "at": "2026-11-01T14:48:48.833Z",
+ "endpoint": "official Fuji WS/HTTP",
+ "config": {
+  "A": 20,
+  "GAP": 15,
+  "C": 20
+ },
+ "sessionA": {
+  "label": "A-initial",
+  "openedMs": 805,
+  "closeCode": 1005,
+  "heads": 16,
+  "first": 60355694,
+  "lastSeen": 60355709,
+  "gapsInsideSession": 0
+ },
+ "sessionC": {
+  "label": "C-after-reconnect-2-overlapping-subscriptions",
+  "openedMs": 618,
+  "closeCode": 1005,
+  "events": 28,
+  "distinctHeads": 14,
+  "firstAfter": 60355715,
+  "headsDeliveredTwice": 14
+ },
+ "offlineGapBlocks": 5,
+ "replayedMissedHeadsOnResubscribe": 0,
+ "recoveredByBoundedHttpReads": 5,
+ "anomalies": []
+}

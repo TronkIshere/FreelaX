@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- ISOLATED Phase 1 Part B prototype: Spring Boot 3.5.16 WEB context + web3j 6.1.0. Not a module of the FreelaX parent pom.
+     Three Jackson arrangements selected by Maven profile (exactly one at a time):
+       (default)        no override                         -> expected to reproduce the NoClassDefFoundError
+       -P annotations22 explicit jackson-annotations 2.22   -> the Part A workaround
+       -P bom22         jackson-bom.version=2.22.4          -> alternative: align the whole Jackson 2 BOM
+     Java level via -Djava.version=17|21 (default 21). Environment: AVALANCHE_FUJI read-only calls only. -->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.5.16</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>lab.freelax.phase1</groupId>
+    <artifactId>java-web3j-web-prototype</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+
+    <properties>
+        <java.version>21</java.version>
+        <web3j.version>6.1.0</web3j.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.web3j</groupId>
+            <artifactId>core</artifactId>
+            <version>${web3j.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <profiles>
+        <profile>
+            <id>annotations22</id>
+            <dependencies>
+                <dependency>
+                    <groupId>com.fasterxml.jackson.core</groupId>
+                    <artifactId>jackson-annotations</artifactId>
+                    <version>2.22</version>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
+            <id>bom22</id>
+            <properties>
+                <jackson-bom.version>2.22.4</jackson-bom.version>
+            </properties>
+        </profile>
+    </profiles>
+</project>

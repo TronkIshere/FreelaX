@@ -1,0 +1,47 @@
+{
+ "at": "2026-11-01T14:47:36.614Z",
+ "environment": "AVALANCHE_FUJI",
+ "range": [
+  60352519,
+  60355519
+ ],
+ "chunkSize": 100,
+ "chunks": 31,
+ "restarts": 1,
+ "duplicatesSuppressed": 1,
+ "eventsRecorded": 41,
+ "truthEvents": 41,
+ "missingVsTruth": 0,
+ "extraVsTruth": 0,
+ "equal": true,
+ "anomalies": [
+  {
+   "at": "2026-11-01T14:44:12.720Z",
+   "host": "api.avax-test.network",
+   "method": "eth_getLogs",
+   "attempt": 0,
+   "http": 429,
+   "retryAfter": "60",
+   "bodyPrefix": "<!doctype html> <!--[if lt IE 7]> <html "
+  },
+  {
+   "at": "2026-11-01T14:45:19.807Z",
+   "host": "api.avax-test.network",
+   "method": "eth_getLogs",
+   "attempt": 0,
+   "http": 429,
+   "retryAfter": "60",
+   "bodyPrefix": "<!doctype html> <!--[if lt IE 7]> <html "
+  },
+  {
+   "at": "2026-11-01T14:46:34.447Z",
+   "host": "api.avax-test.network",
+   "method": "eth_getLogs",
+   "attempt": 0,
+   "http": 429,
+   "retryAfter": "60",
+   "bodyPrefix": "<!doctype html> <!--[if lt IE 7]> <html "
+  }
+ ],
+ "truthProvider": "publicnode single 3000-block call (different provider than the scanner)"
+}

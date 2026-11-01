@@ -1,0 +1,229 @@
+{
+  "J11-fuji-readonly-web3j" : {
+    "status" : "PASS",
+    "at" : "2026-11-01T14:37:21.124371600Z",
+    "official" : {
+      "chainId" : 43113,
+      "head" : 60355349,
+      "finalized" : 60355345,
+      "headMinusFinalized" : 4,
+      "usdcDecimals" : 6,
+      "usdcSymbol" : "USDC",
+      "usdcBalanceOfProbe" : 40533410
+    },
+    "publicnode" : {
+      "chainId" : 43113,
+      "head" : 60355352,
+      "finalized" : 60355347,
+      "headMinusFinalized" : 5,
+      "usdcDecimals" : 6,
+      "usdcSymbol" : "USDC",
+      "usdcBalanceOfProbe" : 40533410
+    }
+  },
+  "J12-fuji-getlogs-limits-via-web3j" : {
+    "status" : "PASS",
+    "at" : "2026-11-01T14:37:22.081133900Z",
+    "span99" : "OK logs=0",
+    "span100" : "OK logs=0",
+    "span101" : "ERROR -32602 block range too large: total block range in this request exceeds the maximum of 100 blocks",
+    "span2000" : "ERROR -32602 block range too large: total block range in this request exceeds the maximum of 100 blocks"
+  },
+  "J13-fuji-errors-timeouts-unfunded-submit" : {
+    "status" : "PASS",
+    "at" : "2026-11-01T14:37:26.086328Z",
+    "blackhole" : "SocketTimeoutException after 2013ms",
+    "refused" : "ConnectException",
+    "unknownTxPresent" : false,
+    "unknownReceiptPresent" : false,
+    "usdcTransferFromEmptyAccount_ethCall" : "3 execution reverted: ERC20: transfer amount exceeds balance",
+    "unfundedRawSubmit" : "-32000 insufficient funds for gas * price + value: balance 0, tx cost 1800000000000000, overshot 1800000000000000",
+    "unfundedNonceLatest" : 0,
+    "wrongChainIdRawSubmit" : "-32000 invalid sender"
+  },
+  "J14-erc20-usdc-fork-web3j" : {
+    "status" : "PASS",
+    "at" : "2026-11-01T14:37:28.445929800Z",
+    "forkChainId" : 43113,
+    "balanceAfterFundingFromHolder" : 5000000,
+    "allowanceAfterApprove" : 2000000,
+    "approveStatus" : "0x1",
+    "approvalEventDecodedValue" : 2000000,
+    "overTransferEthCall" : "execution reverted: ERC20: transfer amount exceeds balance",
+    "NOTE" : "state changes exist only on the local fork; Fuji untouched"
+  },
+  "K1-der-to-rsv-300-signatures" : {
+    "status" : "PASS",
+    "at" : "2026-11-01T14:37:29.790014Z",
+    "signatures" : 300,
+    "highSBeforeNormalisation" : 150,
+    "recId0" : 135,
+    "recId1" : 165,
+    "scope" : "local cryptographic validation with a fake KMS; NOT a provider compatibility test"
+  },
+  "K2-eip712-digest-signed-by-fake-kms" : {
+    "status" : "PASS",
+    "at" : "2026-11-01T14:37:29.857201300Z",
+    "lowSAccepted" : true,
+    "highSRejected" : true,
+    "highSRevertIsECDSAInvalidSignatureS" : true,
+    "revertData" : "0xd78bce0c"
+  },
+  "K3-eip1559-tx-signed-by-fake-kms" : {
+    "status" : "0x1",
+    "at" : "2026-11-01T14:37:29.975349100Z",
+    "receiptFromEqualsKmsAddress" : true,
+    "yParity" : 0,
+    "wasHighS" : false
+  },
+  "L0-summary" : {
+    "status" : "PASS",
+    "at" : "2026-11-01T14:37:33.107178200Z",
+    "scenarios" : {
+      "S1" : {
+        "history" : [ "created nonce=1 hash=0x24fedc10bf8e6dbd5d7a5ece3ba7b917096feda2ffa7d58bd550553df298cc21", "CREATED->SUBMITTED node returned hash (acceptance != success)", "SUBMITTED->CONFIRMED receipt status 1 at block 5", "CONFIRMED->FINALIZED finality policy satisfied" ],
+        "sends" : 1,
+        "finalState" : "FINALIZED"
+      },
+      "S2" : {
+        "finalState" : "REVERTED",
+        "history" : [ "created nonce=2 hash=0xf36fb5eacf1977bee49e2fbff489b7b587d05a6989337d73a07790d560170123", "CREATED->SUBMITTED node returned hash (acceptance != success)", "SUBMITTED->PENDING known to node, no receipt yet", "PENDING->REVERTED receipt status 0 (executed and reverted)" ]
+      },
+      "S3" : {
+        "proxySendCount" : 1,
+        "history" : [ "created nonce=3 hash=0x7efbaa66b12d1250fb5381b77b4e282d680dbec754e3a3781a4850f0f5578664", "CREATED->UNKNOWN transport failure after/before send: outcome unknown", "UNKNOWN->CONFIRMED receipt status 1 at block 13" ],
+        "finalState" : "CONFIRMED"
+      },
+      "S4" : {
+        "finalState" : "CONFIRMED",
+        "history" : [ "created nonce=4 hash=0x004a85444a455f0f9932de9cd7cfd3ea6d718b610bd4cfb0eea348ab852bb307", "CREATED->UNKNOWN transport failure after/before send: outcome unknown", "UNKNOWN->CONFIRMED receipt status 1 at block 14" ]
+      },
+      "S5" : {
+        "history" : [ "created nonce=5 hash=0x6a1a4b991cc13a6189339059ff147d5311a42553aa60d516cc0867246bc6ee5a", "CREATED->SUBMITTED node returned hash (acceptance != success)", "SUBMITTED->UNKNOWN no receipt and not found by hash (provider may lag)", "UNKNOWN->CONFIRMED receipt status 1 at block 15" ],
+        "duringHttp429" : "UNKNOWN (lastError=ClientConnectionException)",
+        "afterRecovery" : "CONFIRMED",
+        "duringNull" : "UNKNOWN"
+      },
+      "S6" : {
+        "finalState" : "REPLACED",
+        "history" : [ "created nonce=6 hash=0x28ba13c87386dae26c1c3015c3add1e873b6d8872be57c04f9749fc7cc96d21a", "CREATED->SUBMITTED node returned hash (acceptance != success)", "SUBMITTED->UNKNOWN no receipt and not found by hash (provider may lag)", "rebroadcast same raw tx (same hash)", "UNKNOWN->REPLACED nonce 6 consumed (latest=7) by a different transaction; our hash has no receipt" ]
+      },
+      "S7" : {
+        "hintsDelivered" : 4,
+        "missedHintRecovered" : "CONFIRMED",
+        "duplicatedHintFinal" : "CONFIRMED"
+      },
+      "S8" : {
+        "untouchedByOtherEnvironment" : true,
+        "finalState" : "CONFIRMED"
+      }
+    }
+  },
+  "J1-spring-web3j-connect" : {
+    "status" : "PASS",
+    "at" : "2026-11-01T14:37:35.910930700Z",
+    "chainId" : 31337,
+    "head" : 20,
+    "headTs" : 1793543852,
+    "balanceWei" : 100000000000000000000,
+    "java" : "21",
+    "springBoot" : "3.5.16"
+  },
+  "J2-deploy-and-roles" : {
+    "status" : "PASS",
+    "at" : "2026-11-01T14:37:36.594047300Z",
+    "contract" : "0xcf4e04b7e8dfb5231500d4c828112b610a76be07",
+    "deployTx" : "0xb176ef6ae1a58aa1f3fa5f5d97b1e80b2e7f4c3a26cead9b4094a8b1df6126b1",
+    "gasUsed" : 983088,
+    "codeBytes" : 4136,
+    "localHashEqualsNodeHash" : true
+  },
+  "J3-success-event-decode" : {
+    "status" : "0x1",
+    "at" : "2026-11-01T14:37:36.830598200Z",
+    "tx" : "0x00e0df8b2778f92a9273e49ca8ca1d34d106d86d4860ce3f993a9b0a47ac5099",
+    "logIndex" : 0,
+    "decodedNewValue" : 7,
+    "gasUsed" : 47735
+  },
+  "J4-revert-detection" : {
+    "status" : "PASS",
+    "at" : "2026-11-01T14:37:37.075714200Z",
+    "tx" : "0xf833d1dba84ba6d74219487b6d88c78982f4e05c11d9b07577907a4cd09e7e4d",
+    "submitAccepted" : true,
+    "receiptStatus" : "0x0",
+    "logsOnRevert" : 0,
+    "ethCallRevertData" : "0x1167d8fb...",
+    "estimateGasError" : "execution reverted: custom error 0x1167d8fb: \u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000*",
+    "accessControlSelectorMatch" : true
+  },
+  "J5-nonce-funds-duplicate-pending" : {
+    "status" : "PASS",
+    "at" : "2026-11-01T14:37:37.338072900Z",
+    "nonceTooLow" : "nonce too low",
+    "duplicateAfterMined" : "nonce too low",
+    "insufficientFunds" : "Insufficient funds for gas * price + value",
+    "duplicateWhilePending" : "transaction already imported",
+    "pendingTxFoundByHash" : true,
+    "pendingTxBlockNumber" : "null",
+    "pendingTxReceiptPresent" : false,
+    "latestNonceWhilePending" : 1,
+    "pendingNonceWhilePending" : 2,
+    "receiptAfterMine" : true,
+    "NOTE" : "anvil local pool; NOT Helicon accepted-vs-executed semantics"
+  },
+  "J6-nonce-gap-and-replacement" : {
+    "status" : "PASS",
+    "at" : "2026-11-01T14:37:37.597570800Z",
+    "gapTxAccepted" : true,
+    "gapTxFoundByHash" : true,
+    "sameFeeReplacement" : "replacement transaction underpriced",
+    "bumpedReplacement" : "ACCEPTED",
+    "originalVisibleAfterReplacement" : false,
+    "gapFilledReceipt" : true,
+    "replacementMined" : true,
+    "replacementStatus" : "0x1",
+    "replacedOriginalReceipt" : false,
+    "finalLatestNonce" : 2
+  },
+  "J7-timeout-after-submit-and-rpc-recovery" : {
+    "status" : "PASS",
+    "at" : "2026-11-01T14:37:41.645048Z",
+    "clientSendOutcome" : "InterruptedIOException: timeout",
+    "txMinedDespiteClientTimeout" : true,
+    "lookupByLocallyComputedHash" : true,
+    "rebroadcastAfterMined" : "nonce too low",
+    "nonceAfter" : 1,
+    "temporaryFailureSequence" : [ "ClientConnectionException", "ClientConnectionException", "ok:29", "ok:29" ]
+  },
+  "J8-deadline-boundaries-local-evm" : {
+    "status" : "PASS",
+    "at" : "2026-11-01T14:37:42.535607800Z",
+    "actUntil(ts==deadline)" : "SUCCESS",
+    "blockTimestampEqualsDeadline" : true,
+    "actAfter(ts==deadline)" : "REVERT",
+    "actUntil(ts==deadline+1)" : "REVERT",
+    "actAfter(ts==deadline+2)" : "SUCCESS",
+    "NOTE" : "anvil lets the test choose block.timestamp; proves contract comparison semantics only, not Fuji timestamp behaviour"
+  },
+  "J9-eip712-java-vs-contract" : {
+    "status" : "PASS",
+    "at" : "2026-11-01T14:37:42.796610700Z",
+    "digestMatchesContract" : true,
+    "recoveredSigner" : true,
+    "tamperedRecovered" : "0xd5dd21737084f8da880c44f6fc3bc108c35fc53b",
+    "replay" : "NonceUsed",
+    "wrongChainId" : "BadSigner",
+    "wrongVerifyingContract" : "BadSigner",
+    "expired" : "Expired",
+    "roguelessSigner" : "BadSigner",
+    "libs" : "web3j StructuredDataEncoder + Sign (secp256k1, low-s)"
+  },
+  "J10-naive-nonce-race" : {
+    "status" : "PASS",
+    "at" : "2026-11-01T14:37:43.028233300Z",
+    "sameNonceReadTwice" : true,
+    "secondSend" : "nonce too low",
+    "implication" : "Two workers reading the node nonce concurrently collide; a DB-backed per-signer allocator is required (Phase 2)"
+  }
+}

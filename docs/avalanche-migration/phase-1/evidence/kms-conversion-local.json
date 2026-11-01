@@ -1,0 +1,26 @@
+{
+  "K1-der-to-rsv-300-signatures" : {
+    "status" : "PASS",
+    "at" : "2026-11-01T14:33:51.758029600Z",
+    "signatures" : 300,
+    "highSBeforeNormalisation" : 155,
+    "recId0" : 143,
+    "recId1" : 157,
+    "scope" : "local cryptographic validation with a fake KMS; NOT a provider compatibility test"
+  },
+  "K2-eip712-digest-signed-by-fake-kms" : {
+    "status" : "PASS",
+    "at" : "2026-11-01T14:33:51.922486300Z",
+    "lowSAccepted" : true,
+    "highSRejected" : true,
+    "highSRevertIsECDSAInvalidSignatureS" : true,
+    "revertData" : "0xd78bce0c"
+  },
+  "K3-eip1559-tx-signed-by-fake-kms" : {
+    "status" : "0x1",
+    "at" : "2026-11-01T14:33:52.046421400Z",
+    "receiptFromEqualsKmsAddress" : true,
+    "yParity" : 1,
+    "wasHighS" : false
+  }
+}

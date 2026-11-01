@@ -1,0 +1,122 @@
+{
+  "J11-fuji-readonly-web3j" : {
+    "status" : "PASS",
+    "at" : "2026-11-01T14:37:21.124371600Z",
+    "official" : {
+      "chainId" : 43113,
+      "head" : 60355349,
+      "finalized" : 60355345,
+      "headMinusFinalized" : 4,
+      "usdcDecimals" : 6,
+      "usdcSymbol" : "USDC",
+      "usdcBalanceOfProbe" : 40533410
+    },
+    "publicnode" : {
+      "chainId" : 43113,
+      "head" : 60355352,
+      "finalized" : 60355347,
+      "headMinusFinalized" : 5,
+      "usdcDecimals" : 6,
+      "usdcSymbol" : "USDC",
+      "usdcBalanceOfProbe" : 40533410
+    }
+  },
+  "J12-fuji-getlogs-limits-via-web3j" : {
+    "status" : "PASS",
+    "at" : "2026-11-01T14:37:22.081133900Z",
+    "span99" : "OK logs=0",
+    "span100" : "OK logs=0",
+    "span101" : "ERROR -32602 block range too large: total block range in this request exceeds the maximum of 100 blocks",
+    "span2000" : "ERROR -32602 block range too large: total block range in this request exceeds the maximum of 100 blocks"
+  },
+  "J13-fuji-errors-timeouts-unfunded-submit" : {
+    "status" : "PASS",
+    "at" : "2026-11-01T14:37:26.086328Z",
+    "blackhole" : "SocketTimeoutException after 2013ms",
+    "refused" : "ConnectException",
+    "unknownTxPresent" : false,
+    "unknownReceiptPresent" : false,
+    "usdcTransferFromEmptyAccount_ethCall" : "3 execution reverted: ERC20: transfer amount exceeds balance",
+    "unfundedRawSubmit" : "-32000 insufficient funds for gas * price + value: balance 0, tx cost 1800000000000000, overshot 1800000000000000",
+    "unfundedNonceLatest" : 0,
+    "wrongChainIdRawSubmit" : "-32000 invalid sender"
+  },
+  "J14-erc20-usdc-fork-web3j" : {
+    "status" : "PASS",
+    "at" : "2026-11-01T14:37:28.445929800Z",
+    "forkChainId" : 43113,
+    "balanceAfterFundingFromHolder" : 5000000,
+    "allowanceAfterApprove" : 2000000,
+    "approveStatus" : "0x1",
+    "approvalEventDecodedValue" : 2000000,
+    "overTransferEthCall" : "execution reverted: ERC20: transfer amount exceeds balance",
+    "NOTE" : "state changes exist only on the local fork; Fuji untouched"
+  },
+  "K1-der-to-rsv-300-signatures" : {
+    "status" : "PASS",
+    "at" : "2026-11-01T14:37:29.790014Z",
+    "signatures" : 300,
+    "highSBeforeNormalisation" : 150,
+    "recId0" : 135,
+    "recId1" : 165,
+    "scope" : "local cryptographic validation with a fake KMS; NOT a provider compatibility test"
+  },
+  "K2-eip712-digest-signed-by-fake-kms" : {
+    "status" : "PASS",
+    "at" : "2026-11-01T14:37:29.857201300Z",
+    "lowSAccepted" : true,
+    "highSRejected" : true,
+    "highSRevertIsECDSAInvalidSignatureS" : true,
+    "revertData" : "0xd78bce0c"
+  },
+  "K3-eip1559-tx-signed-by-fake-kms" : {
+    "status" : "0x1",
+    "at" : "2026-11-01T14:37:29.975349100Z",
+    "receiptFromEqualsKmsAddress" : true,
+    "yParity" : 0,
+    "wasHighS" : false
+  },
+  "L0-summary" : {
+    "status" : "PASS",
+    "at" : "2026-11-01T14:37:33.107178200Z",
+    "scenarios" : {
+      "S1" : {
+        "history" : [ "created nonce=1 hash=0x24fedc10bf8e6dbd5d7a5ece3ba7b917096feda2ffa7d58bd550553df298cc21", "CREATED->SUBMITTED node returned hash (acceptance != success)", "SUBMITTED->CONFIRMED receipt status 1 at block 5", "CONFIRMED->FINALIZED finality policy satisfied" ],
+        "sends" : 1,
+        "finalState" : "FINALIZED"
+      },
+      "S2" : {
+        "finalState" : "REVERTED",
+        "history" : [ "created nonce=2 hash=0xf36fb5eacf1977bee49e2fbff489b7b587d05a6989337d73a07790d560170123", "CREATED->SUBMITTED node returned hash (acceptance != success)", "SUBMITTED->PENDING known to node, no receipt yet", "PENDING->REVERTED receipt status 0 (executed and reverted)" ]
+      },
+      "S3" : {
+        "proxySendCount" : 1,
+        "history" : [ "created nonce=3 hash=0x7efbaa66b12d1250fb5381b77b4e282d680dbec754e3a3781a4850f0f5578664", "CREATED->UNKNOWN transport failure after/before send: outcome unknown", "UNKNOWN->CONFIRMED receipt status 1 at block 13" ],
+        "finalState" : "CONFIRMED"
+      },
+      "S4" : {
+        "finalState" : "CONFIRMED",
+        "history" : [ "created nonce=4 hash=0x004a85444a455f0f9932de9cd7cfd3ea6d718b610bd4cfb0eea348ab852bb307", "CREATED->UNKNOWN transport failure after/before send: outcome unknown", "UNKNOWN->CONFIRMED receipt status 1 at block 14" ]
+      },
+      "S5" : {
+        "history" : [ "created nonce=5 hash=0x6a1a4b991cc13a6189339059ff147d5311a42553aa60d516cc0867246bc6ee5a", "CREATED->SUBMITTED node returned hash (acceptance != success)", "SUBMITTED->UNKNOWN no receipt and not found by hash (provider may lag)", "UNKNOWN->CONFIRMED receipt status 1 at block 15" ],
+        "duringHttp429" : "UNKNOWN (lastError=ClientConnectionException)",
+        "afterRecovery" : "CONFIRMED",
+        "duringNull" : "UNKNOWN"
+      },
+      "S6" : {
+        "finalState" : "REPLACED",
+        "history" : [ "created nonce=6 hash=0x28ba13c87386dae26c1c3015c3add1e873b6d8872be57c04f9749fc7cc96d21a", "CREATED->SUBMITTED node returned hash (acceptance != success)", "SUBMITTED->UNKNOWN no receipt and not found by hash (provider may lag)", "rebroadcast same raw tx (same hash)", "UNKNOWN->REPLACED nonce 6 consumed (latest=7) by a different transaction; our hash has no receipt" ]
+      },
+      "S7" : {
+        "hintsDelivered" : 4,
+        "missedHintRecovered" : "CONFIRMED",
+        "duplicatedHintFinal" : "CONFIRMED"
+      },
+      "S8" : {
+        "untouchedByOtherEnvironment" : true,
+        "finalState" : "CONFIRMED"
+      }
+    }
+  }
+}

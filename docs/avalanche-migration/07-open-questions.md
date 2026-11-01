@@ -90,3 +90,18 @@ No business decision from the list above is closed by the scope constraint; thes
 5. Does "primary chain" still mean a runtime switch between Solana and Avalanche, or Avalanche for new work with Solana as read-only history?
 6. Database evidence (ADR 0001 queries): the data may be simulation data only; the queries are still needed before retiring any legacy rail.
 Decisions D1 to D4: no genuine conflict found (D3 is the only one touching key custody; its role-separation principles remain valid, its KMS element is the open question above).
+
+## Phase 1 Part B update (2026-11-01)
+Resolved by evidence (technical only):
+- web3j 6.x in a real Spring Boot web context: works with `jackson-annotations:2.22`, compatible with FreelaX's `jackson-bom.version` 2.21.7 pin; Jackson 2 and 3 coexist. **Java 17 cannot run web3j 6.1.0** (bytecode 65); Java 17 works with web3j 4.13.0.
+- `newHeads`/duplicates/reconnect: resubscribe does not replay; overlapping subscriptions duplicate events; gaps recoverable by bounded reads.
+- Official Fuji RPC throttles with HTTP 429 (HTML, `Retry-After`) after sustained probing; log ranges: official 100, publicnode 50,000 (address required, history pruned beyond roughly 10M to 30M blocks), drpc free 100.
+- DER to `r,s,v` conversion and mandatory low-s normalisation validated locally.
+- Environment detection: client version distinguishes a local Fuji fork (`anvil/`) from real Fuji (`avalanchego/`); chain id alone does not.
+Still **OPEN (owner)**: Java 17 vs 21 for the new module; RPC provider selection; whether KMS stays deferred; scope of any external audit or key ceremony; the meaning of "primary chain"; escrow business questions 1-18 unchanged.
+Still **UNRESOLVED (technical, blocked)**: own-transaction timings on Fuji, replacement bump rule on Avalanche, accepted-but-unexecuted observability, near-deadline inclusion, provider inconsistency cause, public rate-limit threshold, server-initiated WebSocket drops. Database rail mix: needs an operator.
+
+## Owner decisions after Phase 1 Part B (2026-11-01)
+- **OWNER-DECIDED:** Java 21 baseline for the Avalanche integration; web3j 6.1.0; production KMS integration deferred, ephemeral development signers (isolated by role and environment) for LOCAL_SIMULATION and AVALANCHE_FUJI. These close the earlier open items "Java 17 vs 21", "web3j version" and "KMS vendor / deferral".
+- Not authorization to change production dependencies: the Jackson override (`jackson-annotations:2.22`, or BOM 2.22.4) is validated in a prototype only and must be re-validated in the actual FreelaX context.
+- **Still OPEN:** final Fuji RPC provider; external audit and key ceremony scope; meaning of "primary chain"; escrow questions 1-18; whether and how legacy payment rails retire (needs DB evidence). **Still BLOCKED:** funded Fuji wallet experiments; database evidence.

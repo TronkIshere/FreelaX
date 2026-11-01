@@ -45,3 +45,9 @@ Authority: [SIMULATION_SCOPE](../SIMULATION_SCOPE.md). Phase text above is prese
 | Phase 3/4/5 "Fuji deployment, Fuji e2e" | Unchanged and now central: Fuji is the public demonstration environment; Anvil is the deterministic one. |
 | Fiat legs (USD in, VND out, tax certificates) | Stay clearly labelled mocks. |
 Phase 1 remains PARTIAL; Phase 2 has not started.
+
+## Phase 1 Part B status (2026-11-01)
+Part B ran under the simulation scope. Phase 1 is still **PARTIAL**: remaining blockers are a funded Fuji wallet (human, faucet) and read-only database evidence (DB operator). Outcomes that affect later phases: Java level is an owner decision (web3j 6.1.0 needs Java 21; Java 17 works only with web3j 4.13.0); the official Fuji public RPC throttles (HTTP 429) and caps `eth_getLogs` at 100 blocks; the transaction-tracking model is validated by a prototype. Details: [phase-1/part-b-completion-report.md](phase-1/part-b-completion-report.md). Phase 2 has **not** started.
+
+## Owner decisions after Phase 1 Part B (2026-11-01)
+Java 21, web3j 6.1.0 and deferred KMS (ephemeral development signers) are **OWNER-DECIDED** and are inputs to Phase 2 planning. Phase 1 remains **PARTIAL** (funded Fuji wallet and database evidence blocked). Phase 2 has not started and needs explicit owner approval.

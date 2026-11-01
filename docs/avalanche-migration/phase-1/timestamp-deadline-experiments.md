@@ -45,3 +45,12 @@ Strict and non-strict comparisons are mutually exclusive at the boundary, as req
 
 ## Status
 Header/timestamp behaviour measured: **PASS**. Contract comparison semantics: **PASS (local)**. Fuji inclusion-near-deadline and original-execution timestamp: **INCONCLUSIVE**.
+
+---
+# Part B update (2026-11-01)
+
+No new Fuji timestamp measurements were possible beyond Part A (still 240 blocks and 8 replayed opcode samples), because own Fuji transactions are **BLOCKED** (funding; [runbook](fuji-funding-runbook.md)). Nothing here claims to have reproduced asynchronous execution or near-deadline Fuji inclusion.
+
+What Part B added (LOCAL-SIM only): the reusable live script (E7) sends `actUntil(headTimestamp + k)` for k = 0,1,2,3,5,8 and records the included block timestamp. On local anvil (block timestamps follow wall clock) k = 0 **reverted** because the including block was 4 s after the head observed at submit, while k >= 1 succeeded with the block timestamp 1 to 8 s before the deadline: this illustrates, in simulation only, that the outcome depends on the **including block's timestamp, not the submit-time clock** ([evidence/live/](evidence/live/)). On Fuji, whose blocks can be several seconds apart (Part A: up to 19.6 s), the same effect is expected to be larger; **that expectation is an inference, not a measurement.**
+
+Limitations that stay: original asynchronous execution timestamp, Fuji inclusion near a deadline, block production under load. **Status:** header/opcode behaviour PASS (Part A); contract comparison semantics PASS (local); Fuji inclusion near deadline **BLOCKED**; original-execution timestamp **INCONCLUSIVE**.

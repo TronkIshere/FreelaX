@@ -56,3 +56,8 @@ Same via web3j (J14): fork funded from the observed holder, `approve` signed by 
 1. Asset config keyed by `(chainId, address)`; startup assertions: `decimals()==6`, `symbol()=="USDC"`, `version()=="2"`, `DOMAIN_SEPARATOR()` succeeds, code size/implementation slot (zeppelinos) matches a recorded value if policy requires. Reject USDC.e (symbol `USDC.e`, no domain separator).
 2. MVP funding can use `approve` + escrow `fund` (verified end to end on fork). Permit/EIP-3009 are now technically available and can be a Phase 3 design option, but remain a design decision (see [eip712-experiments.md](eip712-experiments.md) for how they differ).
 3. Do not assume Mainnet equals Fuji; repeat the fork test against a Mainnet fork before any Mainnet configuration.
+
+---
+# Part B recheck (2026-11-01 14:51 UTC)
+
+Re-fetched Circle's [USDC contract addresses](https://developers.circle.com/stablecoins/usdc-contract-addresses): Fuji address unchanged, `0x5425890298aed601595a70AB815c96711a31Bc65`; the page is undated and does **not mention USDC.e or bridged USDC for Avalanche** (only for another chain), so the USDC.e address stays **without an official source**. On-chain recheck on Fuji (publicnode; [usdc-recheck-fuji-publicnode.txt](evidence/usdc-recheck-fuji-publicnode.txt)): chain 43113, 1,852 code bytes, name "USD Coin", symbol "USDC", version "2", decimals 6, `DOMAIN_SEPARATOR` and zeppelinos implementation `0x6f3c...d9f4` identical to Part A. Native USDC and USDC.e remain distinguished by `(chainId, address)`, symbol and `DOMAIN_SEPARATOR`, never by name. **Under the simulation scope no Mainnet contact is made: the Mainnet fork test is dropped; Mainnet behaviour stays UNVERIFIED by design and is outside scope.**

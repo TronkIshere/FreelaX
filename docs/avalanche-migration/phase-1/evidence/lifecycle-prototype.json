@@ -1,0 +1,45 @@
+{
+  "L0-summary" : {
+    "status" : "PASS",
+    "at" : "2026-11-01T14:30:27.912780100Z",
+    "scenarios" : {
+      "S1" : {
+        "finalState" : "FINALIZED",
+        "sends" : 1,
+        "history" : [ "created nonce=1 hash=0x05e5a4a76dea6ce6c03e0f0ad86680251c10d48fafc065f870543d429579a0fa", "CREATED->SUBMITTED node returned hash (acceptance != success)", "SUBMITTED->CONFIRMED receipt status 1 at block 2", "CONFIRMED->FINALIZED finality policy satisfied" ]
+      },
+      "S2" : {
+        "history" : [ "created nonce=2 hash=0x5112a28363da350fa969f535805362524f4081cbd7983cba4e9654c1f0fdc972", "CREATED->SUBMITTED node returned hash (acceptance != success)", "SUBMITTED->PENDING known to node, no receipt yet", "PENDING->REVERTED receipt status 0 (executed and reverted)" ],
+        "finalState" : "REVERTED"
+      },
+      "S3" : {
+        "proxySendCount" : 1,
+        "finalState" : "CONFIRMED",
+        "history" : [ "created nonce=3 hash=0x2ff41921055955a093d61379499be9941ff2c95d280192cef31a30e3cf6f4847", "CREATED->UNKNOWN transport failure after/before send: outcome unknown", "UNKNOWN->CONFIRMED receipt status 1 at block 10" ]
+      },
+      "S4" : {
+        "history" : [ "created nonce=4 hash=0x9303d9f528f32acf74e36673afa051278c4e4ec9ccda903cd95ceb917641058e", "CREATED->UNKNOWN transport failure after/before send: outcome unknown", "UNKNOWN->CONFIRMED receipt status 1 at block 11" ],
+        "finalState" : "CONFIRMED"
+      },
+      "S5" : {
+        "duringNull" : "UNKNOWN",
+        "afterRecovery" : "CONFIRMED",
+        "duringHttp429" : "UNKNOWN (lastError=ClientConnectionException)",
+        "history" : [ "created nonce=5 hash=0x37383ed5b39778829e5dd6e5c7bdf85ec73a4f69e333d9304dfdf468e512da32", "CREATED->SUBMITTED node returned hash (acceptance != success)", "SUBMITTED->UNKNOWN no receipt and not found by hash (provider may lag)", "UNKNOWN->CONFIRMED receipt status 1 at block 12" ]
+      },
+      "S6" : {
+        "history" : [ "created nonce=6 hash=0x8b88544dbb87bb977e1c9fcb6ac5dc13bb69b6361d7880a0bc61ee6d3d3190b4", "CREATED->SUBMITTED node returned hash (acceptance != success)", "SUBMITTED->UNKNOWN no receipt and not found by hash (provider may lag)", "rebroadcast same raw tx (same hash)", "UNKNOWN->REPLACED nonce 6 consumed (latest=7) by a different transaction; our hash has no receipt" ],
+        "finalState" : "REPLACED"
+      },
+      "S7" : {
+        "duplicatedHintFinal" : "CONFIRMED",
+        "missedHintRecovered" : "CONFIRMED",
+        "hintsDelivered" : 4
+      },
+      "S8" : {
+        "finalState" : "CONFIRMED",
+        "untouchedByOtherEnvironment" : true
+      }
+    }
+  }
+}

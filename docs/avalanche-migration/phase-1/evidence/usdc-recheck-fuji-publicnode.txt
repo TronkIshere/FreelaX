@@ -1,0 +1,14 @@
+{
+ "checkedAtUtc": "2026-11-01T14:51:56.197065+00:00",
+ "provider": "publicnode (Fuji)",
+ "chainId": "0xa869",
+ "address": "0x5425890298aed601595a70AB815c96711a31Bc65",
+ "codeBytes": 1852,
+ "name": "USD Coin",
+ "symbol": "USDC",
+ "version": "2",
+ "decimals": 6,
+ "DOMAIN_SEPARATOR": "0xfe9fa105a0e9629446730e544caa6b8d05d8d4fc93451750dc50e2ddd6d374b3",
+ "zeppelinosImplementation": "0x6f3c4787bab4eeebf62efb8c35dc9259fdc9d9f4",
+ "USDCe_style_check_symbol_is_plain_USDC": true
+}

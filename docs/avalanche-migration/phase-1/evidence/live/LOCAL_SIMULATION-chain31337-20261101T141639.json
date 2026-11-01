@@ -1,0 +1,211 @@
+{
+  "environment" : "LOCAL_SIMULATION",
+  "chainId" : 31337,
+  "endpointHost" : "localhost",
+  "clientVersion" : "anvil/v1.8.7",
+  "startedUtc" : "2026-11-01T14:15:13.971121700Z",
+  "signerAddress" : "0x9e069fac723cf33508cf110f676d63d2e524271b",
+  "balanceWeiAtStart" : 5000000000000000000,
+  "E0-preflight" : {
+    "status" : "OK",
+    "at" : "2026-11-01T14:15:14.604787100Z",
+    "gasPriceWei" : 1136790727,
+    "maxPriorityFeeWei" : 1136790727,
+    "maxFeeWei" : 4547162918
+  },
+  "E1-deploy-and-timing" : {
+    "status" : "OBSERVED",
+    "at" : "2026-11-01T14:15:54.898890900Z",
+    "obs" : {
+      "hash" : "0x2b3e7d361b32bd05fa19407eaf7200103275990b7fa884578ad82d5aa2b2cc81",
+      "ackMs" : 47,
+      "firstByHashMs" : 88,
+      "firstByHashWithBlockMs" : null,
+      "receiptMs" : 107,
+      "status" : "0x1",
+      "block" : 16,
+      "gasUsed" : 983088,
+      "blockTimestamp" : 1793543712,
+      "logs" : 1,
+      "finalizedMs" : null,
+      "contract" : "0x4b65df79ec655da4c24b1f3ac364ae87b0fd0202"
+    },
+    "rejected" : null
+  },
+  "E2-success-timing" : {
+    "status" : "OBSERVED",
+    "at" : "2026-11-01T14:16:35.070736500Z",
+    "obs" : {
+      "hash" : "0x6e9f569a5052db72250d4f79d0f378ba9b762ea17c4b56222d1ac71ef905334b",
+      "ackMs" : 2,
+      "firstByHashMs" : 4,
+      "firstByHashWithBlockMs" : 36,
+      "receiptMs" : 39,
+      "status" : "0x1",
+      "block" : 18,
+      "gasUsed" : 47735,
+      "blockTimestamp" : 1793543752,
+      "logs" : 1,
+      "finalizedMs" : null
+    }
+  },
+  "E3-revert" : {
+    "status" : "OBSERVED",
+    "at" : "2026-11-01T14:16:35.124429600Z",
+    "submitAccepted" : true,
+    "obs" : {
+      "hash" : "0xf7a52f54ae78e2c9701d07626023cb9fd411954e540f7d5735696c181377f006",
+      "ackMs" : 2,
+      "firstByHashMs" : 4,
+      "firstByHashWithBlockMs" : 42,
+      "receiptMs" : 44,
+      "status" : "0x0",
+      "block" : 19,
+      "gasUsed" : 21609,
+      "blockTimestamp" : 1793543793,
+      "logs" : 0
+    }
+  },
+  "E4-duplicate-submission" : {
+    "status" : "OBSERVED",
+    "at" : "2026-11-01T14:16:35.173249900Z",
+    "immediateResend" : "transaction already imported",
+    "resendAfterMined" : "nonce too low",
+    "obs" : {
+      "hash" : "0x5700e308b455f16ba3ca97dcdb0f07cbb2b3b408ea0baadd1b79f92fab24f8ac",
+      "ackMs" : 2,
+      "firstByHashMs" : 6,
+      "firstByHashWithBlockMs" : 36,
+      "receiptMs" : 38,
+      "status" : "0x1",
+      "block" : 20,
+      "gasUsed" : 30635,
+      "blockTimestamp" : 1793543793,
+      "logs" : 1
+    }
+  },
+  "E5-nonce-gap-and-replacement" : {
+    "status" : "OBSERVED",
+    "at" : "2026-11-01T14:16:35.262037600Z",
+    "gapAccepted" : true,
+    "gapVisibleByHash" : true,
+    "ladder" : [ {
+      "bumpPercent" : 100,
+      "hash" : "0x54f711e922bdee58f4dbf7fc62450748f96f13bd5334fa88e26ce5bd1ae0a519",
+      "result" : "replacement transaction underpriced"
+    }, {
+      "bumpPercent" : 105,
+      "hash" : "0x2c6adcae2accbdf571544d9a3d3b5a08a98fd45f7ab88fd5058b6ce080bb2c28",
+      "result" : "ACCEPTED"
+    } ],
+    "gapFillerObs" : {
+      "hash" : "0x4f88eefc71214b1fa06b151edb5516535e0a0aee9d47259a529267d5482a34e4",
+      "ackMs" : 2,
+      "firstByHashMs" : 4,
+      "firstByHashWithBlockMs" : 47,
+      "receiptMs" : 50,
+      "status" : "0x1",
+      "block" : 21,
+      "gasUsed" : 30635,
+      "blockTimestamp" : 1793543793,
+      "logs" : 1
+    },
+    "winnerObs" : {
+      "hash" : "0x2c6adcae2accbdf571544d9a3d3b5a08a98fd45f7ab88fd5058b6ce080bb2c28",
+      "ackMs" : 1,
+      "firstByHashMs" : 59,
+      "firstByHashWithBlockMs" : 59,
+      "receiptMs" : 61,
+      "status" : "0x1",
+      "block" : 21,
+      "gasUsed" : 30635,
+      "blockTimestamp" : 1793543793,
+      "logs" : 1
+    },
+    "replacedOriginalHasReceipt" : false,
+    "replacedOriginalStillByHash" : false
+  },
+  "E6-timeout-after-submission" : {
+    "status" : "OBSERVED",
+    "at" : "2026-11-01T14:16:37.321145800Z",
+    "clientOutcome" : "InterruptedIOException",
+    "minedDespiteClientTimeout" : true,
+    "obs" : {
+      "hash" : "0x11d58433a7901dd832119d60a97aa28d0b970695594ee17c247ae6b0110640a0",
+      "ackMs" : 0,
+      "firstByHashMs" : 2,
+      "firstByHashWithBlockMs" : 2,
+      "receiptMs" : 3,
+      "status" : "0x1",
+      "block" : 22,
+      "gasUsed" : 30635,
+      "blockTimestamp" : 1793543793,
+      "logs" : 1
+    },
+    "resendAfterMined" : "nonce too low",
+    "latestNonceAfter" : 8,
+    "expectedNonceAfter" : 8
+  },
+  "E7-near-deadline-inclusion" : {
+    "status" : "OBSERVED",
+    "at" : "2026-11-01T14:16:39.664621Z",
+    "samples" : [ {
+      "deadline" : 1793543793,
+      "headTsAtSubmit" : 1793543793,
+      "k" : 0,
+      "includedMinusDeadline" : "4",
+      "hash" : "0xa67eeca444f3fee9ae7f36b7b2efb90ba9fd95374890de132fd38c3b055243ca",
+      "includedBlockTs" : "1793543797",
+      "statusMatchesTsLeDeadline" : true,
+      "status" : "0x0"
+    }, {
+      "deadline" : 1793543798,
+      "headTsAtSubmit" : 1793543797,
+      "k" : 1,
+      "includedMinusDeadline" : "-1",
+      "hash" : "0xb784291140fb20d4c9c7adc38e0811188654b49028bebdaedb350101b8c58578",
+      "includedBlockTs" : "1793543797",
+      "statusMatchesTsLeDeadline" : true,
+      "status" : "0x1"
+    }, {
+      "deadline" : 1793543799,
+      "headTsAtSubmit" : 1793543797,
+      "k" : 2,
+      "includedMinusDeadline" : "-2",
+      "hash" : "0xb0cb9600a5b3b062f1cb6c539ea9145e353d0d36229023559fc8825b0c15cecc",
+      "includedBlockTs" : "1793543797",
+      "statusMatchesTsLeDeadline" : true,
+      "status" : "0x1"
+    }, {
+      "deadline" : 1793543800,
+      "headTsAtSubmit" : 1793543797,
+      "k" : 3,
+      "includedMinusDeadline" : "-3",
+      "hash" : "0x9edcb4e8030f71d9e6402f54225d12ae010d27ecc1bcd53787f2ad6e4ab694ca",
+      "includedBlockTs" : "1793543797",
+      "statusMatchesTsLeDeadline" : true,
+      "status" : "0x1"
+    }, {
+      "deadline" : 1793543802,
+      "headTsAtSubmit" : 1793543797,
+      "k" : 5,
+      "includedMinusDeadline" : "-5",
+      "hash" : "0x20765e3bb77d9005939c1f44d0de33eddb5b9d9662f0aa63d3cda6a42349eac8",
+      "includedBlockTs" : "1793543797",
+      "statusMatchesTsLeDeadline" : true,
+      "status" : "0x1"
+    }, {
+      "deadline" : 1793543805,
+      "headTsAtSubmit" : 1793543797,
+      "k" : 8,
+      "includedMinusDeadline" : "-8",
+      "hash" : "0xc15cd9b861f69c360126a04c66cd1a97a624dff0370028283401b52b46525d7f",
+      "includedBlockTs" : "1793543797",
+      "statusMatchesTsLeDeadline" : true,
+      "status" : "0x1"
+    } ],
+    "NOTE" : "which block includes a tx is not controlled; this records what happened, not a guarantee"
+  },
+  "balanceWeiAtEnd" : 4998285476442204003,
+  "finishedUtc" : "2026-11-01T14:16:39.666786600Z"
+}

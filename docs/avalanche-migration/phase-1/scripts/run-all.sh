@@ -16,3 +16,18 @@ bash scripts/forge.sh "forge test --match-contract UsdcFork --fork-url $FUJI -vv
 bash scripts/start-anvil.sh
 ( cd prototypes/java-web3j && "${MVN:-mvn}" -B -ntp test )
 bash scripts/eip712_interop.sh
+
+# ---- Part B additions (conservative rates; paced helper rpc_util.mjs; honours Retry-After) ----
+export MIN_GAP_MS=1500
+node prototypes/ws-observer/provider_probe.mjs evidence/provider-probe-fuji.json
+node prototypes/ws-observer/ws_reconnect.mjs 20 15 20 evidence/ws-reconnect-fuji.json
+node prototypes/ws-observer/consistency_probe.mjs 30 8 evidence/consistency-probe-fuji.json
+ST="${TEMP:-/tmp}/phase1-cursor-state.json"; rm -f "$ST"
+node prototypes/ws-observer/cursor_scan.mjs "$ST" evidence/cursor-scan-fuji.json 12 || true     # simulated crash
+node prototypes/ws-observer/cursor_scan.mjs "$ST" evidence/cursor-scan-fuji.json                # restart; must report equal=true
+rm -f "$ST"
+bash scripts/web_matrix.sh                       # Spring Boot web context x {Java 21,17} x {no override, annotations22, bom22}
+W3J=4.13.0 PROFILES=none bash scripts/web_matrix.sh
+bash scripts/java_matrix.sh                      # full suite on Java21+6.1.0, Java17+4.13.0, Java21+4.13.0 (needs anvil from start-anvil.sh)
+python -I scripts/evm_fork_probe.py "$FUJI"
+# Blocked until a human funds an ephemeral Fuji wallet: see fuji-funding-runbook.md (LiveExperimentsTest generate/run)

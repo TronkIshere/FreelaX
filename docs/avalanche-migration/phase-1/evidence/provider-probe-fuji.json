@@ -1,0 +1,141 @@
+{
+ "at": "2026-11-01T14:19:59.146Z",
+ "note": "single host, single run, conservative rates; no generalisation to other providers",
+ "providers": {
+  "official": {
+   "chainId": "0xa869",
+   "head": 60354794,
+   "ladderAddr": {
+    "99": "OK logs=0",
+    "100": "ERR http=200 {\"code\":-32602,\"message\":\"block range too large: total block range in this request exceeds the maximum of 100 blocks\"}",
+    "101": "ERR http=200 {\"code\":-32602,\"message\":\"block range too large: total block range in this request exceeds the maximum of 100 blocks\"}",
+    "500": "ERR http=200 {\"code\":-32602,\"message\":\"block range too large: total block range in this request exceeds the maximum of 100 blocks\"}",
+    "1000": "ERR http=200 {\"code\":-32602,\"message\":\"block range too large: total block range in this request exceeds the maximum of 100 blocks\"}",
+    "2000": "ERR http=200 {\"code\":-32602,\"message\":\"block range too large: total block range in this request exceeds the maximum of 100 blocks\"}",
+    "5000": "ERR http=200 {\"code\":-32602,\"message\":\"block range too large: total block range in this request exceeds the maximum of 100 blocks\"}",
+    "10000": "ERR http=200 {\"code\":-32602,\"message\":\"block range too large: total block range in this request exceeds the maximum of 100 blocks\"}",
+    "50000": "ERR http=200 {\"code\":-32602,\"message\":\"block range too large: total block range in this request exceeds the maximum of 100 blocks\"}",
+    "100000": "ERR http=200 {\"code\":-32602,\"message\":\"block range too large: total block range in this request exceeds the maximum of 100 blocks\"}"
+   },
+   "ladderNoAddr": {
+    "99": "OK logs=0",
+    "100": "ERR http=200 {\"code\":-32602,\"message\":\"block range too large: total block range in this request exceeds the maximum of 100 blocks\"}",
+    "101": "ERR http=200 {\"code\":-32602,\"message\":\"block range too large: total block range in this request exceeds the maximum of 100 blocks\"}",
+    "500": "ERR http=200 {\"code\":-32602,\"message\":\"block range too large: total block range in this request exceeds the maximum of 100 blocks\"}",
+    "1000": "ERR http=200 {\"code\":-32602,\"message\":\"block range too large: total block range in this request exceeds the maximum of 100 blocks\"}"
+   },
+   "history": {
+    "1000": "OK logs=4",
+    "100000": "OK logs=0",
+    "1000000": "OK logs=0",
+    "10000000": "OK logs=0",
+    "30000000": "OK logs=8",
+    "55000000": "OK logs=0"
+   },
+   "rate": {
+    "requested": 150,
+    "sent": 150,
+    "perSecondTarget": 5,
+    "httpCodes": {
+     "200": 150
+    },
+    "aborted": null,
+    "latencyMs": {
+     "min": 206,
+     "p50": 240,
+     "max": 645
+    }
+   }
+  },
+  "publicnode": {
+   "chainId": "0xa869",
+   "head": 60354835,
+   "ladderAddr": {
+    "99": "OK logs=0",
+    "100": "OK logs=0",
+    "101": "OK logs=0",
+    "500": "OK logs=6",
+    "1000": "OK logs=11",
+    "2000": "OK logs=39",
+    "5000": "OK logs=51",
+    "10000": "OK logs=86",
+    "50000": "OK logs=694",
+    "100000": "ERR http=200 {\"code\":-32701,\"message\":\"exceed maximum block range: 50000\"}"
+   },
+   "ladderNoAddr": {
+    "99": "ERR http=200 {\"code\":-32701,\"message\":\"Please specify an address in your request or, to remove restrictions, order a dedicated full node here: https://ww",
+    "100": "ERR http=200 {\"code\":-32701,\"message\":\"Please specify an address in your request or, to remove restrictions, order a dedicated full node here: https://ww",
+    "101": "ERR http=200 {\"code\":-32701,\"message\":\"Please specify an address in your request or, to remove restrictions, order a dedicated full node here: https://ww",
+    "500": "ERR http=200 {\"code\":-32701,\"message\":\"Please specify an address in your request or, to remove restrictions, order a dedicated full node here: https://ww",
+    "1000": "ERR http=200 {\"code\":-32701,\"message\":\"Please specify an address in your request or, to remove restrictions, order a dedicated full node here: https://ww"
+   },
+   "history": {
+    "1000": "OK logs=2",
+    "100000": "OK logs=4",
+    "1000000": "OK logs=0",
+    "10000000": "OK logs=0",
+    "30000000": "ERR http=200 {\"code\":-32000,\"message\":\"not found\"}",
+    "55000000": "ERR http=200 {\"code\":-32000,\"message\":\"not found\"}"
+   },
+   "rate": {
+    "requested": 150,
+    "sent": 150,
+    "perSecondTarget": 5,
+    "httpCodes": {
+     "200": 150
+    },
+    "aborted": null,
+    "latencyMs": {
+     "min": 196,
+     "p50": 217,
+     "max": 735
+    }
+   }
+  },
+  "drpc": {
+   "chainId": "0xa869",
+   "head": 60354877,
+   "ladderAddr": {
+    "99": "OK logs=0",
+    "100": "OK logs=0",
+    "101": "ERR http=400 {\"message\":\"ranges over 10000 blocks are not supported on free plan\",\"code\":35}",
+    "500": "ERR http=400 {\"message\":\"ranges over 10000 blocks are not supported on free plan\",\"code\":35}",
+    "1000": "ERR http=400 {\"message\":\"ranges over 10000 blocks are not supported on free plan\",\"code\":35}",
+    "2000": "ERR http=400 {\"message\":\"ranges over 10000 blocks are not supported on free plan\",\"code\":35}",
+    "5000": "ERR http=400 {\"message\":\"ranges over 10000 blocks are not supported on free plan\",\"code\":35}",
+    "10000": "ERR http=400 {\"message\":\"ranges over 10000 blocks are not supported on free plan\",\"code\":35}",
+    "50000": "ERR http=400 {\"message\":\"ranges over 10000 blocks are not supported on free plan\",\"code\":35}",
+    "100000": "ERR http=400 {\"message\":\"ranges over 10000 blocks are not supported on free plan\",\"code\":35}"
+   },
+   "ladderNoAddr": {
+    "99": "ERR http=500 {\"message\":\"Temporary internal error. Please retry, trace-id: 225f68e02c5492e2d452b099aba2e123\",\"code\":19}",
+    "100": "ERR http=500 {\"message\":\"Temporary internal error. Please retry, trace-id: cb1593c39e803fb78cf65601a9419d6e\",\"code\":19}",
+    "101": "ERR http=400 {\"message\":\"ranges over 10000 blocks are not supported on free plan\",\"code\":35}",
+    "500": "ERR http=400 {\"message\":\"ranges over 10000 blocks are not supported on free plan\",\"code\":35}",
+    "1000": "ERR http=400 {\"message\":\"ranges over 10000 blocks are not supported on free plan\",\"code\":35}"
+   },
+   "history": {
+    "1000": "OK logs=0",
+    "100000": "OK logs=4",
+    "1000000": "OK logs=0",
+    "10000000": "OK logs=0",
+    "30000000": "OK logs=7",
+    "55000000": "OK logs=0"
+   },
+   "rate": {
+    "requested": 150,
+    "sent": 150,
+    "perSecondTarget": 5,
+    "httpCodes": {
+     "200": 150
+    },
+    "aborted": null,
+    "latencyMs": {
+     "min": 39,
+     "p50": 46,
+     "max": 124
+    }
+   }
+  }
+ }
+}

@@ -50,3 +50,53 @@ No private key, API key or token was written to the repo, evidence or logs. Expe
 
 ## Status
 Analysis: **complete**. KMS signing, role-separation negative tests, rotation drill: **NOT TESTED (Phase 2/3/6)**.
+
+---
+# Part B update (2026-11-01): KMS necessity, signature conversion, role separation, rotation
+
+## S-B1. Is KMS necessary under the simulation scope?
+**Recommendation: no, defer production KMS integration.** FreelaX holds no real funds ([SIMULATION_SCOPE](../../SIMULATION_SCOPE.md)); every key controls testnet or local tokens only. A KMS would add vendor accounts, IAM and cost for protection of nothing of monetary value. The security value that remains is **hygiene and architecture**, which do not need KMS: role separation, no keys in Git or logs, least privilege, environment isolation. (Owner confirmation requested; D3's role-separation principles are unaffected.)
+
+**Security boundary required for local/Fuji development signing (specification):**
+1. Keys are generated per developer/environment, ephemeral, testnet-only; stored outside the repository (e.g. `~/.freelax-phase1/ephemeral-testnet.key` in the Phase 1 script) with filesystem permissions; never printed, logged or committed; secret scanning in CI.
+2. The signer refuses to start on a Mainnet chain id/endpoint and on a Fuji balance above a testnet-scale cap (guards prototyped in `EnvGuard`, runbook).
+3. Distinct keys per role (authorization signer, arbiter, relayer); the authorization signer cannot move funds or change roles (Foundry tests below).
+4. A signer interface (`sign(digest) -> r,s,v`) so a KMS can be added later without touching business code.
+5. Fuji faucet wallets are single-purpose and deleted after use.
+
+## S-B2. DER to `r,s,v` conversion: local cryptographic validation (NOT provider compatibility)
+`KmsConversionTest` uses a **fake KMS**: non-exportable key held in an object that only exposes the public key and `signDigest(digest32) -> DER`, with a **random-k** ECDSA like many HSM/KMS implementations (evidence [kms-conversion-local.json](evidence/kms-conversion-local.json)):
+| Check | Result |
+|---|---|
+| 300 random digests: DER parsed, `s` normalised to low-s, recovery id found by trying both | **PASS**; **142 to 155 of 300 signatures were high-s before normalisation** (runs vary), recovery ids split about evenly, every recovered address equals the key's address |
+| EIP-712 digest (web3j `StructuredDataEncoder`) signed by the fake KMS | **PASS**: low-s signature accepted by `useAuthorization` on anvil; the **un-normalised high-s signature is rejected** by OpenZeppelin ECDSA with `ECDSAInvalidSignatureS` (selector `0xd78bce0c`): normalisation is mandatory, not cosmetic |
+| EIP-1559 transaction hash signed by the fake KMS, signed envelope built with web3j | **PASS**: accepted by anvil; receipt `from` equals the KMS key's address (recovery parity correct); hash equals the node's hash |
+Not tested: any real KMS (AWS, GCP, Azure, Vault): API shape, latency, quotas, key specs, IAM, DER details of a particular vendor. **Status: conversion algorithm PASS (local); provider compatibility NOT APPLICABLE (deferred by scope).**
+
+## S-B3. Role separation and rotation (Foundry, lab contract only, not the escrow role model)
+`forge test` (9 unit tests, all pass; [forge-unit-tests-partb.txt](evidence/forge-unit-tests-partb.txt)): the authorization signer cannot call operator functions or grant itself roles; an operator cannot grant roles (admin only); rotating the signer (grant new, revoke old) makes the **old key's signature revert** (`BadSigner`) and the new key's signature work with its own nonce space. These tests are specifications for Phase 3 negative tests.
+
+## S-B4. External audit and key ceremony
+Under the simulation scope an external audit and a key ceremony are **not required by evidence from this phase**; whether the owner still wants them is OPEN ([07](../07-open-questions.md)). A lightweight alternative supported by Phase 1 tooling: Slither + fuzz/invariant tests in CI.
+
+---
+# Ephemeral development signers (owner decision: KMS DEFERRED, 2026-11-01)
+
+**Decision (OWNER-DECIDED):** production KMS integration is deferred. LOCAL_SIMULATION and AVALANCHE_FUJI use ephemeral development signers. Mainnet signing must be impossible under the simulation scope. No production signing infrastructure is implemented in Phase 1 or planned before a separate owner decision.
+
+## Requirements for development signers
+1. **Isolation by role and environment:** distinct keys for each role (authorization signer, arbiter, relayer, pauser, administrator, test buyer/freelancer wallets) and distinct keys per environment; a key accepted for LOCAL_SIMULATION is never loaded in AVALANCHE_FUJI and vice versa.
+2. **Ephemeral:** generated for the environment/run; Fuji wallets are single-purpose and discarded after the experiment. Never reuse production or personal wallet keys; never import an existing wallet.
+3. **No silent persistence:** a key is written to disk only by an explicit, announced action (the Phase 1 `generate` mode prints the file location and only the address, keeps the file outside the repository, and tells the operator to delete it). In-memory keys (LOCAL_SIMULATION default) are never written. No key, seed phrase or mnemonic is committed, logged or printed.
+4. **Mainnet impossible:** the environment guard rejects chain id 43114 and Mainnet endpoints before any request; no configuration path enables them; a signer cannot be constructed for a chain id outside the allow-list.
+5. **Funds cap:** refuse a Fuji signer whose balance exceeds a testnet-scale threshold (safety net against a mistakenly imported real-funds key; not proof).
+6. **Signer interface:** `sign(digest) -> (r, s, v)` with low-s normalisation so a different backend can replace the development signer later without touching business code.
+
+## Security limitations of ephemeral development signers (be explicit)
+- Keys sit in process memory and, if persisted, in a plain file: any process or user with file access can use them. This is acceptable only because the tokens have no monetary value.
+- No hardware protection, no audit trail of signing requests, no rate or policy limits, no separation of duties enforced outside the application, no backup or recovery: losing a key strands testnet assets (acceptable) and disputed demo escrows if the arbiter key is lost (design for a role-based arbiter in the contract, open question 1).
+- Rotation is manual (grant new, revoke old on-chain; validated in the lab contract) and there is no emergency revocation procedure beyond the administrator role.
+- A compromised development signer could authorize on the testnet within the limits of its role; this must not be mistaken for a production-grade guarantee, and demonstrations must not claim production-grade custody.
+
+## Requirements for a future production-grade signing architecture (not planned, for completeness)
+Non-exportable keys in a KMS/HSM with per-role keys and IAM least privilege; documented key ceremony and rotation drills; multi-party control (multisig and timelock) for administrative actions; signing policy and rate limits; immutable audit logs and alerting; DER to `r,s,v` conversion with low-s normalisation and recovery-id search (validated locally in Part B with a fake KMS, but **not** against any real provider); emergency pause and revocation runbooks; separate environments with no shared keys; external review. A separate owner decision is required to start any of this.

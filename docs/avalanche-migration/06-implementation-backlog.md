@@ -69,3 +69,24 @@ Authority: [SIMULATION_SCOPE](../SIMULATION_SCOPE.md). Rows above are historical
 | 36 | **WITHDRAWN** (Mainnet deploy, primary switch with Mainnet). Replaced, if the owner wants it, by a development-only configuration switch task |
 | new | Environment/record labelling: `environment`, `isSimulated` on API and persisted chain records; UI terminology per the scope doc (Phase 4/5) |
 | new | Simulated USDC token for LOCAL_SIMULATION and a deployment manifest (Phase 3) |
+
+## Phase 1 Part B status (2026-11-01)
+| # | Status after Part B |
+|---|---|
+| 1 | **PARTIAL** (remaining: official USDC.e address, public rate-limit threshold, faucet limits; Mainnet items are out of scope) |
+| 2 | **BLOCKED**: no safe read-only DB access; operator request prepared ([db-rail-evidence-request.md](phase-1/db-rail-evidence-request.md)) |
+| 3 | **BLOCKED**: interactive faucets; runbook and guarded script ready ([fuji-funding-runbook.md](phase-1/fuji-funding-runbook.md)) |
+| 4 | **NOT DONE**: owner decision (RPC provider(s); KMS deferred by recommendation) |
+| 5 | **DONE** (prototype location) |
+| 6 | **DONE**: web-context matrix; Java 21 + 6.1.0 + annotations 2.22, Java 17 + 4.13.0 |
+| 7 | **PARTIAL**: Fuji read-only measurements done; own-transaction experiments **BLOCKED** (task 3) |
+| new (Phase 2 inputs) | environment guard specification refined; lifecycle state model (8 scenarios) validated by prototype; DER/low-s conversion spec validated locally; per-host pacing and 429 handling required in the RPC client |
+
+## Owner decisions after Phase 1 Part B (2026-11-01)
+| # | Update |
+|---|---|
+| 4 | KMS vendor: **OWNER-DECIDED: deferred**; RPC provider choice remains **OPEN** |
+| 6 | **DONE**; Java 21 + web3j 6.1.0 **OWNER-DECIDED** (override to be re-validated in the actual FreelaX context) |
+| 10 | Dev signer is the implementation target (ephemeral, per role, per environment); KMS signer **deferred** |
+| 3, 7 | still **BLOCKED / PARTIAL** (funded Fuji wallet) |
+| 2 | still **BLOCKED** (DB operator) |

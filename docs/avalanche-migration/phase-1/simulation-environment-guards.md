@@ -37,3 +37,26 @@ No guard was implemented or executed; G3 tests are specifications. The balance h
 
 ## Status
 Evaluation: complete. Implementation: **not started** (Phase 2, requires approval).
+
+---
+# Part B refinements (2026-11-01)
+
+Still specification only; nothing is implemented in production. The research prototype `EnvGuard` (test scope) exercises parts of the specification.
+
+## Measured since the first version
+| Finding | Evidence |
+|---|---|
+| `web3_clientVersion`: plain anvil and a **local Fuji fork** both report `anvil/v1.8.7`; real Fuji reports `avalanchego/1.15.2 ...`. The fork reports chain id 43113 but is distinguishable from real Fuji by client version **and** by loopback endpoint. | [evidence/live/](evidence/live/), earlier direct call |
+| An endpoint-only pre-check **before any request** is possible and necessary: with `eth_chainId` first, a Mainnet URL would already have been contacted. `EnvGuard.checkEndpoint` rejects `api.avax.network` and wrong endpoint classes without network access. | `EnvGuardTest` (4 tests), live script runs |
+| The three required failures were exercised: fork presented as Fuji -> `FUJI_FORBIDS_LOOPBACK_ENDPOINT`; Mainnet endpoint -> `REJECTED_MAINNET_ENDPOINT` with no contact; real Fuji without a key file -> stops at `NO_KEY_FILE` (read-only chain id call only). | Part B logs |
+| Finality is environment-specific: on anvil the `finalized` tag did not reach the receipt block within 40 s, on Fuji it trails `latest` by 4 to 5 blocks. The finality policy must be selected by environment (confirmation depth locally, `finalized` tag on Fuji). | live runs, Part A |
+| A throttled public endpoint answers HTTP 429 with an HTML body; configuration validation and clients must treat non-JSON as non-definitive. | [official-rate-limit-event.json](evidence/official-rate-limit-event.json) |
+| Record isolation works: a reconciler configured for another environment leaves records untouched. | lifecycle S8 |
+
+## Coverage of the G3 test list by the prototype
+Exercised: chain ids 43114, 1 and unlisted rejected; environment/endpoint mismatch rejected; local fork accepted only as LOCAL_SIMULATION; records of another environment ignored; signer balance guard and missing-key refusal (in the live script). **Not yet exercised:** deny-listed Mainnet USDC address and USDC.e shape rejection, fallback provider with a different chain id, signing helper refusing a different chain id, balance guard as a unit test, startup-failure behaviour inside a Spring context. These remain Phase 2 acceptance tests.
+
+## Updated G2 notes
+- Add to guard 3: **pre-network endpoint class check**, then `eth_chainId`, then `web3_clientVersion` family check (`anvil/` only for LOCAL_SIMULATION; `avalanchego/` only for AVALANCHE_FUJI).
+- Guard 5 (signer): KMS is deferred by scope (see [security evaluation](security-key-management-evaluation.md)); the balance heuristic cannot prove absence of real funds and is a safety net only.
+- Add a rule: public-RPC throttling (429) is **never** converted into a transaction failure or into a fallback to a different environment.

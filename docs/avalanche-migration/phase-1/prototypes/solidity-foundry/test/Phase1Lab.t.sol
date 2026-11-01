@@ -106,4 +106,43 @@ contract Phase1LabTest is Test {
         vm.expectRevert();
         lab.useAuthorization(keccak256("X"), 1, block.timestamp + 1, hex"1234");
     }
+    // ---- Part B task F: role separation and rotation (lab-level, NOT the escrow role model) ----
+    function test_authorization_signer_cannot_use_operator_powers_or_manage_roles() public {
+        vm.startPrank(signer);
+        vm.expectRevert();
+        lab.setValue(1);                                   // signer has AUTH_SIGNER_ROLE only
+        bytes32 role = lab.OPERATOR_ROLE();
+        vm.expectRevert();
+        lab.grantRole(role, signer);                       // and cannot escalate itself
+        vm.stopPrank();
+    }
+
+    function test_operator_cannot_grant_roles() public {
+        bytes32 role = lab.AUTH_SIGNER_ROLE();
+        bytes32 opRole = lab.OPERATOR_ROLE();
+        vm.prank(admin);                                   // a dedicated operator (admin also holds the operator role in setUp)
+        lab.grantRole(opRole, address(0x0A0A));
+        vm.prank(address(0x0A0A));
+        vm.expectRevert();
+        lab.grantRole(role, address(0x0BAD));
+    }
+
+    function test_signer_rotation_old_key_stops_working_new_key_works() public {
+        bytes32 a = keccak256("FUND");
+        uint256 dl = block.timestamp + 1000;
+        bytes memory oldSig = _sig(user, a, 10, dl);
+        uint256 newPk = 0x7777;
+        address newSigner = vm.addr(newPk);
+        bytes32 role = lab.AUTH_SIGNER_ROLE();
+        vm.startPrank(admin);
+        lab.grantRole(role, newSigner);
+        lab.revokeRole(role, signer);
+        vm.stopPrank();
+        vm.prank(user);
+        vm.expectRevert(Phase1Lab.BadSigner.selector);
+        lab.useAuthorization(a, 10, dl, oldSig);           // old key revoked
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(newPk, lab.authDigest(user, a, 11, dl));
+        vm.prank(user);
+        lab.useAuthorization(a, 11, dl, abi.encodePacked(r, s, v));   // new key accepted; nonces are per signer
+    }
 }

@@ -72,3 +72,40 @@ Anvil semantics differ from Avalanche on admission, replacement price rules and 
 
 ## Status
 Lifecycle mapping and client behaviour: **PASS**. Fuji-native submit -> receipt -> finalized for our own tx and accepted-but-unexecuted observability: **INCONCLUSIVE / BLOCKED (no funds)**.
+
+---
+# Part B update (2026-11-01)
+
+Separation used throughout: **FUJI-OBS** = directly observed on real Fuji (read-only); **LOCAL-SIM** = local anvil / fault proxy / local Fuji fork; **BLOCKED** = needs a funded Fuji wallet. Nothing in LOCAL-SIM is evidence of Fuji behaviour.
+
+## B1. Lifecycle prototype (LOCAL-SIM, `prototypes/java-web3j/.../lifecycle/`)
+`Lifecycle.java`, `FaultProxy.java`, `LifecycleScenariosTest.java`; evidence [lifecycle-prototype.json](evidence/lifecycle-prototype.json). States: CREATED, SUBMITTED, PENDING, CONFIRMED, FINALIZED, REVERTED, UNKNOWN (+ REPLACED, added because "nonce consumed by a different transaction" is a definitive outcome for that attempt and none of the seven fits). Isolated; nothing replaces an existing FreelaX service.
+| Scenario | Principle shown | Result |
+|---|---|---|
+| S1 happy path | accepted ack = SUBMITTED only; CONFIRMED at receipt status 1; FINALIZED after the finality policy; same operation key returns the same record (1 send) | PASS |
+| S2 reverted | receipt status 0 -> **REVERTED** (never CONFIRMED), terminal | PASS |
+| S3 timeout after submit | client timeout -> **UNKNOWN**; impatient retry of the same business operation does **not** send again (proxy saw exactly 1 `eth_sendRawTransaction`); reconcile by hash -> CONFIRMED; nonce advanced once | PASS |
+| S4 restart | state persisted before send; a new process (new objects, file only) reconciles UNKNOWN -> CONFIRMED | PASS |
+| S5 null / throttled provider | both lookups `null` -> stays UNKNOWN (not failure, not replaced); an HTML **HTTP 429** body -> state unchanged, `lastError` recorded; recovery -> CONFIRMED | PASS |
+| S6 replaced nonce | same nonce reused by a higher-fee tx (automine off, then mined) -> **REPLACED** only after receipt null + by-hash null + `latest` nonce > ours | PASS |
+| S7 duplicate / missed hints | hints delivered 3x and a hint for an unknown hash change nothing; a transaction whose hint never arrives is still reconciled by the periodic pass | PASS |
+| S8 environment isolation | a reconciler configured for another environment/chain id leaves the record untouched | PASS |
+Design points that the tests enforce: operation-key idempotency (business level, not just nonce); raw tx + hash persisted before send; a failed lookup is never evidence; event hints only trigger reconciliation; no blockhash-expiry reasoning (only hash + nonce). Finality policy is injected: on anvil the `finalized` tag **did not reach the receipt block within 40 s** (LIVE script), so local runs use confirmation depth while Fuji uses the `finalized` tag (FUJI-OBS: about 5 to 9 s).
+Limits: single-process nonce allocator (the Phase 2 design needs a DB-backed allocator with locking); JSON-file ledger stands in for the database; the finalized/`safe` handling of a reorg was not simulated.
+
+## B2. Fuji transaction experiments: BLOCKED, runbook and validated script
+No funded wallet is obtainable without interactive faucet use ([fuji-funding-runbook.md](fuji-funding-runbook.md)). A reusable script exists (`LiveExperimentsTest`) with built-in environment guards, and it was **validated on LOCAL-SIM** (plain anvil and a local Fuji fork): [evidence/live/](evidence/live/). Observations from those local runs (anvil only): the reverted transaction was accepted and executed with status 0; an immediate resend returned `transaction already imported`, a resend after mining `nonce too low`; replacement at equal fee was `underpriced`, **5 %** accepted; a held send response (client timeout) still mined exactly once; with the next block's timestamp following wall clock, `actUntil(head+0)` reverted (included 4 s later) while `k >= 1` succeeded. **All of the following remain BLOCKED for real Fuji:** own-transaction timings, revert, nonce gap and replacement threshold on Avalanche, timeout after submission, duplicate submission, near-deadline inclusion.
+
+## B3. Lookup inconsistency and receipts (FUJI-OBS)
+Cumulative: 53 txs (Part A) saw **1** by-hash miss with a receipt present; a later 14-tx run saw 0 misses; Part B ran 8 txs against **two** providers (official and publicnode) at three nominal offsets: **0 disagreements, by-hash found and receipt present in all 48 samples** ([consistency-probe-fuji.json](evidence/consistency-probe-fuji.json); the paced client may have delayed the first query by up to a few seconds, so offsets are nominal). Conclusion unchanged and still INCONCLUSIVE about cause: **a by-hash miss is not proof of absence**; consult the receipt and a second provider before deciding; keep UNKNOWN.
+
+## B4. Finalized-block scanning and restart-safe reconciliation (FUJI-OBS, read-only)
+`cursor_scan.mjs`: 3,001 blocks of USDC `Transfer` logs scanned on the official RPC in 100-block chunks with a persisted cursor and unique `(txHash, logIndex)` keys, **a simulated crash after 12 chunks and a restart**, one chunk deliberately replayed: 31 chunks, 1 restart, **1 duplicate suppressed**, 41 events recorded; an independent single call to a different provider (publicnode) returned the same **41** events: **0 missing, 0 extra** ([cursor-scan-fuji.json](evidence/cursor-scan-fuji.json)). During this the official endpoint answered **HTTP 429** (HTML body, `Retry-After`) and the helper honoured it and finished. Limits: one window, one small contract, off-peak.
+
+## B5. Status of the lifecycle criteria
+| Criterion | Status |
+|---|---|
+| Accepted != success, receipt status 0 = REVERTED, timeout != failure, hash+nonce reconciliation, operation-level idempotency, hints are not truth, recovery from missed/duplicated events | **PASS** (LOCAL-SIM prototype; restart/duplicate scan also FUJI-OBS read-only) |
+| Own Fuji transactions (timings, revert, nonce gap/replacement, timeout, duplicate) | **BLOCKED** (funding) |
+| Accepted-but-unexecuted state on Fuji | **INCONCLUSIVE** (unchanged) |
+| Provider lookup inconsistency cause | **INCONCLUSIVE** |

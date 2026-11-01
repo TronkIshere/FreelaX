@@ -1,0 +1,17 @@
+lab.freelax.phase1:java-web3j-web-prototype:jar:0.0.1-SNAPSHOT
++- org.springframework.boot:spring-boot-starter-web:jar:3.5.16:compile
+|  \- org.springframework.boot:spring-boot-starter-json:jar:3.5.16:compile
+|     \- com.fasterxml.jackson.core:jackson-databind:jar:2.22.4:compile
+|        \- com.fasterxml.jackson.core:jackson-core:jar:2.22.4:compile
+\- org.web3j:core:jar:6.1.0:compile
+   +- org.web3j:abi:jar:6.1.0:compile
+   |  \- org.web3j:utils:jar:6.1.0:compile
+   +- org.web3j:crypto:jar:6.1.0:compile
+   |  \- org.web3j:rlp:jar:6.1.0:compile
+   +- org.web3j:tuples:jar:6.1.0:compile
+   +- com.squareup.okhttp3:okhttp:jar:5.5.0:compile
+   +- com.squareup.okhttp3:logging-interceptor:jar:5.5.0:compile
+   |  \- com.squareup.okhttp3:okhttp-jvm:jar:5.5.0:compile
+   \- tools.jackson.core:jackson-databind:jar:3.2.3:compile
+      +- com.fasterxml.jackson.core:jackson-annotations:jar:2.22:compile
+      \- tools.jackson.core:jackson-core:jar:3.2.3:compile

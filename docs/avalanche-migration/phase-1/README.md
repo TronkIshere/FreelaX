@@ -4,6 +4,9 @@
 
 Executed **2026-11-01** against `master` (Phase 0 commit `1662a80`). Scope: environment and technical validation only. **Nothing in production code, configuration, schemas, Solana modules or dependencies was changed; nothing was committed or pushed; Phase 2 has not started.**
 
+## Part B update (2026-11-01)
+Part B closed every gap that did not need a funded Fuji wallet or database access. See [part-b-completion-report.md](part-b-completion-report.md) and the final section of [phase-1-acceptance-report.md](phase-1-acceptance-report.md). New since the first version: web-context and **Java 17** compatibility matrix (web3j 6.1.0 needs Java 21; Java 17 works with web3j 4.13.0), lifecycle prototype (8 scenarios), local fake-KMS signature conversion, restart-safe finalized-cursor scan validated against an independent provider, WebSocket reconnect behaviour, a **429 throttling episode on the official Fuji RPC**, a reusable guarded live-experiment script, and the operator requests for the two blocked items ([fuji-funding-runbook.md](fuji-funding-runbook.md), [db-rail-evidence-request.md](db-rail-evidence-request.md)). Status remains **PARTIAL** because of those two blockers.
+
 ## Final status: PARTIAL, technically viable with caveats
 The proposed architecture (web3j + Foundry + OpenZeppelin on C-Chain, native USDC, direct log scanning, EIP-712 authorizations) was **not contradicted by any experiment**, and several Phase 0 assumptions were corrected by evidence. Phase 1's own acceptance criteria are **not fully met** because no funded Fuji wallet could be obtained (the faucets are interactive web flows), so no transaction of ours was ever executed on Fuji. See [phase-1-acceptance-report.md](phase-1-acceptance-report.md).
 
@@ -28,6 +31,9 @@ The proposed architecture (web3j + Foundry + OpenZeppelin on C-Chain, native USD
 | [timestamp-deadline-experiments.md](timestamp-deadline-experiments.md) | Timestamp and deadline semantics |
 | [rpc-reconciliation-evaluation.md](rpc-reconciliation-evaluation.md) | Scanning and reconciliation strategy |
 | [security-key-management-evaluation.md](security-key-management-evaluation.md) | Signer architecture (analysis only) |
+| [part-b-completion-report.md](part-b-completion-report.md) | Part B task status, technology baseline, decisions |
+| [fuji-funding-runbook.md](fuji-funding-runbook.md) | Manual steps to fund an ephemeral Fuji wallet and run the blocked experiments |
+| [db-rail-evidence-request.md](db-rail-evidence-request.md) | Read-only SQL request for a DB operator |
 | [simulation-environment-guards.md](simulation-environment-guards.md) | Evaluation of startup/config guards for simulation-only operation |
 | [phase-1-acceptance-report.md](phase-1-acceptance-report.md) | Acceptance table, blockers, recommendation |
 
@@ -35,3 +41,6 @@ Raw evidence: [evidence/](evidence/). Reproduce: `scripts/run-all.sh` (needs doc
 
 ## Evidence discipline
 Every document separates **DOC** (official docs read), **OBS** (directly observed), **REC** (recommendation) and marks unverified items as UNVERIFIED/INCONCLUSIVE. Single-host, single-vantage Fuji observations are never presented as representative of all RPC providers. No benchmark comparing Avalanche to Solana or to other providers is claimed.
+
+## Owner decisions after Part B
+**Java 21**, **web3j 6.1.0** and **KMS deferred** (ephemeral development signers) are OWNER-DECIDED; see [part-b-completion-report.md](part-b-completion-report.md). Phase 1 remains **PARTIAL** (funded Fuji wallet and database evidence are still blocked). The Jackson overrides are research findings, not authorization to change production dependencies.

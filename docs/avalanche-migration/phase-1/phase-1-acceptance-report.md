@@ -2,6 +2,8 @@
 
 > **Scope amendment (2026-11-01):** FreelaX is a development simulation with no real funds ([SIMULATION_SCOPE](../../SIMULATION_SCOPE.md)); Mainnet is out of scope. Mainnet probes in this phase were read-only and historical; no further Mainnet contact (including a Mainnet fork test) is planned. Guard evaluation: [simulation-environment-guards.md](simulation-environment-guards.md).
 
+> **Part B update:** the classification below is the first-pass result. The **final, authoritative classification after Part B is in the last section** ([Part B final acceptance](#part-b-final-acceptance-2026-11-01)); where they differ, the last section wins.
+
 Date: 2026-11-01. Base: `master` @ `1662a80`. Status keys: **PASS** (evidence recorded), **PARTIAL**, **INCONCLUSIVE** (could not be established), **FAIL**, **BLOCKED** (needs something unavailable).
 **Overall: PARTIAL. Recommendation: resolve a short list of blockers before Phase 2** (section 6).
 
@@ -74,3 +76,56 @@ All items in [07](../07-open-questions.md) questions 1-18 remain as recorded (Ph
 4. Optionally repeat the USDC fork test against a Mainnet fork.
 Phase 2 must also keep a CI smoke test that performs a real web3j call.
 **Stop here: Phase 2 is not started; explicit approval is required.**
+
+---
+# Part B final acceptance (2026-11-01)
+
+Classification keys: **PASS** reproducible evidence recorded; **FAIL** tested and did not hold; **BLOCKED** needs a human, a credential or an unavailable resource (not a negative result); **INCONCLUSIVE** tested but the evidence cannot decide. Scope: LOCAL_SIMULATION and AVALANCHE_FUJI only; Mainnet is out of scope ([SIMULATION_SCOPE](../../SIMULATION_SCOPE.md)). "FUJI-OBS" = observed on real Fuji (read-only); "LOCAL-SIM" = local anvil / fault proxy / local fork.
+
+| # | Criterion | Final status | Basis |
+|---|---|---|---|
+| 1 | Isolated environment, reproducible scripts | **PASS** | `scripts/run-all.sh`, Docker-pinned Foundry, all under `phase-1/` |
+| 2 | Fuji connectivity, chain id 43113, required RPC methods | **PASS** | FUJI-OBS, two providers (Part A) |
+| 3 | Native USDC identity and behaviour on Fuji; USDC vs USDC.e distinction | **PASS** | rechecked Part B; permit and EIP-3009 executed on a **local fork** of Fuji; USDC.e has no official source (UNVERIFIED address) |
+| 4 | Mainnet USDC behaviour | **NOT IN SCOPE** | Mainnet fork test dropped by owner direction |
+| 5 | Java 21 + Spring Boot 3.5.16 + web3j 6.1.0 in a real web context | **PASS with mandatory override** | `jackson-annotations:2.22`; original failure reproduced (HTTP 500) under Boot's and FreelaX's own Jackson pins |
+| 6 | Java 17 compatibility | **PASS only with web3j 4.13.0; FAIL for web3j 6.1.0** | 6.1.0 bytecode is Java 21 (class version 65); 31-test suite passes on Java 17 + 4.13.0 |
+| 7 | Solidity/Foundry/OpenZeppelin toolchain | **PASS** | 9 unit + 7 fork tests; Slither 0.11.6 |
+| 8 | EIP-712 (digest equality, interop, replay, expiry, wrong chain/contract) | **PASS** | web3j = contract = Foundry `cast` |
+| 9 | DER to `r,s,v` conversion, low-s, recovery parity, EIP-712/EIP-1559 digests | **PASS (local cryptographic validation only)** | fake KMS, 300 signatures, on-chain acceptance on anvil |
+| 10 | Real KMS provider compatibility | **NOT APPLICABLE (deferred by scope)** | KMS recommended to be deferred; owner confirmation OPEN |
+| 11 | Role separation and rotation (lab contract) | **PASS** | Foundry negative tests |
+| 12 | Lifecycle principles (accepted != success, REVERTED on status 0, timeout != failure, hash+nonce reconciliation, operation-level idempotency, hints are not truth, recovery from missed/duplicate events) | **PASS (LOCAL-SIM prototype, 8 scenarios)** | restart/duplicate scan also FUJI-OBS |
+| 13 | Restart-safe finalized-cursor scanning and duplicate suppression | **PASS** | FUJI-OBS read-only; equal to an independent provider (41 of 41) |
+| 14 | Own Fuji transactions: success timing, revert, nonce gap/replacement threshold, timeout, duplicate, near-deadline inclusion | **BLOCKED** | no funded wallet; faucets are interactive; see [runbook](fuji-funding-runbook.md); script validated locally |
+| 15 | Accepted-but-unexecuted state on Fuji | **INCONCLUSIVE** | not observable with available means |
+| 16 | `eth_getLogs` before execution on Fuji | **INCONCLUSIVE** | observation window too coarse |
+| 17 | `block.timestamp`: header/opcode behaviour | **PASS** | Part A, 240 blocks, 8 replayed samples |
+| 18 | `block.timestamp`: original-execution timestamp, Fuji near-deadline inclusion | **BLOCKED / INCONCLUSIVE** | needs own Fuji transactions |
+| 19 | Provider log ranges and history (three free providers) | **PASS** | official 100, publicnode 50,000 (pruned between 10M and 30M blocks back), drpc free 100 |
+| 20 | Rate limiting | **PASS (throttling observed: HTTP 429, HTML, Retry-After); threshold INCONCLUSIVE** | one host, one episode |
+| 21 | WebSocket reconnect, missed-event recovery, duplicate delivery | **PASS (client-initiated, one provider, about 90 s)**; server-initiated drops **INCONCLUSIVE** | |
+| 22 | Provider inconsistency (by-hash miss) | **INCONCLUSIVE** | 1 miss in 53, then 0 in 14 and 0 in 8 (two providers); cause unknown |
+| 23 | Environment guards: specification and research prototype | **PASS (specification refined; prototype partially exercised)** | production guards NOT implemented (separate phase) |
+| 24 | Database and legacy payment-rail evidence | **BLOCKED** | no safe read-only access; operator request in [db-rail-evidence-request.md](db-rail-evidence-request.md) |
+| 25 | Roadmap criterion: faucet-funded wallet can call USDC `balanceOf` | **BLOCKED** | `balanceOf` works for any address (read-only PASS) |
+| 26 | Roadmap criterion: "every fact from two sources or marked unverifiable" | **PARTIAL (PASS where possible; remainder marked UNVERIFIED)** | |
+
+## Remaining blockers and exact human actions
+1. **Funded Fuji wallet** (criteria 14, 18, 25): run `generate`, fund the printed address with testnet AVAX in a browser faucet, run `run` ([runbook](fuji-funding-runbook.md)). Needs a person (captcha / console eligibility).
+2. **Database evidence** (24): a DB operator runs the read-only queries in [db-rail-evidence-request.md](db-rail-evidence-request.md) and returns counts labelled by environment.
+3. **Owner decisions** (see Part B completion report): Java level (17 or 21), RPC provider(s), KMS deferral, external audit and key ceremony scope, primary-chain meaning.
+
+## Verdict
+Phase 1 is **PARTIAL but technically substantive**: every item that could be established without a funded Fuji wallet or database access is established with evidence; the blocked items are listed with exact actions; nothing was fabricated.
+
+---
+# Owner decisions after Part B (2026-11-01)
+
+These decisions change the status of two criteria in the Part B table above; **the overall verdict remains PARTIAL**.
+| Criterion | Status before | Status now |
+|---|---|---|
+| 6. Java 17 compatibility | PASS only with web3j 4.13.0; FAIL for 6.1.0 | **OWNER-DECIDED: Java 21 + web3j 6.1.0.** The Java 17 result is retained as a research finding; the question is closed, not "passed" |
+| 5. Java 21 + Spring Boot + web3j 6.1.0 in a real web context | PASS with mandatory override | unchanged: PASS (research); the arrangement must still be **validated in the actual FreelaX application context** during implementation |
+| 10. Real KMS provider compatibility | NOT APPLICABLE (deferred by scope) | **OWNER-DECIDED: KMS deferred.** Ephemeral development signers for LOCAL_SIMULATION and AVALANCHE_FUJI |
+Still **BLOCKED**: funded Fuji wallet experiments (criteria 14, 18, 25), database rail evidence (24). Still **INCONCLUSIVE**: 15, 16, 20 (threshold), 21 (server-initiated drops), 22. Final Fuji RPC provider selection and external audit / key ceremony scope remain **OPEN** owner decisions.

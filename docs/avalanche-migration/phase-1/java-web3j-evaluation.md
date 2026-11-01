@@ -61,3 +61,40 @@ Prototype compiled and ran on **Java 21**. The existing project pins `java.versi
 
 ## Status
 Java 21 + Boot 3.5.16 + web3j 6.1.0 compatibility: **PASS with one mandatory workaround**. Java 17 compatibility and Boot-web coexistence: **INCONCLUSIVE**.
+
+---
+# Part B update (2026-11-01): Spring Boot web context, Jackson 2/3, Java 17
+
+Tags: **OBS** directly observed (evidence files), **REC** recommendation. Environment: AVALANCHE_FUJI read-only calls (web matrix) and LOCAL_SIMULATION (full suite). Prototypes: `prototypes/java-web3j-web/` (minimal Spring Boot 3.5.16 web app: `@RestController` -> `@Service` -> Spring-managed `Web3j` bean -> JSON-RPC to Fuji, JSON served by Jackson 2) and `prototypes/java-web3j/`. Commands: `scripts/web_matrix.sh`, `scripts/java_matrix.sh`. The existing FreelaX Maven files were not touched.
+
+## Existing FreelaX arrangement (read-only inspection of the root `pom.xml`)
+Parent `spring-boot-starter-parent` 3.5.16, `java.version` **17**, and an explicit `jackson-bom.version` **2.21.7** (Boot's own default is 2.21.4). `jackson-annotations` therefore resolves to **2.21** in both cases.
+
+## Web-context matrix (embedded Tomcat on a random port, real Fuji call through a Spring-managed bean)
+| Java | web3j | Jackson arrangement | Result | Evidence |
+|---|---|---|---|---|
+| 21 | 6.1.0 | Boot BOM 2.21.4, no override (annotations 2.21) | **FAIL (reproduced)**: HTTP 500 from the controller, `NoClassDefFoundError ... JsonApplyView` during the first RPC | [java21-none.log](evidence/web-matrix/java21-none.log) |
+| 21 | 6.1.0 | FreelaX pin `jackson-bom.version=2.21.7`, no override | **FAIL (reproduced)** same error | [java21-none-freelaxbom2.21.7.log](evidence/web-matrix/java21-none-freelaxbom2.21.7.log) |
+| 21 | 6.1.0 | explicit `jackson-annotations:2.22` (databind 2 stays 2.21.4) | **PASS**: context starts, controller returns chain id 43113, head, finalized head | [java21-annotations22.log](evidence/web-matrix/java21-annotations22.log) |
+| 21 | 6.1.0 | FreelaX pin 2.21.7 **plus** annotations 2.22 | **PASS** (the realistic fix for the current FreelaX pins) | [java21-annotations22-freelaxbom2.21.7.log](evidence/web-matrix/java21-annotations22-freelaxbom2.21.7.log) |
+| 21 | 6.1.0 | `jackson-bom.version=2.22.4` (whole BOM aligned) | **PASS** (annotations, databind and core all 2.22.x) | [java21-bom22.log](evidence/web-matrix/java21-bom22.log) |
+| **17** | 6.1.0 | any of the three | **FAIL at compile time**: `bad class file ... class file has wrong version 65.0, should be 61.0` | [java17-none.log](evidence/web-matrix/java17-none.log), [-annotations22](evidence/web-matrix/java17-annotations22.log), [-bom22](evidence/web-matrix/java17-bom22.log) |
+| **17** | **4.13.0** | Boot BOM, no override | **PASS**: web context + real Fuji call, Jackson 2 only, okhttp 4.12.0 | [java17-none-web3j4.13.0.log](evidence/web-matrix/java17-none-web3j4.13.0.log) |
+| 21 | 4.13.0 | Boot BOM, no override | **PASS** | [java21-none-web3j4.13.0.log](evidence/web-matrix/java21-none-web3j4.13.0.log) |
+
+Dependency facts (OBS, `*.tree.txt` and class-version inspection of the published jars): web3j 6.1.0 core brings `tools.jackson:jackson-databind:3.2.3` (Jackson 3) + okhttp 5.5.0 and needs `jackson-annotations` 2.22. Jackson 2 (`com.fasterxml...databind` 2.21.x, used by Spring MVC) and Jackson 3 (`tools.jackson...`) have different packages and **coexist without conflict** in the same JVM; the only shared artifact is `jackson-annotations`, and annotations 2.22 with databind 2.21.x works (observed). **Java bytecode level of web3j artifacts (class major version, read from the published jars): 6.1.0, 6.0.0, 5.0.2, 5.0.3 and 4.14.0 are 65 (Java 21); 4.13.0 is 61 (Java 17).** web3j 4.13.0 uses Jackson 2 (declared 2.17.1, Boot raises it to 2.21.4) and okhttp 4.12.0; no override is needed.
+
+## Full prototype suite across Java/web3j combinations (31 tests, 2 intentionally skipped live tests)
+`scripts/java_matrix.sh` runs the whole suite (local anvil lifecycle, deploy, revert, nonce, duplicate, replacement, timeout, EIP-712, ERC-20 on a Fuji fork, Fuji read-only, lifecycle prototype, fake-KMS conversion, guard tests):
+| Combination | Result | Evidence |
+|---|---|---|
+| Java 21 + web3j 6.1.0 (+ annotations 2.22) | **31 run, 0 failures, 2 skipped** | [evidence/java-matrix/java21-web3j6.1.0/](evidence/java-matrix/java21-web3j6.1.0/) |
+| **Java 17 + web3j 4.13.0** | **31 run, 0 failures, 2 skipped** | [evidence/java-matrix/java17-web3j4.13.0/](evidence/java-matrix/java17-web3j4.13.0/) |
+| Java 21 + web3j 4.13.0 | **31 run, 0 failures, 2 skipped** | [evidence/java-matrix/java21-web3j4.13.0/](evidence/java-matrix/java21-web3j4.13.0/) |
+Test helpers were moved to Jackson 2 so one test source serves both web3j generations. One API difference found: in 6.1.0 `TransactionEncoder.encode(tx, SignatureData)` for a typed transaction needs `v` = 27/28 and writes yParity itself (4.13.0 behaved the same in the matrix).
+
+## Conclusions
+1. **web3j works reliably in a real Spring Boot web context** (embedded server, Spring-managed bean, real JSON-RPC) provided the Jackson arrangement is right. On Java 21 with web3j 6.1.0 that means the `jackson-annotations:2.22` override, which is compatible with FreelaX's own `jackson-bom.version` pin of 2.21.7. Without it the failure is a runtime HTTP 500 on the first RPC, not a build error.
+2. **Java 17 and web3j 6.1.0 are incompatible** (bytecode 65). Java 17 is viable only with web3j 4.13.0 (or older): everything FreelaX needs from web3j in the prototype (EIP-1559 signing, ABI codec, EIP-712, receipt polling, log decoding) passed on Java 17 + 4.13.0.
+3. **Decision for the owner (OPEN):** (a) new module on Java 21 + web3j 6.1.0 + annotations override, or (b) stay on Java 17 + web3j 4.13.0. REC: (a), because the project direction names Java 21 and 6.x is the maintained line; (b) is a sound fallback with no override. The existing FreelaX Java level was not changed.
+4. Limits: web matrix used one host and one run per cell; Boot's `spring-boot-starter-actuator`/security/Jackson-module interplay was not exercised; web3j 4.13.0 maintenance status and CVE posture were not assessed.

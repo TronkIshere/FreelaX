@@ -1,0 +1,9 @@
+{
+  "what": "First observed throttling of the official Fuji public RPC (https://api.avax-test.network/ext/bc/C/rpc) from the single test host",
+  "observedAtUtc": "2026-11-01T14:26:46Z",
+  "response": { "http": 429, "statusLine": "HTTP/1.1 429 Too Many Requests", "retryAfterSeconds": 16, "server": "cloudflare", "contentType": "text/html (not JSON)" },
+  "affectedClients": "curl and Node fetch alike (user-agent change made no difference); a JSON-RPC client that does JSON.parse on the body throws a SyntaxError",
+  "precedingLoad": "approximately 190 requests to this host in the ~10 minutes before, of which 150 were a deliberate 5 req/s x 30 s probe (provider_probe.mjs), the rest bursts of a few calls; plus earlier phases the same day",
+  "caveats": "single host, single event; the threshold, window and whether it is per-IP are NOT established. The earlier Part A probe (60 sequential calls in 24 s, about 2.5 req/s) and a 90 s WebSocket+HTTP run were not throttled.",
+  "lessons": ["429 arrives as an HTML body with HTTP 429, not as a JSON-RPC error: clients must check the HTTP status before parsing JSON", "honour Retry-After", "treat as non-definitive (UNKNOWN), never as transaction failure", "keep a configured request budget (this phase: <= 2 req/s on public endpoints from now on)"]
+}

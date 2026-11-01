@@ -1,0 +1,345 @@
+{
+ "at": "2026-11-01T14:50:34.901Z",
+ "pacing": "rpc_util: >= 600 ms between calls per host",
+ "anomalies": [],
+ "transactions": 8,
+ "tally": {
+  "official@0ms byHash=found receipt=present": 8,
+  "publicnode@0ms byHash=found receipt=present": 8,
+  "official@1500ms byHash=found receipt=present": 8,
+  "publicnode@1500ms byHash=found receipt=present": 8,
+  "official@4000ms byHash=found receipt=present": 8,
+  "publicnode@4000ms byHash=found receipt=present": 8
+ },
+ "rowsWithByHashDisagreement": [],
+ "rows": [
+  {
+   "hash": "0xc542e839f6e5295cd65ef2198b671d9a8bc4158eb645ce3dd9e298c6496374a6",
+   "samples": [
+    {
+     "offsetMs": 0,
+     "actualMs": 0,
+     "official": {
+      "byHash": "found",
+      "receipt": "0x1"
+     },
+     "publicnode": {
+      "byHash": "found",
+      "receipt": "0x1"
+     }
+    },
+    {
+     "offsetMs": 1500,
+     "actualMs": 3458,
+     "official": {
+      "byHash": "found",
+      "receipt": "0x1"
+     },
+     "publicnode": {
+      "byHash": "found",
+      "receipt": "0x1"
+     }
+    },
+    {
+     "offsetMs": 4000,
+     "actualMs": 8081,
+     "official": {
+      "byHash": "found",
+      "receipt": "0x1"
+     },
+     "publicnode": {
+      "byHash": "found",
+      "receipt": "0x1"
+     }
+    }
+   ]
+  },
+  {
+   "hash": "0x6a23f9edca9786337daa0442e1747d1529c3f786a6bc82963f25f779a136dbd7",
+   "samples": [
+    {
+     "offsetMs": 0,
+     "actualMs": 0,
+     "official": {
+      "byHash": "found",
+      "receipt": "0x1"
+     },
+     "publicnode": {
+      "byHash": "found",
+      "receipt": "0x1"
+     }
+    },
+    {
+     "offsetMs": 1500,
+     "actualMs": 4043,
+     "official": {
+      "byHash": "found",
+      "receipt": "0x1"
+     },
+     "publicnode": {
+      "byHash": "found",
+      "receipt": "0x1"
+     }
+    },
+    {
+     "offsetMs": 4000,
+     "actualMs": 8631,
+     "official": {
+      "byHash": "found",
+      "receipt": "0x1"
+     },
+     "publicnode": {
+      "byHash": "found",
+      "receipt": "0x1"
+     }
+    }
+   ]
+  },
+  {
+   "hash": "0xe48a1bad028352735fc3697523bbe0d5a3acb85acfd1e5b5ba4bfaa21c4791b9",
+   "samples": [
+    {
+     "offsetMs": 0,
+     "actualMs": 0,
+     "official": {
+      "byHash": "found",
+      "receipt": "0x1"
+     },
+     "publicnode": {
+      "byHash": "found",
+      "receipt": "0x1"
+     }
+    },
+    {
+     "offsetMs": 1500,
+     "actualMs": 6280,
+     "official": {
+      "byHash": "found",
+      "receipt": "0x1"
+     },
+     "publicnode": {
+      "byHash": "found",
+      "receipt": "0x1"
+     }
+    },
+    {
+     "offsetMs": 4000,
+     "actualMs": 10808,
+     "official": {
+      "byHash": "found",
+      "receipt": "0x1"
+     },
+     "publicnode": {
+      "byHash": "found",
+      "receipt": "0x1"
+     }
+    }
+   ]
+  },
+  {
+   "hash": "0xa60de50d4e5662360456f3d79eab5d35c5c752a4b02425ad5776de4618550d40",
+   "samples": [
+    {
+     "offsetMs": 0,
+     "actualMs": 0,
+     "official": {
+      "byHash": "found",
+      "receipt": "0x1"
+     },
+     "publicnode": {
+      "byHash": "found",
+      "receipt": "0x1"
+     }
+    },
+    {
+     "offsetMs": 1500,
+     "actualMs": 3602,
+     "official": {
+      "byHash": "found",
+      "receipt": "0x1"
+     },
+     "publicnode": {
+      "byHash": "found",
+      "receipt": "0x1"
+     }
+    },
+    {
+     "offsetMs": 4000,
+     "actualMs": 8155,
+     "official": {
+      "byHash": "found",
+      "receipt": "0x1"
+     },
+     "publicnode": {
+      "byHash": "found",
+      "receipt": "0x1"
+     }
+    }
+   ]
+  },
+  {
+   "hash": "0xa33ea810ba374f7b32d99c4a7b2168719ed68c1964b41092174a19185e1b28fa",
+   "samples": [
+    {
+     "offsetMs": 0,
+     "actualMs": 0,
+     "official": {
+      "byHash": "found",
+      "receipt": "0x1"
+     },
+     "publicnode": {
+      "byHash": "found",
+      "receipt": "0x1"
+     }
+    },
+    {
+     "offsetMs": 1500,
+     "actualMs": 5434,
+     "official": {
+      "byHash": "found",
+      "receipt": "0x1"
+     },
+     "publicnode": {
+      "byHash": "found",
+      "receipt": "0x1"
+     }
+    },
+    {
+     "offsetMs": 4000,
+     "actualMs": 10012,
+     "official": {
+      "byHash": "found",
+      "receipt": "0x1"
+     },
+     "publicnode": {
+      "byHash": "found",
+      "receipt": "0x1"
+     }
+    }
+   ]
+  },
+  {
+   "hash": "0x2dc515c1cb4dacf68aae21439499d8b90f200cacdb4a5158d27eb9c782b50c21",
+   "samples": [
+    {
+     "offsetMs": 0,
+     "actualMs": 0,
+     "official": {
+      "byHash": "found",
+      "receipt": "0x1"
+     },
+     "publicnode": {
+      "byHash": "found",
+      "receipt": "0x1"
+     }
+    },
+    {
+     "offsetMs": 1500,
+     "actualMs": 6234,
+     "official": {
+      "byHash": "found",
+      "receipt": "0x1"
+     },
+     "publicnode": {
+      "byHash": "found",
+      "receipt": "0x1"
+     }
+    },
+    {
+     "offsetMs": 4000,
+     "actualMs": 10771,
+     "official": {
+      "byHash": "found",
+      "receipt": "0x1"
+     },
+     "publicnode": {
+      "byHash": "found",
+      "receipt": "0x1"
+     }
+    }
+   ]
+  },
+  {
+   "hash": "0x12495203e9fd2ef8df536c992632856a25c281c29a4c4a35e5736a890babc92f",
+   "samples": [
+    {
+     "offsetMs": 0,
+     "actualMs": 0,
+     "official": {
+      "byHash": "found",
+      "receipt": "0x1"
+     },
+     "publicnode": {
+      "byHash": "found",
+      "receipt": "0x1"
+     }
+    },
+    {
+     "offsetMs": 1500,
+     "actualMs": 6184,
+     "official": {
+      "byHash": "found",
+      "receipt": "0x1"
+     },
+     "publicnode": {
+      "byHash": "found",
+      "receipt": "0x1"
+     }
+    },
+    {
+     "offsetMs": 4000,
+     "actualMs": 10726,
+     "official": {
+      "byHash": "found",
+      "receipt": "0x1"
+     },
+     "publicnode": {
+      "byHash": "found",
+      "receipt": "0x1"
+     }
+    }
+   ]
+  },
+  {
+   "hash": "0x082e8ea67c481349ec5e8bdf15f9748d74bbf94b5bc83c4dcd9cf58b28aaba09",
+   "samples": [
+    {
+     "offsetMs": 0,
+     "actualMs": 0,
+     "official": {
+      "byHash": "found",
+      "receipt": "0x1"
+     },
+     "publicnode": {
+      "byHash": "found",
+      "receipt": "0x1"
+     }
+    },
+    {
+     "offsetMs": 1500,
+     "actualMs": 6113,
+     "official": {
+      "byHash": "found",
+      "receipt": "0x1"
+     },
+     "publicnode": {
+      "byHash": "found",
+      "receipt": "0x1"
+     }
+    },
+    {
+     "offsetMs": 4000,
+     "actualMs": 10671,
+     "official": {
+      "byHash": "found",
+      "receipt": "0x1"
+     },
+     "publicnode": {
+      "byHash": "found",
+      "receipt": "0x1"
+     }
+    }
+   ]
+  }
+ ]
+}
