@@ -23,7 +23,8 @@ Last updated: 2026-11-01 (after M3). Scope: [SIMULATION_SCOPE](../SIMULATION_SCO
 | P2-M6 | **validated and committed** (contract completion, Slither triage, O-6 evidence on a Fuji fork, Java/Solidity digest parity; Foundry 49 pass, gateway 89 tests: 87 pass, 2 optional skipped) |
 | P2-M7 | **validated and committed** (deploy script with chain guard, manifest, verifier, submission allow-list; real forge deployment to Anvil verified; Fuji deployment BLOCKED; gateway 98 tests: 97 pass, 1 optional skipped) |
 | P2-M8 | **validated and committed** (gateway REST API, neutral port types, marketplace adapter and client behind a flag; gateway 104 tests: 101 pass, 3 optional skipped; marketplace full suite 364 pass) |
-| P2-M9 to P2-M12 | not started |
+| P2-M9 | **validated and committed** (additive V6 migration verified on MySQL, authorization-before-submission service behind a flag; marketplace full suite 381 pass; fee, tax, payout and notification wiring NOT done, decisions needed) |
+| P2-M10 to P2-M12 | not started |
 
 ## Commits (origin/master)
 `3b12e7a` Phase 0, `1662a80` Phase 0 decisions, `e5127ae` Phase 1 checkpoint, `73b5d14` simulation scope, `cf61c0f` Phase 1 Part B (pushed to origin).

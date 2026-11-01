@@ -43,6 +43,8 @@ public class WorkContract extends AbstractEntity<UUID> {
     private int revisionsUsed;
     @Column(name = "payment_rail", length = 30)
     private String paymentRail;
+    @Column(name = "payment_network_id", length = 40)
+    private String paymentNetworkId;
     @Column(name = "accepted_terms_fingerprint", length = 64)
     private String acceptedTermsFingerprint;
     @Column(name = "client_terms_accepted_at")
