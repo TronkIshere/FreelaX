@@ -3,6 +3,7 @@ import type { CreateJobInput, UpdateJobInput } from './types';
 
 import type { ClientBankAccount, ClientBankInput, DecimalValue, FundingResponse, PaymentFlowTimeline, EscrowFundingView, EscrowFundingBuild, EscrowActionBuild, EscrowActionStatus, EscrowMutualRefund, SubmissionPayload, ContractSubmission, ReviewDecision, ContractSettlement, ContractCancellationRecord, CancellationRequest, CancellationDecision } from './types';
 
+import type { AvalancheActionInput, AvalancheChainTransaction, AvalancheContractView } from './avalancheTypes';
 import type { AdminDisputeDetail, Dispute, DisputeDecision, DisputeEvidenceInput, DisputeStatus, OpenDisputeInput, SpringPage } from './types';
 import type { AdminReviewDetail, ModerationAction, PortfolioInput, PortfolioItem, Profile, ProfilePatch, Review, ReviewInput } from './types';
 
@@ -350,6 +351,27 @@ export class MarketplaceApi {
   async signAutoSolanaTransaction(transactionBase64: string): Promise<{ transactionBase64: string }> {
     return this.authorized('/solana/wallet-link/auto/sign',
       { method: 'POST', body: JSON.stringify({ transactionBase64 }) });
+  }
+  async avalancheStatus(contractId: string): Promise<AvalancheContractView> {
+    return this.authorized('/contracts/' + encodeURIComponent(contractId) + '/avalanche');
+  }
+  async avalancheEnable(contractId: string): Promise<AvalancheContractView> {
+    return this.authorized('/contracts/' + encodeURIComponent(contractId) + '/avalanche/enable', { method: 'POST' });
+  }
+  async avalanchePrepare(contractId: string, action: string, input: AvalancheActionInput = {}): Promise<import('./evmWallet').PreparedEvmAction> {
+    return this.authorized('/contracts/' + encodeURIComponent(contractId) + '/avalanche/actions/' + encodeURIComponent(action) + '/prepare',
+      { method: 'POST', body: JSON.stringify(input) });
+  }
+  async avalancheExecute(contractId: string, action: string, input: AvalancheActionInput = {}): Promise<AvalancheChainTransaction> {
+    return this.authorized('/contracts/' + encodeURIComponent(contractId) + '/avalanche/actions/' + encodeURIComponent(action) + '/execute',
+      { method: 'POST', body: JSON.stringify(input) });
+  }
+  async avalancheRecordTransaction(contractId: string, action: string, txHash: string, input: AvalancheActionInput = {}): Promise<AvalancheChainTransaction> {
+    return this.authorized('/contracts/' + encodeURIComponent(contractId) + '/avalanche/actions/' + encodeURIComponent(action) + '/transactions',
+      { method: 'POST', body: JSON.stringify({ txHash, input }) });
+  }
+  async avalancheRefresh(contractId: string): Promise<AvalancheContractView> {
+    return this.authorized('/contracts/' + encodeURIComponent(contractId) + '/avalanche/refresh', { method: 'POST' });
   }
   async solanaWalletChallenge(walletAddress: string): Promise<{
     challengeId: string; walletAddress: string; message: string; expiresAt: string;

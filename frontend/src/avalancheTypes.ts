@@ -1,0 +1,60 @@
+export type TransactionState =
+  | 'CREATED' | 'SIGNED' | 'SUBMITTED' | 'PENDING' | 'CONFIRMED'
+  | 'FINALIZED' | 'REVERTED' | 'FAILED' | 'REPLACED' | 'UNKNOWN';
+
+export type AvalancheEnvironmentInfo = {
+  environment: 'LOCAL_SIMULATION' | 'AVALANCHE_FUJI';
+  chainId: number;
+  simulated: boolean;
+  explorerBaseUrl: string | null;
+  backendSignersAvailable: boolean;
+};
+
+export type AvalancheChainTransaction = {
+  id: number;
+  contractId: string;
+  milestoneId: string | null;
+  networkId: string;
+  environment: string;
+  chainId: number;
+  escrowId: string;
+  action: string;
+  operationKey: string;
+  txHash: string | null;
+  status: TransactionState;
+  errorClass: string | null;
+  businessApplied: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AvalancheEscrowSnapshot = {
+  status: string;
+  client: string;
+  freelancer: string;
+  amountBaseUnits: string;
+  maxRevisions: number;
+  revisionsUsed: number;
+  deliveryDueAt: number;
+  reviewDueAt: number;
+};
+
+export type AvalancheContractView = {
+  networkId: string | null;
+  avalancheEnabled: boolean;
+  environment: AvalancheEnvironmentInfo | null;
+  escrowId: string | null;
+  chain: AvalancheEscrowSnapshot | null;
+  transactions: AvalancheChainTransaction[];
+  notice: string | null;
+};
+
+export type AvalancheActionInput = {
+  idempotencyKey?: string;
+  submissionId?: string;
+  disputeId?: string;
+  newDeliveryDueAt?: number;
+  by?: string;
+  clientSignature?: string;
+  freelancerSignature?: string;
+};
