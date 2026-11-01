@@ -1,5 +1,7 @@
 # 07. Open questions, decisions and unverified assumptions
 
+> **Scope amendment (2026-11-01):** FreelaX is a development simulation with no real funds ([SIMULATION_SCOPE](../SIMULATION_SCOPE.md)). Supported environments: LOCAL_SIMULATION and AVALANCHE_FUJI only. **Mainnet is out of scope.** Wherever this document mentions Mainnet, production, audits for launch, key ceremonies or a Mainnet cutover, read it as historical planning; see the amendment table at the end of [04](04-migration-roadmap.md) and the guards in [phase-1/simulation-environment-guards.md](phase-1/simulation-environment-guards.md). Decisions D1 to D4 are unchanged.
+
 ## Blocking questions from revision 1: status
 | # | Question | Status | Notes |
 |---|---|---|---|
@@ -78,3 +80,13 @@ Details and evidence: [phase-1/](phase-1/README.md).
 
 ## Needed before Phase 1
 Approval of revision 2, read-only SQL access for rail evidence, accounts for an RPC provider and a KMS, and an explicit answer (or "preserve as is") on questions 1-8 above before Phase 3 starts.
+
+## Scope-related questions raised by the simulation-only direction (2026-11-01)
+No business decision from the list above is closed by the scope constraint; these need the owner.
+1. Are KMS-backed keys, key ceremonies and signer-rotation drills (D3 implementation detail, Phase 6) still wanted for a simulation, or are dev keystores enough?
+2. Is an external audit (backlog 35) still wanted?
+3. Which Fuji assets and faucet process do demonstrations rely on (Circle faucet limits are unverified), and who funds the demo wallets?
+4. Legacy payout rails (VND off-ramp, MISA tax): kept as labelled mocks in every environment? (Unchanged: no legacy path is deleted.)
+5. Does "primary chain" still mean a runtime switch between Solana and Avalanche, or Avalanche for new work with Solana as read-only history?
+6. Database evidence (ADR 0001 queries): the data may be simulation data only; the queries are still needed before retiring any legacy rail.
+Decisions D1 to D4: no genuine conflict found (D3 is the only one touching key custody; its role-separation principles remain valid, its KMS element is the open question above).

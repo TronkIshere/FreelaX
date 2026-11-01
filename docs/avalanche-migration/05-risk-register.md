@@ -1,5 +1,7 @@
 # 05. Risk register
 
+> **Scope amendment (2026-11-01):** FreelaX is a development simulation with no real funds ([SIMULATION_SCOPE](../SIMULATION_SCOPE.md)). Supported environments: LOCAL_SIMULATION and AVALANCHE_FUJI only. **Mainnet is out of scope.** Wherever this document mentions Mainnet, production, audits for launch, key ceremonies or a Mainnet cutover, read it as historical planning; see the amendment table at the end of [04](04-migration-roadmap.md) and the guards in [phase-1/simulation-environment-guards.md](phase-1/simulation-environment-guards.md). Decisions D1 to D4 are unchanged.
+
 Likelihood (L) and impact (I): Low, Medium, High. Rows reference phases in [04](04-migration-roadmap.md).
 
 ## Smart contract risks
@@ -70,3 +72,15 @@ Likelihood (L) and impact (I): Low, Medium, High. Rows reference phases in [04](
 
 ## Rollback
 Phases 1-5 are additive: remove the module/folder or turn the flag off. Phase 4 migrations are additive and ignored by Solana paths. Final switch rollback = configuration flip back to the Solana adapter (rehearsed in Phase 6); escrows created on Avalanche continue to be served by the Avalanche adapter until they settle, so rollback affects new escrows only.
+
+## Scope-related risks and re-framing (2026-11-01, simulation-only constraint)
+Authority: [SIMULATION_SCOPE](../SIMULATION_SCOPE.md). Existing rows are kept; read "production" as "the demonstration environment".
+| # | Risk | L | I | Mitigation |
+|---|---|---|---|---|
+| M1 | Mainnet reachable by configuration or fallback | L | H | compiled chain-id allow-list, endpoint cross-check, dedicated rejection of 43114, no fallback list across environments ([guards](phase-1/simulation-environment-guards.md)) |
+| M2 | Local fork mistaken for Fuji (a fork reports chain id 43113, Phase 1 J14) | M | M | explicit environment setting, endpoint class check, `environment` stored on every chain record |
+| M3 | Misleading wording implies real money or a withdrawable balance | M | H | terminology rules, UI badges, review checklist ([scope doc](../SIMULATION_SCOPE.md) section 7) |
+| M4 | Simulated ledger figures confused with on-chain records | M | M | separate labelled fields and views |
+| M5 | Faucet/testnet availability blocks demonstrations (Phase 1: no funded wallet obtained) | H | M | Anvil path for deterministic runs; documented manual funding steps |
+| M6 | Real keys or funds imported into a dev signer | L | H | signer guard, balance heuristic, secret scanning |
+Re-framed: X1 (key exposure) stays for hygiene but KMS may be optional; O3 "minimal Mainnet smoke before launch" is **withdrawn**.

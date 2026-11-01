@@ -1,5 +1,7 @@
 # FreelaX: Solana to Avalanche C-Chain migration (Phase 0 planning)
 
+> **Scope amendment (2026-11-01):** FreelaX is a development simulation with no real funds ([SIMULATION_SCOPE](../SIMULATION_SCOPE.md)). Supported environments: LOCAL_SIMULATION and AVALANCHE_FUJI only. **Mainnet is out of scope.** Wherever this document mentions Mainnet, production, audits for launch, key ceremonies or a Mainnet cutover, read it as historical planning; see the amendment table at the end of [04](04-migration-roadmap.md) and the guards in [phase-1/simulation-environment-guards.md](phase-1/simulation-environment-guards.md). Decisions D1 to D4 are unchanged.
+
 Status: **Phase 0 (research and architecture) complete; architectural decisions D1-D4 recorded (revision 2).** No implementation exists. Prepared 2026-11-01 against `master`. Phase 1 must not start until this plan is approved.
 
 ## Objective
@@ -55,6 +57,8 @@ Details: [04-migration-roadmap.md](04-migration-roadmap.md).
 | [05-risk-register.md](05-risk-register.md) | Risks and mitigations |
 | [06-implementation-backlog.md](06-implementation-backlog.md) | Ordered tasks |
 | [07-open-questions.md](07-open-questions.md) | Decisions, unverified assumptions, experiments |
+| [../SIMULATION_SCOPE.md](../SIMULATION_SCOPE.md) | **Canonical project scope: development simulation, no real funds, Mainnet excluded** |
+| [phase-1/](phase-1/README.md) | Phase 1 experiments and acceptance report |
 
 ## Key architectural decisions
 1. C-Chain only; no custom Avalanche L1.

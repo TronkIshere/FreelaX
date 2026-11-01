@@ -4,6 +4,8 @@ FreelaX là marketplace hai phía: **Client** thuê việc, **Freelancer** nhậ
 
 **Trạng thái (2026-10-10):** luồng thanh toán thống nhất `UNIFIED_USDC_PAYOUT` **đã triển khai ở phạm vi local mock**. Mọi gate trong [checklist](PAYMENT_FLOW_REBUILD_CHECKLIST.md) đều đạt, bằng chứng ở [VERIFICATION](VERIFICATION.md). Môi trường local đã chuyển đổi: Job mới chỉ đi luồng này, Job cũ giữ rail gốc. USD/VND là đối tác **mô phỏng**, USDC là **Mock USDC** trên Solana local validator. **Chưa** có tiền thật, đối tác thật hay devnet.
 
+> **Phạm vi (2026-11-01):** FreelaX là bản mô phỏng phát triển, không xử lý tiền thật; mọi số tiền, phí, thuế, chi trả trong tài liệu này là **mô phỏng**. Chỉ hỗ trợ LOCAL_SIMULATION và AVALANCHE_FUJI (testnet); Mainnet ngoài phạm vi. Xem [SIMULATION_SCOPE](../SIMULATION_SCOPE.md). Nội dung bên dưới về Solana local mock giữ nguyên như lịch sử.
+
 ## Đọc tài liệu theo thứ tự
 
 | # | Tài liệu | Đọc để biết |

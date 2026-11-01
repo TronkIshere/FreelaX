@@ -1,5 +1,7 @@
 # 04. Migration roadmap
 
+> **Scope amendment (2026-11-01):** FreelaX is a development simulation with no real funds ([SIMULATION_SCOPE](../SIMULATION_SCOPE.md)). Supported environments: LOCAL_SIMULATION and AVALANCHE_FUJI only. **Mainnet is out of scope.** Wherever this document mentions Mainnet, production, audits for launch, key ceremonies or a Mainnet cutover, read it as historical planning; see the amendment table at the end of [04](04-migration-roadmap.md) and the guards in [phase-1/simulation-environment-guards.md](phase-1/simulation-environment-guards.md). Decisions D1 to D4 are unchanged.
+
 Complexity scale: S (days of focused work), M, L, XL. No calendar durations are given because none can be justified from the evidence. Critical path: Phase 1 -> 2 -> 3 -> 4 -> 6 -> Final. Parallel: Phase 2 and Phase 3 (after Phase 1); Phase 5 can start after the Phase 4 neutral API shape is frozen. External dependencies: Fuji AVAX and test USDC, an RPC provider account, a KMS account, a Snowtrace/explorer API key (if needed), an auditor for the contract before Mainnet.
 
 Cross-cutting rules for every phase: Solana source is not edited except to wire the neutral port; persisted enums unchanged; each phase ends with an explicit review before the next starts.
@@ -32,3 +34,14 @@ Cross-cutting rules for every phase: Solana source is not edited except to wire 
 
 ## Business behaviour preserved
 PaymentFlow, 72h window, one extension, dispute and admin decisions, fees, tax, idempotency, UNKNOWN handling, reconciliation, schedulers, payment-backend and MISA integration, auth, notifications, persisted enums, legacy payout, and rails stay unchanged unless an issue is documented and justified first.
+
+## Scope amendment table (2026-11-01, simulation-only constraint)
+Authority: [SIMULATION_SCOPE](../SIMULATION_SCOPE.md). Phase text above is preserved as history; where it conflicts, this table wins.
+| Phase text | Amendment |
+|---|---|
+| Final Phase: configure Mainnet addresses, deploy and verify a Mainnet contract, flip primary, Mainnet smoke with real amounts | **Withdrawn.** Mainnet is out of scope. "Switch primary" is reinterpreted as making Avalanche the primary *development/demo* chain (config switch between LOCAL_SIMULATION and AVALANCHE_FUJI, with Solana kept as the legacy reference). Any Mainnet proposal needs a separate explicit owner decision. |
+| Phase 6 "production readiness", release gates, key ceremony, signer rotation drill, monitoring for money movement | Reinterpreted as **quality gates for the simulation**. External audit, key ceremony and KMS drills: owner to confirm whether still wanted (see [07](07-open-questions.md)). Fault-injection, reconciliation and idempotency gates remain valuable. |
+| Phase 2 acceptance "startup guard rejects a dev signer on the Mainnet chain id" | **Replaced** by: reject the Mainnet chain id entirely and every chain id outside the allow-list; see [phase-1/simulation-environment-guards.md](phase-1/simulation-environment-guards.md). |
+| Phase 3/4/5 "Fuji deployment, Fuji e2e" | Unchanged and now central: Fuji is the public demonstration environment; Anvil is the deterministic one. |
+| Fiat legs (USD in, VND out, tax certificates) | Stay clearly labelled mocks. |
+Phase 1 remains PARTIAL; Phase 2 has not started.

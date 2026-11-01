@@ -1,5 +1,7 @@
 # Phase 1 - Acceptance report
 
+> **Scope amendment (2026-11-01):** FreelaX is a development simulation with no real funds ([SIMULATION_SCOPE](../../SIMULATION_SCOPE.md)); Mainnet is out of scope. Mainnet probes in this phase were read-only and historical; no further Mainnet contact (including a Mainnet fork test) is planned. Guard evaluation: [simulation-environment-guards.md](simulation-environment-guards.md).
+
 Date: 2026-11-01. Base: `master` @ `1662a80`. Status keys: **PASS** (evidence recorded), **PARTIAL**, **INCONCLUSIVE** (could not be established), **FAIL**, **BLOCKED** (needs something unavailable).
 **Overall: PARTIAL. Recommendation: resolve a short list of blockers before Phase 2** (section 6).
 

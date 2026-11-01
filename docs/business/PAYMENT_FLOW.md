@@ -1,5 +1,7 @@
 # Luồng tiền của một Job
 
+> **Phạm vi (2026-11-01):** mọi dòng tiền trong tài liệu này là **mô phỏng** (Mock USDC local hoặc testnet USDC); không có tiền thật, không quyết toán thật, không rút tiền mặt. Xem [SIMULATION_SCOPE](../SIMULATION_SCOPE.md). Nội dung giữ nguyên như lịch sử.
+
 Mỗi Job có **một `paymentFlowId`**. Mọi bước tiền (nộp USD, USDC, vault, release, rút, chi VND, phí, hoàn USD) đều gắn với mã này và có bằng chứng riêng. Hệ thống chỉ ghi một bước là "đã xác nhận" khi có bằng chứng từ nguồn độc lập: sao kê đối tác, hoặc dữ liệu trên Solana. Một response HTTP thành công không được tính là bằng chứng.
 
 Phạm vi: local mock. Số liệu và đối tác đều mô phỏng.

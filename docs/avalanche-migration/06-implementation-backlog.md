@@ -1,5 +1,7 @@
 # 06. Implementation backlog (not started)
 
+> **Scope amendment (2026-11-01):** FreelaX is a development simulation with no real funds ([SIMULATION_SCOPE](../SIMULATION_SCOPE.md)). Supported environments: LOCAL_SIMULATION and AVALANCHE_FUJI only. **Mainnet is out of scope.** Wherever this document mentions Mainnet, production, audits for launch, key ceremonies or a Mainnet cutover, read it as historical planning; see the amendment table at the end of [04](04-migration-roadmap.md) and the guards in [phase-1/simulation-environment-guards.md](phase-1/simulation-environment-guards.md). Decisions D1 to D4 are unchanged.
+
 Ordered by dependency; none may begin before Phase 0 approval. Priority P0 critical path, P1 required, P2 optional. "Expected files" are proposals. Phases: [04](04-migration-roadmap.md). Revision 2 adds the contract and signer security tasks (rows 12-18, 27-29, 35).
 
 ## Phase 1 execution status (updated after Phase 1; evidence in [phase-1/](phase-1/README.md))
@@ -54,3 +56,16 @@ Only Phase 1 rows are updated. Phase 2+ rows are unchanged and **not started**. 
 | 36 | Mainnet deploy, config, primary switch, rollback test | Final | 31-35 | P0 | all | runbooks | gates passed |
 
 Parallelizable: 5 and 6 with 3 and 4; 8-12 with 13-19 once 13-15 are approved; 29 with 25-28 once 20 is frozen. Critical path: 1 -> 7 -> 13 -> 16 -> 17 -> 22 -> 25 -> 31 -> 35 -> 36.
+
+## Scope amendment (2026-11-01, simulation-only constraint)
+Authority: [SIMULATION_SCOPE](../SIMULATION_SCOPE.md). Rows above are historical; these statuses override. No row is started.
+| # | Amendment |
+|---|---|
+| 10 | Replace "Mainnet guard" by an **environment allow-list guard** (reject 43114 and all unlisted chain ids); KMS signer becomes **optional** (owner to confirm); dev signer stays the default for LOCAL_SIMULATION and AVALANCHE_FUJI |
+| 19 | Fuji deployment remains; explorer verification optional |
+| 31 | Fuji and Anvil e2e remain; "real amounts" never apply |
+| 33, 34 | Drills reinterpreted as simulation quality drills; scope to confirm |
+| 35 | External audit: **owner decision required** (a simulation may not need one) |
+| 36 | **WITHDRAWN** (Mainnet deploy, primary switch with Mainnet). Replaced, if the owner wants it, by a development-only configuration switch task |
+| new | Environment/record labelling: `environment`, `isSimulated` on API and persisted chain records; UI terminology per the scope doc (Phase 4/5) |
+| new | Simulated USDC token for LOCAL_SIMULATION and a deployment manifest (Phase 3) |

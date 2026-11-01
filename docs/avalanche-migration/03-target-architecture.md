@@ -1,5 +1,7 @@
 # 03. Target architecture
 
+> **Scope amendment (2026-11-01):** FreelaX is a development simulation with no real funds ([SIMULATION_SCOPE](../SIMULATION_SCOPE.md)). Supported environments: LOCAL_SIMULATION and AVALANCHE_FUJI only. **Mainnet is out of scope.** Wherever this document mentions Mainnet, production, audits for launch, key ceremonies or a Mainnet cutover, read it as historical planning; see the amendment table at the end of [04](04-migration-roadmap.md) and the guards in [phase-1/simulation-environment-guards.md](phase-1/simulation-environment-guards.md). Decisions D1 to D4 are unchanged.
+
 Principles: do not rewrite FreelaX; Solana stays; Avalanche is independently buildable; neutral types in the application layer; no unnecessary abstractions. Background: [00](00-current-architecture-audit.md), [01](01-avalanche-technical-research.md).
 
 ## 1. Layers and dependency direction

@@ -1,5 +1,7 @@
 # Phase 1 - Native USDC validation (Fuji, with Mainnet read-only comparison)
 
+> **Scope amendment (2026-11-01):** FreelaX is a development simulation with no real funds ([SIMULATION_SCOPE](../../SIMULATION_SCOPE.md)); Mainnet is out of scope. Mainnet probes in this phase were read-only and historical; no further Mainnet contact (including a Mainnet fork test) is planned. Guard evaluation: [simulation-environment-guards.md](simulation-environment-guards.md).
+
 Run: 2026-11-01. Evidence: [fuji-probe-official.json](evidence/fuji-probe-official.json), [mainnet-usdc-readonly.txt](evidence/mainnet-usdc-readonly.txt), [forge-usdc-fork-tests.txt](evidence/forge-usdc-fork-tests.txt), [java-fuji-fork-experiments.json](evidence/java-fuji-fork-experiments.json) (J14). Test source: `prototypes/solidity-foundry/test/UsdcFork.t.sol`.
 
 ## U1. Addresses (re-verified)

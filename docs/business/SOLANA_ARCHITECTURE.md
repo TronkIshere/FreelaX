@@ -1,5 +1,7 @@
 # Solana trong FreelaX
 
+> **Phạm vi (2026-11-01):** Solana là triển khai mô phỏng cũ/tham chiếu; hướng chính hiện tại là Avalanche (LOCAL_SIMULATION và AVALANCHE_FUJI). Không có tiền thật. Xem [SIMULATION_SCOPE](../SIMULATION_SCOPE.md).
+
 ## Vì sao có Solana
 
 Client và Freelancer cần một nơi **giữ tiền trung lập**: tiền đã được nộp thật, Freelancer yên tâm làm việc, và không bên nào tự ý rút được. FreelaX dùng một **chương trình (smart contract) trên Solana** làm nơi giữ đó. Tiền được giữ dưới dạng USDC (stablecoin, 1 USDC ≈ 1 USD). Ai cũng kiểm tra được tiền đang nằm ở đâu, và chỉ đúng quy tắc mới mở được.

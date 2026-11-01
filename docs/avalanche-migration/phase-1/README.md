@@ -1,5 +1,7 @@
 # Phase 1 - Avalanche environment setup and technical experiments
 
+> **Scope amendment (2026-11-01):** FreelaX is a development simulation with no real funds ([SIMULATION_SCOPE](../../SIMULATION_SCOPE.md)); Mainnet is out of scope. Mainnet probes in this phase were read-only and historical; no further Mainnet contact (including a Mainnet fork test) is planned. Guard evaluation: [simulation-environment-guards.md](simulation-environment-guards.md).
+
 Executed **2026-11-01** against `master` (Phase 0 commit `1662a80`). Scope: environment and technical validation only. **Nothing in production code, configuration, schemas, Solana modules or dependencies was changed; nothing was committed or pushed; Phase 2 has not started.**
 
 ## Final status: PARTIAL, technically viable with caveats
@@ -26,6 +28,7 @@ The proposed architecture (web3j + Foundry + OpenZeppelin on C-Chain, native USD
 | [timestamp-deadline-experiments.md](timestamp-deadline-experiments.md) | Timestamp and deadline semantics |
 | [rpc-reconciliation-evaluation.md](rpc-reconciliation-evaluation.md) | Scanning and reconciliation strategy |
 | [security-key-management-evaluation.md](security-key-management-evaluation.md) | Signer architecture (analysis only) |
+| [simulation-environment-guards.md](simulation-environment-guards.md) | Evaluation of startup/config guards for simulation-only operation |
 | [phase-1-acceptance-report.md](phase-1-acceptance-report.md) | Acceptance table, blockers, recommendation |
 
 Raw evidence: [evidence/](evidence/). Reproduce: `scripts/run-all.sh` (needs docker, node 22, JDK 21, Maven). Prototypes (isolated): `prototypes/solidity-foundry`, `prototypes/java-web3j`, `prototypes/ws-observer`.

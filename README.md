@@ -6,6 +6,15 @@ FreelaX là marketplace hai phía cho **Client** (thuê việc) và **Freelancer
 
 **Trạng thái (2026-10-10):** luồng `UNIFIED_USDC_PAYOUT` **đã triển khai ở phạm vi local mock**: Mock USDC trên Solana local validator, đối tác USD/VND và MISA đều mô phỏng. Môi trường local đã chuyển đổi, nên Job mới chỉ đi luồng này. **Chưa** có tiền thật, đối tác thật hay devnet/production.
 
+## Phạm vi dự án: mô phỏng phát triển trên Avalanche (ràng buộc cố định)
+
+> FreelaX is an Avalanche-powered development simulation of a USDC-based freelance payment and escrow platform. It demonstrates blockchain-based payment workflows, milestone escrow, transaction verification, and AI-assisted financial monitoring without handling real-world funds or providing actual financial settlement.
+
+- **Không xử lý tiền thật** và không quyết toán tài chính thật. Công nghệ blockchain là thật (EVM, chữ ký, giao dịch trên testnet công khai), nhưng mọi nghiệp vụ tài chính đều là **mô phỏng**.
+- Chỉ hỗ trợ hai môi trường: **LOCAL_SIMULATION** (Anvil/EVM cục bộ, USDC mô phỏng) và **AVALANCHE_FUJI** (testnet AVAX và testnet USDC, giao dịch thật trên testnet công khai). **Mainnet nằm ngoài phạm vi**: không triển khai, không cấu hình, không có đường dự phòng.
+- Ngôn ngữ giao diện: "Simulation Balance", "Testnet USDC", "Simulated Escrow", "Testnet Transaction", "Demonstration Only"; tránh "số dư thật", "rút tiền", "đã nhận tiền thật".
+- Chi tiết, lý do dùng Avalanche, khác biệt local và testnet: [docs/SIMULATION_SCOPE.md](docs/SIMULATION_SCOPE.md). Phần "Những gì sẽ bổ sung" bên dưới là danh sách lịch sử; các mục tiền thật, đối tác thật, ví người dùng thật, Mainnet/production **không thuộc phạm vi**.
+
 ## Hệ thống có gì và đã làm được gì
 
 | Nhóm | Đã có |
@@ -118,6 +127,8 @@ curl -fsS -H 'Content-Type: application/json' --data '{"jsonrpc":"2.0","id":1,"m
 **Dừng:** `Ctrl+C` validator, rồi `docker compose --profile deploy stop`. Tránh `down -v` nếu muốn giữ dữ liệu.
 
 ## Những gì sẽ bổ sung
+
+> Ghi chú phạm vi (2026-11-01): dự án là mô phỏng phát triển ([SIMULATION_SCOPE](docs/SIMULATION_SCOPE.md)). Các dòng "Tiền thật và đối tác thật", "Solana devnet/production", "Ví và khóa cho người dùng thật", "Chứng từ thuế thật" bên dưới **nằm ngoài phạm vi**; giữ nguyên làm tư liệu lịch sử.
 
 | Hạng mục | Ghi chú |
 | --- | --- |

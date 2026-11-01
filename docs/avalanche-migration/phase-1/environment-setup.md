@@ -1,5 +1,7 @@
 # Phase 1 - Environment setup and exact tool versions
 
+> **Scope amendment (2026-11-01):** FreelaX is a development simulation with no real funds ([SIMULATION_SCOPE](../../SIMULATION_SCOPE.md)); Mainnet is out of scope. Mainnet probes in this phase were read-only and historical; no further Mainnet contact (including a Mainnet fork test) is planned. Guard evaluation: [simulation-environment-guards.md](simulation-environment-guards.md).
+
 Run date: **2026-11-01** (host clock UTC+7). Host: Windows 11 Home 10.0.26300, Git Bash/PowerShell. Everything below was observed on this machine; nothing was assumed.
 
 ## Tool inventory (observed)
