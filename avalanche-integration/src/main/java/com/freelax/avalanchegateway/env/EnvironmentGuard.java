@@ -116,7 +116,7 @@ public final class EnvironmentGuard {
         }
     }
 
-    static boolean isLocalClass(String host) {
+    public static boolean isLocalClass(String host) {
         return host.equals("localhost") || host.equals("::1") || host.equals("[::1]")
                 || LOOPBACK_V4.matcher(host).matches()
                 || host.equals("host.docker.internal")

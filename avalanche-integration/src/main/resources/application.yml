@@ -15,3 +15,14 @@ avalanche:
       url: ${AVALANCHE_RPC_SECONDARY_URL:}
     timeout-ms: ${AVALANCHE_RPC_TIMEOUT_MS:10000}
     min-gap-ms: ${AVALANCHE_RPC_MIN_GAP_MS:1000}
+  # Development signers: opt-in, LOCAL_SIMULATION only (enabling them elsewhere aborts startup).
+  signers:
+    enabled: ${AVALANCHE_SIGNERS_ENABLED:false}
+  # Transaction tracking and submission: opt-in. Needs a separately provisioned local MySQL database named avalanche_gateway.
+  tx:
+    enabled: ${AVALANCHE_TX_ENABLED:false}
+    reconcile-interval-ms: ${AVALANCHE_TX_RECONCILE_INTERVAL_MS:0}
+  db:
+    url: ${AVALANCHE_DB_URL:}
+    username: ${AVALANCHE_DB_USERNAME:}
+    password: ${AVALANCHE_DB_PASSWORD:}

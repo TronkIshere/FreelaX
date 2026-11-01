@@ -177,6 +177,13 @@ services:
       AVALANCHE_ENVIRONMENT: ${AVALANCHE_ENVIRONMENT:-}
       AVALANCHE_RPC_PRIMARY_URL: ${AVALANCHE_RPC_PRIMARY_URL:-}
       AVALANCHE_RPC_SECONDARY_URL: ${AVALANCHE_RPC_SECONDARY_URL:-}
+      # Opt-in features, off by default. Signers exist only in LOCAL_SIMULATION; tracking needs a local MySQL database
+      # named avalanche_gateway that the operator provisions (blank values make the service refuse to enable it).
+      AVALANCHE_SIGNERS_ENABLED: ${AVALANCHE_SIGNERS_ENABLED:-false}
+      AVALANCHE_TX_ENABLED: ${AVALANCHE_TX_ENABLED:-false}
+      AVALANCHE_DB_URL: ${AVALANCHE_DB_URL:-}
+      AVALANCHE_DB_USERNAME: ${AVALANCHE_DB_USERNAME:-}
+      AVALANCHE_DB_PASSWORD: ${AVALANCHE_DB_PASSWORD:-}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:

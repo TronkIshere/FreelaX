@@ -1,10 +1,11 @@
 # Avalanche migration: project status
 
-Last updated: 2026-11-01. Scope: [SIMULATION_SCOPE](../SIMULATION_SCOPE.md) (LOCAL_SIMULATION and AVALANCHE_FUJI only; Mainnet out of scope; no real funds).
+Last updated: 2026-11-01 (after M3). Scope: [SIMULATION_SCOPE](../SIMULATION_SCOPE.md) (LOCAL_SIMULATION and AVALANCHE_FUJI only; Mainnet out of scope; no real funds).
 
 ## Current phase and milestone
 - Phase 2. **P2-M1 ACCEPTED by the owner (2026-11-01)** with the final decisions below. Report: [phase-2/M1-validation-report.md](phase-2/M1-validation-report.md).
-- **P2-M2 (development signers) implemented and validated; WAITING FOR OWNER REVIEW.** Report: [phase-2/M2-validation-report.md](phase-2/M2-validation-report.md). M3 and later have not started. Execution is sequential with owner review after each milestone: M1 > M2 > M3 > M4 > M5 > M6 > M7 > M8 > M9 > M10 > M11 > M12.
+- **P2-M2 (development signers)** implemented and validated; the owner authorized committing it and starting M3 (2026-11-01). Report: [phase-2/M2-validation-report.md](phase-2/M2-validation-report.md).
+- **P2-M3 (chain client, nonce allocator, transaction tracker) implemented, validated and committed; WAITING FOR OWNER REVIEW.** Report: [phase-2/M3-validation-report.md](phase-2/M3-validation-report.md). M4 and later have not started. Execution is sequential with owner review after each milestone: M1 > M2 > M3 > M4 > M5 > M6 > M7 > M8 > M9 > M10 > M11 > M12.
 
 ## Milestones
 | Milestone | Status |
@@ -13,12 +14,13 @@ Last updated: 2026-11-01. Scope: [SIMULATION_SCOPE](../SIMULATION_SCOPE.md) (LOC
 | Phase 1 (environment, experiments) | **PARTIAL** (funded Fuji wallet and read-only DB evidence still blocked; not waived) |
 | P2-M0 | complete (owner decisions recorded below) |
 | P2-M1 | **accepted by owner** (validated; 24 tests, 22 pass, 2 optional skipped) |
-| P2-M2 | validated, awaiting owner review (43 module tests: 41 pass, 2 optional skipped) |
-| P2-M3 to P2-M12 | not started |
+| P2-M2 | validated and committed (43 module tests at the time: 41 pass, 2 optional skipped) |
+| P2-M3 | **validated and committed, awaiting owner review** (71 module tests: 69 pass, 2 optional skipped) |
+| P2-M4 to P2-M12 | not started |
 
 ## Commits (origin/master)
-`3b12e7a` Phase 0, `1662a80` Phase 0 decisions, `e5127ae` Phase 1 checkpoint, `73b5d14` simulation scope, `cf61c0f` Phase 1 Part B (HEAD, pushed).
-Uncommitted (nothing committed in Phase 2): `docs/avalanche-migration/phase-2/`, this file, `avalanche-integration/`, `Dockerfile.avalanche`, and additive edits to `pom.xml`, `docker-compose.yml`, `.env.example`.
+`3b12e7a` Phase 0, `1662a80` Phase 0 decisions, `e5127ae` Phase 1 checkpoint, `73b5d14` simulation scope, `cf61c0f` Phase 1 Part B (pushed to origin).
+Local, **not pushed** (the owner has not authorized a push for these): `0224c71` docs(avalanche): add phase 2 implementation plan; `c8d18cd` feat(avalanche): implement integration foundation and local signers (M1 + M2); the M3 commit is the next commit on `master` after `c8d18cd` (see `git log`).
 
 ## Approved decisions (owner, 2026-11-01)
 Earlier: D1 to D4; Java 21 baseline for the Avalanche integration; web3j 6.1.0; KMS deferred with ephemeral development signers; simulation-only scope.
@@ -54,11 +56,11 @@ Development signers are permitted **only in LOCAL_SIMULATION**; no backend devel
 
 ## Outstanding owner decisions
 O-2, O-8, O-13 (deferred by owner). Open questions 4 to 8 etc. are covered by O-4/O-5 ("preserve").
-**New, needed before M7 and the Fuji parts of M3/M12:** how Fuji deployment and Fuji smoke transactions are signed when the backend may hold no signer in AVALANCHE_FUJI (see the M2 report, section 5). Not decided; no policy invented.
+**Needed before M7 and the Fuji parts of M12 (M3 needed no Fuji signing):** how Fuji deployment and Fuji smoke transactions are signed when the backend may hold no signer in AVALANCHE_FUJI (see the M2 report, section 5). Not decided; no policy invented.
 
 ## Deferred items and required follow-ups
-- **Deferred O-16 item:** `init-db.sql` `avalanche_gateway` database, to M3 (with O-18).
-- **JDK 21 CI validation: none exists** (the repository has no CI configuration). Required follow-up: one JDK 21 step running `mvn -B -pl avalanche-integration -am test` and the Solana baseline commands when a pipeline exists. No CI overhaul proposed.
+- **Deferred O-16 item: COMPLETED in M3.** `CREATE DATABASE IF NOT EXISTS avalanche_gateway` was added to `init-db.sql` (one additive line, fresh volumes only). O-18 is implemented: Testcontainers for tests, a separately provisioned local MySQL database for runtime, guarded by `DbEndpointGuard` (local host and the name `avalanche_gateway` only).
+- **JDK 21 CI validation: none exists** (the repository has no CI configuration). Required follow-up: one JDK 21 step running `mvn -B -pl avalanche-integration -am test` and the Solana baseline commands when a pipeline exists. It also needs a Docker-capable runner for the Testcontainers tests (M3). No CI overhaul proposed.
 
 ## Known blockers
 - Funded Fuji wallet (human): blocks Fuji deployment, Fuji smoke, Avalanche-native calibration.
@@ -68,7 +70,11 @@ O-2, O-8, O-13 (deferred by owner). Open questions 4 to 8 etc. are covered by O-
 ## Validation results
 - M1: Solana baseline unchanged (16/16 tests before and after); `avalanche-integration` 24 tests (22 pass, 2 optional skipped; the owner review added 2 guard tests); real Anvil and Fuji read-only runs pass; Phase 1 Jackson failure reproduced in the real service and fixed by `jackson-annotations:2.22` (module only); packaged jar and a JDK 21 container validated. Details in the M1 report.
 - M2: `avalanche-integration` default build 43 run, 41 pass, 0 fail, 2 optional skipped; Anvil test 1/1; packaged jar with signers on real Anvil works and persists nothing; Fuji with signers enabled aborts with `SIGNER_FORBIDDEN_ENVIRONMENT` without any RPC call; Solana baseline unchanged (6/6 and 10/10), JDK 17 compile of existing modules passes. Details in the M2 report.
+- M3: `avalanche-integration` default build 71 run, 69 pass, 0 fail, 2 optional skipped (M3 added 28); Phase 1 scenarios S1-S6 and S8 reproduced on a real Anvil and a real MySQL via Testcontainers (S7 hint part belongs to M4); concurrency (16 threads, 50 submissions) never reused a nonce; Solana baseline unchanged (16/16 combined), JDK 17 reactor and existing modules unchanged; JDK 21 image ran with signers, tracking and a throwaway MySQL, Flyway migrated, wrong database name and missing settings refused. Details in the M3 report.
 - Phase 1 evidence otherwise as in [phase-1](phase-1/README.md).
 
+## Known limitations carried forward
+Fuji calibration and the finalized-tag path unmeasured (no funded wallet; no backend Fuji signer by owner rule); no second-provider cross-check before REPLACED (M4); no operator procedure to clear a nonce gap; no business authorization or target allow-list in `SubmissionService` (M7/M8/M9); Testcontainers skip-without-Docker behaviour unverified. See the M3 report, section 7.
+
 ## Next recommended action
-Owner reviews M2 and answers the Fuji-signing question when it becomes relevant (before M7). Then M3 (chain client, nonce allocator, transaction tracker) after explicit approval.
+Owner reviews M3. Then M4 (log scanner, cursor, reconciliation, provider profiles) after explicit approval. The Fuji-signing question must be answered before M7.
