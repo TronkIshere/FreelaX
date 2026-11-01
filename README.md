@@ -32,6 +32,8 @@ FreelaX là marketplace hai phía cho **Client** (thuê việc) và **Freelancer
 5. [Guide trình diễn trên trình duyệt](docs/business/BROWSER_DEMO_GUIDE.md): đi qua luồng sản phẩm bằng giao diện, có ảnh.
 6. [Kiểm chứng](docs/business/VERIFICATION.md), [Checklist](docs/business/PAYMENT_FLOW_REBUILD_CHECKLIST.md), [Runbook chuyển đổi](docs/business/CUTOVER_RUNBOOK.md): bằng chứng, tiêu chí, vận hành.
 
+7. [ADR 0001: chuyển Solana sang Avalanche](docs/adr/0001-solana-to-avalanche-migration.md): quyết định, ràng buộc tương thích và bằng chứng DB cần có trước khi gỡ luồng cũ.
+
 Thư mục `docs/business/archive/` và `docs/ui/` chỉ giữ biên bản lịch sử.
 
 ## Kiến trúc nhanh
@@ -54,7 +56,7 @@ Marketplace là nơi quyết định nghiệp vụ. Solana là bằng chứng ch
 | --- | --- |
 | `frontend/` | Giao diện React; script browser E2E ở `frontend/scripts/` |
 | `marketplace-backend/` | Spring Boot, nghiệp vụ chính, Flyway `db/migration` |
-| `payment-backend/` | Đối tác USD/VND mô phỏng (và BofA mock của P06) |
+| `payment-backend/` | Đối tác USD/VND mô phỏng (luồng thống nhất và partner escrow) cùng module checkout/payout dùng PayPal (đặt tên `BofA`, sandbox ở `dev`) cho luồng Job cũ |
 | `solana-integration/` | Solana Gateway (Spring Boot) |
 | `solana-stablecoin-payout/` | Anchor program, test, script E2E local |
 | `misa-backend/` | Chứng từ thuế mô phỏng |
@@ -68,6 +70,8 @@ Cần Git, Docker + Compose, Solana CLI (`solana-test-validator`), Anchor, Node.
 - mật khẩu tài khoản seed `DEMO_CLIENT_PASSWORD`, `DEMO_FREELANCER_PASSWORD`, `DEMO_ADMIN_PASSWORD`;
 - ví demo: `SOLANA_CUSTODIAL_CLIENT_PUBLIC_KEY`, `DEMO_FREELANCER_SOLANA_PUBLIC_KEY`, `SOLANA_ONRAMP_AUTHORITY_PUBLIC_KEY`, `SOLANA_LOCAL_PRIVATE_KEYS`. Định dạng khóa xem `solana-integration/README.md`.
 - Bật luồng thống nhất cho Job mới: `PAYMENT_FLOW_CUTOVER_ENABLED=true`.
+- Tùy chọn (chỉ `dev` + `localnet`): `LOCAL_WALLET_ENCRYPTION_KEY` tách khóa mã hóa ví demo khỏi JWT secret; `EXCHANGE_RATE_ALLOW_FALLBACK=true` (mặc định ở `dev`) cho phép tỷ giá 25000 khi tỷ giá live lỗi ở luồng cũ. Marketplace không khởi động nếu khóa ví local được đặt ngoài `dev` + `localnet`.
+- `SPRING_PROFILES_ACTIVE` mặc định là `dev` trong `application.yml` và `docker-compose.yml`; môi trường không phải local phải đặt rõ.
 
 **Bước 2 — Build program và bật validator** (giữ terminal này chạy):
 
@@ -122,4 +126,5 @@ curl -fsS -H 'Content-Type: application/json' --data '{"jsonrpc":"2.0","id":1,"m
 | Ví và khóa cho người dùng thật | Cấp phát, bảo vệ, khôi phục ví; bỏ ví demo tự động và endpoint ký thay ở backend (chỉ dành cho localnet) |
 | Chứng từ thuế thật | Kết nối MISA hoặc cơ quan thuế thật; Flyway cho `misa-backend` (hiện vẫn `ddl-auto: update`) |
 | Sản phẩm | Nhiều Milestone trong một Job; chat làm bằng chứng tranh chấp; lịch ngày lễ cho hạn; tối ưu mobile |
+| Avalanche C-Chain | **PLANNED**: chưa có hợp đồng Solidity hay adapter. **PARTIALLY IMPLEMENTED**: cổng `BlockchainGateway` + `SolanaGatewayAdapter`, mới dùng ở `UnifiedUsdFundingService`. Luồng thanh toán cũ (`SOLANA_ESCROW`, Job không có `payment_flow_version`) vẫn đang được giữ; **BLOCKED** gỡ bỏ cho tới khi có số liệu DB, xem [ADR 0001](docs/adr/0001-solana-to-avalanche-migration.md) |
 | Vận hành | Cảnh báo cho khoản `UNKNOWN`/lệch kéo dài; báo cáo đối soát định kỳ theo từng loại tiền |

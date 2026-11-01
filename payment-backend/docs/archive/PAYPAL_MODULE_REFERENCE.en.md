@@ -1,5 +1,7 @@
 # PayPal Module Reference — money-movement logic & disclaimers
 
+> **HISTORICAL / INCORRECT FOR CURRENT CODE (checked 2026-11-01):** describes the former `paypal-backend` with `/paypal/payees/*`, `/internal/paypal/*` and Payee/Transaction and Payee Status modules, none of which exist in `payment-backend` today. Current endpoints are in [`../README.en.md`](../README.en.md).
+
 This document is the detailed technical reference for every money-related calculation and business rule in `paypal-backend`. For run instructions and a high-level endpoint overview, see `README.md`.
 
 Four independent sub-modules are documented here:

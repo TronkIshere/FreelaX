@@ -4,7 +4,7 @@
 
 ## 1. Chuẩn bị
 
-Làm theo [hướng dẫn chạy local trong README](../../../README.md#chạy-demo-local-theo-từng-bước): cấu hình `.env`, bật ứng dụng, rồi kiểm tra giao diện. Với luồng đối tác mock, cần frontend, Marketplace, Payment, MySQL và Redis; validator Solana chỉ cần cho bài kiểm tra Solana riêng ở cuối guide. Kiểm tra `docker compose --profile deploy ps`, rồi mở `http://localhost:8080/login`.
+Làm theo [hướng dẫn chạy local trong README](../../../README.md#khởi-chạy-từng-bước): cấu hình `.env`, bật ứng dụng, rồi kiểm tra giao diện. Với luồng đối tác mock, cần frontend, Marketplace, Payment, MySQL và Redis; validator Solana chỉ cần cho bài kiểm tra Solana riêng ở cuối guide. Kiểm tra `docker compose --profile deploy ps`, rồi mở `http://localhost:8080/login`.
 
 Dùng **hai cửa sổ trình duyệt tách phiên** (hai profile, hoặc một cửa sổ thường và một cửa sổ ẩn danh), một cho Client và một cho Freelancer. Nếu có tài khoản Admin demo, mở phiên thứ ba để xem đối soát.
 
@@ -69,4 +69,4 @@ Nếu muốn máy tự tạo Job demo và kiểm tra giao dịch mock qua Market
 node scripts/partner-mock-e2e.mjs
 ```
 
-Script này dùng tài khoản seed và tạo **Job mới**, độc lập với Job làm tay. Để kiểm tra mock token **on-chain localnet**, làm theo [bước 2, 4 và 6 trong README](../../../README.md#chạy-demo-local-theo-từng-bước). Đó là rail `SOLANA_ESCROW` khác với ký quỹ đối tác mock, sử dụng Mock USDC trên validator local; **devnet chưa được triển khai**. Cả hai bài kiểm tra đều không chứng minh chuyển USD/VND ngân hàng thật.
+Script này dùng tài khoản seed và tạo **Job mới**, độc lập với Job làm tay. Để kiểm tra mock token **on-chain localnet**, làm theo [bước 2, 4 và 6 trong README](../../../README.md#khởi-chạy-từng-bước). Đó là rail `SOLANA_ESCROW` khác với ký quỹ đối tác mock, sử dụng Mock USDC trên validator local; **devnet chưa được triển khai**. Cả hai bài kiểm tra đều không chứng minh chuyển USD/VND ngân hàng thật.

@@ -1,5 +1,7 @@
 # Báo cáo triển khai Solana module — Stablecoin Payout
 
+> **HISTORICAL (kiểm tra 2026-11-01):** biên bản theo thời điểm của baseline invoice/on-ramp; không nhắc milestone escrow nên không mô tả đủ chương trình hiện tại. Đối chiếu với [Solana trong FreelaX](../../docs/business/SOLANA_ARCHITECTURE.md) và `programs/invoice_payments/src/lib.rs`.
+
 Tài liệu này mô tả **code đang tồn tại trong repository**, IDL được sinh bởi
 `anchor build` và kết quả test thực tế trên local validator. Đây không phải bản
 mô tả ý tưởng tương lai. Những phần chưa có code được ghi rõ là chưa triển khai.

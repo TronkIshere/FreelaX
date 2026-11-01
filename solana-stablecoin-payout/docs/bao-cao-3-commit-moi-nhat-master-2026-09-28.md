@@ -1,5 +1,7 @@
 # Báo cáo phân tích 3 commit mới nhất của FreelaX `master`
 
+> **HISTORICAL (kiểm tra 2026-11-01):** biên bản theo thời điểm của baseline invoice/on-ramp; không nhắc milestone escrow nên không mô tả đủ chương trình hiện tại. Đối chiếu với [Solana trong FreelaX](../../docs/business/SOLANA_ARCHITECTURE.md) và `programs/invoice_payments/src/lib.rs`.
+
 Ngày kiểm tra: **28/09/2026**
 Repository: `https://github.com/TronkIshere/FreelaX`
 HEAD `master` đã fetch và xác minh: `26c44d37aa8a21d6d266231d18435d1a0e6031a1`

@@ -11,4 +11,6 @@ Các file ở đây giữ nguyên chi tiết điều tra, quyết định, guide
 | Bằng chứng đối tác mock local | [Partner E2E 2026-10-09](PARTNER_MOCK_LOCAL_E2E_20261009.md) |
 | Thao tác hai phía trên demo USD → VND đi tắt | [Guide E2E local cũ](LOCAL_TWO_SIDED_E2E_GUIDE.md) |
 
+Handoff demo cục bộ cũ: [AI handoff](FREELAX_AI_HANDOFF_LOCAL_DEMO_WITH_ACCOUNTS.md); checklist backend MVP cũ: [MVP backend checklist](MVP_BACKEND_CHECKLIST.md).
+
 Tài liệu thiết kế MVP cũ nằm ở [functional spec](../../mvp-functional-spec.md); báo cáo tích hợp Solana cũ nằm ở [Solana report](../../../solana-stablecoin-payout/docs/bao-cao-tich-hop-freelax-solana.md). Các tài liệu này là tham chiếu lịch sử, không tự chứng minh API hiện hành.

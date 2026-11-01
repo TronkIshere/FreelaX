@@ -1,5 +1,7 @@
 # Checklist sửa lỗi tích hợp Marketplace - Solana cho MVP
 
+> **HISTORICAL (kiểm tra 2026-11-01):** biên bản theo thời điểm của baseline invoice/on-ramp; không nhắc milestone escrow nên không mô tả đủ chương trình hiện tại. Đối chiếu với [Solana trong FreelaX](../../docs/business/SOLANA_ARCHITECTURE.md) và `programs/invoice_payments/src/lib.rs`.
+
 ## 1. Phạm vi và kết luận
 
 Tài liệu này tổng hợp các điểm cần sửa khi nối thay đổi tại commit

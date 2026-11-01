@@ -152,7 +152,7 @@ Môi trường: Compose local, localnet `127.0.0.1:9123`, flag cutover `true`. T
 | Ca biên | `frontend/scripts/unified-browser-edge-e2e.mjs` | Run `mv1lme5c`, Job `df84c4dd-16b2-4368-8640-0e8fc751b512`: thao tác bàn phím (outline 3px); Payment Backend dừng lúc nộp USD thì bước hiện "Đang kiểm tra", công việc không mở, sau đó hồi phục; chuẩn bị giữ tiền hai lần vẫn chỉ ký quỹ một lần bằng ví tự động. Ca "từ chối ký trong ví" không còn áp dụng cho localnet. |
 | Khoản cũ `terms-v1` | DB local | SmartClass vẫn chi 2.910.000 VND, chứng từ cũ 3.000.000 / 300.000 VND giữ nguyên; trang Job hiện cảnh báo cách tính cũ. |
 
-**Giới hạn:** ví demo tự động chỉ bật ở profile `dev` + `localnet`. Backend giữ khóa (mã hóa bằng khóa dẫn xuất từ JWT secret) và ký thay mọi giao dịch có ví của tài khoản làm signer. Không dùng cho môi trường khác.
+**Giới hạn:** ví demo tự động chỉ bật ở profile `dev` + `localnet`. Backend giữ khóa (mã hóa bằng khóa dẫn xuất từ JWT secret) và ký thay mọi giao dịch có ví của tài khoản làm signer. Không dùng cho môi trường khác. Từ 2026-11-01 khóa mã hóa có thể tách khỏi JWT secret bằng `LOCAL_WALLET_ENCRYPTION_KEY` và ứng dụng không khởi động nếu khóa ví local được đặt ngoài `dev` + `localnet`; các kiểm thử đơn vị tương ứng đã chạy, E2E ở bảng trên chưa chạy lại.
 
 ## Mẫu ghi bằng chứng khi hoàn thành gate mới
 

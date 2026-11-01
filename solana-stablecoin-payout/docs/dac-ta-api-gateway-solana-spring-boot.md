@@ -1,9 +1,11 @@
 # Đặc tả Solana API Gateway cho Spring Boot
 
+> **HISTORICAL / PARTIALLY OUTDATED (kiểm tra 2026-11-01):** tài liệu mô tả baseline trước khi có milestone escrow (không nhắc `fund_milestone_escrow`, `settle_milestone_escrow` hay bốn endpoint `/escrows/*` của gateway). Program ID hiện hành là `2Tx2faZU1siV1xvKMxbRN1VesgXftjM3Lff3Nwn69oqb`; mã nguồn hiện hành và [Solana trong FreelaX](../../docs/business/SOLANA_ARCHITECTURE.md) là nguồn đúng.
+
 Tài liệu này ánh xạ trực tiếp Program `invoice_payments` sang REST API cho
 backend Spring Boot.
 
-- Program ID: `4Wd6umju26vej2ftzwR6J55pjkUqDQsxfVkt46UqDb1b`
+- Program ID: `2Tx2faZU1siV1xvKMxbRN1VesgXftjM3Lff3Nwn69oqb`
 - Legacy Token Program: `TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA`
 - Associated Token Program: `ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL`
 - Số lượng instruction trong IDL hiện tại: 13

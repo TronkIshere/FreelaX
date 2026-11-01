@@ -76,3 +76,19 @@ Phạm vi: local mock. Số liệu và đối tác đều mô phỏng.
 ## Job cũ
 
 Các rail cũ (`SIMULATED`, `SOLANA_ESCROW`, `PARTNER_ESCROW_MOCK`) chỉ còn để đọc và xử lý Job đã tạo trước khi chuyển đổi. Không chuyển tiền đang dở của Job cũ sang luồng mới. Xem [runbook](CUTOVER_RUNBOOK.md).
+
+## Tên mốc trong tài liệu và step trong mã
+
+Tài liệu dùng tên mốc nghiệp vụ; chúng **không phải** giá trị enum. Danh sách step thật nằm ở `PaymentFlowService.STEPS`.
+
+| Mốc trong tài liệu | Step trong mã |
+| --- | --- |
+| Nộp USD / nhận USD | `USD_ORDER`, `USD_RECEIVED` |
+| USDC vào ví Client | `CLIENT_USDC` |
+| `ESCROW_FUNDED` | `ESCROW` ở trạng thái `CONFIRMED` |
+| Công việc được chấp nhận | `WORK_ACCEPTED` |
+| `USDC_RELEASED` | `USDC_RELEASE` |
+| `USDC_REFUNDED` | `USDC_REFUND` |
+| Rút USDC | `WITHDRAWAL` |
+| `VND_PAID` | `VND_PAYOUT` đã xác nhận (kèm `PLATFORM_FEE`; khấu trừ thuế ghi là `TAX_WITHHELD` trong sao kê) |
+| `USD_REFUNDED` | `USD_REFUND` |
