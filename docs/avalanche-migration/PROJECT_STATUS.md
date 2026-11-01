@@ -25,7 +25,8 @@ Last updated: 2026-11-01 (after M3). Scope: [SIMULATION_SCOPE](../SIMULATION_SCO
 | P2-M8 | **validated and committed** (gateway REST API, neutral port types, marketplace adapter and client behind a flag; gateway 104 tests: 101 pass, 3 optional skipped; marketplace full suite 364 pass) |
 | P2-M9 | **validated and committed** (additive V6 migration verified on MySQL, authorization-before-submission service behind a flag; marketplace full suite 381 pass; fee, tax, payout and notification wiring NOT done, decisions needed) |
 | P2-M10 | **validated and committed** (EIP-1193 adapter, chain allow-list 31337/43113, 24 tests; 13 pre-existing suites cannot load on Node 22.10 because of ESM uuid, to be re-run on Node >= 22.12) |
-| P2-M11 to P2-M12 | not started |
+| P2-M11 | **partially implemented and committed** (panel, banners, ten-state display, fund/extension-approve/release; submit, revise, dispute, resolve, extension-request and mutual-refund UI NOT implemented; no browser wallet check) |
+| P2-M12 | not started |
 
 ## Commits (origin/master)
 `3b12e7a` Phase 0, `1662a80` Phase 0 decisions, `e5127ae` Phase 1 checkpoint, `73b5d14` simulation scope, `cf61c0f` Phase 1 Part B (pushed to origin).

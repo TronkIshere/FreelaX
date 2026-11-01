@@ -8,6 +8,7 @@ import { ContractReviews } from './ContractReviews';
 import { activeDispute } from './disputeContracts';
 import { FundingPanel } from './Funding';
 import { MutualRefundPanel } from './MutualRefund';
+import { AvalancheEscrowPanel, avalancheUiEnabled } from './AvalancheEscrowPanel';
 import { connectSolanaWallet, signEscrowTransaction } from './escrowWallet';
 import { financialCopy, financialMoneyTone, settlementMoneyLabel, settlementNeedsRefresh, settlementStageLabel } from './financeStatus';
 import { disputeLabel, submissionLabel } from './status';
@@ -477,6 +478,7 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
       {freelancer && escrowView.status === 'Submitted' && !!escrowView.reviewDueAt
         && now >= Number(escrowView.reviewDueAt) * 1000 && <button className="button" disabled={busy} onClick={() => void claimEscrow()}>Nhận tiền sau hạn duyệt</button>}
     </section>}
+    {avalancheUiEnabled() && (client || freelancer) && <AvalancheEscrowPanel contractId={contract.id} user={user} isClient={client} isFreelancer={freelancer} onChanged={synchronize} />}
     {escrowRail && escrowView && <MutualRefundPanel contractId={contract.id} escrow={escrowView}
       client={client} freelancer={freelancer} onRefresh={synchronize} onBusy={setFundingBusy} />}
     {escrowRail && escrowView?.status === 'Funded' && contract.status === 'ACTIVE' && !latest && <section className="review-action" aria-label="Gia hạn bàn giao">

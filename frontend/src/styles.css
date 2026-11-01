@@ -1974,3 +1974,12 @@ a { color: inherit; }
 .recon-kpis-static .recon-kpi:hover { background: var(--cream); }
 .recon-kpis-static .recon-kpi strong { font-size: 28px; overflow-wrap: anywhere; }
 .admin-filter select { width: 100%; min-height: 42px; padding: 8px 10px; border: 2px solid var(--ink); background: var(--cream); color: var(--ink); }
+
+.avalanche-banner { padding: 0.5rem 0.75rem; border-radius: 6px; border: 1px solid currentColor; }
+.avalanche-banner.simulated { background: #fff8e1; color: #6b4e00; }
+.avalanche-banner.testnet { background: #e8f1ff; color: #12408a; }
+.avalanche-transactions { list-style: none; padding: 0; display: grid; gap: 0.5rem; }
+.avalanche-transactions .badge { display: inline-block; padding: 0 0.5rem; border-radius: 999px; border: 1px solid currentColor; font-size: 0.8rem; }
+.avalanche-transactions .tone-success { color: #146c2e; }
+.avalanche-transactions .tone-danger { color: #a11b1b; }
+.avalanche-transactions .tone-warning { color: #8a5a00; }
