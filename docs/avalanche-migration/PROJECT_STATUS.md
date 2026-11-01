@@ -19,7 +19,8 @@ Last updated: 2026-11-01 (after M3). Scope: [SIMULATION_SCOPE](../SIMULATION_SCO
 | P2-M2 | validated and committed (43 module tests at the time: 41 pass, 2 optional skipped) |
 | P2-M3 | **validated and committed, awaiting owner review** (71 module tests: 69 pass, 2 optional skipped) |
 | P2-M4 | **validated and committed** (log scanner, cursor, provider profiles, hints, second-provider cross-check; 85 module tests: 83 pass, 2 optional skipped) |
-| P2-M5 to P2-M12 | not started |
+| P2-M5 | **validated and committed** (Foundry project, MockUSDC, escrow core: 29 Foundry tests pass; O-2 still deferred, no gas comparison claimed) |
+| P2-M6 to P2-M12 | not started |
 
 ## Commits (origin/master)
 `3b12e7a` Phase 0, `1662a80` Phase 0 decisions, `e5127ae` Phase 1 checkpoint, `73b5d14` simulation scope, `cf61c0f` Phase 1 Part B (pushed to origin).
