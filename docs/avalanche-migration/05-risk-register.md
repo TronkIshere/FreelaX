@@ -54,5 +54,19 @@ Likelihood (L) and impact (I): Low, Medium, High. Rows reference phases in [04](
 | O3 | Fuji test USDC differs from production behavior | M | M | fork tests, minimal Mainnet smoke before launch |
 | O4 | Team skill gap in Solidity | M | M | audit, Foundry training, small scope |
 
+## Revision 2 risks (decisions D1-D4)
+| # | Risk | L | I | Mitigation |
+|---|---|---|---|---|
+| X7 | **Single admin key reproduced on EVM** (config admin, arbiter, co-signer, claimer and resolver in one key, as in the Anchor program) | M | H | separate roles and keys ([03](03-target-architecture.md) section 9); backend authorization signer cannot move funds or resolve disputes; admin multisig has no fund access; negative tests in Phase 3 |
+| X8 | Backend authorization signer compromised: attacker mints valid `fund`/`submit`/`requestRevision` authorizations | M | H | KMS key, per-escrow nonce, short deadline, parameters bound in the signature, contract range checks still apply, fast rotation by admin, monitoring of authorizations against MySQL records; impact limited because the signer cannot release or refund |
+| X9 | Submit authorization abuse starts the review clock (and with it auto-release) for unrecorded evidence | M | H | `SubmitAuthorization` binds `evidenceHash` and `submissionCount`; backend signs only for recorded submissions |
+| X10 | Arbiter key lost or compromised | M | H | separate KMS/multisig key, admin rotation, role-based arbiter (open vs snapshot); recovery drill |
+| X11 | Shared contract: one USDC blacklist or pause of the contract address freezes every open escrow (Solana's per-escrow vaults avoid this) | L | H | Phase 3 gate on factory/clones; pull or claimable payout design; operational monitoring of the token's blacklist and pause events |
+| X12 | Deadline race: a transaction submitted before a deadline executes after it under asynchronous execution | M | M | contract checks execution-block time; backend re-reads escrow state before concluding failure; `block.timestamp` semantics tested in Phase 1 |
+| X13 | Contract rules drift from the Anchor semantics (timing boundaries, bounds, no unilateral refund) | M | H | mapping table with one test per row, boundary tests, review against the Rust source |
+| X14 | Preserved ambiguities (Revision state with no deadline, no refund after missed delivery, binary dispute outcome, never-expiring extension request) lock funds longer than intended | M | M | explicitly recorded in [07](07-open-questions.md); preserve as is unless approved; document operational procedures |
+| X15 | Pause semantics diverge (pause freezing release or refund) | L | H | pause blocks only new funding, as on Solana; invariant tests |
+| X16 | Legacy payout paths altered or removed without evidence | L | H | no change without read-only SQL evidence; historical references preserved |
+
 ## Rollback
 Phases 1-5 are additive: remove the module/folder or turn the flag off. Phase 4 migrations are additive and ignored by Solana paths. Final switch rollback = configuration flip back to the Solana adapter (rehearsed in Phase 6); escrows created on Avalanche continue to be served by the Avalanche adapter until they settle, so rollback affects new escrows only.

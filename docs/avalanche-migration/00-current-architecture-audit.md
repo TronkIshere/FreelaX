@@ -25,7 +25,7 @@ ID `2Tx2faZU1siV1xvKMxbRN1VesgXftjM3Lff3Nwn69oqb`. Escrow instructions: `fund_mi
 
 Rules **enforced on-chain** (to be preserved in any replacement):
 - States: Funded, Submitted, Revision, Disputed, Released, Refunded. Key: milestone UUID (16 bytes).
-- Fund needs client **and** marketplace authority (= config admin) signatures. Review window 24-168h (unified rail uses 72h only); legacy adds 24h grace above 500 USDC; max 2 revisions; one extension of at most 7 days.
+- Fund needs client **and** marketplace authority (= config admin) signatures; the arbiter is snapshotted from `config.admin` at fund time. The 72h review window and `max_revisions = 2` are **backend-supplied parameters**; the program only bounds the window to 24-168h and revisions to at most 2. Each escrow has its own vault token account (ATA owned by the escrow PDA), i.e. physical per-escrow custody. `paused` blocks only `fund` (settle, refund and dispute stay open). Review window 24-168h (unified rail uses 72h only); legacy adds 24h grace above 500 USDC; max 2 revisions; one extension of at most 7 days.
 - Submit needs freelancer + marketplace authority. Revision needs client + authority and must precede `review_due_at`.
 - Dispute: from Submitted (before deadline), Funded (only after delivery due date), Revision.
 - Settle: Disputed -> arbiter only with non-zero resolution hash; otherwise release by client, or by **anyone after `review_due_at`** (auto-claim). Mutual refund needs both parties.
@@ -47,7 +47,9 @@ Rules **enforced on-chain** (to be preserved in any replacement):
 | `PARTNER_ESCROW_MOCK` | Escrow funding independent of chain; downstream path **not traced** (open) | None or partial (verify) |
 | `SOLANA_ESCROW` | Full (client-signed fund, on-chain release) | Full |
 | `UNIFIED_USDC_PAYOUT` | Full, most coupled (mock on-ramp, escrow, off-ramp); `payment-flow.cutover-enabled` routes new jobs here | Full |
-`payment-backend` has no chain code and needs no migration. Legacy payout services must not be removed without SQL evidence (queries in [ADR 0001](../adr/0001-solana-to-avalanche-migration.md)).
+`payment-backend` has no chain code and needs no migration. Decision C (revision 2): first-release Avalanche scope is the escrow part of `SOLANA_ESCROW` and `UNIFIED_USDC_PAYOUT`; the legacy downstream payout and historical Solana references are preserved ([03](03-target-architecture.md) section 11).
+
+Escrow ambiguities found in the current program (recorded, not resolved; see [07](07-open-questions.md)): the Revision state has no deadline for resubmission; no unilateral refund exists after a missed delivery date (only dispute or mutual refund); dispute resolution is binary (full release or full refund); a pending extension request never expires; mutual refund is unavailable once Disputed. Legacy payout services must not be removed without SQL evidence (queries in [ADR 0001](../adr/0001-solana-to-avalanche-migration.md)).
 
 ## 7. Database
 Flyway V1-V5 (marketplace), V1 each in payment-backend and gateway; misa migrations not verified. Chain-bearing: `wallets` (`public_key` varchar 64, encrypted demo key), `escrow_contracts` (PDA, mint, five signature columns, `last_chain_status`), `escrow_action_intents`, `payment_flows` (`network`, `mint`), `payment_flow_steps` (signature, account, idempotency key), `payment_flow_evidence`, `freelancer_payout_records` (~25 PDA/ATA/signature columns, `on_ramp_purchase_id varchar(20)`), `contract_settlements`, `jobs.payment_network/payment_mint`, `work_contracts.payment_rail`.

@@ -1,6 +1,6 @@
 # 02. Solana vs Avalanche C-Chain for FreelaX
 
-Objective, FreelaX-specific. No benchmarks are claimed; where no evidence was gathered the verdict is "depends". Evidence and tags: [01](01-avalanche-technical-research.md). Current Solana facts: [00](00-current-architecture-audit.md).
+Objective, FreelaX-specific. No benchmarks are claimed; where no evidence was gathered the verdict is "depends". Decision D1: Avalanche is chosen as an engineering and product-architecture decision (EVM/Solidity ecosystem, tooling, native USDC, Java and wallet interoperability, maintainability, possible multi-EVM reach). No external business requirement, partnership or grant is recorded, and no measured speed or cost advantage over Solana has been established. "Better" below means engineering fit for FreelaX's intended direction, not faster or cheaper. Evidence and tags: [01](01-avalanche-technical-research.md). Current Solana facts: [00](00-current-architecture-audit.md).
 
 | Category | Verdict | Reasoning |
 |---|---|---|
@@ -33,13 +33,14 @@ Objective, FreelaX-specific. No benchmarks are claimed; where no evidence was ga
 5. FreelaX-specific: eliminates ATA/PDA/rent/fee-payer sponsorship logic and Borsh decoding; allows an explicit role model replacing the single admin key.
 
 ## Concrete benefits justifying migration
-Reduction of bespoke blockchain code (Borsh decoding, legacy tx codec, PDA derivation) in `solana-integration`; standard audited contract components; event-based reconciliation; KMS signing path; testing via fuzz/invariant. These are engineering benefits; none is a measured performance win. If the motivation for Avalanche is external (partnership, grant, user base), that justification is outside this technical analysis.
+Reduction of bespoke blockchain code (Borsh decoding, legacy tx codec, PDA derivation) in `solana-integration`; standard audited contract components; event-based reconciliation; KMS signing path; testing via fuzz/invariant. These are engineering benefits; none is a measured performance or cost win. Per D1 the migration is an engineering and product-architecture decision with no recorded external driver; if one exists it should be added to the README decision register.
 
 ## Capabilities lost or weakened
 - Sponsored fees by a fee payer (users would need AVAX unless a relayer/paymaster is added).
 - Multi-signer atomic co-signing (backend authority must co-sign fund/submit/revision) and two-party mutual refund as one co-signed tx; replaced by roles, EIP-712 authorizations or two on-chain approvals.
 - Blockhash-based certainty that an unconfirmed tx can never land.
 - Deterministic PDA-based idempotency (receipt, withdrawal, rate PDAs); replaced by contract mapping keys.
+- Physical per-escrow custody: each Solana escrow has its own vault token account. A shared EVM contract provides logical accounting isolation only, and one USDC blacklist of the contract address would affect all open escrows (see [03](03-target-architecture.md) section 10 for the factory/clone gate).
 - A working, tested local-validator end-to-end setup and 55-error Anchor test suite (to be rebuilt in Foundry/anvil).
 - Likely lower and more predictable base fees on Solana (not measured here).
 
