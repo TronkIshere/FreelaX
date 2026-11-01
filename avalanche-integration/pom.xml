@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.FreelaX</groupId>
+        <artifactId>FreelaX-parent</artifactId>
+        <version>0.1.0</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <groupId>com.freelax</groupId>
+    <artifactId>avalanche-integration</artifactId>
+    <version>0.1.0</version>
+    <name>avalanche-integration</name>
+    <description>Spring Boot gateway for the FreelaX Avalanche development simulation (LOCAL_SIMULATION and AVALANCHE_FUJI only)</description>
+
+    <properties>
+        <java.version>21</java.version>
+        <web3j.version>6.1.0</web3j.version>
+        <jackson-annotations.version>2.22</jackson-annotations.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.web3j</groupId>
+            <artifactId>core</artifactId>
+            <version>${web3j.version}</version>
+        </dependency>
+        <!-- web3j 6.1.0 (Jackson 3) needs JsonApplyView, which exists only in jackson-annotations 2.22+.
+             The root pins the Jackson 2 BOM at 2.21.7; this overrides the annotations artifact for this module only. -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
+            <version>${jackson-annotations.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>

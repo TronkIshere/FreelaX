@@ -36,6 +36,20 @@
         <module>solana-integration</module>
     </modules>
 
+    <profiles>
+        <!-- avalanche-integration targets Java 21 (web3j 6.1.0). It joins the reactor only on JDK 21+, so builds on
+             JDK 17 (for example Dockerfile.maven) keep the original four-module reactor unchanged. -->
+        <profile>
+            <id>avalanche-integration</id>
+            <activation>
+                <jdk>[21,)</jdk>
+            </activation>
+            <modules>
+                <module>avalanche-integration</module>
+            </modules>
+        </profile>
+    </profiles>
+
     <dependencyManagement>
         <dependencies>
             <dependency>

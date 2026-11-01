@@ -1,0 +1,31 @@
+# syntax=docker/dockerfile:1.7
+# Dedicated JDK 21 build for the avalanche-integration service (web3j 6.1.0 needs Java 21).
+# Dockerfile.maven stays on JDK 17 for the existing modules. All module poms are copied because on JDK 21 the root
+# reactor includes every module, and Maven must be able to load each one even when building a single module.
+
+FROM maven:3.9-eclipse-temurin-21 AS builder
+WORKDIR /build
+
+COPY pom.xml .
+COPY payment-backend/pom.xml payment-backend/pom.xml
+COPY marketplace-backend/pom.xml marketplace-backend/pom.xml
+COPY misa-backend/pom.xml misa-backend/pom.xml
+COPY solana-integration/pom.xml solana-integration/pom.xml
+COPY avalanche-integration/pom.xml avalanche-integration/pom.xml
+RUN --mount=type=cache,target=/root/.m2 mvn -B -pl avalanche-integration -am dependency:go-offline
+
+COPY avalanche-integration/src avalanche-integration/src
+RUN --mount=type=cache,target=/root/.m2 mvn -B -pl avalanche-integration -am -DskipTests package \
+    && java -Djarmode=layertools -jar avalanche-integration/target/*.jar extract --destination /build/extracted
+
+FROM eclipse-temurin:21-jre-alpine AS runtime
+WORKDIR /app
+RUN addgroup -S spring && adduser -S spring -G spring
+USER spring:spring
+
+COPY --from=builder /build/extracted/dependencies/ ./
+COPY --from=builder /build/extracted/spring-boot-loader/ ./
+COPY --from=builder /build/extracted/snapshot-dependencies/ ./
+COPY --from=builder /build/extracted/application/ ./
+
+ENTRYPOINT ["java", "org.springframework.boot.loader.launch.JarLauncher"]

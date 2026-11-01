@@ -164,6 +164,24 @@ services:
     ports:
       - "127.0.0.1:9193:9193"
 
+  # Avalanche development simulation gateway (LOCAL_SIMULATION / AVALANCHE_FUJI only). Opt-in: docker compose --profile avalanche up.
+  # No default environment: blank values make the service refuse to start. Mainnet cannot be configured.
+  avalanche-integration:
+    profiles: ["avalanche"]
+    build:
+      context: .
+      dockerfile: Dockerfile.avalanche
+    restart: unless-stopped
+    environment:
+      SERVER_PORT: 9194
+      AVALANCHE_ENVIRONMENT: ${AVALANCHE_ENVIRONMENT:-}
+      AVALANCHE_RPC_PRIMARY_URL: ${AVALANCHE_RPC_PRIMARY_URL:-}
+      AVALANCHE_RPC_SECONDARY_URL: ${AVALANCHE_RPC_SECONDARY_URL:-}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "127.0.0.1:9194:9194"
+
   frontend:
     profiles: ["deploy"]
     build:

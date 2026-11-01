@@ -1,0 +1,17 @@
+server:
+  port: ${SERVER_PORT:9194}
+
+spring:
+  application:
+    name: avalanche-integration
+
+# No default environment: startup fails unless LOCAL_SIMULATION or AVALANCHE_FUJI is set explicitly.
+avalanche:
+  environment: ${AVALANCHE_ENVIRONMENT:}
+  rpc:
+    primary:
+      url: ${AVALANCHE_RPC_PRIMARY_URL:}
+    secondary:
+      url: ${AVALANCHE_RPC_SECONDARY_URL:}
+    timeout-ms: ${AVALANCHE_RPC_TIMEOUT_MS:10000}
+    min-gap-ms: ${AVALANCHE_RPC_MIN_GAP_MS:1000}
