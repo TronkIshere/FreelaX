@@ -1,6 +1,8 @@
 package com.freelax.avalanchegateway.config;
 
 import com.freelax.avalanchegateway.chain.ChainClient;
+import com.freelax.avalanchegateway.contract.DeploymentHolder;
+import com.freelax.avalanchegateway.contract.EscrowEvents;
 import com.freelax.avalanchegateway.env.AvalancheEnvironment;
 import com.freelax.avalanchegateway.env.EnvironmentGuard;
 import com.freelax.avalanchegateway.env.EnvironmentGuardException;
@@ -28,7 +30,7 @@ public class ScanConfig {
 
     @Bean
     EventDecoder eventDecoder() {
-        return new EventDecoder();
+        return EscrowEvents.registerAll(new EventDecoder());
     }
 
     @Bean
@@ -38,14 +40,24 @@ public class ScanConfig {
 
     @Bean
     LogScanner logScanner(ChainClient chainClient, ValidatedEnvironment validatedEnvironment, ScanRepository scanRepository,
-                          EventDecoder eventDecoder, ScanProperties properties) {
-        if (!ADDRESS.matcher(properties.contractAddress()).matches()) {
+                          EventDecoder eventDecoder, ScanProperties properties, DeploymentHolder deployment) {
+        String contract = properties.contractAddress();
+        long startBlock = properties.startBlock();
+        if (deployment.deployment() != null) {
+            String escrow = deployment.deployment().manifest().escrow();
+            if (contract != null && !contract.isBlank() && !contract.equalsIgnoreCase(escrow)) {
+                throw new EnvironmentGuardException("SCAN_CONTRACT_MISMATCH", "the configured contract differs from the deployment manifest");
+            }
+            contract = escrow;
+            startBlock = Math.max(startBlock, deployment.deployment().manifest().startBlock());
+        }
+        if (contract == null || !ADDRESS.matcher(contract).matches()) {
             throw new EnvironmentGuardException("SCAN_CONTRACT_INVALID", "avalanche.scan.contract-address must be a 20-byte hex address");
         }
         boolean local = validatedEnvironment.environment() == AvalancheEnvironment.LOCAL_SIMULATION;
         ProviderProfile profile = ProviderProfile.forHost(validatedEnvironment.endpointHost(), local);
-        return new LogScanner(chainClient, validatedEnvironment, scanRepository, eventDecoder, properties.contractAddress(),
-                properties.startBlock(), properties.confirmations(), profile, properties.maxLogRange());
+        return new LogScanner(chainClient, validatedEnvironment, scanRepository, eventDecoder, contract,
+                startBlock, properties.confirmations(), profile, properties.maxLogRange());
     }
 
     @Bean(initMethod = "start", destroyMethod = "close")

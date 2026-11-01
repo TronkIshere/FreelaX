@@ -74,10 +74,12 @@ public class SubmissionService {
     private final ErrorClassifier classifier;
     private final TxTransitions transitions;
     private final Clock clock;
+    private final java.util.Set<String> allowedTargets;
 
     public SubmissionService(ChainClient client, ValidatedEnvironment environment, SignerRegistry registry,
                              TxRepository repository, NonceAllocator allocator, TransactionTemplate transactions,
-                             TxProperties properties, ErrorClassifier classifier, TxTransitions transitions, Clock clock) {
+                             TxProperties properties, ErrorClassifier classifier, TxTransitions transitions, Clock clock,
+                             java.util.Set<String> allowedTargets) {
         EnvironmentGuard.requireSignerEnvironment(environment.environment());
         EnvironmentGuard.checkChainId(environment.environment(), environment.chainId());
         this.client = client;
@@ -90,6 +92,7 @@ public class SubmissionService {
         this.classifier = classifier;
         this.transitions = transitions;
         this.clock = clock;
+        this.allowedTargets = allowedTargets;
     }
 
     /** Idempotent by operation key: a repeated call returns the existing record and never allocates a new nonce. */
@@ -242,6 +245,9 @@ public class SubmissionService {
         }
         if (r.to() == null || !ADDRESS.matcher(r.to()).matches()) {
             throw new InvalidRequestException("to must be a 20-byte hex address");
+        }
+        if (allowedTargets != null && !allowedTargets.contains(r.to().toLowerCase(Locale.ROOT))) {
+            throw new InvalidRequestException("TARGET_NOT_ALLOWED: only the deployment manifest's escrow and token may be called");
         }
         if (r.data() == null || !HEX_DATA.matcher(r.data()).matches() || r.data().length() > MAX_DATA_HEX_CHARS) {
             throw new InvalidRequestException("data must be 0x-prefixed hex of whole bytes within the size limit");

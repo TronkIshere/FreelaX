@@ -35,6 +35,12 @@ final class Harness {
     }
 
     Harness(HikariDataSource dataSource, String rpcUrl, int timeoutMs, TxProperties properties, SignerRegistry registry, ChainClient secondary) {
+        this(dataSource, rpcUrl, timeoutMs, properties, registry, secondary, null);
+    }
+
+    /** {@code allowedTargets} null means unrestricted (older tests); the contract tests pass the manifest's targets. */
+    Harness(HikariDataSource dataSource, String rpcUrl, int timeoutMs, TxProperties properties, SignerRegistry registry, ChainClient secondary,
+            java.util.Set<String> allowedTargets) {
         Clock clock = Clock.systemUTC();
         this.jdbc = new JdbcTemplate(dataSource);
         this.repository = new TxRepository(jdbc);
@@ -45,7 +51,7 @@ final class Harness {
         this.properties = properties;
         this.registry = registry;
         ErrorClassifier classifier = new ErrorClassifier();
-        this.submission = new SubmissionService(client, LOCAL, registry, repository, allocator, transactions, properties, classifier, transitions, clock);
+        this.submission = new SubmissionService(client, LOCAL, registry, repository, allocator, transactions, properties, classifier, transitions, clock, allowedTargets);
         this.tracker = new TxTracker(client, LOCAL, repository, transitions, submission, registry, classifier, properties, clock, secondary);
     }
 

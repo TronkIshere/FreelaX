@@ -121,7 +121,7 @@ class TxUnitTest {
         ValidatedEnvironment fuji = new ValidatedEnvironment(AvalancheEnvironment.AVALANCHE_FUJI, 43113, "avalanchego", "api.avax-test.network");
         TxProperties props = Harness.props(0, 2);
         EnvironmentGuardException e = assertThrows(EnvironmentGuardException.class, () ->
-                new SubmissionService(null, fuji, null, null, null, null, props, classifier, null, Clock.systemUTC()));
+                new SubmissionService(null, fuji, null, null, null, null, props, classifier, null, Clock.systemUTC(), null));
         assertEquals("SIGNER_FORBIDDEN_ENVIRONMENT", e.code());
     }
 

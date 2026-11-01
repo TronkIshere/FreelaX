@@ -5,7 +5,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /** No default for the environment and no property that can add a chain id or enable another environment. */
 @ConfigurationProperties(prefix = "avalanche")
-public record AvalancheProperties(AvalancheEnvironment environment, Rpc rpc, Signers signers) {
+public record AvalancheProperties(AvalancheEnvironment environment, Rpc rpc, Signers signers, String deploymentManifest) {
 
     /** Development signers are opt-in and exist only in LOCAL_SIMULATION; enabling them elsewhere fails startup. */
     public record Signers(boolean enabled) {

@@ -2,6 +2,10 @@ package com.freelax.avalanchegateway.config;
 
 import com.freelax.avalanchegateway.chain.ChainClient;
 import com.freelax.avalanchegateway.chain.ChainClients;
+import com.freelax.avalanchegateway.contract.DeploymentHolder;
+import com.freelax.avalanchegateway.contract.DeploymentManifest;
+import com.freelax.avalanchegateway.contract.ManifestVerifier;
+import com.freelax.avalanchegateway.env.EnvironmentGuardException;
 import com.freelax.avalanchegateway.signer.SignerRegistry;
 import com.freelax.avalanchegateway.startup.EnvironmentStartupValidator;
 import com.freelax.avalanchegateway.startup.ValidatedEnvironment;
@@ -60,14 +64,31 @@ public class TxConfig {
         return new TxTransitions(txRepository, avalancheClock);
     }
 
+    /** The manifest is verified against the live endpoint before use; without one nothing is configured to be called. */
+    @Bean
+    DeploymentHolder deploymentHolder(AvalancheProperties properties, ChainClient chainClient, ValidatedEnvironment validatedEnvironment) {
+        String path = properties.deploymentManifest();
+        if (path == null || path.isBlank()) {
+            return new DeploymentHolder(null);
+        }
+        DeploymentManifest manifest = DeploymentManifest.read(java.nio.file.Path.of(path.trim()));
+        return new DeploymentHolder(ManifestVerifier.verify(manifest, validatedEnvironment, chainClient));
+    }
+
     @Bean
     @ConditionalOnProperty(name = "avalanche.signers.enabled", havingValue = "true")
     SubmissionService submissionService(ChainClient chainClient, ValidatedEnvironment validatedEnvironment,
                                         SignerRegistry signerRegistry, TxRepository txRepository, NonceAllocator nonceAllocator,
                                         TransactionTemplate avalancheTransactionTemplate, TxProperties txProperties,
-                                        ErrorClassifier errorClassifier, TxTransitions txTransitions, Clock avalancheClock) {
+                                        ErrorClassifier errorClassifier, TxTransitions txTransitions, Clock avalancheClock,
+                                        DeploymentHolder deploymentHolder) {
+        if (deploymentHolder.deployment() == null) {
+            throw new EnvironmentGuardException("MANIFEST_REQUIRED",
+                    "avalanche.deployment-manifest is required to submit transactions: only the manifest contracts may be called");
+        }
         return new SubmissionService(chainClient, validatedEnvironment, signerRegistry, txRepository, nonceAllocator,
-                avalancheTransactionTemplate, txProperties, errorClassifier, txTransitions, avalancheClock);
+                avalancheTransactionTemplate, txProperties, errorClassifier, txTransitions, avalancheClock,
+                deploymentHolder.deployment().allowedTargets());
     }
 
     @Bean(destroyMethod = "close")

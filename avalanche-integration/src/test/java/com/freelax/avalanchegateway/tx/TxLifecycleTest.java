@@ -439,7 +439,7 @@ class TxLifecycleTest {
     void aProcessWithoutSignersCannotSubmit() {
         Harness h = fundedHarness(LocalStack.anvilUrl(), Harness.props(30_000, 2));
         SubmissionService noSigners = new SubmissionService(h.client, Harness.LOCAL, null, h.repository, h.allocator,
-                h.transactions, h.properties, new ErrorClassifier(), h.transitions, java.time.Clock.systemUTC());
+                h.transactions, h.properties, new ErrorClassifier(), h.transitions, java.time.Clock.systemUTC(), null);
         assertThrows(SubmissionService.SignerUnavailableException.class, () -> noSigners.submit(request("op-nosigner", OK_TARGET)));
     }
 

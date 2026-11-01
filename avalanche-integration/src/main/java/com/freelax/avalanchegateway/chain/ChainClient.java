@@ -145,6 +145,11 @@ public class ChainClient {
         return new CallResult(false, response.getValue());
     }
 
+    /** Deployed bytecode at an address (empty means no contract). */
+    public String code(String address) {
+        return call("eth_getCode", () -> web3j.ethGetCode(address, DefaultBlockParameterName.LATEST).send(), r -> r.getCode());
+    }
+
     public boolean transactionExists(String txHash) {
         return call("eth_getTransactionByHash", () -> web3j.ethGetTransactionByHash(txHash).send(),
                 r -> r.getTransaction().isPresent());
