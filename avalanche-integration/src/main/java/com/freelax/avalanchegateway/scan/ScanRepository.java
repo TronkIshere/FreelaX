@@ -50,6 +50,13 @@ public class ScanRepository {
         return inserted == null ? 0 : inserted;
     }
 
+    /** Events of one escrow (the escrow id is the first indexed topic), in chain order. */
+    public List<ScannedEvent> eventsForEscrow(String environment, long chainId, String contract, String escrowId) {
+        return events(environment, chainId, contract).stream()
+                .filter(e -> e.topics().size() > 1 && e.topics().get(1).equalsIgnoreCase(escrowId))
+                .toList();
+    }
+
     public List<ScannedEvent> events(String environment, long chainId, String contract) {
         return jdbc.query("SELECT * FROM avalanche_event WHERE environment = ? AND chain_id = ? AND contract_address = ? ORDER BY block_number, log_index",
                 (rs, i) -> new ScannedEvent(rs.getString("environment"), rs.getLong("chain_id"), rs.getString("contract_address"),

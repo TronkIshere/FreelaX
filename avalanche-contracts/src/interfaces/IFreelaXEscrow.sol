@@ -63,12 +63,19 @@ interface IFreelaXEscrow {
     event ExtensionRequested(bytes32 indexed escrowId, uint64 requestedDeliveryDueAt);
     event ExtensionApproved(bytes32 indexed escrowId, uint64 deliveryDueAt);
     event WorkSubmitted(bytes32 indexed escrowId, bytes32 evidenceHash, uint32 submissionCount, uint64 reviewDueAt);
+    event RevisionRequested(bytes32 indexed escrowId, bytes32 feedbackHash, uint8 revisionsUsed);
+    event DisputeOpened(bytes32 indexed escrowId, address indexed by, bytes32 reasonHash);
+    event DisputeResolved(bytes32 indexed escrowId, bool releasedToFreelancer, bytes32 resolutionHash);
     event Released(bytes32 indexed escrowId, address indexed to, uint256 amount, address indexed by);
+    event Refunded(bytes32 indexed escrowId, address indexed to, uint256 amount, bool mutual);
     event DefaultArbiterChanged(address indexed previousArbiter, address indexed newArbiter);
 
     error InvalidState(Status current);
     error NotClient();
     error NotFreelancer();
+    error NotParticipant();
+    error NotArbiter();
+    error RevisionsExhausted();
     error AlreadyExists();
     error UnknownEscrow();
     error WrongToken();
@@ -86,6 +93,10 @@ interface IFreelaXEscrow {
     function requestExtension(bytes32 escrowId, uint64 newDeliveryDueAt) external;
     function approveExtension(bytes32 escrowId) external;
     function submit(bytes32 escrowId, bytes32 evidenceHash, uint64 deadline, bytes calldata signature) external;
+    function requestRevision(bytes32 escrowId, bytes32 feedbackHash, uint64 deadline, bytes calldata signature) external;
+    function openDispute(bytes32 escrowId, bytes32 reasonHash) external;
     function release(bytes32 escrowId) external;
+    function resolveDispute(bytes32 escrowId, bool releaseToFreelancer, bytes32 resolutionHash) external;
+    function mutualRefund(bytes32 escrowId, uint64 deadline, bytes calldata clientSignature, bytes calldata freelancerSignature) external;
     function getEscrow(bytes32 escrowId) external view returns (Escrow memory);
 }

@@ -5,7 +5,9 @@ import org.web3j.protocol.core.DefaultBlockParameter;
 import org.web3j.protocol.core.DefaultBlockParameterName;
 import org.web3j.protocol.core.Response;
 import org.web3j.protocol.core.methods.request.EthFilter;
+import org.web3j.protocol.core.methods.request.Transaction;
 import org.web3j.protocol.core.methods.response.EthBlock;
+import org.web3j.protocol.core.methods.response.EthCall;
 import org.web3j.protocol.core.methods.response.EthLog;
 import org.web3j.protocol.core.methods.response.EthSendTransaction;
 import org.web3j.protocol.core.methods.response.TransactionReceipt;
@@ -113,6 +115,34 @@ public class ChainClient {
                     log.getBlockHash(), log.getAddress(), List.copyOf(log.getTopics()), log.getData(), log.isRemoved()));
         }
         return entries;
+    }
+
+    /** Result of an eth_call: either the returned data, or the revert data of the failed call (never an exception for a revert). */
+    public record CallResult(boolean reverted, String data) {
+    }
+
+    /** Read-only contract call at the latest block. A revert is reported with its raw revert data for error mapping. */
+    public CallResult call(String to, String data) {
+        return call(null, to, data);
+    }
+
+    /** Same, simulated as coming from {@code from}: needed to reproduce the revert reason of a sender-dependent failure. */
+    public CallResult call(String from, String to, String data) {
+        pacer.await();
+        EthCall response;
+        try {
+            response = web3j.ethCall(Transaction.createEthCallTransaction(from, to, data), DefaultBlockParameterName.LATEST).send();
+        } catch (IOException | RuntimeException e) {
+            throw new ChainClientException("eth_call failed: " + e.getClass().getSimpleName(), e);
+        }
+        if (response.hasError()) {
+            String raw = response.getError().getData();
+            if (raw == null || !raw.replace("\"", "").startsWith("0x")) {
+                throw new ChainClientException("eth_call returned an RPC error (code " + response.getError().getCode() + ")");
+            }
+            return new CallResult(true, raw.replace("\"", ""));
+        }
+        return new CallResult(false, response.getValue());
     }
 
     public boolean transactionExists(String txHash) {

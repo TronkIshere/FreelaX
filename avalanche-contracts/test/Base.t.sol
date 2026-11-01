@@ -77,7 +77,7 @@ abstract contract Base is Test {
     }
 
     function submitDefault(bytes32 id, bytes32 evidence) internal {
-        uint64 deadline = uint64(block.timestamp + 1 hours);
+        uint64 deadline = uint64(vm.getBlockTimestamp() + 1 hours);
         bytes memory sig = signSubmit(id, evidence, deadline);
         vm.prank(freelancer);
         escrow.submit(id, evidence, deadline, sig);

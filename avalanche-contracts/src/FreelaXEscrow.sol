@@ -33,6 +33,11 @@ contract FreelaXEscrow is IFreelaXEscrow, AccessControl, Pausable, ReentrancyGua
         "SubmitAuthorization(bytes32 escrowId,bytes32 evidenceHash,uint32 submissionCount,uint64 nonce,uint64 deadline)"
     );
 
+    bytes32 public constant REVISION_TYPEHASH = keccak256(
+        "RevisionAuthorization(bytes32 escrowId,bytes32 feedbackHash,uint8 revisionsUsed,uint64 nonce,uint64 deadline)"
+    );
+    bytes32 public constant MUTUAL_REFUND_TYPEHASH = keccak256("MutualRefund(bytes32 escrowId,uint64 nonce,uint64 deadline)");
+
     IERC20 public immutable token;
     address public defaultArbiter;
     uint256 public totalOpenAmount;
@@ -149,6 +154,49 @@ contract FreelaXEscrow is IFreelaXEscrow, AccessControl, Pausable, ReentrancyGua
     }
 
     // ---------------------------------------------------------------------------------------------------------------
+    // Revision: the client, before the review deadline, at most maxRevisions times. The backend authorization is kept
+    // for parity with the Solana co-sign (it binds the feedback record); it grants no other power (owner decision O-4).
+    // ---------------------------------------------------------------------------------------------------------------
+
+    function requestRevision(bytes32 escrowId, bytes32 feedbackHash, uint64 deadline, bytes calldata signature) external {
+        Escrow storage e = _existing(escrowId);
+        if (msg.sender != e.client) revert NotClient();
+        if (feedbackHash == bytes32(0)) revert ZeroHash();
+        if (e.status != Status.Submitted) revert InvalidState(e.status);
+        if (block.timestamp >= e.reviewDueAt) revert TooLate();
+        if (e.revisionsUsed >= e.maxRevisions) revert RevisionsExhausted();
+        _checkAuthorization(revisionDigest(escrowId, feedbackHash, e.revisionsUsed, e.authNonce, deadline), deadline, signature);
+
+        e.authNonce += 1;
+        e.revisionsUsed += 1;
+        e.reviewDueAt = 0;
+        e.status = Status.Revision;
+        emit RevisionRequested(escrowId, feedbackHash, e.revisionsUsed);
+    }
+
+    // ---------------------------------------------------------------------------------------------------------------
+    // Dispute: client or freelancer. A dispute clears the review deadline, so permissionless release cannot fire on it.
+    // ---------------------------------------------------------------------------------------------------------------
+
+    function openDispute(bytes32 escrowId, bytes32 reasonHash) external {
+        Escrow storage e = _existing(escrowId);
+        if (msg.sender != e.client && msg.sender != e.freelancer) revert NotParticipant();
+        if (reasonHash == bytes32(0)) revert ZeroHash();
+        if (e.status == Status.Submitted) {
+            if (block.timestamp >= e.reviewDueAt) revert TooLate();
+        } else if (e.status == Status.Funded) {
+            if (block.timestamp <= e.deliveryDueAt) revert TooEarly();
+        } else if (e.status != Status.Revision) {
+            revert InvalidState(e.status);
+        }
+        e.status = Status.Disputed;
+        e.disputedBy = msg.sender;
+        e.disputedAt = uint64(block.timestamp);
+        e.reviewDueAt = 0;
+        emit DisputeOpened(escrowId, msg.sender, reasonHash);
+    }
+
+    // ---------------------------------------------------------------------------------------------------------------
     // Release: the client at any time, anyone once the review window has passed. Pause never blocks it.
     // ---------------------------------------------------------------------------------------------------------------
 
@@ -162,6 +210,56 @@ contract FreelaXEscrow is IFreelaXEscrow, AccessControl, Pausable, ReentrancyGua
         totalOpenAmount -= amount;
         emit Released(escrowId, to, amount, msg.sender);
         token.safeTransfer(to, amount);
+    }
+
+    // ---------------------------------------------------------------------------------------------------------------
+    // Dispute resolution: only the escrow's own (snapshotted) arbiter, a binary outcome with a non-zero resolution hash.
+    // ---------------------------------------------------------------------------------------------------------------
+
+    function resolveDispute(bytes32 escrowId, bool releaseToFreelancer, bytes32 resolutionHash) external nonReentrant {
+        Escrow storage e = _existing(escrowId);
+        if (msg.sender != e.arbiter) revert NotArbiter();
+        if (e.status != Status.Disputed) revert InvalidState(e.status);
+        if (resolutionHash == bytes32(0)) revert ZeroHash();
+        uint256 amount = e.amount;
+        e.resolutionHash = resolutionHash;
+        totalOpenAmount -= amount;
+        emit DisputeResolved(escrowId, releaseToFreelancer, resolutionHash);
+        if (releaseToFreelancer) {
+            e.status = Status.Released;
+            emit Released(escrowId, e.freelancer, amount, msg.sender);
+            token.safeTransfer(e.freelancer, amount);
+        } else {
+            e.status = Status.Refunded;
+            emit Refunded(escrowId, e.client, amount, false);
+            token.safeTransfer(e.client, amount);
+        }
+    }
+
+    // ---------------------------------------------------------------------------------------------------------------
+    // Mutual refund: both parties sign the same EIP-712 message; anyone may submit it. Not available once Disputed.
+    // The two-signature mechanism preserves the Solana rule that both parties must agree (owner decision on question 10).
+    // ---------------------------------------------------------------------------------------------------------------
+
+    function mutualRefund(bytes32 escrowId, uint64 deadline, bytes calldata clientSignature, bytes calldata freelancerSignature)
+        external
+        nonReentrant
+    {
+        Escrow storage e = _existing(escrowId);
+        if (e.status != Status.Funded && e.status != Status.Submitted && e.status != Status.Revision) {
+            revert InvalidState(e.status);
+        }
+        if (block.timestamp > deadline) revert AuthorizationExpired();
+        bytes32 digest = mutualRefundDigest(escrowId, e.authNonce, deadline);
+        _requireSignedBy(digest, clientSignature, e.client);
+        _requireSignedBy(digest, freelancerSignature, e.freelancer);
+
+        uint256 amount = e.amount;
+        e.authNonce += 1;
+        e.status = Status.Refunded;
+        totalOpenAmount -= amount;
+        emit Refunded(escrowId, e.client, amount, true);
+        token.safeTransfer(e.client, amount);
     }
 
     // ---------------------------------------------------------------------------------------------------------------
@@ -210,9 +308,26 @@ contract FreelaXEscrow is IFreelaXEscrow, AccessControl, Pausable, ReentrancyGua
         return _hashTypedDataV4(keccak256(abi.encode(SUBMIT_TYPEHASH, escrowId, evidenceHash, submissionCount, nonce, deadline)));
     }
 
+    function revisionDigest(bytes32 escrowId, bytes32 feedbackHash, uint8 revisionsUsed, uint64 nonce, uint64 deadline)
+        public
+        view
+        returns (bytes32)
+    {
+        return _hashTypedDataV4(keccak256(abi.encode(REVISION_TYPEHASH, escrowId, feedbackHash, revisionsUsed, nonce, deadline)));
+    }
+
+    function mutualRefundDigest(bytes32 escrowId, uint64 nonce, uint64 deadline) public view returns (bytes32) {
+        return _hashTypedDataV4(keccak256(abi.encode(MUTUAL_REFUND_TYPEHASH, escrowId, nonce, deadline)));
+    }
+
     // ---------------------------------------------------------------------------------------------------------------
     // Internals
     // ---------------------------------------------------------------------------------------------------------------
+
+    function _requireSignedBy(bytes32 digest, bytes calldata signature, address expected) private pure {
+        (address signer, ECDSA.RecoverError err,) = ECDSA.tryRecover(digest, signature);
+        if (err != ECDSA.RecoverError.NoError || signer != expected) revert InvalidAuthorization();
+    }
 
     function _existing(bytes32 escrowId) private view returns (Escrow storage e) {
         e = escrows[escrowId];

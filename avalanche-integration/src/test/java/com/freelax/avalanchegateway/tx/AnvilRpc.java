@@ -55,6 +55,14 @@ final class AnvilRpc {
         return Long.parseLong(m.group(1), 16);
     }
 
+    static long blockTimestamp(String url) {
+        Matcher m = Pattern.compile("\"timestamp\":\"0x([0-9a-fA-F]+)\"").matcher(call(url, "eth_getBlockByNumber", "\"latest\"", "false"));
+        if (!m.find()) {
+            throw new IllegalStateException("no timestamp");
+        }
+        return Long.parseLong(m.group(1), 16);
+    }
+
     static void fund(String url, String address) {
         call(url, "anvil_setBalance", "\"" + address + "\"", "\"0x56bc75e2d63100000\"");
     }
