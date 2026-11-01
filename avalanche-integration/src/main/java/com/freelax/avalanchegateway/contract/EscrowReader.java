@@ -35,6 +35,40 @@ public class EscrowReader {
                 number(hex, 18).longValueExact());
     }
 
+    /** The arbiter that new escrows will snapshot (changing it never affects an existing escrow). */
+    public String defaultArbiter() {
+        return addressAnswer(call("defaultArbiter()"));
+    }
+
+    public boolean paused() {
+        return new BigInteger(Numeric.cleanHexPrefix(call("paused()")), 16).signum() != 0;
+    }
+
+    /** ERC-20 balance in base units (6 decimals) of an owner for a token. */
+    public BigInteger tokenBalance(String token, String owner) {
+        String data = org.web3j.abi.FunctionEncoder.encode(new org.web3j.abi.datatypes.Function("balanceOf",
+                java.util.List.of(new org.web3j.abi.datatypes.Address(owner)), java.util.List.of()));
+        ChainClient.CallResult result = client.call(token, data);
+        if (result.reverted()) {
+            throw new IllegalStateException("balanceOf reverted");
+        }
+        return new BigInteger(Numeric.cleanHexPrefix(result.data()), 16);
+    }
+
+    private String call(String signature) {
+        String selector = Numeric.toHexString(org.web3j.crypto.Hash.sha3(signature.getBytes(java.nio.charset.StandardCharsets.UTF_8)), 0, 4, true);
+        ChainClient.CallResult result = client.call(contract, selector);
+        if (result.reverted()) {
+            throw new IllegalStateException(signature + " reverted");
+        }
+        return result.data();
+    }
+
+    private static String addressAnswer(String word) {
+        String hex = Numeric.cleanHexPrefix(word);
+        return "0x" + hex.substring(hex.length() - 40).toLowerCase();
+    }
+
     private static String word(String hex, int index) {
         return hex.substring(index * 64, index * 64 + 64);
     }

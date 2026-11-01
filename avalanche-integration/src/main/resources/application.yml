@@ -4,6 +4,10 @@ server:
 spring:
   application:
     name: avalanche-integration
+  jackson:
+    deserialization:
+      # a request can never carry unknown fields such as a key, an RPC URL or a chain id
+      fail-on-unknown-properties: true
 
 # No default environment: startup fails unless LOCAL_SIMULATION or AVALANCHE_FUJI is set explicitly.
 avalanche:
@@ -26,3 +30,5 @@ avalanche:
     url: ${AVALANCHE_DB_URL:}
     username: ${AVALANCHE_DB_USERNAME:}
     password: ${AVALANCHE_DB_PASSWORD:}
+  # Internal API protection for every mutating endpoint (X-Internal-Api-Key). Blank means every POST is refused.
+  internal-api-key: ${AVALANCHE_INTERNAL_API_KEY:}

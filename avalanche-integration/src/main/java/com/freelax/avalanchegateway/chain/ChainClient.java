@@ -56,6 +56,11 @@ public class ChainClient {
         return blockNumber(DefaultBlockParameterName.FINALIZED);
     }
 
+    /** Timestamp of the latest block, the clock that contract deadlines are checked against. */
+    public long latestBlockTimestamp() {
+        return block(DefaultBlockParameterName.LATEST).getTimestamp().longValueExact();
+    }
+
     public BigInteger latestBaseFee() {
         EthBlock.Block block = block(DefaultBlockParameterName.LATEST);
         if (block.getBaseFeePerGas() == null) {

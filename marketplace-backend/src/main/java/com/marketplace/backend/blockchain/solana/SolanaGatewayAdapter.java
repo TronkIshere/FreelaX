@@ -12,10 +12,12 @@ import com.marketplace.backend.configuration.SolanaCprProperties;
 import com.marketplace.backend.dto.response.solana.SolanaConfigResult;
 import com.marketplace.backend.dto.response.solana.SolanaEscrowResult;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 @Component
+@Primary
 @RequiredArgsConstructor
 public class SolanaGatewayAdapter implements BlockchainGateway {
     private final SolanaCprClient solana;

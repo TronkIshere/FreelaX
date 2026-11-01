@@ -58,6 +58,12 @@ tax-certificate:
   sync-initial-delay-ms: 60000
   sync-interval-ms: 300000
 
+avalanche-gateway:
+  enabled: ${AVALANCHE_GATEWAY_ENABLED:false}
+  base-url: ${AVALANCHE_GATEWAY_BASE_URL:http://localhost:9194}
+  internal-api-key: ${AVALANCHE_GATEWAY_INTERNAL_API_KEY:}
+  network: ${AVALANCHE_GATEWAY_NETWORK:avalanche-local}
+
 solana-cpr:
   base-url: ${SOLANA_CPR_BASE_URL:http://localhost:9193}
   internal-api-key: ${SOLANA_CPR_INTERNAL_API_KEY:}
