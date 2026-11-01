@@ -34,6 +34,9 @@ public class LiveExchangeRateProvider implements ExchangeRateProvider {
     @Value("${exchange-rate.fallback-usdc-vnd-rate:25000}")
     private BigDecimal fallbackUsdcVndRate;
 
+    @Value("${exchange-rate.allow-fallback:false}")
+    private boolean allowFallback;
+
     @Value("${exchange-rate.cache-ttl-seconds:60}")
     private long cacheTtlSeconds;
 
@@ -76,6 +79,10 @@ public class LiveExchangeRateProvider implements ExchangeRateProvider {
             cache.set(result);
             return result;
         } catch (RuntimeException e) {
+            if (!allowFallback) {
+                throw new IllegalStateException("Live exchange rate unavailable for " + pair
+                        + " and exchange-rate.allow-fallback is disabled", e);
+            }
             log.warn("Live exchange rate unavailable for {}; using configured fallback", pair);
             return new ExchangeRateResult(fallbackRate, ExchangeRateSource.FALLBACK_PLACEHOLDER, Instant.now());
         }

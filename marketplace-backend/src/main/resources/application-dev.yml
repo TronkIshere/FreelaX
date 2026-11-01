@@ -17,6 +17,9 @@ logging:
   level:
     com.marketplace.backend: DEBUG
 
+exchange-rate:
+  allow-fallback: ${EXCHANGE_RATE_ALLOW_FALLBACK:true}
+
 misa-backend:
   certificate:
     auto-issue: ${MISA_CERTIFICATE_AUTO_ISSUE:true}

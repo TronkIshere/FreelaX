@@ -1,12 +1,12 @@
 package com.marketplace.backend.service;
 
 import com.marketplace.backend.client.PaymentBackendClient;
-import com.marketplace.backend.client.SolanaCprClient;
-import com.marketplace.backend.configuration.SolanaCprProperties;
+import com.marketplace.backend.blockchain.BlockchainAddress;
+import com.marketplace.backend.blockchain.BlockchainGateway;
+import com.marketplace.backend.blockchain.ChainConfig;
+import com.marketplace.backend.blockchain.EscrowState;
 import com.marketplace.backend.dto.response.payment.UnifiedUsdOrderResult;
 import com.marketplace.backend.dto.response.payment.UnifiedUsdStatementResult;
-import com.marketplace.backend.dto.response.solana.SolanaConfigResult;
-import com.marketplace.backend.dto.response.solana.SolanaEscrowResult;
 import com.marketplace.backend.entity.*;
 import com.marketplace.backend.exception.ApplicationException;
 import com.marketplace.backend.exception.ErrorCode;
@@ -41,8 +41,7 @@ public class UnifiedUsdFundingService {
     private final WalletRepository wallets;
     private final UserRepository users;
     private final PaymentBackendClient payment;
-    private final SolanaCprClient solana;
-    private final SolanaCprProperties solanaProperties;
+    private final BlockchainGateway blockchain;
     private final SolanaOnRampProvider onramp;
     private final PaymentFlowService timelines;
     private final TransactionTemplate transactionTemplate;
@@ -207,7 +206,7 @@ public class UnifiedUsdFundingService {
         // A failed on-ramp may be resent only while no receipt exists: the receipt PDA is keyed
         // by purchase ID, so a late landing of the earlier transaction cannot issue USDC twice.
         boolean resendFailed;
-        try { resendFailed = solana.findMockOnrampReceipt(clientWallet, purchaseId).isEmpty(); }
+        try { resendFailed = !blockchain.onrampReceiptExists(new BlockchainAddress(clientWallet), purchaseId); }
         catch (RuntimeException ex) { markUnknown(flowId, "CLIENT_USDC"); return; }
         PaymentFlowStep claimed = transactionTemplate.execute(tx -> {
             if (!"CONFIRMED".equals(locked(flowId, "USD_RECEIVED").getStatus())) return null;
@@ -288,13 +287,14 @@ public class UnifiedUsdFundingService {
                             && "CONFIRMED".equals(s.getStatus()));
     }
 
-    public void confirmEscrow(PaymentFlow flow, SolanaEscrowResult chain) {
-        if (chain == null || !Objects.equals(chain.milestoneId(), flow.getMilestoneId().toString())
-                || !Objects.equals(chain.mint(), flow.getMint())
-                || !Objects.equals(chain.amount(), flow.getEscrowUsdc().movePointRight(6)
+    public void confirmEscrow(PaymentFlow flow, EscrowState onChain) {
+        if (onChain == null || !Objects.equals(onChain.milestoneId(), flow.getMilestoneId().toString())
+                || !Objects.equals(onChain.assetId(), flow.getMint())
+                || !Objects.equals(onChain.amountBaseUnits(), flow.getEscrowUsdc().movePointRight(6)
                     .toBigIntegerExact().toString())
-                || chain.vaultBalanceBaseUnits() == null
-                || new BigInteger(chain.vaultBalanceBaseUnits()).compareTo(new BigInteger(chain.amount())) < 0)
+                || onChain.vaultBalanceBaseUnits() == null
+                || new BigInteger(onChain.vaultBalanceBaseUnits())
+                    .compareTo(new BigInteger(onChain.amountBaseUnits())) < 0)
             throw new ApplicationException(ErrorCode.FUNDING_AMOUNT_CHANGED);
         transactionTemplate.executeWithoutResult(tx -> {
             if (!"CONFIRMED".equals(locked(flow.getId(), "CLIENT_USDC").getStatus()))
@@ -305,17 +305,17 @@ public class UnifiedUsdFundingService {
             escrow.setAmount(flow.getEscrowUsdc());
             escrow.setCurrency("USDC");
             escrow.setProvider("SOLANA_LOCALNET");
-            escrow.setReference(chain.address());
+            escrow.setReference(onChain.reference().id());
             escrow.setEvidenceSource("ESCROW_PDA_AND_VAULT");
             escrow.setConfirmedAt(Instant.now());
             evidence.save(new PaymentFlowEvidence(flow, "ESCROW", "CONFIRMED",
-                    "unified-escrow-" + flow.getId(), chain.address(),
+                    "unified-escrow-" + flow.getId(), onChain.reference().id(),
                     "ESCROW_PDA_AND_VAULT", flow.getEscrowUsdc(), "USDC"));
         });
     }
 
     private void acceptOrder(PaymentFlow flow, UnifiedUsdOrderResult order) {
-        SolanaConfigResult config = solana.getConfig();
+        ChainConfig config = blockchain.config();
         if (order == null || !order.simulation() || !Objects.equals(order.paymentFlowId(), flow.getId())
                 || !Objects.equals(order.jobId(), flow.getJobId())
                 || !Objects.equals(order.contractId(), flow.getContractId())
@@ -328,8 +328,8 @@ public class UnifiedUsdFundingService {
                 || !Objects.equals(order.payerBankAccountHolderName(), flow.getPayerBankAccountHolderName())
                 || !Objects.equals(order.fundKey(), "unified-usd-" + flow.getId())
                 || !StringUtils.hasText(order.quoteId()) || order.quoteExpiresAt() == null
-                || !StringUtils.hasText(config.getAcceptedMint())
-                || Boolean.TRUE.equals(config.getPaused()))
+                || config.acceptedAsset() == null
+                || config.paused())
             throw new ApplicationException(ErrorCode.FUNDING_AMOUNT_CHANGED);
         transactionTemplate.executeWithoutResult(tx -> {
             PaymentFlow lockedFlow = flows.findWithLockByMilestoneId(flow.getMilestoneId()).orElseThrow();
@@ -337,15 +337,15 @@ public class UnifiedUsdFundingService {
                 // Mint/network were accepted by both parties with the fingerprint; a rotated
                 // config needs new terms, not a silent switch. Pre-snapshot drafts keep the old rule.
                 if (lockedFlow.getMint() != null
-                        && (!Objects.equals(lockedFlow.getMint(), config.getAcceptedMint())
-                            || !Objects.equals(lockedFlow.getNetwork(), solanaProperties.getNetwork())))
+                        && (!Objects.equals(lockedFlow.getMint(), config.acceptedAsset().id())
+                            || !Objects.equals(lockedFlow.getNetwork(), blockchain.network().id())))
                     throw new ApplicationException(ErrorCode.FUNDING_AMOUNT_CHANGED);
                 lockedFlow.setTermsVersion(2);
-                lockedFlow.setNetwork(solanaProperties.getNetwork());
-                lockedFlow.setMint(config.getAcceptedMint());
+                lockedFlow.setNetwork(blockchain.network().id());
+                lockedFlow.setMint(config.acceptedAsset().id());
                 lockedFlow.setQuoteSource(order.quoteSource());
                 lockedFlow.setQuoteExpiresAt(order.quoteExpiresAt());
-            } else if (!Objects.equals(lockedFlow.getMint(), config.getAcceptedMint())
+            } else if (!Objects.equals(lockedFlow.getMint(), config.acceptedAsset().id())
                     || !Objects.equals(lockedFlow.getQuoteExpiresAt(), order.quoteExpiresAt())
                     || !Objects.equals(lockedFlow.getQuoteSource(), order.quoteSource())) {
                 throw new ApplicationException(ErrorCode.FUNDING_AMOUNT_CHANGED);

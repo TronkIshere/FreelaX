@@ -1,6 +1,7 @@
 package com.marketplace.backend.service;
 
 import com.marketplace.backend.client.PaymentBackendClient;
+import com.marketplace.backend.blockchain.solana.SolanaGatewayAdapter;
 import com.marketplace.backend.client.SolanaCprClient;
 import com.marketplace.backend.configuration.SolanaCprProperties;
 import com.marketplace.backend.dto.response.payment.UnifiedUsdOrderResult;
@@ -48,8 +49,8 @@ class UnifiedUsdFundingServiceTest {
     private final PaymentFlowService timelines = mock(PaymentFlowService.class);
     private final TransactionTemplate transactions = mock(TransactionTemplate.class);
     private final UnifiedUsdFundingService service = new UnifiedUsdFundingService(flows, steps,
-            evidence, contracts, milestones, wallets, users, payment, solana,
-            properties, onramp, timelines, transactions);
+            evidence, contracts, milestones, wallets, users, payment,
+            new SolanaGatewayAdapter(solana, properties), onramp, timelines, transactions);
 
     @Test
     void mismatchedProviderStatementDoesNotCreateClientUsdc() {

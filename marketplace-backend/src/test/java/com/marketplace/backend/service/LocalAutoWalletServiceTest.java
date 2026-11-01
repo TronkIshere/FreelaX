@@ -55,7 +55,7 @@ class LocalAutoWalletServiceTest {
                 mock(EscrowContractRepository.class), mock(PaymentFlowRepository.class),
                 mock(PaymentFlowStepRepository.class), mock(PaymentFlowEvidenceRepository.class),
                 mock(SolanaCprClient.class), environment,
-                "localnet", "test-only-secret", "");
+                "localnet", "test-only-secret", "", "");
 
         String address = service.connect(id).walletAddress();
         assertNotNull(saved.get().getDemoPrivateKey());
@@ -106,7 +106,7 @@ class LocalAutoWalletServiceTest {
                 mock(EscrowContractRepository.class), mock(PaymentFlowRepository.class),
                 mock(PaymentFlowStepRepository.class), mock(PaymentFlowEvidenceRepository.class),
                 mock(SolanaCprClient.class), environment,
-                "localnet", "test-only-secret", encodeBase58(secret));
+                "localnet", "test-only-secret", encodeBase58(secret), "");
 
         assertEquals(address, service.connect(id).walletAddress());
         byte[] message = new byte[3 + 1 + 32 + 32 + 1];
@@ -168,7 +168,7 @@ class LocalAutoWalletServiceTest {
         when(flows.findByClientId(userId)).thenReturn(List.of(flow));
         when(steps.findByPaymentFlowIdOrderByCreatedAtAsc(flowId)).thenReturn(List.of(usdc, escrow));
         LocalAutoWalletService service = new LocalAutoWalletService(users, wallets, escrows, flows,
-                steps, evidence, solana, environment, "localnet", "test-only-secret", "");
+                steps, evidence, solana, environment, "localnet", "test-only-secret", "", "");
 
         String address = service.connect(userId).walletAddress();
         assertNotEquals(oldAddress, address);

@@ -17,6 +17,7 @@ import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -57,6 +58,7 @@ public class LocalAutoWalletService {
     private final SolanaCprClient solana;
     private final boolean enabled;
     private final SecretKeySpec encryptionKey;
+    private final SecretKeySpec legacyEncryptionKey;
     private final Map<String, PrivateKey> seededKeys;
     private final SecureRandom random = new SecureRandom();
 
@@ -69,7 +71,8 @@ public class LocalAutoWalletService {
                                   SolanaCprClient solana, Environment environment,
                                   @Value("${solana-cpr.network:localnet}") String network,
                                   @Value("${security.jwt.secret}") String jwtSecret,
-                                  @Value("${SOLANA_LOCAL_PRIVATE_KEYS:}") String configuredKeys) {
+                                  @Value("${SOLANA_LOCAL_PRIVATE_KEYS:}") String configuredKeys,
+                                  @Value("${solana-cpr.local-wallet-encryption-key:}") String walletEncryptionKey) {
         this.users = users;
         this.wallets = wallets;
         this.escrows = escrows;
@@ -78,9 +81,17 @@ public class LocalAutoWalletService {
         this.evidence = evidence;
         this.solana = solana;
         this.enabled = environment.acceptsProfiles(Profiles.of("dev")) && "localnet".equals(network);
-        this.encryptionKey = new SecretKeySpec(sha256(("FreelaX local wallet v1:" + jwtSecret)
+        this.legacyEncryptionKey = new SecretKeySpec(sha256(("FreelaX local wallet v1:" + jwtSecret)
                 .getBytes(StandardCharsets.UTF_8)), "AES");
+        this.encryptionKey = walletEncryptionKey == null || walletEncryptionKey.isBlank()
+                ? legacyEncryptionKey
+                : new SecretKeySpec(sha256(("FreelaX local wallet v2:" + walletEncryptionKey)
+                        .getBytes(StandardCharsets.UTF_8)), "AES");
         this.seededKeys = seededKeys(configuredKeys);
+        if (!enabled && (!seededKeys.isEmpty() || StringUtils.hasText(walletEncryptionKey))) {
+            throw new IllegalStateException(
+                    "Local demo wallet keys are configured but local demo wallets require the dev profile on localnet");
+        }
     }
 
     @Transactional
@@ -247,12 +258,19 @@ public class LocalAutoWalletService {
 
     private PrivateKey decrypt(byte[] encrypted) {
         try {
-            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-            cipher.init(Cipher.DECRYPT_MODE, encryptionKey,
-                    new GCMParameterSpec(128, Arrays.copyOfRange(encrypted, 0, 12)));
-            return KeyFactory.getInstance("Ed25519").generatePrivate(
-                    new PKCS8EncodedKeySpec(cipher.doFinal(encrypted, 12, encrypted.length - 12)));
-        } catch (Exception exception) { throw new IllegalStateException("Could not read local wallet", exception); }
+            return decrypt(encrypted, encryptionKey);
+        } catch (Exception primary) {
+            if (legacyEncryptionKey == encryptionKey) throw new IllegalStateException("Could not read local wallet", primary);
+            try { return decrypt(encrypted, legacyEncryptionKey); }
+            catch (Exception legacy) { throw new IllegalStateException("Could not read local wallet", legacy); }
+        }
+    }
+
+    private PrivateKey decrypt(byte[] encrypted, SecretKeySpec key) throws Exception {
+        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+        cipher.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(128, Arrays.copyOfRange(encrypted, 0, 12)));
+        return KeyFactory.getInstance("Ed25519").generatePrivate(
+                new PKCS8EncodedKeySpec(cipher.doFinal(encrypted, 12, encrypted.length - 12)));
     }
 
     private Map<String, PrivateKey> seededKeys(String configured) {

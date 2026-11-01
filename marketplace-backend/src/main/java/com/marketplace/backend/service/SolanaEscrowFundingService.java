@@ -1,5 +1,6 @@
 package com.marketplace.backend.service;
 
+import com.marketplace.backend.blockchain.solana.SolanaGatewayAdapter;
 import com.marketplace.backend.client.SolanaCprClient;
 import com.marketplace.backend.dto.response.solana.SolanaBuildResult;
 import com.marketplace.backend.dto.response.solana.SolanaConfigResult;
@@ -216,7 +217,7 @@ public class SolanaEscrowFundingService {
                     || "Revision".equals(chain.status()) || "Disputed".equals(chain.status()))) {
             PaymentFlow flow = paymentFlows.findByMilestoneId(milestoneId)
                     .orElseThrow(() -> new ApplicationException(ErrorCode.FUNDING_INVALID_STATE));
-            unifiedFunding.confirmEscrow(flow, chain);
+            unifiedFunding.confirmEscrow(flow, SolanaGatewayAdapter.escrowState(chain));
         }
         if (milestone.getStatus() == MilestoneStatus.PENDING_FUNDING
                 && contract.getStatus() == ContractStatus.PENDING_FUNDING
