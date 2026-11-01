@@ -26,6 +26,42 @@ class TxSpringWiringTest {
     }
 
     @Test
+    void scannerBeansAreWiredOnlyWhenEnabledAndRefuseAnInvalidContractAddress() throws Exception {
+        String[] base = {"--server.port=0", "--avalanche.rpc.min-gap-ms=0", "--avalanche.environment=LOCAL_SIMULATION",
+                "--avalanche.rpc.primary.url=" + LocalStack.anvilUrl(), "--avalanche.tx.enabled=true",
+                "--avalanche.db.url=" + LocalStack.jdbcUrl(), "--avalanche.db.username=" + LocalStack.dbUser(),
+                "--avalanche.db.password=" + LocalStack.dbPassword()};
+        try (ConfigurableApplicationContext off = new SpringApplicationBuilder(AvalancheGatewayApplication.class)
+                .web(WebApplicationType.NONE).run(base)) {
+            assertTrue(off.getBeansOfType(com.freelax.avalanchegateway.scan.LogScanner.class).isEmpty());
+        }
+        String[] invalid = java.util.Arrays.copyOf(base, base.length + 2);
+        invalid[base.length] = "--avalanche.scan.enabled=true";
+        invalid[base.length + 1] = "--avalanche.scan.contract-address=0x123";
+        try (ConfigurableApplicationContext ctx = new SpringApplicationBuilder(AvalancheGatewayApplication.class)
+                .web(WebApplicationType.NONE).run(invalid)) {
+            org.junit.jupiter.api.Assertions.fail("an invalid contract address must abort startup");
+        } catch (Throwable expected) {
+            boolean found = false;
+            for (Throwable t = expected; t != null; t = t.getCause()) {
+                found |= String.valueOf(t.getMessage()).contains("SCAN_CONTRACT_INVALID");
+            }
+            assertTrue(found, String.valueOf(expected));
+        }
+        String[] valid = java.util.Arrays.copyOf(base, base.length + 4);
+        valid[base.length] = "--avalanche.scan.enabled=true";
+        valid[base.length + 1] = "--avalanche.scan.contract-address=0x4444444444444444444444444444444444444444";
+        valid[base.length + 2] = "--avalanche.scan.ws-url=" + LocalStack.anvilUrl().replaceFirst("^http://", "ws://");
+        valid[base.length + 3] = "--avalanche.scan.interval-ms=500";
+        try (ConfigurableApplicationContext ctx = new SpringApplicationBuilder(AvalancheGatewayApplication.class)
+                .web(WebApplicationType.NONE).run(valid)) {
+            assertNotNull(ctx.getBean(com.freelax.avalanchegateway.scan.LogScanner.class));
+            assertNotNull(ctx.getBean(com.freelax.avalanchegateway.scan.ScanCoordinator.class));
+            assertNotNull(ctx.getBean(com.freelax.avalanchegateway.scan.WsHintListener.class));
+        }
+    }
+
+    @Test
     void beansAreWiredMigrationsRunAndThePeriodicReconcilerConfirmsWithoutAManualCall() throws Exception {
         try (ConfigurableApplicationContext ctx = new SpringApplicationBuilder(AvalancheGatewayApplication.class)
                 .web(WebApplicationType.NONE)

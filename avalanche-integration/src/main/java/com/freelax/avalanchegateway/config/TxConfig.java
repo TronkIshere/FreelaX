@@ -1,11 +1,13 @@
 package com.freelax.avalanchegateway.config;
 
 import com.freelax.avalanchegateway.chain.ChainClient;
+import com.freelax.avalanchegateway.chain.ChainClients;
 import com.freelax.avalanchegateway.signer.SignerRegistry;
 import com.freelax.avalanchegateway.startup.EnvironmentStartupValidator;
 import com.freelax.avalanchegateway.startup.ValidatedEnvironment;
 import com.freelax.avalanchegateway.tx.ErrorClassifier;
 import com.freelax.avalanchegateway.tx.NonceAllocator;
+import com.freelax.avalanchegateway.tx.SecondaryProvider;
 import com.freelax.avalanchegateway.tx.SubmissionService;
 import com.freelax.avalanchegateway.tx.TxReconcileScheduler;
 import com.freelax.avalanchegateway.tx.TxRepository;
@@ -68,13 +70,21 @@ public class TxConfig {
                 avalancheTransactionTemplate, txProperties, errorClassifier, txTransitions, avalancheClock);
     }
 
+    @Bean(destroyMethod = "close")
+    SecondaryProvider secondaryProvider(AvalancheProperties properties, ValidatedEnvironment validatedEnvironment) {
+        String url = properties.secondaryUrl();
+        return new SecondaryProvider(url == null ? null
+                : ChainClients.create(validatedEnvironment.environment(), url, properties.timeoutMs(), properties.minGapMs()));
+    }
+
     @Bean
     TxTracker txTracker(ChainClient chainClient, ValidatedEnvironment validatedEnvironment, TxRepository txRepository,
                         TxTransitions txTransitions, ObjectProvider<SubmissionService> submissionService,
                         ObjectProvider<SignerRegistry> signerRegistry, ErrorClassifier errorClassifier,
-                        TxProperties txProperties, Clock avalancheClock) {
+                        TxProperties txProperties, Clock avalancheClock, SecondaryProvider secondaryProvider) {
         return new TxTracker(chainClient, validatedEnvironment, txRepository, txTransitions,
-                submissionService.getIfAvailable(), signerRegistry.getIfAvailable(), errorClassifier, txProperties, avalancheClock);
+                submissionService.getIfAvailable(), signerRegistry.getIfAvailable(), errorClassifier, txProperties, avalancheClock,
+                secondaryProvider.client());
     }
 
     @Bean(initMethod = "start", destroyMethod = "close")

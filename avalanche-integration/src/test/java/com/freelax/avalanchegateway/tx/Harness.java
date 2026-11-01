@@ -31,6 +31,10 @@ final class Harness {
     final TxTracker tracker;
 
     Harness(HikariDataSource dataSource, String rpcUrl, int timeoutMs, TxProperties properties, SignerRegistry registry) {
+        this(dataSource, rpcUrl, timeoutMs, properties, registry, null);
+    }
+
+    Harness(HikariDataSource dataSource, String rpcUrl, int timeoutMs, TxProperties properties, SignerRegistry registry, ChainClient secondary) {
         Clock clock = Clock.systemUTC();
         this.jdbc = new JdbcTemplate(dataSource);
         this.repository = new TxRepository(jdbc);
@@ -42,7 +46,7 @@ final class Harness {
         this.registry = registry;
         ErrorClassifier classifier = new ErrorClassifier();
         this.submission = new SubmissionService(client, LOCAL, registry, repository, allocator, transactions, properties, classifier, transitions, clock);
-        this.tracker = new TxTracker(client, LOCAL, repository, transitions, submission, registry, classifier, properties, clock);
+        this.tracker = new TxTracker(client, LOCAL, repository, transitions, submission, registry, classifier, properties, clock, secondary);
     }
 
     static SignerRegistry newRegistry() {

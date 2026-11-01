@@ -404,7 +404,7 @@ class TxLifecycleTest {
 
     @Test
     void requestValidationAndCapsRejectBeforeAnyNonceIsConsumed() {
-        TxProperties capped = new TxProperties(true, 200_000, 2, 1, 30, 1, 30_000, 2, 0);
+        TxProperties capped = new TxProperties(true, 200_000, 2, 2, 30, 1, 30_000, 2, 0);   // tip equals the cap, so the max fee is always exactly the cap
         Harness h = fundedHarness(LocalStack.anvilUrl(), capped);
         String relayer = h.registry.get(SignerRole.RELAYER).address();
 
@@ -441,6 +441,31 @@ class TxLifecycleTest {
         SubmissionService noSigners = new SubmissionService(h.client, Harness.LOCAL, null, h.repository, h.allocator,
                 h.transactions, h.properties, new ErrorClassifier(), h.transitions, java.time.Clock.systemUTC());
         assertThrows(SubmissionService.SignerUnavailableException.class, () -> noSigners.submit(request("op-nosigner", OK_TARGET)));
+    }
+
+    // ---- second provider cross-check ------------------------------------------------------------------------------
+
+    @Test
+    void aSecondProviderOfTheSameEnvironmentPreventsAFalseReplacedWhenThePrimaryAnswersNull() throws Exception {
+        FaultProxy primary = proxy();
+        primary.nullLookups = true;
+        SignerRegistry registry = Harness.newRegistry();
+        AnvilRpc.fund(LocalStack.anvilUrl(), registry.get(SignerRole.RELAYER).address());
+        Harness withoutSecondary = harness(primary.url(), 5000, Harness.props(0, 1), registry);
+        Harness withSecondary = new Harness(LocalStack.dataSource(), primary.url(), 5000, Harness.props(0, 1), registry,
+                com.freelax.avalanchegateway.chain.ChainClients.create(
+                        com.freelax.avalanchegateway.env.AvalancheEnvironment.LOCAL_SIMULATION, LocalStack.anvilUrl(), 5000, 0));
+        harnesses.add(withSecondary);
+
+        TxRecord one = withoutSecondary.submission.submit(request("op-xcheck-1", OK_TARGET));
+        TxRecord two = withoutSecondary.submission.submit(request("op-xcheck-2", OK_TARGET));
+        awaitMined(two.nonce(), two.signerAddress());
+
+        assertEquals(TxState.REPLACED, withoutSecondary.tracker.reconcile(one.id()).state(),
+                "control: a lying primary alone drives the record to REPLACED");
+        TxRecord confirmed = withSecondary.tracker.reconcile(two.id());
+        assertEquals(TxState.CONFIRMED, confirmed.state(), "the second provider found the receipt the primary denied");
+        assertEquals(1, confirmed.receiptStatus());
     }
 
     // ---- concurrency ----------------------------------------------------------------------------------------------

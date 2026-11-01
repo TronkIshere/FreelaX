@@ -47,6 +47,14 @@ final class AnvilRpc {
         throw new IllegalStateException("no usable response from " + url + " after retries", last);
     }
 
+    static long blockNumber(String url) {
+        Matcher m = RESULT_HEX.matcher(call(url, "eth_blockNumber"));
+        if (!m.find()) {
+            throw new IllegalStateException("no result");
+        }
+        return Long.parseLong(m.group(1), 16);
+    }
+
     static void fund(String url, String address) {
         call(url, "anvil_setBalance", "\"" + address + "\"", "\"0x56bc75e2d63100000\"");
     }

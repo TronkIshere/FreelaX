@@ -5,7 +5,9 @@ Last updated: 2026-11-01 (after M3). Scope: [SIMULATION_SCOPE](../SIMULATION_SCO
 ## Current phase and milestone
 - Phase 2. **P2-M1 ACCEPTED by the owner (2026-11-01)** with the final decisions below. Report: [phase-2/M1-validation-report.md](phase-2/M1-validation-report.md).
 - **P2-M2 (development signers)** implemented and validated; the owner authorized committing it and starting M3 (2026-11-01). Report: [phase-2/M2-validation-report.md](phase-2/M2-validation-report.md).
-- **P2-M3 (chain client, nonce allocator, transaction tracker) implemented, validated and committed; WAITING FOR OWNER REVIEW.** Report: [phase-2/M3-validation-report.md](phase-2/M3-validation-report.md). M4 and later have not started. Execution is sequential with owner review after each milestone: M1 > M2 > M3 > M4 > M5 > M6 > M7 > M8 > M9 > M10 > M11 > M12.
+- **P2-M3 (chain client, nonce allocator, transaction tracker)** implemented, validated and committed. Report: [phase-2/M3-validation-report.md](phase-2/M3-validation-report.md).
+- **Owner authorization (2026-11-01): continue sequentially through M12 without waiting after each milestone**, within the unchanged security and simulation scope. **P2-M4** (log scanner, cursor, provider profiles, WebSocket hints, second-provider cross-check) is validated and committed; report: [phase-2/M4-validation-report.md](phase-2/M4-validation-report.md).
+- **Roadmap note:** the autonomous-execution prompt names milestones differently (for example M4 as "transaction lifecycle", M5 as the whole contract system, M7 as business integration, M10 as Fuji validation, M11 as coexistence) and lists phase-2 files that do not exist. The repository roadmap in [phase-2/README.md](phase-2/README.md) is followed; the prompt's themes are covered inside the matching repository milestones and in the M12 acceptance report.
 
 ## Milestones
 | Milestone | Status |
@@ -16,7 +18,8 @@ Last updated: 2026-11-01 (after M3). Scope: [SIMULATION_SCOPE](../SIMULATION_SCO
 | P2-M1 | **accepted by owner** (validated; 24 tests, 22 pass, 2 optional skipped) |
 | P2-M2 | validated and committed (43 module tests at the time: 41 pass, 2 optional skipped) |
 | P2-M3 | **validated and committed, awaiting owner review** (71 module tests: 69 pass, 2 optional skipped) |
-| P2-M4 to P2-M12 | not started |
+| P2-M4 | **validated and committed** (log scanner, cursor, provider profiles, hints, second-provider cross-check; 85 module tests: 83 pass, 2 optional skipped) |
+| P2-M5 to P2-M12 | not started |
 
 ## Commits (origin/master)
 `3b12e7a` Phase 0, `1662a80` Phase 0 decisions, `e5127ae` Phase 1 checkpoint, `73b5d14` simulation scope, `cf61c0f` Phase 1 Part B (pushed to origin).

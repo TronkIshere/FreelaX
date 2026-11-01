@@ -4,12 +4,17 @@ import org.web3j.protocol.Web3j;
 import org.web3j.protocol.core.DefaultBlockParameter;
 import org.web3j.protocol.core.DefaultBlockParameterName;
 import org.web3j.protocol.core.Response;
+import org.web3j.protocol.core.methods.request.EthFilter;
 import org.web3j.protocol.core.methods.response.EthBlock;
+import org.web3j.protocol.core.methods.response.EthLog;
 import org.web3j.protocol.core.methods.response.EthSendTransaction;
 import org.web3j.protocol.core.methods.response.TransactionReceipt;
 
 import java.io.IOException;
 import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.function.Function;
 
@@ -75,6 +80,39 @@ public class ChainClient {
     public Optional<TxReceipt> receipt(String txHash) {
         return call("eth_getTransactionReceipt", () -> web3j.ethGetTransactionReceipt(txHash).send(),
                 r -> r.getTransactionReceipt().map(ChainClient::toReceipt));
+    }
+
+    /**
+     * Logs of one contract over an inclusive block range. A provider refusal of the range or result size throws
+     * {@link LogRangeExceededException}; callers must never read an empty answer near the head as proof of absence.
+     */
+    public List<LogEntry> logs(String contractAddress, long fromBlock, long toBlock) {
+        pacer.await();
+        EthLog response;
+        try {
+            EthFilter filter = new EthFilter(DefaultBlockParameter.valueOf(BigInteger.valueOf(fromBlock)),
+                    DefaultBlockParameter.valueOf(BigInteger.valueOf(toBlock)), contractAddress);
+            response = web3j.ethGetLogs(filter).send();
+        } catch (IOException | RuntimeException e) {
+            throw new ChainClientException("eth_getLogs failed: " + e.getClass().getSimpleName(), e);
+        }
+        if (response.hasError()) {
+            String message = response.getError().getMessage() == null ? "" : response.getError().getMessage().toLowerCase(Locale.ROOT);
+            if (response.getError().getCode() == -32005 || message.contains("range") || message.contains("too many")
+                    || message.contains("exceed") || message.contains("limit") || message.contains("more than")) {
+                throw new LogRangeExceededException("eth_getLogs range or result size refused (code " + response.getError().getCode() + ")");
+            }
+            throw new ChainClientException("eth_getLogs returned an RPC error (code " + response.getError().getCode() + ")");
+        }
+        List<LogEntry> entries = new ArrayList<>();
+        for (EthLog.LogResult<?> result : response.getLogs()) {
+            if (!(result instanceof EthLog.LogObject log)) {
+                throw new ChainClientException("eth_getLogs returned a hash-only entry");
+            }
+            entries.add(new LogEntry(log.getTransactionHash(), log.getLogIndex().intValueExact(), log.getBlockNumber().longValueExact(),
+                    log.getBlockHash(), log.getAddress(), List.copyOf(log.getTopics()), log.getData(), log.isRemoved()));
+        }
+        return entries;
     }
 
     public boolean transactionExists(String txHash) {

@@ -38,11 +38,12 @@ public class TxTracker {
     private final ErrorClassifier classifier;
     private final TxProperties properties;
     private final Clock clock;
+    private final ChainClient secondary;
 
     /** {@code submission} and {@code registry} are null where no signer exists; signing and resending are then skipped. */
     public TxTracker(ChainClient client, ValidatedEnvironment environment, TxRepository repository, TxTransitions transitions,
                      SubmissionService submission, SignerRegistry registry, ErrorClassifier classifier,
-                     TxProperties properties, Clock clock) {
+                     TxProperties properties, Clock clock, ChainClient secondary) {
         this.client = client;
         this.environment = environment;
         this.repository = repository;
@@ -52,6 +53,7 @@ public class TxTracker {
         this.classifier = classifier;
         this.properties = properties;
         this.clock = clock;
+        this.secondary = secondary;
     }
 
     /** One pass over every in-flight record of this environment and chain; a failing record does not stop the pass. */
@@ -111,10 +113,29 @@ public class TxTracker {
                     return transitions.apply(record, TxState.PENDING, "missing_observations", 0, "last_error_class", null);
                 }
             }
-            return missing(record);
+            TxRecord crossChecked = askSecondary(record, hashes);
+            return crossChecked != null ? crossChecked : missing(record);
         } catch (ChainClientException e) {
             return transitions.note(record, "last_error_class", classifier.classifyTransport(e).name());
         }
+    }
+
+    /** A null from one provider is not evidence: before treating the transaction as missing, ask the second provider of the same environment. */
+    private TxRecord askSecondary(TxRecord record, List<String> hashes) {
+        if (secondary == null) {
+            return null;
+        }
+        for (String hash : hashes) {
+            try {
+                Optional<TxReceipt> receipt = secondary.receipt(hash);
+                if (receipt.isPresent()) {
+                    return fromReceipt(record, hash, receipt.get());
+                }
+            } catch (ChainClientException e) {
+                log.warn("secondary provider lookup failed: {}", e.getClass().getSimpleName());
+            }
+        }
+        return null;
     }
 
     private TxRecord fromReceipt(TxRecord record, String hash, TxReceipt receipt) {
