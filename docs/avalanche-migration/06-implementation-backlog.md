@@ -1,4 +1,4 @@
-# 06. Implementation backlog (not started)
+# 06. Implementation backlog (historical plan; see the Phase 2 status mapping at the end)
 
 > **Scope amendment (2026-11-01):** FreelaX is a development simulation with no real funds ([SIMULATION_SCOPE](../SIMULATION_SCOPE.md)). Supported environments: LOCAL_SIMULATION and AVALANCHE_FUJI only. **Mainnet is out of scope.** Wherever this document mentions Mainnet, production, audits for launch, key ceremonies or a Mainnet cutover, read it as historical planning; see the amendment table at the end of [04](04-migration-roadmap.md) and the guards in [phase-1/simulation-environment-guards.md](phase-1/simulation-environment-guards.md). Decisions D1 to D4 are unchanged.
 
@@ -90,3 +90,25 @@ Authority: [SIMULATION_SCOPE](../SIMULATION_SCOPE.md). Rows above are historical
 | 10 | Dev signer is the implementation target (ephemeral, per role, per environment); KMS signer **deferred** |
 | 3, 7 | still **BLOCKED / PARTIAL** (funded Fuji wallet) |
 | 2 | still **BLOCKED** (DB operator) |
+
+## Phase 2 execution mapping (2026-11-02)
+The rows above are the original plan and were never individually re-marked. Their outcome is recorded here; evidence is in `phase-2/M*-validation-report.md` and the open items are in the Outstanding Items Register of [PROJECT_STATUS](PROJECT_STATUS.md). Owner amendments (Mainnet withdrawn, KMS deferred, audit owner-gated) still apply.
+| Rows | Outcome |
+|---|---|
+| 1 to 7 (Phase 1) | unchanged: see the Part B tables above; rows 2, 3, 7 BLOCKED or PARTIAL (register section E) |
+| 8, 9 | done (M1) |
+| 10 | done for LOCAL_SIMULATION development signers (M2); KMS signer deferred; no Fuji signer by owner rule |
+| 11, 12 | done (M3); Fuji transfer end to end BLOCKED |
+| 13 | O-2 gate: **DEFERRED**, no decision (M5) |
+| 14, 15 | done within the contract and gateway work (M5, M6); arbiter snapshot per O-3 |
+| 16 to 18 | done (M5, M6): Foundry tests, invariants, Slither triaged |
+| 19 | Anvil deployment done (M7); **Fuji deployment BLOCKED** |
+| 20 to 25 | done behind a disabled flag (M8, M9); fee, tax, payout and notification wiring NOT implemented (row 27, 28 partially) |
+| 26 | relayer job: not built; release is permissionless and available through the gateway |
+| 27, 28 | **NOT IMPLEMENTED** for the Avalanche rail (register A4, A7) |
+| 29 | done without viem (dependency-free EIP-1193 adapter, M10) |
+| 30 | **PARTIAL** (fund, extension-approve, release only; no browser or Fuji e2e) (M11) |
+| 31, 32 | **PARTIAL**: layer-level coverage on Anvil; no cross-service run; Fuji part BLOCKED (M12) |
+| 33, 34 | owner-gated simulation quality drills: not performed |
+| 35 | owner decision O-13: DEFERRED |
+| 36 | WITHDRAWN (Mainnet) |

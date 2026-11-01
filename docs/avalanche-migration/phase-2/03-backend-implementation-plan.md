@@ -1,4 +1,5 @@
 # 03. Backend implementation plan (plan only)
+> **Superseded in part (owner rule, M2, 2026-11-01):** no backend development signer, private key or signing operation is permitted in AVALANCHE_FUJI; development signers exist only in LOCAL_SIMULATION. Any text below that describes ephemeral Fuji signers or a funds-capped Fuji signer is superseded. Fuji signing needs a human-operated procedure that is not yet decided (see PROJECT_STATUS, Outstanding Items Register). The text is left unedited as history.
 
 Each milestone is small enough to review alone. Class and package names are **placeholders**. Common rules: Java 21 and web3j 6.1.0 only inside `avalanche-integration`; marketplace stays Java 17; Solana code and persisted enums untouched; additive Flyway only; environment guards from [05](05-environment-and-signer-safety-plan.md) active from M1; state machine from [06](06-transaction-lifecycle-and-reconciliation-plan.md).
 

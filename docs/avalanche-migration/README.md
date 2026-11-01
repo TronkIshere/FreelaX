@@ -72,3 +72,8 @@ Details: [04-migration-roadmap.md](04-migration-roadmap.md).
 
 ## Source reliability note
 Research was performed by reading official pages and querying public RPC endpoints on 2026-11-01. Each claim in [01](01-avalanche-technical-research.md) is tagged **V**, **S** or **U**. Values tagged S or U, and every address, must be re-verified in Phase 1 before use in configuration. Having decided an architectural preference does not resolve a technical question: those stay open in [07](07-open-questions.md).
+
+## Status and navigation (2026-11-02)
+- Current status, owner decisions and the Outstanding Items Register: [PROJECT_STATUS.md](PROJECT_STATUS.md).
+- Phase 2 plan and execution record (milestones M1 to M12 and their validation reports): [phase-2/README.md](phase-2/README.md); final acceptance: [phase-2/M12-validation-report.md](phase-2/M12-validation-report.md).
+- Phase 2 is IMPLEMENTATION COMPLETE WITH EXTERNAL VALIDATION PENDING; Phase 1 is PARTIAL. "Phase 3" in this README (for example the D2 design gate) means the Solidity escrow phase executed inside P2-M5 to M7; the residual item is owner decision O-2 (DEFERRED). No later phase has an approved scope.

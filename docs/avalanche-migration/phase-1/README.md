@@ -1,5 +1,7 @@
 # Phase 1 - Avalanche environment setup and technical experiments
 
+> **Status note (2026-11-02):** Phase 2 (M1 to M12) has been executed and is IMPLEMENTATION COMPLETE WITH EXTERNAL VALIDATION PENDING. Statements in this folder that "Phase 2 has not started" are dated history. See [../PROJECT_STATUS.md](../PROJECT_STATUS.md).
+
 > **Scope amendment (2026-11-01):** FreelaX is a development simulation with no real funds ([SIMULATION_SCOPE](../../SIMULATION_SCOPE.md)); Mainnet is out of scope. Mainnet probes in this phase were read-only and historical; no further Mainnet contact (including a Mainnet fork test) is planned. Guard evaluation: [simulation-environment-guards.md](simulation-environment-guards.md).
 
 Executed **2026-11-01** against `master` (Phase 0 commit `1662a80`). Scope: environment and technical validation only. **Nothing in production code, configuration, schemas, Solana modules or dependencies was changed; nothing was committed or pushed; Phase 2 has not started.**

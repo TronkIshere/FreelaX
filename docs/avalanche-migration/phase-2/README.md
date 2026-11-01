@@ -1,6 +1,8 @@
-# Phase 2: implementation plan (PLANNING ONLY, not started)
+# Phase 2: implementation plan and execution record
 
-Status: **plan for owner review. Nothing in this folder has been implemented.** No production code, contract, dependency, schema, frontend or configuration change, no deployment, no Fuji transaction and no Mainnet contact is part of this document set. Phase 2 starts only on explicit owner approval.
+> **Status update (2026-11-02):** this plan was written as planning only. Phase 2 was then executed (M1 to M12) and is **IMPLEMENTATION COMPLETE WITH EXTERNAL VALIDATION PENDING**. The authoritative status, decision register and outstanding items are in [PROJECT_STATUS](../PROJECT_STATUS.md) (see its Outstanding Items Register); per-milestone evidence is in `M1` to `M12-validation-report.md` in this folder; the final acceptance classification is [M12-validation-report.md](M12-validation-report.md). The plan text below is preserved as the original plan; where it differs from an owner decision or an implemented behaviour, the notes in [09](09-unresolved-decisions-and-prerequisites.md) and `PROJECT_STATUS` win.
+
+Original plan status: plan for owner review. Scope of the plan: no Fuji transaction and no Mainnet contact. The owner later authorized sequential execution of M4 to M12 without a stop after each milestone (recorded in `PROJECT_STATUS`).
 
 Scope: [SIMULATION_SCOPE](../../SIMULATION_SCOPE.md). FreelaX is a development simulation of an Avalanche-powered freelance payment and escrow platform. Environments: **LOCAL_SIMULATION** (Anvil, simulated USDC) and **AVALANCHE_FUJI** (chain id 43113, testnet AVAX and testnet tokens). **Mainnet is out of scope and must be impossible to configure.**
 
@@ -62,6 +64,6 @@ Parallel tracks that can start at once after approval: A) backend infrastructure
 ## 6. Rules that apply to every milestone
 1. No Mainnet configuration, endpoint, address or fallback. No real funds, credentials or settlement.
 2. Solana code and persisted enums stay unchanged; schema changes are additive and forward-only.
-3. Each milestone ends with an explicit owner review; no milestone starts early.
+3. Each milestone ends with an explicit owner review; no milestone starts early. (Amended by the owner on 2026-11-01: M4 to M12 ran sequentially without a stop between milestones; the reviews are recorded in `PROJECT_STATUS` and the milestone reports.)
 4. Unresolved business semantics are **not invented**: they are listed in [09](09-unresolved-decisions-and-prerequisites.md) and the code follows "preserve as is" only when the owner says so.
 5. Evidence labelling stays: observed Fuji behaviour is never confused with local-simulation behaviour.

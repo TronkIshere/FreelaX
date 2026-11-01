@@ -74,3 +74,5 @@ flowchart TB
 
 ## 7. Neutral port changes (only when a consumer moves)
 Order and shapes follow [03](../03-target-architecture.md) section 2. One correction to record: 03 proposed a neutral `TransactionStatus` (SUBMITTED, ACCEPTED, EXECUTED_SUCCESS, EXECUTED_REVERTED, FINALIZED, NOT_FOUND). Phase 1 validated a richer, simpler-to-reason state model; the neutral type should expose **CREATED, SUBMITTED, PENDING, CONFIRMED, FINALIZED, REVERTED, UNKNOWN, REPLACED** (see [06](06-transaction-lifecycle-and-reconciliation-plan.md)), and Solana's adapter maps its signature statuses onto the same set. Finalised in P2-M8.
+
+> **Update (O-10 and O-17):** the "eight states" and the "CREATED ... REPLACED" list in section 7 above are superseded by the ten-state set recorded in [06](06-transaction-lifecycle-and-reconciliation-plan.md) and `PROJECT_STATUS`.

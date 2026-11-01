@@ -1,4 +1,5 @@
 # 02. Smart contract implementation plan (plan only; no Solidity is written in this phase)
+> **Superseded in part (owner rule, M2, 2026-11-01):** no backend development signer, private key or signing operation is permitted in AVALANCHE_FUJI; development signers exist only in LOCAL_SIMULATION. Any text below that describes ephemeral Fuji signers or a funds-capped Fuji signer is superseded. Fuji signing needs a human-operated procedure that is not yet decided (see PROJECT_STATUS, Outstanding Items Register). The text is left unedited as history.
 
 Authority for behaviour: the Anchor program as read in Phase 0 (`milestone_escrow.rs`) and the verbatim mapping in [03 section 7](../03-target-architecture.md). This plan **does not restate or change** that mapping and does not invent rules; every unresolved semantic is listed in section 8 and in [09](09-unresolved-decisions-and-prerequisites.md). Decisions D1 to D4 apply: escrow rules stay on-chain (D4), per-escrow isolation is mandatory at accounting level (D2), the single Solana admin key is not reproduced (D3).
 

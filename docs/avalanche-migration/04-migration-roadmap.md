@@ -51,3 +51,6 @@ Part B ran under the simulation scope. Phase 1 is still **PARTIAL**: remaining b
 
 ## Owner decisions after Phase 1 Part B (2026-11-01)
 Java 21, web3j 6.1.0 and deferred KMS (ephemeral development signers) are **OWNER-DECIDED** and are inputs to Phase 2 planning. Phase 1 remains **PARTIAL** (funded Fuji wallet and database evidence blocked). Phase 2 has not started and needs explicit owner approval.
+
+## Status after Phase 2 (2026-11-02)
+The statements above that "Phase 2 has not started" are dated history. Phase 2 was executed as milestones P2-M1 to P2-M12 (see [phase-2/README.md](phase-2/README.md)) and is **IMPLEMENTATION COMPLETE WITH EXTERNAL VALIDATION PENDING**; Phase 1 stays PARTIAL. The roadmap phases 2 to 6 above were folded into those milestones (mapping in `phase-2/README.md` section 2). **Terminology:** "Phase 3" in this roadmap and in the README, `07` and the Phase 1 reports means the Solidity escrow phase, which was executed inside P2-M5 to M7; the residual item from its design gate is owner decision O-2 (DEFERRED). **No scope for any later phase has been approved.** Authoritative status, decisions and outstanding items: [PROJECT_STATUS](PROJECT_STATUS.md) (Outstanding Items Register).

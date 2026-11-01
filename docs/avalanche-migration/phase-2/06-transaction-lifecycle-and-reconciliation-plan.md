@@ -1,10 +1,12 @@
 # 06. Transaction lifecycle and reconciliation plan (plan only)
 
+> **Update (O-10 and O-17, owner-approved 2026-11-01):** the implemented transaction state set has **ten** states: CREATED, SIGNED, SUBMITTED, PENDING, CONFIRMED, FINALIZED, REVERTED, FAILED, REPLACED, UNKNOWN (FAILED = definitive application-level failure without on-chain execution; REVERTED = mined and failed; REPLACED = same nonce replaced; UNKNOWN = needs reconciliation). Wherever this plan says "seven" or "eight" states, the ten-state model governs; the neutral port may expose a documented mapped subset.
+
 Derived from the Phase 1 prototype (8 scenarios on local Anvil) and Fuji read-only measurements. Separation kept: **FUJI-OBS** observed on Fuji, **LOCAL-SIM** local simulation, **BLOCKED** needs a funded Fuji wallet. Evidence: [lifecycle experiments](../phase-1/transaction-lifecycle-experiments.md), [RPC evaluation](../phase-1/rpc-reconciliation-evaluation.md).
 
 ## 1. States
 `CREATED` (persisted with raw tx and hash, not sent) -> `SUBMITTED` (node returned the hash: **not success**) -> `PENDING` (known to the node, no receipt) -> `CONFIRMED` (receipt status 1) -> `FINALIZED` (finality policy met); `REVERTED` (receipt status 0, definitive, gas spent); `UNKNOWN` (outcome not determinable); `REPLACED` (nonce consumed by a different transaction; definitive for this attempt, added to the required seven).
-Mapping to the existing ledger step statuses (no enum change): CREATED, SUBMITTED -> `PENDING`; PENDING and CONFIRMED -> `PROCESSING`; FINALIZED -> `CONFIRMED` (business step may proceed); REVERTED, REPLACED -> `FAILED`; UNKNOWN -> `UNKNOWN`. The neutral port exposes the eight states ([01](01-target-module-architecture.md) section 7).
+Mapping to the existing ledger step statuses (no enum change): CREATED, SUBMITTED -> `PENDING`; PENDING and CONFIRMED -> `PROCESSING`; FINALIZED -> `CONFIRMED` (business step may proceed); REVERTED, REPLACED -> `FAILED`; UNKNOWN -> `UNKNOWN`. The neutral port exposes a documented mapped subset of the ten-state model (see the note below; the "eight states" wording is superseded by owner decision O-17).
 
 ## 2. Transition table
 | From | Observation | To | Notes |

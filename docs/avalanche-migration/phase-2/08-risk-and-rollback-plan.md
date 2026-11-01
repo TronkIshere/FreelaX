@@ -15,7 +15,7 @@ Extends [05 risk register](../05-risk-register.md) (including its simulation-sco
 | R8 | Blocked Fuji validation (funded wallet) leaves Avalanche-native timings, bump threshold and near-deadline inclusion unmeasured | H | M | Anvil path complete first; conservative defaults; runbook ready; Fuji gate stays open | owner (human action) |
 | R9 | Legacy rail data unknown; accidental removal of a Solana payout path | M | H | no legacy change without DB evidence and owner approval; additive migrations only | owner |
 | R10 | Misleading wording implies real money or withdrawable balance | M | H | terminology rules, labelling, review in M11 | tech/owner |
-| R11 | Dev signer compromise or reuse of a real key | L | M | per-role ephemeral keys, funds cap, no persistence by default, no key import | tech |
+| R11 | Dev signer compromise or reuse of a real key | L | M | per-role ephemeral keys, no persistence by default, no key import; development signers only in LOCAL_SIMULATION (owner rule M2; the earlier "funds cap" for Fuji signers is superseded because no Fuji backend signer exists) | tech |
 | R12 | Java 21 module in a Java 17 reactor (JDK/`release` mismatch) | M | M | build with JDK 21, per-module `release`, validate in M1 | tech |
 | R13 | Scope creep into production-grade features (KMS, audits, Mainnet) | M | M | scope document; explicit owner decisions needed | owner |
 

@@ -1,4 +1,5 @@
 # 05. Environment isolation and signer safety plan (plan only)
+> **Superseded in part (owner rule, M2, 2026-11-01):** no backend development signer, private key or signing operation is permitted in AVALANCHE_FUJI; development signers exist only in LOCAL_SIMULATION. Any text below that describes ephemeral Fuji signers or a funds-capped Fuji signer is superseded. Fuji signing needs a human-operated procedure that is not yet decided (see PROJECT_STATUS, Outstanding Items Register). The text is left unedited as history.
 
 Specification source: [simulation-environment-guards.md](../phase-1/simulation-environment-guards.md) (with Part B refinements) and [security evaluation](../phase-1/security-key-management-evaluation.md). Nothing is implemented here. Owner decision: **KMS deferred; ephemeral development signers**.
 
