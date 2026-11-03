@@ -1,5 +1,11 @@
 # Runbook: fund an ephemeral Fuji test wallet and run the blocked experiments
 
+> **SUPERSEDED FOR AVALANCHE_FUJI (owner response, 2026-11-03).** The M2 rule stands: no backend private key and no backend
+> signing operation in AVALANCHE_FUJI. The `generate`/`run` procedure below creates and uses a key file and must **not** be
+> used on Fuji; its 10 AVAX cap does not override M2. Use the keyless human-signed procedure in
+> [prototypes/human-signed/README.md](prototypes/human-signed/README.md) once the owner has named the funding owner, the address
+> and the signing device (decision C1). The text below is kept as history; its LOCAL_SIMULATION use remains valid.
+
 Status of the criteria that depend on this runbook: **BLOCKED** (needs a human at a browser). Scope: [SIMULATION_SCOPE](../../SIMULATION_SCOPE.md), environment **AVALANCHE_FUJI**, testnet AVAX only. No existing wallet, key or seed phrase is ever needed, requested or touched.
 
 ## What was attempted and why it stopped
