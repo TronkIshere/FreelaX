@@ -1,0 +1,115 @@
+Compiling 1 files with Solc 0.8.38
+Solc 0.8.38 finished in 3.37s
+Compiler run successful!
+
+Ran 1 test for test/UsdcFork.t.sol:UsdcForkTest
+[SKIP: skipped] setUp() (gas: 0)
+Suite result: ok. 0 passed; 0 failed; 1 skipped; finished in 1.13ms (0.00ns CPU time)
+
+Ran 20 tests for test/FreelaXEscrowLifecycle.t.sol:FreelaXEscrowLifecycleTest
+[PASS] test_dispute_changesOnlyItsOwnEscrow() (gas: 1127499)
+[PASS] test_dispute_fromFundedOnlyAfterTheDeliveryDate() (gas: 367662)
+[PASS] test_dispute_fromRevisionAtAnyTimeAndOnlyByAParticipantWithAReason() (gas: 656273)
+[PASS] test_dispute_fromSubmittedJustBeforeTheDeadlineClearsTheClock() (gas: 579107)
+[PASS] test_dispute_fromSubmittedOnlyBeforeTheReviewDeadline() (gas: 548842)
+[PASS] test_dispute_isImpossibleOnSettledEscrows() (gas: 486690)
+[PASS] test_mutualRefund_blacklistedClientKeepsTheEscrowOpen() (gas: 475799)
+[PASS] test_mutualRefund_expiredNotWhileDisputedAndBoundToThisContract() (gas: 583058)
+[PASS] test_mutualRefund_fromFundedSubmittedAndRevision() (gas: 1633151)
+[PASS] test_mutualRefund_needsBothDistinctValidSignaturesBoundToTheEscrow() (gas: 733543)
+[PASS] test_resolve_arbiterReleasesToTheFreelancerOrRefundsTheClient() (gas: 1179541)
+[PASS] test_resolve_arbiterSnapshotSurvivesDefaultArbiterRotation() (gas: 618183)
+[PASS] test_resolve_blacklistedRecipientLeavesTheEscrowDisputedAndRecoverable() (gas: 725678)
+[PASS] test_resolve_cannotResolveANonDisputedEscrow() (gas: 457374)
+[PASS] test_resolve_onlyTheSnapshottedArbiterOnADisputedEscrowWithAHash() (gas: 788146)
+[PASS] test_resolve_pauseDoesNotBlockDisputeOrResolution() (gas: 597561)
+[PASS] test_revision_authorizationAndRoleNegatives() (gas: 782352)
+[PASS] test_revision_cycleClearsTheClockResubmitsAndIsCapped() (gas: 1038290)
+[PASS] test_revision_reviewDeadlineBoundaryIsExclusive() (gas: 1034789)
+[PASS] test_revision_zeroMaxRevisionsMeansNoRevision() (gas: 455720)
+Suite result: ok. 20 passed; 0 failed; 0 skipped; finished in 7.61ms (22.22ms CPU time)
+
+Ran 5 tests for test/Deploy.t.sol:DeployGuardTest
+[PASS] test_localRunDeploysTheStackGrantsTheSignerRoleAndWritesTheManifest() (gas: 2934010)
+[PASS] test_mainnetChainIdsAreRefusedInEveryEnvironment() (gas: 38695)
+[PASS] test_onlyTheTwoSupportedChainsAreAcceptedPerEnvironment() (gas: 41259)
+[PASS] test_runOnTheWrongChainRevertsBeforeDeployingAnything() (gas: 40678)
+[PASS] test_theEnvironmentMustBeNamedAndKnown() (gas: 28462)
+Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 29.38ms (29.89ms CPU time)
+
+Ran 29 tests for test/FreelaXEscrowCore.t.sol:FreelaXEscrowCoreTest
+[PASS] testFuzz_fundSubmitReleasePaysExactlyTheDeposit(uint96,uint8,uint32) (runs: 256, μ: 509513, ~: 509508)
+[PASS] test_authorization_expiredDeadlineIsRefusedAtTheBoundary() (gas: 296678)
+[PASS] test_authorization_highSMalleableSignatureIsRefused() (gas: 72041)
+[PASS] test_authorization_independentTypedDataDigestMatchesTheContract() (gas: 33235)
+[PASS] test_authorization_isBoundToThisContractAndThisChain() (gas: 376469)
+[PASS] test_authorization_wrongSignerRevokedRoleAndTamperedTermsAreRefused() (gas: 244567)
+[PASS] test_extension_boundsRolesAndOnlyOnce() (gas: 573306)
+[PASS] test_extension_onlyBeforeTheOriginalDeliveryDate() (gas: 562950)
+[PASS] test_fund_arbiterMustBeTheCurrentDefaultAndDistinctFromTheParties() (gas: 266273)
+[PASS] test_fund_emitsFunded() (gas: 260076)
+[PASS] test_fund_highValueGraceOnlyWhenRequestedAndAboveThreshold() (gas: 757400)
+[PASS] test_fund_onlyTheClientDuplicatesAndPauseAreRefused() (gas: 430685)
+[PASS] test_fund_recordsTermsSnapshotsArbiterAndMovesTokens() (gas: 295978)
+[PASS] test_fund_termBoundsAreEnforced() (gas: 1744096)
+[PASS] test_noRoleCanReachEscrowedFundsAndDirectTransfersAreNotClaimable() (gas: 594497)
+[PASS] test_pauseBlocksOnlyFundingNotReleaseOrExtension() (gas: 553245)
+[PASS] test_release_clientAnytimeAnyoneAfterTheReviewWindow() (gas: 616641)
+[PASS] test_release_clientMayReleaseBeforeTheDeadlineAndNeverTwice() (gas: 506365)
+[PASS] test_release_isProtectedAgainstReentrancyFromTheToken() (gas: 1348679)
+[PASS] test_release_requiresASubmittedEscrow() (gas: 315326)
+[PASS] test_roles_changingTheDefaultArbiterNeverTouchesAnExistingEscrow() (gas: 650965)
+[PASS] test_roles_eachCapabilityIsSeparate() (gas: 320259)
+[PASS] test_submit_authorizationIsBoundToTheEscrowId() (gas: 542163)
+[PASS] test_submit_authorizationNegativesAndReplay() (gas: 749905)
+[PASS] test_submit_deliveryDeadlineBoundaryIsInclusive() (gas: 392148)
+[PASS] test_submit_startsTheReviewClockAndBindsTheEvidence() (gas: 409311)
+[PASS] test_usdc_blacklistedClientCannotFundAndIssuerPauseBlocksBoth() (gas: 827768)
+[PASS] test_usdc_blacklistedFreelancerBlocksReleaseWithoutLosingTheEscrow() (gas: 642223)
+[PASS] test_usdc_fundWithoutApprovalOrBalanceReverts() (gas: 245917)
+Suite result: ok. 29 passed; 0 failed; 0 skipped; finished in 335.78ms (375.17ms CPU time)
+
+Ran 1 test for test/Invariants.t.sol:EscrowInvariantTest
+[PASS]
+EscrowInvariantTest invariants:
+[PASS] invariant_balanceCoversEveryOpenEscrow
+[PASS] invariant_terminalStatesAreFinal
+[PASS] invariant_valueIsConserved
+ EscrowInvariantTest invariants (runs: 64, calls: 4096, reverts: 0)
+
+╭---------------+------------------+-------+---------+----------╮
+| Contract      | Selector         | Calls | Reverts | Discards |
++===============================================================+
+| EscrowHandler | dispute          | 346   | 0       | 0        |
+|---------------+------------------+-------+---------+----------|
+| EscrowHandler | extend           | 338   | 0       | 0        |
+|---------------+------------------+-------+---------+----------|
+| EscrowHandler | fund             | 328   | 0       | 0        |
+|---------------+------------------+-------+---------+----------|
+| EscrowHandler | fundAndSubmit    | 356   | 0       | 0        |
+|---------------+------------------+-------+---------+----------|
+| EscrowHandler | mutualRefund     | 342   | 0       | 0        |
+|---------------+------------------+-------+---------+----------|
+| EscrowHandler | release          | 323   | 0       | 0        |
+|---------------+------------------+-------+---------+----------|
+| EscrowHandler | resolve          | 331   | 0       | 0        |
+|---------------+------------------+-------+---------+----------|
+| EscrowHandler | revise           | 352   | 0       | 0        |
+|---------------+------------------+-------+---------+----------|
+| EscrowHandler | submit           | 340   | 0       | 0        |
+|---------------+------------------+-------+---------+----------|
+| EscrowHandler | warp             | 338   | 0       | 0        |
+|---------------+------------------+-------+---------+----------|
+| EscrowHandler | warpPastDelivery | 334   | 0       | 0        |
+|---------------+------------------+-------+---------+----------|
+| EscrowHandler | warpPastReview   | 368   | 0       | 0        |
+╰---------------+------------------+-------+---------+----------╯
+
+Logs:
+  coverage: escrows 7 released 1
+  coverage: refunded 2 disputed 1
+  coverage: revisions 0
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 2.06s (2.05s CPU time)
+
+Ran 5 test suites in 2.06s (2.43s CPU time): 55 tests passed, 0 failed, 1 skipped (56 total tests)

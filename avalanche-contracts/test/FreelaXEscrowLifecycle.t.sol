@@ -165,6 +165,36 @@ contract FreelaXEscrowLifecycleTest is Base {
         assertEq(uint8(status(ID)), uint8(IFreelaXEscrow.Status.Released), "after the deadline release is the only path");
     }
 
+    /// Design invariant (03 section 10): "a dispute changes only its own escrow". A dispute and its resolution on one escrow
+    /// leave every field of a second escrow untouched, and the second escrow keeps its own release path.
+    function test_dispute_changesOnlyItsOwnEscrow() public {
+        bytes32 other = keccak256("escrow-other");
+        fundDefault();
+        IFreelaXEscrow.FundTerms memory t = terms(other, 2 * AMOUNT);
+        bytes memory sig = signFund(t, uint64(T0 + 1 hours));
+        vm.prank(client);
+        escrow.fund(t, uint64(T0 + 1 hours), sig);
+        submitDefault(ID, keccak256("v1"));
+        submitDefault(other, keccak256("v2"));
+        bytes32 otherBefore = keccak256(abi.encode(escrow.getEscrow(other)));
+        uint256 openBefore = escrow.totalOpenAmount();
+
+        vm.prank(client);
+        escrow.openDispute(ID, keccak256("why"));
+        assertEq(keccak256(abi.encode(escrow.getEscrow(other))), otherBefore, "opening a dispute touched another escrow");
+        vm.prank(arbiter);
+        escrow.resolveDispute(ID, false, keccak256("refund"));
+        assertEq(keccak256(abi.encode(escrow.getEscrow(other))), otherBefore, "resolving a dispute touched another escrow");
+        assertEq(escrow.totalOpenAmount(), openBefore - AMOUNT, "only the disputed escrow's amount left the open total");
+        assertEq(usdc.balanceOf(address(escrow)), 2 * AMOUNT, "the other escrow's deposit is still held");
+
+        vm.warp(escrow.getEscrow(other).reviewDueAt);
+        vm.prank(relayer);
+        escrow.release(other);
+        assertEq(uint8(status(other)), uint8(IFreelaXEscrow.Status.Released));
+        assertEq(usdc.balanceOf(address(escrow)), 0);
+    }
+
     function test_dispute_fromSubmittedJustBeforeTheDeadlineClearsTheClock() public {
         fundDefault();
         submitDefault(ID, keccak256("v1"));

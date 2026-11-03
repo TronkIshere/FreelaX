@@ -1,0 +1,46 @@
+# Slither 0.11.6 on avalanche-contracts/src/FreelaXEscrow.sol (python:3.12-slim container, solc 0.8.38 via solc-select, --via-ir --optimize 200 --evm-version cancun, lib/ filtered). Generated 2026-11-03. Triage: phase-2/M6-validation-report.md section 5 (unchanged: 1 arbitrary-send-erc20 false positive, 2 unused-return intentional, 9 timestamp intentional).
+Multiple frameworks detected: solc, Solc-json. Using solc (highest priority). Use --compile-force-framework to override.
+'solc --version' running
+'solc @openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/ src/FreelaXEscrow.sol --combined-json abi,ast,bin,bin-runtime,srcmap,srcmap-runtime,userdoc,devdoc,hashes --via-ir --optimize --optimize-runs 200 --evm-version cancun --allow-paths .,/a/src' running
+INFO:Detectors:
+Detector: arbitrary-send-erc20
+FreelaXEscrow.fund(IFreelaXEscrow.FundTerms,uint64,bytes) (src/FreelaXEscrow.sol#63-90) uses arbitrary from in transferFrom: token.safeTransferFrom(t.client,address(this),t.amount) (src/FreelaXEscrow.sol#88)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#arbitrary-from-in-transferfrom
+INFO:Detectors:
+Detector: unused-return
+FreelaXEscrow._requireSignedBy(bytes32,bytes,address) (src/FreelaXEscrow.sol#327-330) ignores return value by (signer,err,None) = ECDSA.tryRecover(digest,signature) (src/FreelaXEscrow.sol#328)
+FreelaXEscrow._checkAuthorization(bytes32,uint64,bytes) (src/FreelaXEscrow.sol#339-343) ignores return value by (signer,err,None) = ECDSA.tryRecover(digest,signature) (src/FreelaXEscrow.sol#341)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#unused-return
+INFO:Detectors:
+Detector: timestamp
+FreelaXEscrow._validateTerms(IFreelaXEscrow.FundTerms) (src/FreelaXEscrow.sol#92-103) uses timestamp for comparisons
+	Dangerous comparisons:
+	- t.fundingExpiresAt < block.timestamp (src/FreelaXEscrow.sol#95)
+	- t.deliveryDueAt <= block.timestamp (src/FreelaXEscrow.sol#96)
+FreelaXEscrow.requestExtension(bytes32,uint64) (src/FreelaXEscrow.sol#109-120) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp >= e.originalDeliveryDueAt (src/FreelaXEscrow.sol#114)
+FreelaXEscrow.approveExtension(bytes32) (src/FreelaXEscrow.sol#122-132) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp >= e.originalDeliveryDueAt (src/FreelaXEscrow.sol#127)
+FreelaXEscrow.submit(bytes32,bytes32,uint64,bytes) (src/FreelaXEscrow.sol#140-154) uses timestamp for comparisons
+	Dangerous comparisons:
+	- e.status == Status.Funded && block.timestamp > e.deliveryDueAt (src/FreelaXEscrow.sol#145)
+FreelaXEscrow.requestRevision(bytes32,bytes32,uint64,bytes) (src/FreelaXEscrow.sol#161-175) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp >= e.reviewDueAt (src/FreelaXEscrow.sol#166)
+FreelaXEscrow.openDispute(bytes32,bytes32) (src/FreelaXEscrow.sol#181-197) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp >= e.reviewDueAt (src/FreelaXEscrow.sol#186)
+	- block.timestamp <= e.deliveryDueAt (src/FreelaXEscrow.sol#188)
+FreelaXEscrow.release(bytes32) (src/FreelaXEscrow.sol#203-213) uses timestamp for comparisons
+	Dangerous comparisons:
+	- msg.sender != e.client && block.timestamp < e.reviewDueAt (src/FreelaXEscrow.sol#206)
+FreelaXEscrow.mutualRefund(bytes32,uint64,bytes,bytes) (src/FreelaXEscrow.sol#244-263) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp > deadline (src/FreelaXEscrow.sol#252)
+FreelaXEscrow._checkAuthorization(bytes32,uint64,bytes) (src/FreelaXEscrow.sol#339-343) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp > deadline (src/FreelaXEscrow.sol#340)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#block-timestamp
+INFO:Slither:src/FreelaXEscrow.sol analyzed (25 contracts with 102 detectors), 12 result(s) found
