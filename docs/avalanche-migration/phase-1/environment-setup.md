@@ -2,6 +2,11 @@
 
 > **Scope amendment (2026-11-01):** FreelaX is a development simulation with no real funds ([SIMULATION_SCOPE](../../SIMULATION_SCOPE.md)); Mainnet is out of scope. Mainnet probes in this phase were read-only and historical; no further Mainnet contact (including a Mainnet fork test) is planned. Guard evaluation: [simulation-environment-guards.md](simulation-environment-guards.md).
 
+> **Machine update (2026-11-03):** the current developer machine differs from the table below: only JDK 25.0.4.1 is installed
+> (no JDK 17, 20 or 21), Maven 3.10.0 in `~/.m2/wrapper/dists` (`mvn` still not on `PATH`), Node 24.19.0, Docker 29.8.2.
+> JDK 17 and 21 runtimes are exercised through the pinned `maven:3.9-eclipse-temurin-17/21` images. Details and results:
+> [PROJECT_STATUS](../PROJECT_STATUS.md) "Validation results" and register B8, B10.
+
 Run date: **2026-11-01** (host clock UTC+7). Host: Windows 11 Home 10.0.26300, Git Bash/PowerShell. Everything below was observed on this machine; nothing was assumed.
 
 ## Tool inventory (observed)

@@ -34,5 +34,29 @@ SELECT status, COUNT(*) AS n FROM jobs WHERE checkout_order_id IS NOT NULL GROUP
 SELECT status, COUNT(*) AS n FROM bofa_checkout_orders GROUP BY 1;
 SELECT COUNT(*) AS unfinished_checkout_orders FROM bofa_checkout_orders WHERE status = 'CREATED';
 ```
+## Operator checklist and required output format (added 2026-11-03, owner response section 7)
+Status stays **BLOCKED (DB operator)** until results are returned. No developer or AI session runs these queries.
+1. **Authorization first.** The project owner names each environment the operator may query (for example "local demo
+   database on host X"). An environment not named is not queried. A local developer database is **not** evidence for any
+   other environment and must be labelled as local.
+2. **Read-only session.** Dedicated account with `GRANT SELECT` only; `SET SESSION TRANSACTION READ ONLY;` at the start of
+   every session. No `INSERT`, `UPDATE`, `DELETE`, DDL, export of rows, or copy of personal, bank or wallet data.
+3. **Run exactly the six queries above**, unchanged, against the `marketplace` and `payment` databases of each authorized
+   environment.
+4. **Return one file per environment**, `rail-evidence-<environment>-<yyyymmdd>.md`, in this shape (counts only):
+```
+environment: <name as authorized by the owner>     operator: <role, not a personal name>     collected_at_utc: <timestamp>
+database_versions: marketplace Flyway <latest version>, payment Flyway <latest version>
+Q1 jobs by payment_flow_version, status:           | payment_flow_version | status | n |
+Q2 work_contracts by payment_rail, status:          | payment_rail | status | n |
+Q3 freelancer_payout_records by stage statuses:     | on_ramp_status | off_ramp_status | client_payment_status | on_chain_off_ramp_status | contract_driven | n |
+Q4 jobs with a checkout order, by status:           | status | n |
+Q5 bofa_checkout_orders by status:                  | status | n |
+Q6 unfinished checkout orders:                      | unfinished_checkout_orders |
+notes: <anything unusual, e.g. a query error; never row contents>
+```
+5. A developer attaches the files under `evidence/db/` and records the result against register item E2 / B6. Until then the
+   legacy-rail decision C8 stays OPEN and no legacy Solana payment path is changed.
+
 ## How the answer will be used
 Rail data mix for the roadmap and the open question on legacy payout rails ([07](../07-open-questions.md)). Environment label matters: a result from a developer's local database says nothing about any other environment.
