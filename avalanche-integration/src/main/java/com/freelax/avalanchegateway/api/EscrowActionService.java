@@ -5,6 +5,7 @@ import com.freelax.avalanchegateway.api.Dtos.PreparedActionResponse;
 import com.freelax.avalanchegateway.api.Dtos.PreparedTx;
 import com.freelax.avalanchegateway.chain.ChainClient;
 import com.freelax.avalanchegateway.chain.TxReceipt;
+import com.freelax.avalanchegateway.config.TxProperties;
 import com.freelax.avalanchegateway.contract.DeploymentHolder;
 import com.freelax.avalanchegateway.contract.EscrowAuthorizations;
 import com.freelax.avalanchegateway.contract.EscrowCalls;
@@ -55,15 +56,18 @@ public class EscrowActionService {
     private final SignerRegistry registry;
     private final SubmissionService submission;
     private final TxRepository repository;
+    private final TxProperties txProperties;
 
     public EscrowActionService(ChainClient client, ValidatedEnvironment environment, DeploymentHolder deployment,
-                               ObjectProvider<SignerRegistry> registry, ObjectProvider<SubmissionService> submission, TxRepository repository) {
+                               ObjectProvider<SignerRegistry> registry, ObjectProvider<SubmissionService> submission, TxRepository repository,
+                               TxProperties txProperties) {
         this.client = client;
         this.environment = environment;
         this.deployment = deployment;
         this.registry = registry.getIfAvailable();
         this.submission = submission.getIfAvailable();
         this.repository = repository;
+        this.txProperties = txProperties;
     }
 
     public VerifiedDeployment deployment() {
@@ -299,7 +303,11 @@ public class EscrowActionService {
         return repository.find(environment.environment().name(), environment.chainId(), operationKey);
     }
 
-    /** Read-only status of a transaction broadcast by a user's own wallet: derived live from the chain, nothing is stored. */
+    /**
+     * Read-only status of a transaction broadcast by a user's own wallet: derived live from the chain, nothing is stored.
+     * As for gateway-tracked transactions (plan 06 section 4), a receipt counts only when its target is one of the verified
+     * manifest contracts; a receipt for any other target is reported UNKNOWN (it is not a transaction of this deployment).
+     */
     public Dtos.HashStatusResponse statusByHash(String txHash) {
         if (txHash == null || !BYTES32.matcher(txHash).matches()) {
             throw new ApiException(400, "INVALID_TX_HASH", "a 32-byte transaction hash is required");
@@ -307,13 +315,15 @@ public class EscrowActionService {
         Optional<TxReceipt> receipt = client.receipt(txHash);
         String state;
         Long block = null;
-        if (receipt.isPresent()) {
+        if (receipt.isPresent() && !isManifestTarget(receipt.get().to())) {
+            state = TxState.UNKNOWN.name();
+        } else if (receipt.isPresent()) {
             block = receipt.get().blockNumber();
             if (!receipt.get().success()) {
                 state = TxState.REVERTED.name();
             } else {
                 boolean finalized = environment.environment() == AvalancheEnvironment.LOCAL_SIMULATION
-                        ? client.latestBlockNumber() >= block + 1
+                        ? client.latestBlockNumber() >= block + txProperties.confirmations()
                         : client.finalizedBlockNumber() >= block;
                 state = (finalized ? TxState.FINALIZED : TxState.CONFIRMED).name();
             }
@@ -321,5 +331,9 @@ public class EscrowActionService {
             state = client.transactionExists(txHash) ? TxState.PENDING.name() : TxState.UNKNOWN.name();
         }
         return new Dtos.HashStatusResponse(environment.environment().name(), true, environment.chainId(), txHash.toLowerCase(Locale.ROOT), state, block);
+    }
+
+    private boolean isManifestTarget(String to) {
+        return to != null && deployment().allowedTargets().stream().anyMatch(to::equalsIgnoreCase);
     }
 }

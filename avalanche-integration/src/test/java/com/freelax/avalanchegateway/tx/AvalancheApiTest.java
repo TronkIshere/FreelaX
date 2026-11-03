@@ -293,6 +293,14 @@ class AvalancheApiTest {
         Map<String, Object> byHash = get("/api/v1/avalanche/transactions/by-hash/" + hash);
         assertTrue(List.of("CONFIRMED", "FINALIZED").contains(byHash.get("state")), String.valueOf(byHash));
         assertEquals("UNKNOWN", get("/api/v1/avalanche/transactions/by-hash/0x" + "ab".repeat(32)).get("state"), "an unknown hash is UNKNOWN, never failed");
+
+        // 6. a successful receipt for a contract outside the deployment manifest is not a transaction of this deployment
+        String foreign = ContractFixtures.sendFromAdmin(LocalStack.anvilUrl(), "0x" + "5a".repeat(20), "0x");
+        AnvilRpc.mine(LocalStack.anvilUrl());
+        AnvilRpc.mine(LocalStack.anvilUrl());
+        Map<String, Object> foreignStatus = get("/api/v1/avalanche/transactions/by-hash/" + foreign);
+        assertEquals("UNKNOWN", foreignStatus.get("state"), "a receipt for a non-manifest target never reads as CONFIRMED or FINALIZED");
+        assertEquals(null, foreignStatus.get("blockNumber"));
     }
 
     private String awaitFirstKey() {
