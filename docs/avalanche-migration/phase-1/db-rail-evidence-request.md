@@ -1,6 +1,7 @@
 # Database and legacy payment-rail evidence: status and operator request
 
-Status: **BLOCKED (no safe read-only access)**. No query was run. Nothing in any database was read or changed. Scope reminder: FreelaX is a development simulation ([SIMULATION_SCOPE](../../SIMULATION_SCOPE.md)); the rows in question are simulation data. The queries are still needed to know which payment rails hold data before any legacy path is considered for retirement. **No legacy Solana payment path is deleted or migrated by this phase.**
+Status: **BLOCKED (DB operator not yet named)**. Authorization (owner decision update, 2026-11-03, request R2): **the
+development database only**, for the six read-only queries below; no other environment is authorized. No query was run. Nothing in any database was read or changed. Scope reminder: FreelaX is a development simulation ([SIMULATION_SCOPE](../../SIMULATION_SCOPE.md)); the rows in question are simulation data. The queries are still needed to know which payment rails hold data before any legacy path is considered for retirement. **No legacy Solana payment path is deleted or migrated by this phase.**
 
 ## What was checked (and not touched)
 | Item | Finding |
@@ -36,9 +37,9 @@ SELECT COUNT(*) AS unfinished_checkout_orders FROM bofa_checkout_orders WHERE st
 ```
 ## Operator checklist and required output format (added 2026-11-03, owner response section 7)
 Status stays **BLOCKED (DB operator)** until results are returned. No developer or AI session runs these queries.
-1. **Authorization first.** The project owner names each environment the operator may query (for example "local demo
-   database on host X"). An environment not named is not queried. A local developer database is **not** evidence for any
-   other environment and must be labelled as local.
+1. **Authorization first.** The project owner names each environment the operator may query. **Authorized on 2026-11-03:
+   the development database only.** An environment not named is not queried. A development or local developer database is
+   **not** evidence for any other environment and must be labelled as such (`environment: development`).
 2. **Read-only session.** Dedicated account with `GRANT SELECT` only; `SET SESSION TRANSACTION READ ONLY;` at the start of
    every session. No `INSERT`, `UPDATE`, `DELETE`, DDL, export of rows, or copy of personal, bank or wallet data.
 3. **Run exactly the six queries above**, unchanged, against the `marketplace` and `payment` databases of each authorized

@@ -90,10 +90,10 @@ Authority: [PROJECT_STATUS](PROJECT_STATUS.md) Outstanding Items Register (item 
 | # | Risk | L | I | Mitigation / status |
 |---|---|---|---|---|
 | P1 | No approved Fuji signing procedure: Fuji deployment, smoke and calibration stay unvalidated [B2, C1] | H | M | owner decision C1; funding runbook ready; Anvil path complete |
-| P2 | Avalanche release has no fee, tax, payout or notification handling; a release could be read as business-complete [A4, C3] | M | H | rail is behind `avalanche-gateway.enabled=false`; owner decision C3 before any demo of settlement |
+| P2 | Avalanche release has no fee, tax, payout or notification handling; a release could be read as business-complete [A4, C3] | M | H | rail is behind `avalanche-gateway.enabled=false`; work moved to Phase 3 by R8 (2026-11-03); C3 treatment decision before any demo of settlement |
 | P3 | Solana frontend regression unverifiable on Node 22.10 (13 suites cannot load) [B8] | H | M | upgrade Node or decide on the dependency; re-run before relying on frontend regression |
 | P4 | No CI: JDK 17 pipelines silently skip the Avalanche module; JDK 21 and Docker checks are manual [D1] | M | M | add a JDK 21 plus Docker step when a pipeline exists |
 | P5 | LOCAL signer addresses change per process; a deployment must grant roles to the current addresses [F3] | M | L | tests automate this; documented demo procedure |
 | P6 | Nonce gap after a permanent rejection blocks that signer until restart [F1] | L | L | acceptable for ephemeral LOCAL keys; decide before any persistent signer |
 | P7 | Business status and chain state can diverge for Submitted/Revision/Disputed (no mirror) [A5, C4] | M | M | owner decision C4; FINALIZED-only settlement and CHAIN_MISMATCH guard exist |
-| P8 | O-6 stuck-escrow behaviour not yet accepted by the owner [C5] | M | M | M6 section 4 evidence; no rerouting by decision |
+| P8 | A USDC blacklist leaves escrows stuck (every open escrow if the shared contract address is blacklisted) [C5, C2] | M | M | **accepted by the owner 2026-11-03** (O-6: stuck-and-reported; no privileged withdrawal, bypass or automatic rerouting; O-2: shared baseline kept); reporting is proposed for Phase 3 (not approved) |

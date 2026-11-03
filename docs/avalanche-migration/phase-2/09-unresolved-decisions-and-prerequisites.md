@@ -38,16 +38,16 @@ Nothing below is decided by this document. "Recommendation" is advice for the ow
 ## 3. What can proceed in parallel
 After approval and O-1: backend infrastructure M1-M4 and contracts M5-M6 are independent; the two human actions (funded wallet, DB evidence) and owner decisions O-2 to O-9 run alongside. M8 needs the ABI from M6 and the tracker from M3. The frontend M10 can start once the M8 API shape is frozen, with a mocked provider.
 
-## 4. Decision status register (reconciled 2026-11-02 after M12)
+## 4. Decision status register (reconciled 2026-11-02 after M12; O-2, O-6 and O-15 note updated 2026-11-03)
 This register records status only. It does not change any decision, and it approves nothing that the owner deferred. The recommendation column above is advice; this table is what the owner actually decided. Source of the decisions: `PROJECT_STATUS` section "Approved decisions".
 
 | ID | Status | Note |
 |---|---|---|
 | O-1 | DECIDED: separate Avalanche service | implemented as `avalanche-integration` |
-| O-2 | **DEFERRED** (shared vs factory) | M5 exit report records no decision and no measured comparison; remains open |
+| O-2 | **DECIDED 2026-11-03**: shared immutable escrow remains the baseline; factory/clone prototype permitted exclusively in LOCAL_SIMULATION | was DEFERRED through M12; decision recorded in PROJECT_STATUS "Owner decision update" |
 | O-3 | DECIDED: per-escrow arbiter snapshot only | no reassignment, no global rotation |
 | O-4, O-5 | DECIDED: preserve verified existing behaviour, invent no rules | mutual refund uses two EIP-712 signatures |
-| O-6 | DECIDED as an evaluation rule (fork evidence, no rerouting or privileged withdrawal); **final acceptance of the stuck-escrow behaviour is still OPEN** | evidence in the M6 report section 4; owner must still accept or reject it |
+| O-6 | **DECIDED 2026-11-03**: stuck-and-reported escrow behaviour accepted; no privileged withdrawal, bypass or automatic rerouting | evidence in the M6 report section 4; decision recorded in PROJECT_STATUS "Owner decision update" |
 | O-7 | DECIDED: users pay testnet gas, relayer only for release | |
 | O-8 | **DEFERRED** (Fuji RPC provider) | host allow-list accepted for two hosts only |
 | O-9 | DECIDED: chain identifier on the existing rail model | implemented as `payment_network_id` (V6) |
@@ -56,7 +56,7 @@ This register records status only. It does not change any decision, and it appro
 | O-12 | DECIDED: no WalletConnect in this phase | |
 | O-13 | **DEFERRED**: no external audit or key ceremony in this phase | the "none required" recommendation above is advice only; this is not a production-readiness claim |
 | O-14 | DECIDED: Avalanche for new work; in-flight Solana escrows finish on Solana | |
-| O-15 | DECIDED: fiat operations stay labelled mocks | fee, tax, payout and notification treatment for an Avalanche release is **not** covered by this decision and is OPEN (see PROJECT_STATUS) |
+| O-15 | DECIDED: fiat operations stay labelled mocks | fee, tax, payout and notification treatment for an Avalanche release is **not** covered by this decision; the work was moved to Phase 3 by R8 (2026-11-03) and its treatment option (C3) is still OPEN (see PROJECT_STATUS) |
 | O-16 | DECIDED: additive-only root changes | `avalanche_gateway` line added to `init-db.sql` in M3 |
 | O-18 | DECIDED: Testcontainers for tests; separately provisioned local runtime database | |
 | (new, OPEN) | Fuji human-operated signing procedure | not decided; no policy invented |

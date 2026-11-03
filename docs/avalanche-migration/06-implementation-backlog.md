@@ -99,7 +99,7 @@ The rows above are the original plan and were never individually re-marked. Thei
 | 8, 9 | done (M1) |
 | 10 | done for LOCAL_SIMULATION development signers (M2); KMS signer deferred; no Fuji signer by owner rule |
 | 11, 12 | done (M3); Fuji transfer end to end BLOCKED |
-| 13 | O-2 gate: **DEFERRED**, no decision (M5) |
+| 13 | O-2 gate: DEFERRED at M5; **DECIDED 2026-11-03**: shared immutable baseline kept, factory/clone prototype permitted in LOCAL_SIMULATION only |
 | 14, 15 | done within the contract and gateway work (M5, M6); arbiter snapshot per O-3 |
 | 16 to 18 | done (M5, M6): Foundry tests, invariants, Slither triaged |
 | 19 | Anvil deployment done (M7); **Fuji deployment BLOCKED** |

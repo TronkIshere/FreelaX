@@ -11,6 +11,8 @@ Owner response recorded in [../PROJECT_STATUS.md](../PROJECT_STATUS.md). Phase 1
 E1 to E7 is in the last section of [phase-1-acceptance-report.md](phase-1-acceptance-report.md). New: keyless human-signed Fuji
 tooling ([prototypes/human-signed](prototypes/human-signed/README.md)) replacing the key-file runbook for Fuji (M2), the DB
 operator output format in [db-rail-evidence-request.md](db-rail-evidence-request.md), and E7 desk evidence (ACP-283, FiatToken).
+Owner decision update (2026-11-03): the **development database only** is authorized for the six read-only queries (E2 still
+BLOCKED on the DB operator); all other Phase 1 items unchanged.
 
 ## Part B update (2026-11-01)
 Part B closed every gap that did not need a funded Fuji wallet or database access. See [part-b-completion-report.md](part-b-completion-report.md) and the final section of [phase-1-acceptance-report.md](phase-1-acceptance-report.md). New since the first version: web-context and **Java 17** compatibility matrix (web3j 6.1.0 needs Java 21; Java 17 works with web3j 4.13.0), lifecycle prototype (8 scenarios), local fake-KMS signature conversion, restart-safe finalized-cursor scan validated against an independent provider, WebSocket reconnect behaviour, a **429 throttling episode on the official Fuji RPC**, a reusable guarded live-experiment script, and the operator requests for the two blocked items ([fuji-funding-runbook.md](fuji-funding-runbook.md), [db-rail-evidence-request.md](db-rail-evidence-request.md)). Status remains **PARTIAL** because of those two blockers.
