@@ -83,7 +83,12 @@ public class ContractSubmissionService {
             return response(prior);
         }
         boolean onChainEscrow = escrowContracts.existsByContractId(contractId);
-        if (!onChainEscrow && !funding.existsByMilestoneIdAndStatusIn(
+        // Avalanche rail (A2 finding, 2026-11-04): funding is proven by the milestone itself, which AvalancheEscrowService moves
+        // to FUNDED only after a FINALIZED fund transaction and an independent chain read that matches the recorded terms. The
+        // state check below still requires FUNDED or IN_PROGRESS. Legacy rails keep their existing checks unchanged.
+        boolean avalancheRail = contract.getPaymentNetworkId() != null
+                && contract.getPaymentNetworkId().toLowerCase(java.util.Locale.ROOT).startsWith("avalanche");
+        if (!onChainEscrow && !avalancheRail && !funding.existsByMilestoneIdAndStatusIn(
                 milestone.getId(), EnumSet.of(FundingStatus.SUCCEEDED))) {
             throw new ApplicationException(ErrorCode.SUBMISSION_NOT_FUNDED);
         }

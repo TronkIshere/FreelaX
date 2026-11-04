@@ -83,6 +83,7 @@ class AvalancheEscrowServiceTest {
             mock(com.marketplace.backend.repository.AvalanchePendingAuthorizationRepository.class);
     private final java.util.List<com.marketplace.backend.entity.AvalanchePendingAuthorization> pendingRows = new java.util.ArrayList<>();
     private final NotificationService notifications = mock(NotificationService.class);
+    private final com.marketplace.backend.repository.JobRepository jobs = mock(com.marketplace.backend.repository.JobRepository.class);
     private final AvalancheGatewayProperties properties = new AvalancheGatewayProperties();
     private AvalancheEscrowService service;
 
@@ -100,7 +101,7 @@ class AvalancheEscrowServiceTest {
         when(gateway.environmentInfo()).thenReturn(new EnvironmentInfo("LOCAL_SIMULATION", 31337, true, null, true));
         when(gateway.validateAddress(any(BlockchainAddress.class))).thenReturn(true);
         service = new AvalancheEscrowService(contracts, milestones, wallets, submissions, disputes, solanaEscrows, chainTransactions,
-                new BlockchainGatewayRegistry(List.of(gateway)), properties, evmWallets, pendingAuthorizations, notifications);
+                new BlockchainGatewayRegistry(List.of(gateway)), properties, evmWallets, pendingAuthorizations, notifications, jobs);
 
         contract = new WorkContract();
         contract.setId(UUID.randomUUID());
@@ -550,7 +551,7 @@ class AvalancheEscrowServiceTest {
         // 7. recovery: the chain agrees; a new service instance (restart) applies the effect once
         org.mockito.Mockito.doReturn(snapshot(NeutralEscrowStatus.FUNDED, "5000000", CLIENT_WALLET)).when(gateway).escrowSnapshot(any());
         AvalancheEscrowService restarted = new AvalancheEscrowService(contracts, milestones, wallets, submissions, disputes, solanaEscrows,
-                chainTransactions, new BlockchainGatewayRegistry(List.of(gateway)), properties, evmWallets, pendingAuthorizations, notifications);
+                chainTransactions, new BlockchainGatewayRegistry(List.of(gateway)), properties, evmWallets, pendingAuthorizations, notifications, jobs);
         restarted.refresh(clientId, false, contract.getId());
         assertTrue(row.isBusinessApplied());
         assertNull(row.getErrorClass());
@@ -735,6 +736,52 @@ class AvalancheEscrowServiceTest {
                 anyString(), anyString(), any(), any());
         verify(notifications, never()).notify(any(), org.mockito.ArgumentMatchers.eq(com.marketplace.backend.entity.NotificationType.RELEASE_CONFIRMED),
                 anyString(), anyString(), any(), any());
+    }
+
+    // ---- A2 finding: the job follows the applied escrow outcome ------------------------------------------------------
+
+    private com.marketplace.backend.entity.Job jobOf(com.marketplace.backend.entity.JobStatus status) {
+        com.marketplace.backend.entity.Job job = new com.marketplace.backend.entity.Job();
+        job.setId(UUID.randomUUID());
+        job.setStatus(status);
+        contract.setJobId(job.getId());
+        when(jobs.findById(job.getId())).thenReturn(Optional.of(job));
+        return job;
+    }
+
+    @Test
+    void anAppliedFundStartsTheJobAndAReleaseCompletesIt() {
+        com.marketplace.backend.entity.Job job = jobOf(com.marketplace.backend.entity.JobStatus.AWAITING_PAYMENT);
+        AvalancheChainTransaction fund = row("fund", TransactionStatus.SUBMITTED);
+        when(gateway.transactionStatus(any())).thenReturn(result(TransactionStatus.CONFIRMED));
+        service.refresh(clientId, false, contract.getId());
+        assertEquals(com.marketplace.backend.entity.JobStatus.AWAITING_PAYMENT, job.getStatus(), "CONFIRMED moves nothing");
+
+        when(gateway.transactionStatus(any())).thenReturn(result(TransactionStatus.FINALIZED));
+        when(gateway.escrowSnapshot(any())).thenReturn(snapshot(NeutralEscrowStatus.FUNDED, "5000000", CLIENT_WALLET));
+        service.refresh(clientId, false, contract.getId());
+        assertTrue(fund.isBusinessApplied());
+        assertEquals(com.marketplace.backend.entity.JobStatus.IN_PROGRESS, job.getStatus());
+
+        milestone.setStatus(MilestoneStatus.SUBMITTED);
+        row("release", TransactionStatus.FINALIZED);
+        when(gateway.escrowSnapshot(any())).thenReturn(snapshot(NeutralEscrowStatus.RELEASED, "5000000", CLIENT_WALLET));
+        service.refresh(clientId, false, contract.getId());
+        assertEquals(com.marketplace.backend.entity.JobStatus.COMPLETED, job.getStatus());
+    }
+
+    @Test
+    void anAppliedRefundCancelsTheJobAndAMismatchChangesNothing() {
+        com.marketplace.backend.entity.Job job = jobOf(com.marketplace.backend.entity.JobStatus.IN_PROGRESS);
+        contract.setStatus(ContractStatus.ACTIVE);
+        milestone.setStatus(MilestoneStatus.IN_PROGRESS);
+        row("mutual-refund", TransactionStatus.FINALIZED);
+        when(gateway.escrowSnapshot(any())).thenReturn(snapshot(NeutralEscrowStatus.FUNDED, "5000000", CLIENT_WALLET));
+        service.refresh(clientId, false, contract.getId());
+        assertEquals(com.marketplace.backend.entity.JobStatus.IN_PROGRESS, job.getStatus(), "CHAIN_MISMATCH applies nothing");
+        when(gateway.escrowSnapshot(any())).thenReturn(snapshot(NeutralEscrowStatus.REFUNDED, "5000000", CLIENT_WALLET));
+        service.refresh(clientId, false, contract.getId());
+        assertEquals(com.marketplace.backend.entity.JobStatus.CANCELLED, job.getStatus());
     }
 
     @Test

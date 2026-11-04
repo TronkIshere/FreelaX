@@ -186,6 +186,31 @@ class ContractSubmissionServiceTest {
     }
 
     @Test
+    void anAvalancheRailContractIsFundedByItsVerifiedMilestoneWithoutAFiatOrSolanaRecord() {
+        when(funding.existsByMilestoneIdAndStatusIn(eq(milestone.getId()), any())).thenReturn(false);
+        contract.setPaymentNetworkId("avalanche-local");
+        // the milestone fixture is FUNDED; on the Avalanche rail only a FINALIZED, chain-verified fund sets that
+        org.assertj.core.api.Assertions.assertThatCode(() -> service.submit(contract.getFreelancerId(), contract.getId(), "submit-av", request()))
+                .doesNotThrowAnyException();
+
+        milestone.setStatus(com.marketplace.backend.entity.MilestoneStatus.PENDING_FUNDING);
+        assertThatThrownBy(() -> service.submit(contract.getFreelancerId(), contract.getId(), "submit-av-2", request()))
+                .isInstanceOf(ApplicationException.class)
+                .extracting(ex -> ((ApplicationException) ex).getErrorCode())
+                .isEqualTo(ErrorCode.SUBMISSION_INVALID_STATE);
+    }
+
+    @Test
+    void aLegacyRailContractWithoutAFundingRecordStillCannotSubmit() {
+        when(funding.existsByMilestoneIdAndStatusIn(eq(milestone.getId()), any())).thenReturn(false);
+        contract.setPaymentNetworkId("solana-localnet");
+        assertThatThrownBy(() -> service.submit(contract.getFreelancerId(), contract.getId(), "submit-sol", request()))
+                .isInstanceOf(ApplicationException.class)
+                .extracting(ex -> ((ApplicationException) ex).getErrorCode())
+                .isEqualTo(ErrorCode.SUBMISSION_NOT_FUNDED);
+    }
+
+    @Test
     void evidenceMustReferenceThisContractAndUseHttps() {
         var request = request();
         request.getDeliverables().get(0).setRequirementId(UUID.randomUUID());

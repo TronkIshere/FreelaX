@@ -82,6 +82,8 @@ public class AvalancheEscrowService {
     private final com.marketplace.backend.repository.AvalanchePendingAuthorizationRepository pendingAuthorizations;
     /** Phase 3 D-B (notifications only; fees, tax and payout are not wired): used only when settlement-notifications is on. */
     private final NotificationService notifications;
+    /** A2 finding: the job follows the contract as on the Solana escrow rail (fund IN_PROGRESS, release COMPLETED, refund CANCELLED). */
+    private final com.marketplace.backend.repository.JobRepository jobs;
 
     static final String MUTUAL_REFUND = "mutual-refund";
     private static final java.util.regex.Pattern SIGNATURE_HEX = java.util.regex.Pattern.compile("0x[0-9a-fA-F]{130}");
@@ -531,9 +533,30 @@ public class AvalancheEscrowService {
         }
         milestones.save(m);
         contracts.save(c);
+        updateJob(c, m.getStatus());
         row.setBusinessApplied(true);
         row.setErrorClass(null);
         notifySettlement(c, row.getAction(), m.getStatus());
+    }
+
+    /** Mirrors SolanaEscrowFundingService / SolanaEscrowTimeoutService: the job status follows an applied escrow outcome. */
+    private void updateJob(WorkContract c, MilestoneStatus result) {
+        if (jobs == null || c.getJobId() == null) {
+            return;
+        }
+        jobs.findById(c.getJobId()).ifPresent(job -> {
+            com.marketplace.backend.entity.JobStatus before = job.getStatus();
+            if (result == MilestoneStatus.FUNDED && before == com.marketplace.backend.entity.JobStatus.AWAITING_PAYMENT) {
+                job.setStatus(com.marketplace.backend.entity.JobStatus.IN_PROGRESS);
+            } else if (result == MilestoneStatus.RELEASED) {
+                job.setStatus(com.marketplace.backend.entity.JobStatus.COMPLETED);
+            } else if (result == MilestoneStatus.REFUNDED) {
+                job.setStatus(com.marketplace.backend.entity.JobStatus.CANCELLED);
+            }
+            if (job.getStatus() != before) {
+                jobs.save(job);
+            }
+        });
     }
 
     /**

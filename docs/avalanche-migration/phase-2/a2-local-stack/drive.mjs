@@ -1,0 +1,213 @@
+// Register item A2: end-to-end drive of the Avalanche rail on ONE running LOCAL_SIMULATION stack started by run.sh.
+// Real HTTP APIs of the marketplace and the gateway; real transactions on Anvil (chain 31337, MockUSDC, no value).
+// The two party wallets are THROWAWAY keys created inside the Anvil container for this run only (LOCAL_SIMULATION; the same
+// pattern as the Phase 1 human-signed LOCAL validation). They are held in this process's memory, passed to `cast` in the
+// Anvil container, never written to disk, never logged and never placed in the evidence file. Fuji and Mainnet are refused.
+// Flows: (1) wallet link (A8) for both parties; (2) fund -> release with the users' own wallets, FINALIZED-only business
+// effects and settlement notifications; (3) a second contract funded and closed by a two-party wallet mutual refund (F13).
+import { execFileSync } from 'node:child_process';
+import { writeFileSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
+
+const { MARKET, GATEWAY, GATEWAY_KEY, ANVIL, OUT } = process.env;
+if (!MARKET || !GATEWAY || !GATEWAY_KEY || !ANVIL || !OUT) throw new Error('run through run.sh');
+for (const url of [MARKET, GATEWAY]) {
+  const host = new URL(url).hostname;
+  if (host !== '127.0.0.1' && host !== 'localhost') throw new Error('A2 talks to the local stack only');
+}
+
+const evidence = { label: 'LOCAL_SIMULATION', tool: 'phase-2/a2-local-stack', startedAt: new Date().toISOString(), steps: [] };
+const record = (step, data = {}) => { evidence.steps.push({ step, at: new Date().toISOString(), ...data }); console.log('[a2]', step, JSON.stringify(data)); };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+// Throwaway keys must never reach a log, an error message or the evidence: every failure is reported with keys redacted.
+const redact = text => String(text).replace(/0x[0-9a-fA-F]{64}(?![0-9a-fA-F])/g, m => (KNOWN_KEYS.has(m.toLowerCase()) ? '<redacted-key>' : m))
+  .replace(/(--private-key\s+)\S+/g, '$1<redacted-key>');
+const KNOWN_KEYS = new Set();
+function cast(args) {
+  try {
+    return execFileSync('docker', ['exec', ANVIL, 'cast', ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+  } catch (error) {
+    const safeArgs = args.map((a, i) => (args[i - 1] === '--private-key' ? '<redacted-key>' : a));
+    throw new Error(redact(`cast ${safeArgs.join(' ')} failed: ${(error.stderr || error.message || '').toString().slice(0, 500)}`));
+  }
+}
+const rpc = ['--rpc-url', 'http://localhost:8545'];
+
+function newWallet() {
+  const parsed = JSON.parse(cast(['wallet', 'new', '--json']));
+  const w = Array.isArray(parsed) ? parsed[0] : parsed.data[0];
+  KNOWN_KEYS.add(w.private_key.toLowerCase());
+  cast(['rpc', 'anvil_setBalance', w.address, '0x56BC75E2D63100000', ...rpc]); // 100 simulated ETH for gas
+  return { address: w.address.toLowerCase(), key: w.private_key };
+}
+
+async function call(base, path, { method = 'GET', body, token, internal, headers: extra = {} } = {}) {
+  const headers = { 'Content-Type': 'application/json', ...extra };
+  if (token) headers.Authorization = 'Bearer ' + token;
+  if (internal) headers['X-Internal-Api-Key'] = GATEWAY_KEY;
+  const res = await fetch(base + path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
+  const text = await res.text();
+  let json; try { json = text ? JSON.parse(text) : null; } catch { json = { raw: text.slice(0, 300) }; }
+  if (!res.ok) throw new Error(`${method} ${path} -> ${res.status}: ${JSON.stringify(json).slice(0, 400)}`);
+  return json && Object.prototype.hasOwnProperty.call(json, 'data') ? json.data : json;
+}
+const market = (path, opts) => call(MARKET, '/api/v1' + path, opts);
+
+async function user(kind) {
+  const email = `a2-${kind.toLowerCase()}-${randomUUID().slice(0, 8)}@example.test`;
+  const password = 'A2-' + randomUUID();
+  // Freelancers must register tax and bank details (existing rule). These are obviously fake demonstration values: the stack
+  // is a disposable local simulation and the MISA and payout services are not running in it.
+  const freelancerDetails = kind === 'FREELANCER' ? { taxCode: '0000000000', identityNumber: '000000000000', nationality: 'SIMULATED',
+    taxAddress: 'A2 local simulation (not a real address)', bankCode: 'VIETCOMBANK', bankAccountNumber: '0000000000',
+    bankAccountHolderName: 'A2 SIMULATION' } : {};
+  await market('/auth/register', { method: 'POST', body: { email, password, displayName: `A2 ${kind}`, userType: kind, ...freelancerDetails } });
+  const signIn = await market('/auth/sign-in', { method: 'POST', body: { email, password } });
+  const me = await market('/auth/me', { token: signIn.accessToken }).catch(() => null);
+  return { email, token: signIn.accessToken, id: me?.id ?? signIn.id ?? signIn.userId };
+}
+
+async function linkWallet(party, wallet) {
+  const challenge = await market('/avalanche/wallet-link/challenge', { method: 'POST', token: party.token, body: { walletAddress: wallet.address } });
+  const signature = cast(['wallet', 'sign', '--private-key', wallet.key, challenge.message]);
+  const bound = await market('/avalanche/wallet-link/verify', { method: 'POST', token: party.token, body: { challengeId: challenge.challengeId, signature } });
+  if (bound.walletAddress !== wallet.address) throw new Error('linked a different address');
+  const replay = await market('/avalanche/wallet-link/verify', { method: 'POST', token: party.token, body: { challengeId: challenge.challengeId, signature } })
+    .then(() => 'ACCEPTED', () => 'REFUSED');
+  if (replay !== 'REFUSED') throw new Error('a used challenge was accepted again');
+  return { linked: bound.walletAddress, replayOfUsedChallenge: replay };
+}
+
+async function newContract(client, freelancer, title) {
+  const job = await market('/marketplace/jobs', { method: 'POST', token: client.token, body: {
+    title, description: 'A2 LOCAL_SIMULATION demonstration job (no real funds).', category: 'BACKEND_API', skills: [],
+    budgetUsd: 5, deliveryDueAt: new Date(Date.now() + 7 * 86400_000).toISOString(), reviewWindowHours: 72, maxRevisions: 2,
+    deliverables: [{ title: 'Source code', description: 'Repository and instructions' }],
+    acceptanceCriteria: [{ description: 'Tests pass' }] } });
+  await market(`/marketplace/jobs/${job.id}/apply`, { method: 'POST', token: freelancer.token, body: {} });
+  const assigned = await market(`/marketplace/jobs/${job.id}/assignments`, { method: 'POST', token: client.token, body: { freelancerId: freelancer.id } });
+  const contractId = assigned.contract?.id;
+  if (!contractId) throw new Error('no contract after assignment');
+  const enabled = await market(`/contracts/${contractId}/avalanche/enable`, { method: 'POST', token: client.token });
+  return { jobId: job.id, contractId, networkId: enabled.networkId, paymentNetworkIdInJob: assigned.contract?.paymentNetworkId ?? null };
+}
+
+function sendPrepared(wallet, tx) {
+  if (Number(tx.chainId) !== 31337) throw new Error('A2 sends only on chain 31337, got ' + tx.chainId);
+  const out = JSON.parse(cast(['send', '--json', '--private-key', wallet.key, ...rpc, tx.to, tx.data]));
+  if (out.status !== '0x1' && out.status !== 1 && out.status !== '1') throw new Error('transaction reverted: ' + out.transactionHash);
+  return out.transactionHash;
+}
+
+async function walletAction(party, wallet, contractId, action, extra = {}) {
+  const input = { idempotencyKey: randomUUID(), ...extra };
+  const prepared = await market(`/contracts/${contractId}/avalanche/actions/${action}/prepare`, { method: 'POST', token: party.token, body: input });
+  let last = null;
+  for (const tx of prepared.transactions) last = sendPrepared(wallet, tx);
+  if (!last) throw new Error(`${action}: nothing to send`);
+  await market(`/contracts/${contractId}/avalanche/actions/${action}/transactions`, { method: 'POST', token: party.token, body: { txHash: last, input } });
+  return last;
+}
+
+async function awaitApplied(party, contractId, action) {
+  const seen = [];
+  for (let i = 0; i < 90; i++) {
+    const view = await market(`/contracts/${contractId}/avalanche/refresh`, { method: 'POST', token: party.token });
+    const row = view.transactions.filter(t => t.action === action).at(-1);
+    if (row && seen.at(-1) !== row.status) seen.push(row.status);
+    if (row?.businessApplied) return { states: seen, chainStatus: view.chain?.status ?? null, txHash: row.txHash };
+    if (row && ['REVERTED', 'FAILED', 'REPLACED'].includes(row.status)) throw new Error(`${action} ended ${row.status}`);
+    if (row?.errorClass === 'CHAIN_MISMATCH') throw new Error(`${action}: CHAIN_MISMATCH`);
+    await sleep(1000);
+  }
+  throw new Error(`${action} was not applied in time; states seen ${seen.join(' > ')}`);
+}
+
+async function contractState(party, jobId) {
+  const job = await market(`/marketplace/jobs/${jobId}`, { token: party.token });
+  return { contract: job.contract?.status ?? null, milestone: job.contract?.milestoneStatus ?? null };
+}
+
+async function main() {
+  const config = await call(GATEWAY, '/api/v1/avalanche/config');
+  if (config.environment !== 'LOCAL_SIMULATION' || Number(config.chainId) !== 31337) throw new Error('not a LOCAL_SIMULATION gateway');
+  record('gateway', { environment: config.environment, chainId: config.chainId, escrow: config.escrow, token: config.token, tokenKind: config.tokenKind });
+
+  const client = await user('CLIENT');
+  const freelancer = await user('FREELANCER');
+  record('users registered', { client: client.email, freelancer: freelancer.email });
+
+  const clientWallet = newWallet();
+  const freelancerWallet = newWallet();
+  record('A8 wallet link client', await linkWallet(client, clientWallet));
+  record('A8 wallet link freelancer', await linkWallet(freelancer, freelancerWallet));
+
+  // ---- flow 1: fund -> release ---------------------------------------------------------------------------------------
+  const c1 = await newContract(client, freelancer, 'A2 release flow');
+  record('contract 1 on the Avalanche rail', c1);
+  await call(GATEWAY, '/api/v1/avalanche/assets/faucet', { method: 'POST', internal: true, body: { address: clientWallet.address, amount: '20000000' } });
+  record('MockUSDC faucet to the client wallet (LOCAL only)', { amountBaseUnits: '20000000' });
+  await walletAction(client, clientWallet, c1.contractId, 'fund');
+  record('fund applied', { ...(await awaitApplied(client, c1.contractId, 'fund')), ...(await contractState(client, c1.jobId)) });
+
+  // the escrow releases only from Submitted (D4): the freelancer records work in the marketplace, then anchors it on chain
+  const job1 = await market(`/marketplace/jobs/${c1.jobId}`, { token: freelancer.token });
+  const requirement = job1.contract?.deliverables?.[0]?.id;
+  if (!requirement) throw new Error('no deliverable requirement on the contract');
+  const submission = await market(`/contracts/${c1.contractId}/submissions`, { method: 'POST', token: freelancer.token,
+    headers: { 'Idempotency-Key': 'a2-submit-' + randomUUID() },
+    body: { summary: 'A2 demonstration delivery (local simulation).',
+      deliverables: [{ requirementId: requirement, url: 'https://example.test/a2-delivery', description: 'A2 demonstration artefact' }] } });
+  record('work submitted in the marketplace', { submissionStatus: submission.status, jobStatus: job1.status });
+  await walletAction(freelancer, freelancerWallet, c1.contractId, 'submit', { submissionId: submission.id });
+  record('submission anchored on chain', await awaitApplied(freelancer, c1.contractId, 'submit'));
+  await walletAction(client, clientWallet, c1.contractId, 'release');
+  const released = await awaitApplied(client, c1.contractId, 'release');
+  const after1 = await contractState(client, c1.jobId);
+  record('release applied', { ...released, ...after1 });
+  if (after1.contract !== 'COMPLETED' || after1.milestone !== 'RELEASED') throw new Error('release did not complete the contract');
+  const notes = await market('/notifications', { token: freelancer.token });
+  const list = Array.isArray(notes) ? notes : (notes?.content ?? notes?.data ?? []);
+  record('settlement notification to the freelancer', { types: list.map(n => n.type).filter(Boolean) });
+
+  // ---- flow 2: fund -> two-party wallet mutual refund (F13) ---------------------------------------------------------
+  const c2 = await newContract(client, freelancer, 'A2 mutual refund flow');
+  record('contract 2 on the Avalanche rail', c2);
+  await walletAction(client, clientWallet, c2.contractId, 'fund');
+  record('fund applied (contract 2)', await awaitApplied(client, c2.contractId, 'fund'));
+
+  const first = await market(`/contracts/${c2.contractId}/avalanche/actions/mutual-refund/prepare`, { method: 'POST', token: client.token, body: {} });
+  const clientSig = cast(['wallet', 'sign', '--private-key', clientWallet.key, '--data', first.typedData]);
+  let view = await market(`/contracts/${c2.contractId}/avalanche/mutual-refund/signatures`, { method: 'POST', token: client.token,
+    body: { authorizationDeadline: first.authorizationDeadline, typedDataDigest: first.typedDataDigest, signature: clientSig } });
+  record('F13 client signed', { mutualRefund: view.mutualRefund });
+  cast(['rpc', 'anvil_mine', '3', ...rpc]); // blocks between the two signatures: the condition that broke F13
+  const second = await market(`/contracts/${c2.contractId}/avalanche/actions/mutual-refund/prepare`, { method: 'POST', token: freelancer.token,
+    body: { authorizationDeadline: view.mutualRefund.authorizationDeadline } });
+  if (second.typedDataDigest !== first.typedDataDigest) throw new Error('the second signer was shown different typed data');
+  const freelancerSig = cast(['wallet', 'sign', '--private-key', freelancerWallet.key, '--data', second.typedData]);
+  view = await market(`/contracts/${c2.contractId}/avalanche/mutual-refund/signatures`, { method: 'POST', token: freelancer.token,
+    body: { authorizationDeadline: second.authorizationDeadline, typedDataDigest: second.typedDataDigest, signature: freelancerSig } });
+  record('F13 freelancer signed', { mutualRefund: view.mutualRefund });
+  await walletAction(freelancer, freelancerWallet, c2.contractId, 'mutual-refund');
+  const refunded = await awaitApplied(freelancer, c2.contractId, 'mutual-refund');
+  const after2 = await contractState(client, c2.jobId);
+  record('mutual refund applied', { ...refunded, ...after2 });
+  if (after2.contract !== 'CANCELLED' || after2.milestone !== 'REFUNDED') throw new Error('mutual refund did not cancel the contract');
+  const finalView = await market(`/contracts/${c2.contractId}/avalanche`, { token: client.token });
+  record('held signatures spent', { mutualRefund: finalView.mutualRefund ?? null });
+
+  evidence.result = 'PASS';
+}
+
+main().catch(error => { evidence.result = 'FAIL'; evidence.error = redact(String(error.message ?? error)).slice(0, 800); process.exitCode = 1; })
+  .finally(() => {
+    evidence.finishedAt = new Date().toISOString();
+    const text = JSON.stringify(evidence, null, 2);
+    if (/private_key|"key"\s*:|--private-key\s+0x/i.test(text) || [...KNOWN_KEYS].some(k => text.toLowerCase().includes(k))) {
+      throw new Error('refusing to write evidence that mentions key material');
+    }
+    writeFileSync(OUT, text);
+    console.log('[a2] result', evidence.result, redact(evidence.error ?? ''));
+  });
