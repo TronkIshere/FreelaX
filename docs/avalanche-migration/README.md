@@ -75,5 +75,6 @@ Research was performed by reading official pages and querying public RPC endpoin
 
 ## Status and navigation (2026-11-02)
 - Current status, owner decisions and the Outstanding Items Register: [PROJECT_STATUS.md](PROJECT_STATUS.md).
+- Standing rules for Claude sessions: [CLAUDE.md](CLAUDE.md) (imported by the repository root `CLAUDE.md`); execution history and resume point: [AUTONOMOUS_EXECUTION_LOG.md](AUTONOMOUS_EXECUTION_LOG.md) (added 2026-11-04).
 - Phase 2 plan and execution record (milestones M1 to M12 and their validation reports): [phase-2/README.md](phase-2/README.md); final acceptance: [phase-2/M12-validation-report.md](phase-2/M12-validation-report.md).
 - Phase 2 is IMPLEMENTATION COMPLETE WITH EXTERNAL VALIDATION PENDING; Phase 1 is PARTIAL. "Phase 3" in this README (for example the D2 design gate) means the Solidity escrow phase executed inside P2-M5 to M7; the residual item, owner decision O-2, was decided on 2026-11-03 (shared immutable baseline kept; factory/clone prototype LOCAL_SIMULATION only). The new Phase 3 after Phase 2 has a proposal ([phase-3/00-phase-3-proposal.md](phase-3/00-phase-3-proposal.md)) that is **NOT APPROVED**; no later phase has an approved scope.
