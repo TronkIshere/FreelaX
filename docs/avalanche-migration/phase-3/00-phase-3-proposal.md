@@ -13,6 +13,10 @@
 > tax/MISA, payout and notification work, register A4, moves to Phase 3). These decisions fix inputs of this proposal; they do
 > **not** approve the proposal. **Status remains PROPOSED, NOT APPROVED (R6).**
 
+> **Engineering detail for the R6 decision (2026-11-04):** [01-r6-approval-package.md](01-r6-approval-package.md) (capability
+> designs, contracts, failure modes, test plans, dependency-ordered backlog with estimates, and decisions D-A to D-H to take
+> with R6). Status unchanged: **PROPOSED, NOT APPROVED.**
+
 ## 1. Objectives and expected outcomes
 Every objective below is traced to an existing documented item; none is a new feature idea.
 | # | Objective | Source in existing documents | Expected outcome |

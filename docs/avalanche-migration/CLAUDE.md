@@ -75,7 +75,9 @@ Execution history and the resume point: [AUTONOMOUS_EXECUTION_LOG.md](AUTONOMOUS
   fund, or run anything against Fuji that writes, nor query any database for E2.
 - **Phase 2: IMPLEMENTATION COMPLETE WITH EXTERNAL VALIDATION PENDING** (not "accepted", not "fully validated"). Authorized
   remaining work: approved residuals **A1** (frontend action screens), **A3** (combined fault injection at marketplace level),
-  **A7** (Solana-literal clean-up in MISA/tax flows and explorer labels), **A6** (optional). **A8** waits for R9 (wallet
+  **A7** (Solana-literal clean-up in MISA/tax flows and explorer labels), **A6** (optional).
+  Since 2026-11-04: A1 PARTIAL (remaining: wallet mutual refund, F13; legacy labelling); the gateway half of A3 is done; the
+  marketplace half of A3 and all of A7 need Java 17 changes and wait for **R11**. **A8** waits for R9 (wallet
   linking design); **A2** waits for A8 and F3; **A5** waits for C4. A4 is no longer Phase 2.
 - **Phase 3: PROPOSED, NOT APPROVED** ([phase-3/00-phase-3-proposal.md](phase-3/00-phase-3-proposal.md), R6/C9 open).
   **Never mark R6 approved and never start Phase 3 implementation** (P3-M1 to M5, including A4 and the O-2 prototype) until
@@ -95,7 +97,10 @@ Never, without a new explicit owner decision recorded in PROJECT_STATUS.md:
   host allow-lists, or the Java/Node baselines;
 - change, reinterpret or pre-empt an owner decision, mark anything WAIVED or APPROVED, or fabricate operator evidence
   (X1 to X3), DB counts, Fuji results, faucet limits or explorer data;
-- perform global installs or toolchain upgrades on the machine.
+- perform global installs or toolchain upgrades on the machine;
+- modify Java 17 legacy modules (`marketplace-backend`, `misa-backend`, `payment-backend`, `solana-integration`), including
+  their tests (project lead instruction 2026-11-04), until the owner answers **R11** (and, for Phase 3, D-A of the
+  [R6 package](phase-3/01-r6-approval-package.md)). The frontend and the Java 21 `avalanche-integration` module are not affected.
 Every new configuration flag defaults to current behaviour. The application must keep failing closed on an unsupported
 network, Mainnet endpoint or production-looking credential.
 
@@ -109,6 +114,10 @@ network, Mainnet endpoint or production-looking credential.
   needs `-Dmaven.compiler.proc=full` for `payment-backend`. Use pinned images for real runtimes: `maven:3.9-eclipse-temurin-17`
   (legacy reactor), `maven:3.9-eclipse-temurin-21` (`-pl avalanche-integration -am test`, Testcontainers via the Docker
   socket), `ghcr.io/foundry-rs/foundry:v1.8.7` (see `phase-1/scripts/forge.sh`; on Git Bash set `MSYS_NO_PATHCONV=1`).
+  Gateway suite on JDK 21 from Git Bash (as run on 2026-11-04): `MSYS_NO_PATHCONV=1 docker run --rm -v //var/run/docker.sock:/var/run/docker.sock
+  -v "D:/hackathon/FreelaX:/src" -v "C:/Users/Tuan_Minh/.m2:/root/.m2" -w /src -e TESTCONTAINERS_HOST_OVERRIDE=host.docker.internal
+  maven:3.9-eclipse-temurin-21 mvn -B -ntp -pl avalanche-integration -am test`; check the skipped count: Docker-gated tests
+  skip silently when Testcontainers cannot reach Docker. E2 query dry run: `phase-1/scripts/db_query_validate.sh`.
   Frontend: Node 24.19.0, `npm ci`, `npx tsc -b`, `npx vitest run` (Node 22.10 fails 13 suites, B8). Docker Desktop may need
   starting.
 - Evidence files are committed under `phase-1/evidence/` or `phase-2/evidence/`, labelled LOCAL-SIM or FUJI-OBS; Fuji

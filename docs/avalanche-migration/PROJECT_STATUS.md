@@ -1,6 +1,6 @@
 # Avalanche migration: project status
 
-Last updated: 2026-11-03 (owner decision update recorded: R2 development database, O-2, O-6, R8; earlier the same day: owner response recorded; Phase 1 closure work; Phase 3 proposal; local re-validation). Previous: 2026-11-02 (after M12, documentation reconciled). Scope: [SIMULATION_SCOPE](../SIMULATION_SCOPE.md) (LOCAL_SIMULATION and AVALANCHE_FUJI only; Mainnet out of scope; no real funds).
+Last updated: 2026-11-04 (A1 partial, A3 gateway half, Phase 1 E1/E2 tooling, R6 approval package, request R11; see change note). Previous: 2026-11-03 (owner decision update recorded: R2 development database, O-2, O-6, R8; earlier the same day: owner response recorded; Phase 1 closure work; Phase 3 proposal; local re-validation). Previous: 2026-11-02 (after M12, documentation reconciled). Scope: [SIMULATION_SCOPE](../SIMULATION_SCOPE.md) (LOCAL_SIMULATION and AVALANCHE_FUJI only; Mainnet out of scope; no real funds).
 
 This file is the single source of truth for status, owner decisions and outstanding work. Other documents keep their historical text and point here. Final acceptance classification: [phase-2/M12-validation-report.md](phase-2/M12-validation-report.md).
 
@@ -116,11 +116,11 @@ Status words: OPEN, BLOCKED (needs a human or external action), DEFERRED (owner 
 |---|---|---|---|
 | A1 | Frontend action screens: submit, revise, dispute, resolve (admin), extension-request, mutual-refund; legacy Solana labelling | **PARTIAL (2026-11-04)**: submit, revise, dispute, extension-request (date input), resolve (non-participant admin on the dispute case page) and chain-state display (amount, revisions, deadlines) **IMPLEMENTED and tested** (`avalancheActions.ts`, panel; 18 new Vitest tests). Mutual refund: **simulated accounts only** (LOCAL_SIMULATION); the wallet path is **NOT IMPLEMENTED** because of F13. Legacy Solana labelling **NOT IMPLEMENTED** (the Avalanche view carries no rail field; see A7). Browser wallet check still B7 | M11 section 2; M12 section 2; execution log L-007 |
 | A2 | Cross-service run: marketplace plus gateway plus Anvil plus MySQL in one environment | NOT IMPLEMENTED; **in practice blocked by A8** (no user can hold an EVM wallet through the product) and F3; the gateway reconcile loop must be enabled for it (F8) | M9 section 4 item 3; M12 section 2; audit 2026-11-03 |
-| A3 | Combined fault-injection scenario (timeout, 429, WebSocket drop, duplicate, missed event, revert, nonce conflict, restart, invalid signer/env/contract) at marketplace level | PARTIAL (covered per layer only) | M12 section 2; M3, M4, M7, M8 reports |
+| A3 | Combined fault-injection scenario (timeout, 429, WebSocket drop, duplicate, missed event, revert, nonce conflict, restart, invalid signer/env/contract) at marketplace level | PARTIAL. **Gateway half IMPLEMENTED 2026-11-04**: `CombinedFaultScenarioTest` runs timeout-after-send, impatient duplicate, revert, HTTP 429 storm, null lookups, process restart and duplicate-after-restart in one sequence on real Anvil and MySQL (one send per operation, nonce +1 per operation, never FAILED/REPLACED, FINALIZED only with a later block). WebSocket drop and invalid signer/env/contract stay covered per layer. **Marketplace half NOT IMPLEMENTED**: needs Java 17 module tests, waits for **R11** | M12 section 2; M3, M4, M7, M8 reports; execution log L-009 |
 | A4 | Fees, MISA tax records, payouts and notifications for an Avalanche release | NOT IMPLEMENTED; **MOVED TO PHASE 3** (R8, 2026-11-03), no longer a Phase 2 residual; treatment option of C3 still open; not started (Phase 3 not approved) | M9 section 4 item 1 and section 5; decision update 2026-11-03 |
 | A5 | Mirror of on-chain Submitted/Revision/Disputed transitions into milestone status | NOT IMPLEMENTED (needs decision C4; R8 does not state where A5 belongs, so it stays here until the owner decides) | M9 section 4 item 2 |
 | A6 | Scanner metrics and alerting | NOT IMPLEMENTED (simulation: optional) | M4 section 4 item 3 |
-| A7 | Remaining Solana-literal clean-up in MISA/tax flows and explorer labelling in existing screens | NOT IMPLEMENTED | M9 section 4 item 4; `06` rows 27, 28 |
+| A7 | Remaining Solana-literal clean-up in MISA/tax flows and explorer labelling in existing screens | NOT IMPLEMENTED; **BLOCKED by R11** (2026-11-04: all of it is Java 17 code: `SettlementTaxService`, `TaxCertificateServiceImpl`, `misa-backend` payout DTO/entity, and `paymentNetworkId` missing from the contract DTO). The MISA part is inert until A4 | M9 section 4 item 4; `06` rows 27, 28; execution log L-008 |
 | A8 | **EVM wallet linking in the marketplace** (newly recorded 2026-11-03): `WalletLinkService.verify` accepts only an Ed25519 `signatureBase64`, and `AvalancheEscrowService.walletAddress` uses the user's **oldest** `Wallet` row (a Solana address for demo users), so the Avalanche rail cannot be enabled for a real user without hand-edited data. Planned in `phase-2/04` section 3 ("wallet link challenge uses an EIP-191 or EIP-712 signature") but never built and never registered | NOT IMPLEMENTED (design question R9 in [decision-and-evidence-requests.md](decision-and-evidence-requests.md)) | `marketplace-backend/.../service/WalletLinkService.java`; `AvalancheEscrowService.walletAddress`; tests mock `WalletRepository` |
 
 ### B. External validation and human actions
@@ -148,7 +148,7 @@ Status words: OPEN, BLOCKED (needs a human or external action), DEFERRED (owner 
 | C6 | O-8 Fuji RPC provider(s) | DEFERRED | `phase-2/09` O-8 |
 | C7 | O-13 external audit or key ceremony | DEFERRED | `phase-2/09` O-13 |
 | C8 | Whether and how legacy rails retire (needs B6) | OPEN | `07` open questions; ADR 0001 |
-| C9 | Scope of the phase after Phase 2 ("Phase 3") | OPEN: owner defined Phase 3 as a new phase (2026-11-03); proposal prepared, **NOT APPROVED** | [phase-3/00-phase-3-proposal.md](phase-3/00-phase-3-proposal.md); request R6 |
+| C9 | Scope of the phase after Phase 2 ("Phase 3") | OPEN: owner defined Phase 3 as a new phase (2026-11-03); proposal prepared, **NOT APPROVED**; **approval package prepared 2026-11-04** with decisions D-A to D-H | [phase-3/00-phase-3-proposal.md](phase-3/00-phase-3-proposal.md); [phase-3/01-r6-approval-package.md](phase-3/01-r6-approval-package.md); request R6 |
 | C10 | Review of the Vietnamese UI copy | OPEN | M11 section 2 |
 | C11 | Whether a gateway-driven local deployment (contract creation through the submission pipeline) is wanted | OPEN | M3 section 7 item 5; M7 section 3 item 2 |
 
@@ -164,8 +164,8 @@ Status words: OPEN, BLOCKED (needs a human or external action), DEFERRED (owner 
 | ID | Item | Status | Evidence |
 |---|---|---|---|
 Full per-item tracking (evidence, missing work, who, next action, recommended closure): [phase-1-acceptance-report.md, "Phase 1 closure tracking (2026-11-03)"](phase-1/phase-1-acceptance-report.md). Nothing below is WAIVED (owner response section 4).
-| E1 | Own-transaction Fuji experiments (#14, #18, #25) | BLOCKED (C1 and B1). Keyless human-signed tooling **IMPLEMENTED**, validated on LOCAL_SIMULATION only | `06` rows 3 and 7; [phase-1/prototypes/human-signed](phase-1/prototypes/human-signed/README.md) |
-| E2 | Read-only DB evidence | BLOCKED (= B6; DB operator not yet named). R2 answered 2026-11-03 for the environment: **development database only**, the six read-only queries. Query list and required output format prepared | [phase-1/db-rail-evidence-request.md](phase-1/db-rail-evidence-request.md) |
+| E1 | Own-transaction Fuji experiments (#14, #18, #25) | BLOCKED (C1 and B1). Keyless human-signed tooling **IMPLEMENTED**, validated on LOCAL_SIMULATION only; **pre-commit evidence checker `check_evidence.mjs` added 2026-11-04** (11 network-free tests pass) | `06` rows 3 and 7; [phase-1/prototypes/human-signed](phase-1/prototypes/human-signed/README.md) |
+| E2 | Read-only DB evidence | BLOCKED (= B6; DB operator not yet named). R2 answered 2026-11-03 for the environment: **development database only**, the six read-only queries. Query list and required output format prepared; **2026-11-04: the six queries executed unchanged against an empty throwaway schema built from the current migrations under a SELECT-only, READ ONLY session (all ran, writes refused); not evidence** | [phase-1/db-rail-evidence-request.md](phase-1/db-rail-evidence-request.md) |
 | E3 | RPC provider choice | DEFERRED (= C6; owner keeps O-8 deferred; allow-list unchanged) | `06` row 4 |
 | E4 | Official USDC.e address source | OPEN: no official source found on 2026-11-03 (Circle and Ava Labs pages checked); code does not depend on it. Recommended: documented limitation (R3) | closure tracking E4 |
 | E5 | Public RPC rate-limit threshold; faucet limits | INCONCLUSIVE (threshold); faucet limits BLOCKED on E1. Handling implemented in code | closure tracking E5 |
@@ -225,14 +225,31 @@ Full per-item tracking (evidence, missing work, who, next action, recommended cl
   - Phase 1 keyless tooling: 5 network-free guard tests pass; LOCAL_SIMULATION run of all 19 plan entries recorded.
 - Phase 1 evidence otherwise as in [phase-1](phase-1/README.md).
 
+- **2026-11-04 (current developer machine; no Fuji, Mainnet or database access):**
+  - Frontend (Node 24.19.0): `npx tsc -b` clean; `npx vitest run` **29 files, 859 tests pass** (+18 for A1); `npx vite build` built.
+  - Gateway on JDK 21 (`maven:3.9-eclipse-temurin-21`, Testcontainers via the Docker socket): full module run **105 tests,
+    101 pass, 3 optional skipped, 1 failure in the new `CombinedFaultScenarioTest`**: a wrong intermediate-state assertion in
+    the new test (the record was already FINALIZED because a later transaction had mined a block); the assertion was corrected
+    to "CONFIRMED or FINALIZED, FINALIZED only with a later block", and the class re-run passes (1/1). All 104 earlier tests
+    unchanged and green. **Full module re-run after the fix: 105 run, 0 failures, 3 optional skipped, BUILD SUCCESS.**
+  - Phase 1 tooling: `node --test` human-signed 11/11; E2 query validation script run (output committed).
+  - Not re-run on 2026-11-04: legacy JDK 17 reactor and Foundry (no change in those modules or contracts).
+
 ## Known blockers
-B1 and C1 (human-held funded Fuji wallet and signing procedure: Phase 1 E1 and all Fuji validation), B6 / E2 (DB operator; environment authorized: development database only), A8 (EVM wallet linking: blocks a real single-stack run A2), C4 (A5), the C3 treatment option (A4, now Phase 3 scope), B9 (owner `.env`). B8 is resolved on the current machine. See the register for the full list.
+R11 (Java 17 module changes: A7, marketplace half of A3), B1 and C1 (human-held funded Fuji wallet and signing procedure: Phase 1 E1 and all Fuji validation), B6 / E2 (DB operator; environment authorized: development database only), A8 (EVM wallet linking: blocks a real single-stack run A2), C4 (A5), the C3 treatment option (A4, now Phase 3 scope), B9 (owner `.env`). B8 is resolved on the current machine. See the register for the full list.
 
 ## Next recommended action
 1. Owner: answer [decision-and-evidence-requests.md](decision-and-evidence-requests.md) R1 (Fuji signer and funding owner, unblocks E1 and X3), the DB operator for R2, R6 (Phase 3 scope), R9 (EVM wallet linking design, unblocks A2), R10 (CI), and the open remainder of R8 (C3 treatment option; C4 and the placement of A5).
 2. Team: the approved Phase 2 implementation residuals A1, A3, A7 and, after R9, A8 then A2 remain prerequisites for Phase 3 (owner response section 1). A4 is no longer one of them (R8).
 3. Operators: X1 (human-signed Fuji run) after R1; X2 (DB evidence, development database only) once the operator is named.
 No Phase 3 implementation starts before the proposal and the relevant decisions are approved.
+
+## Change note (2026-11-04)
+A1 partially implemented (frontend; F13 recorded); A3 gateway half implemented (test only); A7 and the marketplace half of A3
+blocked by the 2026-11-04 instruction not to modify Java 17 legacy modules (owner request R11); Phase 1 E1 evidence checker,
+E2 query validation, E4 re-check (no verifiable official source; unchanged OPEN); R6 approval package. No contract, Java 17
+module, configuration or database change; no Fuji transaction; no database queried; R6 not approved; nothing pushed.
+Execution history: [AUTONOMOUS_EXECUTION_LOG.md](AUTONOMOUS_EXECUTION_LOG.md) L-005 to L-010.
 
 ## Change note (2026-11-03, owner decision update)
 Recorded the owner decision update (R2 development database only; O-2 shared baseline with a LOCAL_SIMULATION-only clone

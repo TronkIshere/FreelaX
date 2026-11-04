@@ -5,23 +5,23 @@ records *what was done, why, and on what authority*, and the resume point. One e
 new evidence changes an entry's status, edit its **Status** line and add a dated "Update" line under it; do not delete the
 original reasoning. Do not add routine progress entries.
 
-## Current state (updated 2026-11-04)
-- **Branch:** `avalanche/phase1-closure-phase3-proposal`. `origin/master` = `1ef0af7`. Local, **unpushed** commits: `e823a4a`,
-  `bfb1421`, `14683cf`, `de4c6ac`, `d98aec2`, plus the commit of L-005. Push is **not authorized** (owner response
-  2026-11-03 section 10).
-- **Phase 1:** PARTIAL. E1 BLOCKED (R1/C1, B1); E2 BLOCKED (DB operator; environment: development database only); E3
-  DEFERRED; E4 OPEN (R3); E5, E6 INCONCLUSIVE (R4); E7 PARTIAL (R5). Nothing waived.
-- **Phase 2:** IMPLEMENTATION COMPLETE WITH EXTERNAL VALIDATION PENDING. Open authorized residuals: A1, A3, A7 (A6
-  optional). Gated: A8 (R9), A2 (A8, F3), A5 (C4). A4 moved to Phase 3 (R8).
-- **Phase 3:** PROPOSED, **NOT APPROVED** (R6/C9). No Phase 3 implementation started.
-- **Decided 2026-11-03:** O-2 (shared immutable baseline; clone prototype LOCAL_SIMULATION only, not built), O-6
-  (stuck-and-reported; no privileged withdrawal, bypass or rerouting), R8 (A4 to Phase 3), R2 (development database only).
-- **Last validated baselines (2026-11-03):** reactor payment 72, marketplace 381, misa 20, solana-integration 10,
-  avalanche-integration 104 (3 optional skipped); Foundry 55 pass, 1 skipped; Slither 12 results (triaged); frontend 28/28
-  files, 841 tests.
-- **Waiting on owner:** R1, R2 remainder (DB operator), R3 to R6, R8 remainder (C3 treatment, C4, A5), R9, R10. **Waiting on
-  operators:** X1 to X3.
-- **Recommended next action:** L-006 (A7 Solana-literal clean-up), then A1, then A3. See L-006.
+## Current state (updated 2026-11-04, after L-010)
+- **Branch:** `avalanche/phase1-closure-phase3-proposal`. `origin/master` = `1ef0af7`. All later commits are **local and
+  unpushed** (see `git log --oneline origin/master..HEAD`). Push is **not authorized**.
+- **Phase 1:** PARTIAL. E1 BLOCKED (R1/C1, B1; keyless tooling and evidence checker ready); E2 BLOCKED (DB operator;
+  development DB only; queries validated on an empty local schema); E3 DEFERRED; E4 OPEN (R3); E5, E6 INCONCLUSIVE (R4); E7
+  PARTIAL (R5). Nothing waived.
+- **Phase 2:** IMPLEMENTATION COMPLETE WITH EXTERNAL VALIDATION PENDING. A1 PARTIAL (wallet mutual refund blocked by F13,
+  legacy labelling open); A3 PARTIAL (gateway half done; marketplace half waits for R11); A7 BLOCKED (R11); A8 waits for R9;
+  A2 for A8 and F3; A5 for C4; A4 is Phase 3 (R8); A6 optional.
+- **Phase 3:** PROPOSED, **NOT APPROVED** (R6). Approval package ready: `phase-3/01-r6-approval-package.md` (D-A to D-H).
+- **Rule added 2026-11-04:** no changes to Java 17 legacy modules (including their tests) until R11.
+- **Baselines (2026-11-04):** frontend 29 files / 859 tests; gateway JDK 21 105 run, 0 failures, 3 optional skipped; human-signed tooling 11 tests. Unchanged since 2026-11-03: legacy reactor payment 72, marketplace 381,
+  misa 20, solana-integration 10; Foundry 55 pass, 1 skipped.
+- **Waiting on owner:** R1, R2 remainder (DB operator), R3 to R6 (with D-A to D-H), R8 remainder, R9, R10, R11. **Operators:**
+  X1 to X3.
+- **Recommended next action:** owner answers R11 and R6 (with D-A, D-B). Engineering, no gate: if R11 (a) or (b), the
+  marketplace half of A3; if R9, A8 then A2. Nothing else is authorized and unblocked.
 
 ## Entries
 
@@ -109,7 +109,8 @@ original reasoning. Do not add routine progress entries.
 - **Reasoning / alternatives:** these are the only approved residuals without an owner gate; A8 and A2 wait for R9; A5 for
   C4; A4 is Phase 3. A7 first because it is bounded and reduces wording risk before more UI is added.
 - **Authorization:** owner response 2026-11-03 section 10 ("implement approved Phase 2 tasks").
-- **Status:** NEXT (not started).
+- **Status:** CLOSED 2026-11-04 (executed as L-007 A1, L-008 A7 blocked, L-009 A3 gateway half).
+  - Original status: NEXT (not started).
   - Update 2026-11-04: order changed to A1 first (largest user-visible residual; A7 inspection showed its MISA part sits in Java 17
     legacy code tied to A4, see L-008). A1 done as L-007.
 - **Remaining dependencies:** none for A7/A1/A3; Vietnamese copy review stays C10.
@@ -138,3 +139,58 @@ original reasoning. Do not add routine progress entries.
   +10 rule tests, +8 panel/helper tests); `npx vite build` built. No browser or wallet-extension run (B7).
 - **Status:** PARTIAL (A1): implemented items tested; mutual-refund wallet path and legacy labelling outstanding.
 - **Remaining dependencies:** F13 (Phase 3 proposal item); B7 for a real browser check; C10 Vietnamese copy review.
+
+### L-008: A7 and the marketplace half of A3 blocked by the Java 17 instruction (2026-11-04)
+- **Date:** 2026-11-04. **Phase / task:** Phase 2 A7, A3.
+- **Action:** inspected A7. The `"solana"` literals are in `marketplace-backend` `SettlementTaxService` (line 80) and
+  `TaxCertificateServiceImpl` (`TAX_RECORD_BLOCKCHAIN`), and in `misa-backend` `CreatePayoutTransactionRequest` and
+  `PayoutTransaction`; they run only for Solana-rail settlements, because an Avalanche release creates no tax record (A4).
+  Per-record chain labels in existing finance screens need `paymentNetworkId` in the marketplace contract DTO (not exposed
+  today). No code changed. Filed owner request **R11** and added the rule to `CLAUDE.md` section 6.
+- **Reasoning / alternatives:** the 2026-11-04 instruction says "do not modify Java 17 legacy modules". Reading
+  `marketplace-backend` as exempt (it already holds the M8/M9 Avalanche code) was rejected as an over-broad reading of an
+  explicit restriction. A frontend-only guess of the rail was rejected (it would invent data). A3 was split instead: the
+  gateway half is in the Java 21 module (L-009).
+- **Authorization:** the restriction itself; the request R11 is the owner's call.
+- **Status:** BLOCKED (R11). A7 NOT IMPLEMENTED; the MISA part is functionally inert until A4 (Phase 3).
+- **Recommended next action:** owner answers R11; option (c) moves A7 to Phase 3 together with A4.
+
+### L-010: R6 approval package (2026-11-04)
+- **Date:** 2026-11-04. **Phase / task:** Phase 3 preparation (R6/C9), no implementation.
+- **Action:** wrote [phase-3/01-r6-approval-package.md](phase-3/01-r6-approval-package.md): one-page summary; target
+  architecture; seven capability designs (settlement records A4, primary rail, quality gates, stuck-escrow reporting under
+  O-6, F13 wallet mutual refund, LOCAL-only clone measurement, Fuji demonstration) with purpose, scope, existing and missing
+  code, owner module, proposed contracts, transitions, failures, security, LOCAL tests, dependencies and acceptance; the
+  failure matrix; test plans; the mapping of remaining Phase 2 items; a dependency-ordered backlog (about 31 to 47
+  engineer-days of LOCAL work, estimates); and decisions D-A to D-H. Linked from the proposal.
+- **Reasoning / alternatives:** O-2, O-6, R8 and M2 were treated as fixed inputs. Found while writing: Phase 3 O1/O2 work sits
+  mainly in Java 17 modules, so R6 cannot be acted on without D-A; MockUSDC has a blacklist but emits no `Blacklisted` event,
+  so LOCAL issuer-event reporting needs a mock change or revert-based detection (recorded as a P3-M0 choice, not decided).
+- **Authorization:** project lead instruction 2026-11-04 section 3 (prepare, do not approve).
+- **Status:** DONE (documentation). **R6 remains PENDING; Phase 3 NOT APPROVED.**
+- **Remaining dependencies:** owner decision on R6 with D-A to D-H.
+
+### L-009: A3 gateway half and Phase 1 E1/E2/E4 work (2026-11-04)
+- **Date:** 2026-11-04. **Phase / task:** Phase 2 A3 (gateway half); Phase 1 E1, E2, E4 (E3, E5 to E7 reviewed).
+- **Action:** (A3) new `avalanche-integration/src/test/.../tx/CombinedFaultScenarioTest.java`: one sequence, one signer, one
+  fault proxy, real Anvil and MySQL: timeout after send, impatient duplicate, revert, 429 storm, null lookups, restart,
+  duplicate after restart. Test only; no production code changed. (E1) `check_evidence.mjs` and 6 tests; runbook step 4 uses
+  it. (E2) `phase-1/scripts/db_query_validate.sh` and its LOCAL output. (E4) desk re-check, see the Phase 1 report addendum.
+- **Reasoning / alternatives:** A3: the marketplace half needs Java 17 test code (blocked, L-008), so the gateway half was
+  done separately rather than waiting. First run failed: the test asserted CONFIRMED after the restart, but the record was
+  FINALIZED because the later reverting transaction had mined a block on top; that is correct tracker behaviour (depth
+  reached), so the **test** assumption was wrong. The assertion was changed to "CONFIRMED or FINALIZED, and FINALIZED only
+  with a later block" (stricter than just accepting either); no production code was touched to make it pass. E2: running the
+  queries on an empty local schema was chosen over static reading because V2 to V6 had never been checked; labelled not
+  evidence. E4: a search summary claimed a Circle help page names `0xA7D7...c664`; the page did not render, so it is not cited.
+- **Authorization:** owner response 2026-11-03 section 10; project lead instruction 2026-11-04 sections 4 and 5. No Fuji
+  transaction, no key, no database other than a throwaway local container.
+- **Files:** `CombinedFaultScenarioTest.java` (new); `phase-1/prototypes/human-signed/check_evidence.mjs`,
+  `check_evidence.test.mjs` (new), `README.md`; `phase-1/scripts/db_query_validate.sh` (new);
+  `phase-1/evidence/db-validation/LOCAL_SIMULATION-e2-query-validation-20261104.txt` (new);
+  `phase-1/db-rail-evidence-request.md`; `phase-1/phase-1-acceptance-report.md` (addendum).
+- **Tests / evidence:** JDK 21 module run 105 tests: 101 pass, 3 skipped, 1 failure (the new test, explained above); new
+  class re-run after the fix 1/1 pass; **full module re-run after the fix 105 run, 0 failures, 3 optional skipped**; human-signed `node --test` 11/11; E2 script output committed.
+- **Status:** A3 PARTIAL (gateway half DONE); E1 BLOCKED (tooling complete); E2 BLOCKED (queries validated); E3 DEFERRED;
+  E4 OPEN; E5, E6 INCONCLUSIVE; E7 PARTIAL. Phase 1 PARTIAL.
+- **Remaining dependencies:** R11 (marketplace half of A3); R1/X1 (E1); DB operator/X2 (E2); R3, R4, R5.
