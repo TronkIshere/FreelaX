@@ -137,6 +137,26 @@ public class EscrowActionService {
         return client.latestBlockTimestamp() + AUTHORIZATION_TTL_SECONDS;
     }
 
+    /**
+     * Deadline of a mutual refund authorization (register F13). Without a supplied deadline a fresh one is chosen (first
+     * prepare, or the LOCAL execute path). A supplied deadline must still be in the future and no further than the TTL from
+     * the latest block, so a caller cannot create a long-lived authorization. Calldata with both signatures requires it.
+     */
+    long mutualRefundDeadline(ActionRequest r) {
+        if (r.authorizationDeadline() == null) {
+            if (r.clientSignature() != null && r.freelancerSignature() != null) {
+                throw new ApiException(400, "DEADLINE_REQUIRED", "both signatures were given without the deadline they cover");
+            }
+            return authorizationDeadline();
+        }
+        long latest = client.latestBlockTimestamp();
+        long supplied = r.authorizationDeadline();
+        if (supplied <= latest || supplied > latest + AUTHORIZATION_TTL_SECONDS) {
+            throw new ApiException(400, "DEADLINE_OUT_OF_RANGE", "the authorization deadline is expired or beyond the allowed window");
+        }
+        return supplied;
+    }
+
     private PreparedActionResponse response(String action, String escrowId, List<PreparedTx> txs, Long deadline, String typedData, String digest) {
         return new PreparedActionResponse(environment.environment().name(), true, environment.chainId(), action, escrowId, txs, deadline, typedData, digest);
     }
@@ -203,7 +223,9 @@ public class EscrowActionService {
             case "mutual-refund" -> {
                 EscrowState s = reader().read(id);
                 requireExists(s);
-                long deadline = authorizationDeadline();
+                // F13: both parties must sign the SAME typed data. The first prepare chooses the deadline; every later call
+                // (the second signer, and the call carrying both signatures) passes it back and must reuse it.
+                long deadline = mutualRefundDeadline(r);
                 String typed = authorizations().mutualRefundTypedData(id, s.authNonce(), deadline);
                 String digest = Numeric.toHexString(EscrowAuthorizations.digest(typed));
                 if (r.clientSignature() == null || r.freelancerSignature() == null) {

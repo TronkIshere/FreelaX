@@ -232,7 +232,7 @@ class AvalancheApiTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    void theFullEscrowLifecycleThroughTheApiOnly() {
+    void theFullEscrowLifecycleThroughTheApiOnly() throws Exception {
         prepareChain();
         mintTo(buyer(), 300_000_000L);
         Map<String, Object> balance = get("/api/v1/avalanche/assets/balance?address=" + buyer());
@@ -284,6 +284,43 @@ class AvalancheApiTest {
         assertTrue(((List<?>) mutual.get("transactions")).isEmpty(), "no calldata until both signatures exist");
         execute(three, "mutual-refund", "");
         assertEquals("REFUNDED", status(three));
+
+        // 4b. F13 regression: each party signs ONE typed data with its own wallet, blocks are mined between the two
+        //     signatures, and the call carrying both signatures reuses the first deadline (before the fix it chose a new one)
+        String four = newEscrowId();
+        execute(four, "fund", fundFields(10_000_000L));
+        String prepareFour = "/api/v1/avalanche/escrows/" + four + "/actions/mutual-refund/prepare";
+        Map<String, Object> first = post(prepareFour, "{}");
+        long deadline = ((Number) first.get("authorizationDeadline")).longValue();
+        String typed = (String) first.get("typedData");
+        String clientSig = com.freelax.avalanchegateway.contract.EscrowAuthorizations.sign(registry.get(SignerRole.TEST_BUYER), typed).toHex();
+        AnvilRpc.mine(LocalStack.anvilUrl());
+        AnvilRpc.mine(LocalStack.anvilUrl());
+        Map<String, Object> second = post(prepareFour, "{\"authorizationDeadline\":" + deadline + "}");
+        assertEquals(typed, second.get("typedData"), "the second signer signs the same typed data");
+        String freelancerSig = com.freelax.avalanchegateway.contract.EscrowAuthorizations.sign(registry.get(SignerRole.TEST_FREELANCER),
+                (String) second.get("typedData")).toHex();
+        String both = ",\"clientSignature\":\"" + clientSig + "\",\"freelancerSignature\":\"" + freelancerSig + "\"";
+        assertEquals("DEADLINE_REQUIRED", exchange(rest, HttpMethod.POST, prepareFour, KEY, "{" + both.substring(1) + "}", 400).get("code"));
+        assertEquals("DEADLINE_OUT_OF_RANGE", exchange(rest, HttpMethod.POST, prepareFour, KEY,
+                "{" + both.substring(1) + ",\"authorizationDeadline\":" + (deadline + 100_000) + "}", 400).get("code"));
+        Map<String, Object> calldata = post(prepareFour, "{" + both.substring(1) + ",\"authorizationDeadline\":" + deadline + "}");
+        assertEquals(1, ((List<?>) calldata.get("transactions")).size(), "both signatures over the same deadline give calldata");
+        execute(four, "mutual-refund", both + ",\"authorizationDeadline\":" + deadline);
+        assertEquals("REFUNDED", status(four));
+
+        // 4c. wallet linking (A8): EIP-191 personal_sign verification endpoint
+        org.web3j.crypto.ECKeyPair linkKey = org.web3j.crypto.Keys.createEcKeyPair();
+        String linkAddress = "0x" + org.web3j.crypto.Keys.getAddress(linkKey);
+        String challenge = "FreelaX EVM wallet binding\nNonce: " + UUID.randomUUID();
+        org.web3j.crypto.Sign.SignatureData sd = org.web3j.crypto.Sign.signPrefixedMessage(challenge.getBytes(java.nio.charset.StandardCharsets.UTF_8), linkKey);
+        String linkSig = org.web3j.utils.Numeric.toHexString(sd.getR()) + org.web3j.utils.Numeric.toHexStringNoPrefix(sd.getS())
+                + org.web3j.utils.Numeric.toHexStringNoPrefix(sd.getV());
+        String verifyBody = "{\"address\":\"" + linkAddress + "\",\"message\":\"" + challenge.replace("\n", "\\n") +"\",\"signature\":\"" + linkSig + "\"}";
+        assertEquals(true, post("/api/v1/avalanche/wallet-signatures/verify", verifyBody).get("valid"));
+        assertEquals(false, post("/api/v1/avalanche/wallet-signatures/verify", verifyBody.replace("Nonce", "nonce")).get("valid"));
+        exchange(rest, HttpMethod.POST, "/api/v1/avalanche/wallet-signatures/verify", KEY,
+                verifyBody.replace("}", ",\"privateKey\":\"x\"}"), 400);
 
         // 5. status of a transaction broadcast elsewhere is derived live from the chain
         Map<String, Object> firstTx = get("/api/v1/avalanche/transactions/" + awaitFirstKey());

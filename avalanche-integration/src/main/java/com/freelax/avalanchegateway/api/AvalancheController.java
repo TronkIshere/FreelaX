@@ -10,6 +10,8 @@ import com.freelax.avalanchegateway.api.Dtos.FaucetResponse;
 import com.freelax.avalanchegateway.api.Dtos.HashStatusResponse;
 import com.freelax.avalanchegateway.api.Dtos.PreparedActionResponse;
 import com.freelax.avalanchegateway.api.Dtos.TransactionResponse;
+import com.freelax.avalanchegateway.api.Dtos.WalletSignatureRequest;
+import com.freelax.avalanchegateway.api.Dtos.WalletSignatureResponse;
 import com.freelax.avalanchegateway.contract.DeploymentManifest;
 import com.freelax.avalanchegateway.contract.EscrowState;
 import com.freelax.avalanchegateway.env.AvalancheEnvironment;
@@ -60,6 +62,14 @@ public class AvalancheController {
     public AddressValidation validate(@RequestParam("address") String address) {
         boolean valid = address != null && address.matches("0x[0-9a-fA-F]{40}");
         return new AddressValidation(address, valid);
+    }
+
+    /** Wallet linking (A8): verifies that {@code address} signed {@code message} with EIP-191 personal_sign. */
+    @PostMapping("/wallet-signatures/verify")
+    public WalletSignatureResponse verifyWalletSignature(@RequestBody WalletSignatureRequest request) {
+        boolean valid = request != null && com.freelax.avalanchegateway.contract.WalletSignatureVerifier
+                .verifyPersonalSign(request.address(), request.message(), request.signature());
+        return new WalletSignatureResponse(request == null ? null : request.address(), valid);
     }
 
     @GetMapping("/assets/balance")

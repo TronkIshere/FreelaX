@@ -50,7 +50,16 @@ public final class Dtos {
     public record ActionRequest(String operationKey, String client, String freelancer, String amount, Long fundingExpiresAt, Long deliveryDueAt,
                                 Integer reviewWindowHours, Integer maxRevisions, Boolean highValueGrace, String evidenceHash,
                                 String feedbackHash, String reasonHash, String resolutionHash, Boolean releaseToFreelancer,
-                                Long newDeliveryDueAt, String clientSignature, String freelancerSignature, String by) {
+                                Long newDeliveryDueAt, String clientSignature, String freelancerSignature, String by,
+                                Long authorizationDeadline) {
+    }
+
+    /** EIP-191 personal_sign verification for wallet linking (register A8). Strict: unknown properties are rejected. */
+    @JsonIgnoreProperties(ignoreUnknown = false)
+    public record WalletSignatureRequest(String address, String message, String signature) {
+    }
+
+    public record WalletSignatureResponse(String address, boolean valid) {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = false)
