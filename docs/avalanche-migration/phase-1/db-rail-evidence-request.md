@@ -35,6 +35,17 @@ SELECT status, COUNT(*) AS n FROM jobs WHERE checkout_order_id IS NOT NULL GROUP
 SELECT status, COUNT(*) AS n FROM bofa_checkout_orders GROUP BY 1;
 SELECT COUNT(*) AS unfinished_checkout_orders FROM bofa_checkout_orders WHERE status = 'CREATED';
 ```
+## Query validation against the current schema (LOCAL-SIM, 2026-11-04; not evidence)
+The static column check above covered the V1 baselines only. On 2026-11-04 the six queries were **executed unchanged** (read
+straight from the `sql` block above by [scripts/db_query_validate.sh](scripts/db_query_validate.sh)) against an **empty,
+throwaway** MySQL 8.4.11 container whose schema was built from this repository's migrations (marketplace V1 to V6, payment
+V1), under a `GRANT SELECT`-only account in a `READ ONLY` session. Result: all six statements ran without error (empty sets;
+Q6 returned 0); `DELETE` and `CREATE TABLE` were refused (MySQL error 1142). Output:
+[evidence/db-validation/LOCAL_SIMULATION-e2-query-validation-20261104.txt](evidence/db-validation/LOCAL_SIMULATION-e2-query-validation-20261104.txt).
+This proves only that the queries and the read-only account setup work on the current schema. **It is not E2 evidence**: no
+row of any real database was read, the counts are from an empty local schema, and E2 stays **BLOCKED (DB operator)**. The
+operator may run the same script on their own machine first, as a dry run, before connecting to the development database.
+
 ## Operator checklist and required output format (added 2026-11-03, owner response section 7)
 Status stays **BLOCKED (DB operator)** until results are returned. No developer or AI session runs these queries.
 1. **Authorization first.** The project owner names each environment the operator may query. **Authorized on 2026-11-03:

@@ -22,7 +22,7 @@ Fuji only over https to the two allow-listed hosts (`api.avax-test.network`, `av
 O-8 stays DEFERRED, the list is not extended); LOCAL_SIMULATION only on local-class hosts; every signed transaction must be
 EIP-1559 and signed for an allow-listed chain id (43114, 1, 0 refused); then `eth_chainId` and the client family
 (`anvil/` or `avalanchego/`) are checked; a sender holding more than 10 AVAX on Fuji stops the run (possible real-funds
-wallet). Network-free tests: `node --test broadcast_signed.test.mjs` (5 tests).
+wallet). Network-free tests: `node --test broadcast_signed.test.mjs check_evidence.test.mjs` (5 + 6 tests).
 
 ## What the plan executes
 | Entry | Experiment | Needs |
@@ -46,8 +46,11 @@ transaction, so sign with the live fee values (never hard-coded) and fund comfor
 2. Sign: `SIGNER_FLAGS="--ledger" SENDER=<addr> NONCE=<n> CHAIN_ID=43113 MAX_FEE=<wei> PRIORITY=<wei> T0=<unix> RPC=<url> sh sign_plan.sh`
    (writes `plan.jsonl`; broadcast promptly so the E7 samples start on time; keep `SPACING` at the default 60 s on Fuji).
 3. Broadcast: `node broadcast_signed.mjs AVALANCHE_FUJI <allow-listed Fuji URL> plan.jsonl evidence.json` (Node >= 22).
-4. Review `evidence.json` (no key material may appear) and commit it as
-   `../../evidence/live/AVALANCHE_FUJI-human-signed-chain43113-<utc>.json`; delete `plan.jsonl`.
+4. Rename `evidence.json` to `AVALANCHE_FUJI-human-signed-chain43113-<utc>.json` and check it **before** committing:
+   `node check_evidence.mjs AVALANCHE_FUJI-human-signed-chain43113-<utc>.json` (added 2026-11-04; fails on key-like field
+   names, 32-byte hex outside `*hash` fields, PEM blocks, mnemonic-like word lists, Mainnet or mismatched environment, chain
+   id, client family or file name, and on an unfinished run). Only on `OK`, move it to `../../evidence/live/` and commit;
+   delete `plan.jsonl`. A human still reads the `anomalies` and `stopped` fields.
 
 ## Local validation (LOCAL_SIMULATION, 2026-11-03)
 Anvil 1.8.7 (`--block-time 1`) in Docker; a throwaway keystore created inside a disposable container (LOCAL_SIMULATION

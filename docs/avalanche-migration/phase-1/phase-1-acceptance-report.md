@@ -160,3 +160,17 @@ Additional Phase 1 items carried with the above: the replacement fee-bump rule (
 `block.timestamp` (#18) are produced by the same E1 run (`E5-*` and `E7-*` plan entries); the E6 "timeout after submission"
 fault is covered only on LOCAL_SIMULATION (gateway test S3). CI remains an engineering quality item (register D1), **not** a
 Phase 1 closure requirement (owner response section 6).
+
+## Phase 1 closure tracking update (2026-11-04)
+Authority: owner response 2026-11-03 section 10 and the project lead's execution instruction of 2026-11-04. **Overall Phase 1
+status: PARTIAL (unchanged).** Nothing was waived, no Fuji transaction was signed or sent, no database was queried.
+
+| Item | Work done 2026-11-04 | Status after |
+|---|---|---|
+| E1 | Added `prototypes/human-signed/check_evidence.mjs` (pre-commit check of the evidence file: no key-like field names, no 32-byte hex outside `*hash` fields, no PEM or mnemonic, environment / chain id / client family / file name consistent, Mainnet refused, run finished) with 6 network-free tests; README step 4 now requires it. The committed LOCAL evidence passes. Guard tests re-run: 5 + 6 pass. No key generated or accessed | **BLOCKED** (R1/C1, B1, X1): tooling ready end to end on LOCAL_SIMULATION |
+| E2 | The six queries were executed unchanged against an empty throwaway MySQL 8.4.11 built from the current migrations (marketplace V1 to V6, payment V1) under a SELECT-only account in a READ ONLY session: all ran; writes refused. Script `scripts/db_query_validate.sh`; output `evidence/db-validation/LOCAL_SIMULATION-e2-query-validation-20261104.txt`. **Not evidence** about any real database | **BLOCKED** (DB operator; development database only, R2) |
+| E3 | No change; allow-list unchanged; O-8 DEFERRED | **DEFERRED** |
+| E4 | Official sources re-searched (circle.com, developers.circle.com, avax.network domains). Circle's address page lists native USDC only; Ava Labs support states that new USDC.e onboarding is disabled. A search-engine summary claimed a Circle Help Center article lists `0xA7D7...c664` as bridged USDC, but the article body did not render for verification, so **it is not cited as a source**; a human may check it in a browser. Code behaviour re-confirmed from the M7 tests: `ManifestVerifier` deny-lists `0xa7d7...c664` and requires the configured Circle USDC | **OPEN** (R3: documented limitation or waiver) |
+| E5 | Local handling re-run with the gateway suite (`RetryAfterInterceptorTest`, S5 429 handling, combined scenario of register A3). No threshold measured or inferred | **INCONCLUSIVE** (threshold); faucet part BLOCKED on E1 |
+| E6 | Local conservative handling re-run (null lookups never become FAILED or REPLACED, timeout is UNKNOWN, restart reconciliation) in the combined scenario; Fuji observations unchanged | **INCONCLUSIVE** (needs E1 data, R4) |
+| E7 | No change; no verification is claimed without a deployment (B2) | **PARTIAL** |
