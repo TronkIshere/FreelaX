@@ -1,0 +1,276 @@
+# R12 mutual-settlement lab, LOCAL_SIMULATION, 2026-11-04T07:26:10Z
+# baseline avalanche-contracts/src/FreelaXEscrow.sol sha256: 0b2b02c6ecf44989e6284b23909eb1c34b1426e050e75c0c714361d6562ba5d0
+## diff baseline -> variant (only the documented addition is expected)
+--- /d/hackathon/FreelaX/avalanche-contracts/src/FreelaXEscrow.sol	2026-11-03 21:12:18.985979400 +0700
++++ /d/hackathon/FreelaX/docs/avalanche-migration/phase-3/prototypes/escrow-mutual-settlement/src/FreelaXEscrowMutualSettlement.sol	2026-11-04 14:20:18.922347300 +0700
+@@ -8,12 +8,18 @@
+ import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+-import {IFreelaXEscrow} from "./interfaces/IFreelaXEscrow.sol";
++import {IFreelaXEscrow} from "@freelax/interfaces/IFreelaXEscrow.sol";
++import {IMutualSettlement} from "./IMutualSettlement.sol";
+ 
+-/// @notice Shared, immutable milestone escrow. One record per escrowId; custody is logical (a shared token balance).
++/// @notice LOCAL_SIMULATION-ONLY VARIANT (R12 / F14). A byte-for-byte copy of the baseline `FreelaXEscrow` plus ONE added
++/// path, `mutualSettleDispute`: both original parties sign the same EIP-712 message to settle a Disputed escrow when the
++/// snapshotted arbiter cannot act. It conflicts with owner decision O-5 (question 8 "mutual refund is unavailable once
++/// Disputed", preserved) and is therefore isolated here; the baseline is unchanged. Not deployable: no script, no manifest.
++///
++/// Baseline text: Shared, immutable milestone escrow. One record per escrowId; custody is logical (a shared token balance).
+ /// The Solana rules are preserved as bounded parameters bound by a backend EIP-712 authorization: the backend signer can
+ /// only authorize terms, it can never move funds, resolve disputes, pause or change roles.
+-contract FreelaXEscrow is IFreelaXEscrow, AccessControl, Pausable, ReentrancyGuard, EIP712 {
++contract FreelaXEscrowMutualSettlement is IFreelaXEscrow, IMutualSettlement, AccessControl, Pausable, ReentrancyGuard, EIP712 {
+     using SafeERC20 for IERC20;
+ 
+     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
+@@ -37,6 +43,11 @@
+         "RevisionAuthorization(bytes32 escrowId,bytes32 feedbackHash,uint8 revisionsUsed,uint64 nonce,uint64 deadline)"
+     );
+     bytes32 public constant MUTUAL_REFUND_TYPEHASH = keccak256("MutualRefund(bytes32 escrowId,uint64 nonce,uint64 deadline)");
++    // R12 variant only. Binds the escrow, the binary outcome, the full amount, a settlement record hash, the dispute being
++    // settled (disputedAt), the per-escrow nonce and a deadline. Chain id and this contract come from the EIP-712 domain.
++    bytes32 public constant MUTUAL_SETTLEMENT_TYPEHASH = keccak256(
++        "MutualSettlement(bytes32 escrowId,bool releaseToFreelancer,uint256 amount,bytes32 settlementHash,uint64 disputedAt,uint64 nonce,uint64 deadline)"
++    );
+ 
+     IERC20 public immutable token;
+     address public defaultArbiter;
+@@ -263,6 +274,47 @@
+     }
+ 
+     // ---------------------------------------------------------------------------------------------------------------
++    // R12 VARIANT ONLY. Mutual settlement of a Disputed escrow: the client AND the freelancer sign one EIP-712
++    // MutualSettlement message choosing the same binary outcome (the arbiter's outcome space, O-5 question 6: no partial
++    // split). Anyone may submit it. The arbiter keeps full authority while the escrow is Disputed: whichever valid action
++    // lands first settles it, the other then reverts on the terminal state. No role (admin, pauser, backend signer,
++    // arbiter) can use it: only the two snapshotted parties' signatures count. Pause does not block it (as release/refund).
++    // ---------------------------------------------------------------------------------------------------------------
++
++    function mutualSettleDispute(
++        bytes32 escrowId,
++        bool releaseToFreelancer,
++        bytes32 settlementHash,
++        uint64 deadline,
++        bytes calldata clientSignature,
++        bytes calldata freelancerSignature
++    ) external nonReentrant {
++        Escrow storage e = _existing(escrowId);
++        if (e.status != Status.Disputed) revert InvalidState(e.status);
++        if (settlementHash == bytes32(0)) revert ZeroHash();
++        if (block.timestamp > deadline) revert AuthorizationExpired();
++        bytes32 digest =
++            mutualSettlementDigest(escrowId, releaseToFreelancer, e.amount, settlementHash, e.disputedAt, e.authNonce, deadline);
++        _requireSignedBy(digest, clientSignature, e.client);
++        _requireSignedBy(digest, freelancerSignature, e.freelancer);
++
++        uint256 amount = e.amount;
++        e.authNonce += 1;
++        e.resolutionHash = settlementHash;
++        totalOpenAmount -= amount;
++        emit DisputeSettledByParties(escrowId, releaseToFreelancer, settlementHash);
++        if (releaseToFreelancer) {
++            e.status = Status.Released;
++            emit Released(escrowId, e.freelancer, amount, msg.sender);
++            token.safeTransfer(e.freelancer, amount);
++        } else {
++            e.status = Status.Refunded;
++            emit Refunded(escrowId, e.client, amount, true);
++            token.safeTransfer(e.client, amount);
++        }
++    }
++
++    // ---------------------------------------------------------------------------------------------------------------
+     // Administration: pause blocks only new funding; nobody can reach escrowed funds or change an existing arbiter.
+     // ---------------------------------------------------------------------------------------------------------------
+ 
+@@ -320,6 +372,24 @@
+         return _hashTypedDataV4(keccak256(abi.encode(MUTUAL_REFUND_TYPEHASH, escrowId, nonce, deadline)));
+     }
+ 
++    function mutualSettlementDigest(
++        bytes32 escrowId,
++        bool releaseToFreelancer,
++        uint256 amount,
++        bytes32 settlementHash,
++        uint64 disputedAt,
++        uint64 nonce,
++        uint64 deadline
++    ) public view returns (bytes32) {
++        return _hashTypedDataV4(
++            keccak256(
++                abi.encode(
++                    MUTUAL_SETTLEMENT_TYPEHASH, escrowId, releaseToFreelancer, amount, settlementHash, disputedAt, nonce, deadline
++                )
++            )
++        );
++    }
++
+     // ---------------------------------------------------------------------------------------------------------------
+     // Internals
+     // ---------------------------------------------------------------------------------------------------------------
+## forge test
+No files changed, compilation skipped
+
+Ran 1 test for test/MutualSettlement.t.sol:MutualSettlementReentrancyTest
+[PASS] test_reentryDuringSettlementTransferIsBlocked() (gas: 1794324)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 5.23ms (4.87ms CPU time)
+
+Ran 29 tests for test/baseline/FreelaXEscrowCore.t.sol:FreelaXEscrowCoreTest
+[PASS] testFuzz_fundSubmitReleasePaysExactlyTheDeposit(uint96,uint8,uint32) (runs: 256, μ: 509710, ~: 509688)
+[PASS] test_authorization_expiredDeadlineIsRefusedAtTheBoundary() (gas: 296744)
+[PASS] test_authorization_highSMalleableSignatureIsRefused() (gas: 72085)
+[PASS] test_authorization_independentTypedDataDigestMatchesTheContract() (gas: 33257)
+[PASS] test_authorization_isBoundToThisContractAndThisChain() (gas: 376785)
+[PASS] test_authorization_wrongSignerRevokedRoleAndTamperedTermsAreRefused() (gas: 244765)
+[PASS] test_extension_boundsRolesAndOnlyOnce() (gas: 573460)
+[PASS] test_extension_onlyBeforeTheOriginalDeliveryDate() (gas: 563060)
+[PASS] test_fund_arbiterMustBeTheCurrentDefaultAndDistinctFromTheParties() (gas: 266493)
+[PASS] test_fund_emitsFunded() (gas: 260120)
+[PASS] test_fund_highValueGraceOnlyWhenRequestedAndAboveThreshold() (gas: 757664)
+[PASS] test_fund_onlyTheClientDuplicatesAndPauseAreRefused() (gas: 430839)
+[PASS] test_fund_recordsTermsSnapshotsArbiterAndMovesTokens() (gas: 296066)
+[PASS] test_fund_termBoundsAreEnforced() (gas: 1744800)
+[PASS] test_noRoleCanReachEscrowedFundsAndDirectTransfersAreNotClaimable() (gas: 594651)
+[PASS] test_pauseBlocksOnlyFundingNotReleaseOrExtension() (gas: 553421)
+[PASS] test_release_clientAnytimeAnyoneAfterTheReviewWindow() (gas: 616883)
+[PASS] test_release_clientMayReleaseBeforeTheDeadlineAndNeverTwice() (gas: 506519)
+[PASS] test_release_isProtectedAgainstReentrancyFromTheToken() (gas: 1348892)
+[PASS] test_release_requiresASubmittedEscrow() (gas: 315370)
+[PASS] test_roles_changingTheDefaultArbiterNeverTouchesAnExistingEscrow() (gas: 651273)
+[PASS] test_roles_eachCapabilityIsSeparate() (gas: 320501)
+[PASS] test_submit_authorizationIsBoundToTheEscrowId() (gas: 542361)
+[PASS] test_submit_authorizationNegativesAndReplay() (gas: 750521)
+[PASS] test_submit_deliveryDeadlineBoundaryIsInclusive() (gas: 392280)
+[PASS] test_submit_startsTheReviewClockAndBindsTheEvidence() (gas: 409509)
+[PASS] test_usdc_blacklistedClientCannotFundAndIssuerPauseBlocksBoth() (gas: 828054)
+[PASS] test_usdc_blacklistedFreelancerBlocksReleaseWithoutLosingTheEscrow() (gas: 642421)
+[PASS] test_usdc_fundWithoutApprovalOrBalanceReverts() (gas: 245961)
+Suite result: ok. 29 passed; 0 failed; 0 skipped; finished in 387.23ms (402.63ms CPU time)
+
+Ran 20 tests for test/baseline/FreelaXEscrowLifecycle.t.sol:FreelaXEscrowLifecycleTest
+[PASS] test_dispute_changesOnlyItsOwnEscrow() (gas: 1128112)
+[PASS] test_dispute_fromFundedOnlyAfterTheDeliveryDate() (gas: 367750)
+[PASS] test_dispute_fromRevisionAtAnyTimeAndOnlyByAParticipantWithAReason() (gas: 656471)
+[PASS] test_dispute_fromSubmittedJustBeforeTheDeadlineClearsTheClock() (gas: 579349)
+[PASS] test_dispute_fromSubmittedOnlyBeforeTheReviewDeadline() (gas: 549084)
+[PASS] test_dispute_isImpossibleOnSettledEscrows() (gas: 486844)
+[PASS] test_mutualRefund_blacklistedClientKeepsTheEscrowOpen() (gas: 476063)
+[PASS] test_mutualRefund_expiredNotWhileDisputedAndBoundToThisContract() (gas: 583469)
+[PASS] test_mutualRefund_fromFundedSubmittedAndRevision() (gas: 1634207)
+[PASS] test_mutualRefund_needsBothDistinctValidSignaturesBoundToTheEscrow() (gas: 733983)
+[PASS] test_resolve_arbiterReleasesToTheFreelancerOrRefundsTheClient() (gas: 1180151)
+[PASS] test_resolve_arbiterSnapshotSurvivesDefaultArbiterRotation() (gas: 618503)
+[PASS] test_resolve_blacklistedRecipientLeavesTheEscrowDisputedAndRecoverable() (gas: 726090)
+[PASS] test_resolve_cannotResolveANonDisputedEscrow() (gas: 457596)
+[PASS] test_resolve_onlyTheSnapshottedArbiterOnADisputedEscrowWithAHash() (gas: 788638)
+[PASS] test_resolve_pauseDoesNotBlockDisputeOrResolution() (gas: 597866)
+[PASS] test_revision_authorizationAndRoleNegatives() (gas: 782638)
+[PASS] test_revision_cycleClearsTheClockResubmitsAndIsCapped() (gas: 1038884)
+[PASS] test_revision_reviewDeadlineBoundaryIsExclusive() (gas: 1035273)
+[PASS] test_revision_zeroMaxRevisionsMeansNoRevision() (gas: 455918)
+Suite result: ok. 20 passed; 0 failed; 0 skipped; finished in 417.29ms (25.74ms CPU time)
+
+Ran 20 tests for test/MutualSettlement.t.sol:MutualSettlementTest
+[PASS] testFuzz_onlyTheTwoPartyKeysSettle(uint256,uint256,bool) (runs: 256, μ: 533178, ~: 533162)
+[PASS] test_F14_lostArbiterKey_partiesSettle_noReassignmentInvolved() (gas: 711804)
+[PASS] test_amountIsPartOfTheSignedMessage() (gas: 534230)
+[PASS] test_arbiterKeepsAuthority_resolutionFirstBlocksSettlement() (gas: 632231)
+[PASS] test_blacklistedRecipient_staysDisputed_noReroute() (gas: 831804)
+[PASS] test_duplicateSettlement_refused_andTerminalNeverChanges() (gas: 761762)
+[PASS] test_expiredDeadline_refused() (gas: 624733)
+[PASS] test_malleatedSignatureRefused() (gas: 531355)
+[PASS] test_pauseDoesNotBlockSettlement() (gas: 661088)
+[PASS] test_refused_outsideDisputed() (gas: 744550)
+[PASS] test_replay_acrossContractsAndChainsRefused() (gas: 1111861)
+[PASS] test_replay_acrossEscrowsRefused() (gas: 1074811)
+[PASS] test_replay_crossTypeRefused() (gas: 611166)
+[PASS] test_replay_preDisputeSignaturesRefused() (gas: 535590)
+[PASS] test_settle_refundToClient_bothSigned_anyoneSubmits() (gas: 653303)
+[PASS] test_settle_releaseToFreelancer_bothSigned() (gas: 652980)
+[PASS] test_settle_worksFromEveryDisputeEntry_fundedOverdue_revision_submitted_byEitherParty() (gas: 1685688)
+[PASS] test_settlementTouchesOnlyItsOwnEscrow() (gas: 888382)
+[PASS] test_signaturesBoundToOutcomeHashDeadlineAndAgreement() (gas: 832320)
+[PASS] test_wrongParties_refused() (gas: 1024278)
+Suite result: ok. 20 passed; 0 failed; 0 skipped; finished in 417.57ms (453.12ms CPU time)
+
+Ran 1 test for test/baseline/Invariants.t.sol:EscrowInvariantTest
+[PASS]
+EscrowInvariantTest invariants:
+[PASS] invariant_balanceCoversEveryOpenEscrow
+[PASS] invariant_terminalStatesAreFinal
+[PASS] invariant_valueIsConserved
+ EscrowInvariantTest invariants (runs: 64, calls: 4096, reverts: 0)
+
+╭---------------+------------------+-------+---------+----------╮
+| Contract      | Selector         | Calls | Reverts | Discards |
++===============================================================+
+| EscrowHandler | dispute          | 364   | 0       | 0        |
+|---------------+------------------+-------+---------+----------|
+| EscrowHandler | extend           | 317   | 0       | 0        |
+|---------------+------------------+-------+---------+----------|
+| EscrowHandler | fund             | 338   | 0       | 0        |
+|---------------+------------------+-------+---------+----------|
+| EscrowHandler | fundAndSubmit    | 347   | 0       | 0        |
+|---------------+------------------+-------+---------+----------|
+| EscrowHandler | mutualRefund     | 329   | 0       | 0        |
+|---------------+------------------+-------+---------+----------|
+| EscrowHandler | release          | 351   | 0       | 0        |
+|---------------+------------------+-------+---------+----------|
+| EscrowHandler | resolve          | 339   | 0       | 0        |
+|---------------+------------------+-------+---------+----------|
+| EscrowHandler | revise           | 362   | 0       | 0        |
+|---------------+------------------+-------+---------+----------|
+| EscrowHandler | submit           | 331   | 0       | 0        |
+|---------------+------------------+-------+---------+----------|
+| EscrowHandler | warp             | 344   | 0       | 0        |
+|---------------+------------------+-------+---------+----------|
+| EscrowHandler | warpPastDelivery | 348   | 0       | 0        |
+|---------------+------------------+-------+---------+----------|
+| EscrowHandler | warpPastReview   | 326   | 0       | 0        |
+╰---------------+------------------+-------+---------+----------╯
+
+Logs:
+  coverage: escrows 8 released 2
+  coverage: refunded 4 disputed 0
+  coverage: revisions 1
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 2.20s (2.19s CPU time)
+
+Ran 1 test for test/MutualSettlement.t.sol:MutualSettlementInvariantTest
+[PASS]
+MutualSettlementInvariantTest invariants:
+[PASS] invariant_accountingMatchesBalance
+[PASS] invariant_terminalStatesFinal
+[PASS] invariant_valueConserved
+ MutualSettlementInvariantTest invariants (runs: 64, calls: 4096, reverts: 0)
+
+╭-------------------+-------------------+-------+---------+----------╮
+| Contract          | Selector          | Calls | Reverts | Discards |
++====================================================================+
+| SettlementHandler | dispute           | 440   | 0       | 0        |
+|-------------------+-------------------+-------+---------+----------|
+| SettlementHandler | fund              | 440   | 0       | 0        |
+|-------------------+-------------------+-------+---------+----------|
+| SettlementHandler | fundSubmitDispute | 465   | 0       | 0        |
+|-------------------+-------------------+-------+---------+----------|
+| SettlementHandler | mutualRefund      | 473   | 0       | 0        |
+|-------------------+-------------------+-------+---------+----------|
+| SettlementHandler | release           | 436   | 0       | 0        |
+|-------------------+-------------------+-------+---------+----------|
+| SettlementHandler | resolve           | 463   | 0       | 0        |
+|-------------------+-------------------+-------+---------+----------|
+| SettlementHandler | settle            | 455   | 0       | 0        |
+|-------------------+-------------------+-------+---------+----------|
+| SettlementHandler | submit            | 496   | 0       | 0        |
+|-------------------+-------------------+-------+---------+----------|
+| SettlementHandler | warp              | 428   | 0       | 0        |
+╰-------------------+-------------------+-------+---------+----------╯
+
+Logs:
+  coverage: escrows 14 successful settlements 0
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 2.81s (2.81s CPU time)
+
+Ran 6 test suites in 2.83s (6.24s CPU time): 72 tests passed, 0 failed, 0 skipped (72 total tests)

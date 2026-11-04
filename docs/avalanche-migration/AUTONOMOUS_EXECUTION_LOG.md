@@ -326,3 +326,28 @@ original reasoning. Do not add routine progress entries.
 - **Results:** clone create + init 123,573 gas per escrow (baseline fund about 225k); deposit 62,268; payout 71,755; a
   blacklisted vault blocks only its escrow; a blacklisted shared holder blocks all. 4 tests passed.
 - **Result:** P3-C6 DONE (evidence only); baseline unchanged.
+
+### L-019: R6 delegated execution; R12 mutual-settlement variant (2026-11-04)
+- **Decision:** R6 recorded as ENGINEERING EXECUTION AUTHORIZED UNDER DELEGATED AUTHORITY — OWNER APPROVAL PENDING (not owner
+  approved). R12: the Lead's target design (two-party settlement of a Disputed escrow, no arbiter reassignment, no privileged
+  withdrawal) built as `mutualSettleDispute` in an **isolated LOCAL-only variant** (`phase-3/prototypes/escrow-mutual-settlement`).
+- **Authority:** Lead instruction 2026-11-04 "R6, R12 and Avalanche payout" (delegated engineering). Its own rule: "if the
+  change conflicts with an existing explicit business rule, isolate the change and document the exact conflict".
+- **Inspection before the change:** contract `FreelaXEscrow.sol` (seven escrow statuses; `mutualRefund` refuses Disputed at
+  line 249; `resolveDispute` arbiter-only) and the ten transaction states (O-10/O-17: a settlement is one more user-relayed
+  transaction, no new state). **Conflicts found:** O-5 (owner, 2026-11-01) preserved question 8 "mutual refund unavailable
+  once Disputed" (direct conflict); O-2 shared immutable baseline (a new function needs a new contract version and
+  deployment); CLAUDE.md section 6 (no change to `avalanche-contracts/src` without an owner decision). Hence a variant;
+  the baseline was not touched. Kept: O-3, O-5 question 6 (binary outcome), O-6, D3, D4.
+- **Design choices:** Disputed only (other states already have release/mutual refund); binary outcome (no split rule
+  invented); message binds escrow id, outcome, amount, non-zero settlement hash, `disputedAt`, nonce, deadline, domain; a new
+  type hash (no cross-type replay); separate `DisputeSettledByParties` event (indexers cannot confuse it with an arbiter
+  decision); anyone may relay; pause does not block it. Rejected: allowing `mutualRefund` from Disputed in place (loses the
+  outcome choice and silently widens an existing function), a partial split (new business rule), arbiter replacement (O-3,
+  forbidden by the instruction).
+- **Tests:** `run.sh` re-runs the baseline Core, Lifecycle and Invariant suites against the variant plus 20 adversarial tests,
+  a reentrancy test and a settlement invariant suite: **72 passed, 0 failed, 0 skipped** (Foundry 1.8.7). First run: 3 failures
+  in the new tests (stale `block.timestamp`/`block.chainid` reads after `vm.warp`/`vm.chainId` under `via_ir`); fixed in the
+  test code (`vm.getBlockTimestamp()`, constant chain id), no contract change; the invariant handler gained a
+  fund-submit-dispute action because the first run never reached a settleable escrow.
+- **Result:** F14 OPEN on the baseline; variant IMPLEMENTED and TESTED, NOT ADOPTED; adoption is owner request R12.
