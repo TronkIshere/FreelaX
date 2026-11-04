@@ -5,19 +5,23 @@ records *what was done, why, and on what authority*, and the resume point. One e
 new evidence changes an entry's status, edit its **Status** line and add a dated "Update" line under it; do not delete the
 original reasoning. Do not add routine progress entries.
 
-## Current state (updated 2026-11-04, after L-017)
+## Current state (updated 2026-11-04, after L-020)
 - **Branch:** `avalanche/phase1-closure-phase3-proposal`; everything after `origin/master` (`1ef0af7`) is local and unpushed.
-- **Decision regime:** Lead delegation of engineering decisions (2026-11-04); PROJECT_STATUS classification table. R6 is
-  **not owner approved**.
+- **Decision regime:** Lead delegation of engineering decisions (2026-11-04) and the Lead instruction "R6, R12 and Avalanche
+  payout" (2026-11-04). R6 = ENGINEERING EXECUTION AUTHORIZED UNDER DELEGATED AUTHORITY — OWNER APPROVAL PENDING; **not owner
+  approved**.
 - **Phase 1:** PARTIAL. E1 BLOCKED (R1, X1), E2 BLOCKED (DB operator, X2), E3 DEFERRED (owner), E4 DOCUMENTED LIMITATION,
   E5/E6 INCONCLUSIVE (need E1), E7 PARTIAL (explorer verification NOT APPLICABLE until B2). Tooling for E1/E2 is complete.
 - **Phase 2:** all engineering residuals done (A1, A2, A3, A6, A7, A8, F12, F13); A5 closed; B7 external.
 - **Phase 3 (delegated, reversible):** notifications (off by default), primary rail (default SOLANA), P3-C4 stuck-escrow
-  reporting, A6 scanner health, CI workflow (not executed), drills. Owner/external: fee/tax/payout off-ramp (custody), F14/R12,
-  Fuji demonstration (C1). P3-C6 LOCAL clone measurement DONE (L-018).
-- **Last measured:** JDK 17 reactor 72/408/20/10 then marketplace 414; gateway 115/0/3; frontend 867; Foundry 55/1; A2 PASS.
+  reporting, A6 scanner health, CI workflow (not executed), drills, P3-C6 clone measurement, **R12 mutual-settlement variant
+  (LOCAL lab, not adopted; conflicts with O-5 question 8)**, **non-custodial payout adapter (default off; LOCAL mock partner
+  only)**. Owner/external: R12 adoption, real payout partner, fee and tax treatment, Fuji demonstration (C1).
+- **Last measured:** JDK 17 reactor 72/433/20/10; gateway 119/0/3; frontend 30 files / 873; Foundry baseline 55/1 (not re-run,
+  unchanged); R12 lab 72/0/0; V7+V8 MySQL ITs 3/3; A2 with payout PASS.
 - **How to run heavy suites here:** one at a time, detached and memory-capped (CLAUDE.md section 7).
-- **Next executable task:** none left that is independently implementable; everything open needs an owner decision or an external person.
+- **Next executable task:** none left that is independently implementable; everything open needs an owner decision or an
+  external person or partner.
 
 ## Entries
 
@@ -351,3 +355,36 @@ original reasoning. Do not add routine progress entries.
   test code (`vm.getBlockTimestamp()`, constant chain id), no contract change; the invariant handler gained a
   fund-submit-dispute action because the first run never reached a settleable escrow.
 - **Result:** F14 OPEN on the baseline; variant IMPLEMENTED and TESTED, NOT ADOPTED; adoption is owner request R12.
+
+### L-020: Non-custodial Avalanche payout adapter (2026-11-04)
+- **Decision:** an independent payout adapter for the Avalanche rail (Lead instruction section 3), not a reuse of the Solana
+  `SettlementDownstreamService` stages: the freelancer's own wallet transfers the released USDC to a partner deposit address;
+  the gateway proves it from the receipt; the partner reports the fiat payout. Default `avalanche-payout.enabled=false`,
+  partner `none` (explicit `UNSUPPORTED_RAIL`); a labelled `local-mock` partner for LOCAL_SIMULATION only.
+- **Authority:** Lead instruction 2026-11-04 (delegated engineering; R6 owner approval pending). It supersedes, for interfaces,
+  mocks and simulation only, the L-017 note "do not build" the off-ramp: no custody is created and no real partner or
+  financial execution is enabled, which stays external.
+- **Rationale:** the Solana pipeline starts with a Solana withdrawal, so reuse would fake steps or route value across chains.
+  Verification by receipt logs (exactly one `Transfer(from, deposit, amount)` of the manifest token, FINALIZED) rather than
+  trusting the reported hash; backend-built calldata (M11 rule: the UI builds none); capability by `(chainId, token address)`,
+  never symbol; partner-reported fee/rate stored verbatim, FreelaX computes neither; `taxTreatment = NOT_DEFINED`.
+- **Alternatives rejected:** routing through `SettlementDownstreamService` (Solana-bound, would fake an on-ramp); FreelaX
+  collecting the funds and paying the partner (custody); summing several transfers to reach the amount (ambiguous proof,
+  refused as AMOUNT_MISMATCH/AMBIGUOUS); confirming on CONFIRMED (not final); treating "no receipt" as failure.
+- **Security review:** gateway endpoint read-only, input-validated, no signer; marketplace endpoints freelancer-only; mock
+  fenced at startup (network id) and per request (gateway environment); unknown partner ids stop startup; one payout per
+  milestone, per transfer hash and per partner order (V8 unique keys); a rejected hash cannot be resubmitted; a partner change
+  is never silently followed. **Residual:** two concurrent first requests for the same milestone end with the second hitting
+  the unique key (generic error, not `EXISTING`); harmless, not fixed.
+- **Files:** gateway `TokenTransferMatcher`, `ChainClient.receiptLogs`, `EscrowActionService.verifyTokenTransfer`,
+  `AvalancheController`, `Dtos` (+`TokenTransferMatcherTest`, `AvalancheApiTest` case); marketplace V8 and package
+  `payout.avalanche` (status, entity, repository, port, disabled and mock partners, configuration, properties, service,
+  controller), `AvalancheClient`, `AvalancheResults`, `application.yml` (+4 test classes); frontend `AvalanchePayoutSection`,
+  panel, `api.ts`, types (+test); A2 harness flow 1b; `phase-3/03-avalanche-payout-adapter.md`.
+- **Tests:** gateway JDK 21 **119/0/3**; legacy JDK 17 reactor **72 / 433 / 20 / 10**, BUILD SUCCESS; V7+V8 MySQL ITs **3/3**;
+  frontend **30 files, 873**; A2 **PASS** with the payout flow (transfer FINALIZED + MATCHED, then simulated fiat PAID; reuse
+  refused; before-release, client and refunded-escrow requests refused). Failures on the way, all in the new code and fixed:
+  a record factory named like its accessor (compile error); three Mockito stubs that invoked a spy or a throwing stub (test
+  code); a line-continuation slip in `run.sh` (cosmetic).
+- **Result:** A4 payout part IMPLEMENTED (simulation, default off); real partner NOT IMPLEMENTED (external); fee and tax NOT
+  DEFINED (owner).

@@ -5,6 +5,7 @@ import { availableAvalancheActions, deliveryDateSeconds, type AvalancheActionOff
 import type { AvalancheActionInput, AvalancheContractView } from './avalancheTypes';
 import { actionText, chainInstant, environmentBadge, environmentBanner, explorerTxUrl, issuerAlertText, shortHash, stateText, tokenLabel, usdcFromBaseUnits } from './avalanchePresentation';
 import { EvmWallet, WalletError } from './evmWallet';
+import { AvalanchePayoutSection } from './AvalanchePayoutSection';
 import type { ContractSubmission, Dispute, User } from './types';
 
 export const avalancheUiEnabled = () => import.meta.env.VITE_AVALANCHE_ENABLED === 'true';
@@ -198,6 +199,8 @@ export function AvalancheEscrowPanel({ contractId, user, isClient, isFreelancer,
         </li>;
       })}
     </ul>}
+    {onAvalanche && isFreelancer && env && view.chain?.status === 'RELEASED' &&
+      <AvalanchePayoutSection contractId={contractId} expectedChainId={env.chainId} simulated={env.simulated} walletFactory={walletFactory} />}
     {onAvalanche && <ActionGroup><button className="button button-secondary" disabled={busy} onClick={() => void run(async () => undefined)}>Làm mới trạng thái</button></ActionGroup>}
   </section>;
 }

@@ -74,3 +74,23 @@ export type AvalancheActionInput = {
   freelancerSignature?: string;
   authorizationDeadline?: number;
 };
+
+/** Phase 3 non-custodial payout (Avalanche rail). On-chain transfer and fiat payout confirmations are separate fields. */
+export type AvalanchePayoutStatus = 'AWAITING_USER_TRANSFER' | 'TRANSFER_SUBMITTED' | 'TRANSFER_FAILED' | 'TRANSFER_CONFIRMED'
+  | 'FIAT_PAYOUT_PENDING' | 'FIAT_PAYOUT_CONFIRMED' | 'FIAT_PAYOUT_FAILED';
+
+export type AvalanchePayoutView = {
+  id: string; contractId: string; networkId: string; environment: string; chainId: number; tokenAddress: string;
+  amountBaseUnits: string; fromAddress: string; depositAddress: string; partnerId: string; partnerSimulated: boolean;
+  partnerReportedFee: string | null; partnerReportedRate: string | null; status: AvalanchePayoutStatus;
+  transferTxHash: string | null; transferChainState: string | null; transferMatch: string | null;
+  onChainTransferConfirmed: boolean; transferConfirmedAt: string | null;
+  fiatPayoutConfirmed: boolean; fiatReference: string | null; fiatConfirmedAt: string | null;
+  failureReason: string | null; taxTreatment: string; notice: string;
+  /** Built by the backend; present only while a transfer is awaited. The UI sends it unchanged from the user's wallet. */
+  preparedTransfer: { chainId: number; to: string; data: string; value: string } | null;
+};
+
+export type AvalanchePayoutRequestResult = {
+  outcome: 'CREATED' | 'EXISTING' | 'UNSUPPORTED_RAIL'; reason: string | null; payout: AvalanchePayoutView | null;
+};

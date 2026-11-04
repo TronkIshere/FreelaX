@@ -386,6 +386,18 @@ export class MarketplaceApi {
   async avalancheRefresh(contractId: string): Promise<AvalancheContractView> {
     return this.authorized('/contracts/' + encodeURIComponent(contractId) + '/avalanche/refresh', { method: 'POST' });
   }
+  async avalanchePayout(contractId: string): Promise<import('./avalancheTypes').AvalanchePayoutView | null> {
+    return this.authorized('/avalanche/payouts/contracts/' + encodeURIComponent(contractId));
+  }
+  async avalanchePayoutRequest(contractId: string): Promise<import('./avalancheTypes').AvalanchePayoutRequestResult> {
+    return this.authorized('/avalanche/payouts/contracts/' + encodeURIComponent(contractId), { method: 'POST' });
+  }
+  async avalanchePayoutTransfer(payoutId: string, txHash: string): Promise<import('./avalancheTypes').AvalanchePayoutView> {
+    return this.authorized('/avalanche/payouts/' + encodeURIComponent(payoutId) + '/transfer', { method: 'POST', body: JSON.stringify({ txHash }) });
+  }
+  async avalanchePayoutRefresh(payoutId: string): Promise<import('./avalancheTypes').AvalanchePayoutView> {
+    return this.authorized('/avalanche/payouts/' + encodeURIComponent(payoutId) + '/refresh', { method: 'POST' });
+  }
   async solanaWalletChallenge(walletAddress: string): Promise<{
     challengeId: string; walletAddress: string; message: string; expiresAt: string;
   }> {

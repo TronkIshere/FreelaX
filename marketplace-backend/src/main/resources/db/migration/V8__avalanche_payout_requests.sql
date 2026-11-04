@@ -1,0 +1,40 @@
+-- Avalanche payout rail (Phase 3, engineering under delegated authority; additive and forward-only). No existing table,
+-- column or value is changed. NON-CUSTODIAL: the freelancer transfers Testnet/simulated USDC from their OWN wallet to a
+-- payout partner's deposit address; FreelaX never holds the funds. The on-chain transfer confirmation and the partner's fiat
+-- payout confirmation are recorded separately and are never conflated. Real partner integration stays disabled.
+CREATE TABLE avalanche_payout_requests (
+  id BINARY(16) NOT NULL,
+  contract_id BINARY(16) NOT NULL,
+  milestone_id BINARY(16) NOT NULL,
+  freelancer_user_id BINARY(16) NOT NULL,
+  network_id VARCHAR(40) NOT NULL,
+  environment VARCHAR(32) NOT NULL,
+  chain_id BIGINT NOT NULL,
+  token_address VARCHAR(42) NOT NULL,
+  escrow_id VARCHAR(66) NOT NULL,
+  amount_base_units VARCHAR(78) NOT NULL,
+  from_address VARCHAR(42) NOT NULL,
+  partner_id VARCHAR(40) NOT NULL,
+  partner_order_id VARCHAR(100) NOT NULL,
+  deposit_address VARCHAR(42) NOT NULL,
+  partner_simulated BIT(1) NOT NULL,
+  -- exactly as reported by the partner (null when it reports none); FreelaX computes no fee and no rate
+  partner_reported_fee VARCHAR(40) NULL,
+  partner_reported_rate VARCHAR(40) NULL,
+  status VARCHAR(32) NOT NULL,
+  transfer_tx_hash VARCHAR(66) NULL,
+  transfer_chain_state VARCHAR(16) NULL,
+  transfer_match VARCHAR(32) NULL,
+  transfer_confirmed_at DATETIME(6) NULL,
+  fiat_status VARCHAR(16) NULL,
+  fiat_reference VARCHAR(100) NULL,
+  fiat_confirmed_at DATETIME(6) NULL,
+  failure_reason VARCHAR(64) NULL,
+  created_at DATETIME(6) NOT NULL,
+  updated_at DATETIME(6) NOT NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_avalanche_payout_milestone (network_id, milestone_id),
+  UNIQUE KEY uq_avalanche_payout_transfer (network_id, transfer_tx_hash),
+  UNIQUE KEY uq_avalanche_payout_partner_order (partner_id, partner_order_id),
+  KEY ix_avalanche_payout_contract (contract_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

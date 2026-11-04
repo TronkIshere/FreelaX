@@ -87,6 +87,13 @@ public class AvalancheController {
     }
 
     /** P3-C4: which issuer controls block this escrow; read-only, never a recovery path (O-6). */
+    /** Read-only, no signer: on-chain evidence of a user's own token transfer (payout rail). Not a fiat payout confirmation. */
+    @GetMapping("/token-transfers/{txHash}")
+    public Dtos.TokenTransferResponse tokenTransfer(@PathVariable("txHash") String txHash, @RequestParam("from") String from,
+                                                    @RequestParam("to") String to, @RequestParam("amount") String amount) {
+        return service.verifyTokenTransfer(txHash, from, to, amount);
+    }
+
     @GetMapping("/escrows/{escrowId}/alerts")
     public Dtos.IssuerAlertsResponse alerts(@PathVariable("escrowId") String escrowId) {
         var alerts = service.issuerAlerts(escrowId);

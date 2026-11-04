@@ -64,6 +64,8 @@ docker run --rm --network "$NET" --memory 768m -v "$WINROOT/avalanche-contracts:
 [ -f "$ROOT/$MANIFEST_REL" ] || { echo "deployment manifest not written" >&2; exit 4; }
 ESCROW="$(grep -o '"escrow"[^,}]*' "$ROOT/$MANIFEST_REL" | grep -o '0x[0-9a-fA-F]\{40\}')"
 [ -n "$ESCROW" ] || { echo "no escrow address in the manifest" >&2; exit 4; }
+TOKEN="$(grep -o '"token"[^,}]*' "$ROOT/$MANIFEST_REL" | grep -o '0x[0-9a-fA-F]\{40\}')"
+[ -n "$TOKEN" ] || { echo "no token address in the manifest" >&2; exit 4; }
 
 echo "[a2] gateway (LOCAL_SIMULATION, ephemeral development signers)"
 docker run -d --name "$P-gateway" --network "$NET" --memory 900m -p 127.0.0.1:19194:9194   -v "$WINROOT:/src" -w /src   -e AVALANCHE_ENVIRONMENT=LOCAL_SIMULATION -e AVALANCHE_RPC_PRIMARY_URL="http://$P-anvil:8545" -e AVALANCHE_RPC_MIN_GAP_MS=0   -e AVALANCHE_SIGNERS_ENABLED=true -e AVALANCHE_TX_ENABLED=true -e AVALANCHE_TX_RECONCILE_INTERVAL_MS=500   -e AVALANCHE_DB_URL="jdbc:mysql://$P-mysql:3306/avalanche_gateway" -e AVALANCHE_DB_USERNAME=root -e AVALANCHE_DB_PASSWORD="$DB_PW"   -e AVALANCHE_DEPLOYMENT_MANIFEST="/src/$MANIFEST_REL" -e AVALANCHE_INTERNAL_API_KEY="$GW_KEY"   maven:3.9-eclipse-temurin-21 java -Xmx512m -jar "/src/$GW_JAR" >/dev/null
@@ -85,7 +87,7 @@ cast send --unlocked --from "$ANVIL_SENDER" "$ESCROW" "grantRole(bytes32,address
 cast send --unlocked --from "$ANVIL_SENDER" "$ESCROW" "setDefaultArbiter(address)" "$ARBITER" >/dev/null
 echo "[a2] roles handed to the ephemeral signers (F3)"
 
-echo "[a2] marketplace (Avalanche rail enabled, settlement notifications on)"
+echo "[a2] marketplace (Avalanche rail enabled, settlement notifications on, payout adapter with the LOCAL mock partner)"
 docker run -d --name "$P-marketplace" --network "$NET" --memory 1200m -p 127.0.0.1:19191:9191 \
   -v "$WINROOT/marketplace-backend/target:/app:ro" \
   -e SPRING_PROFILES_ACTIVE=dev -e DB_URL="jdbc:mysql://$P-mysql:3306/marketplace?useUnicode=true&characterEncoding=UTF-8" \
@@ -93,6 +95,8 @@ docker run -d --name "$P-marketplace" --network "$NET" --memory 1200m -p 127.0.0
   -e MISA_PLATFORM_ACCOUNT_PASSWORD="$MISA_PW" -e DEMO_CLIENT_PASSWORD="$DEMO_C" -e DEMO_FREELANCER_PASSWORD="$DEMO_F" \
   -e AVALANCHE_GATEWAY_ENABLED=true -e AVALANCHE_GATEWAY_BASE_URL="http://$P-gateway:9194" \
   -e AVALANCHE_GATEWAY_INTERNAL_API_KEY="$GW_KEY" -e AVALANCHE_GATEWAY_SETTLEMENT_NOTIFICATIONS=true \
+  -e AVALANCHE_PAYOUT_ENABLED=true -e AVALANCHE_PAYOUT_PARTNER=local-mock -e AVALANCHE_PAYOUT_LOCAL_MOCK_TOKEN_ADDRESS="$TOKEN" \
+  -e AVALANCHE_PAYOUT_LOCAL_MOCK_DEPOSIT_ADDRESS=0x00000000000000000000000000000000000c0ffe \
   maven:3.9-eclipse-temurin-17 java -Xmx768m -jar /app/backend-0.1.0.jar >/dev/null
 for _ in $(seq 1 150); do
   docker logs "$P-marketplace" 2>&1 | grep -q "Started .*Application" && break

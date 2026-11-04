@@ -38,6 +38,11 @@ public final class AvalancheResults {
                                List<IssuerAlert> alerts, String note) {
     }
 
+    /** Gateway {@code /token-transfers/{hash}}: {@code state} of the transaction and {@code match} of the Transfer log. */
+    public record TokenTransfer(String environment, boolean isSimulated, long chainId, String txHash, String token, String from, String to,
+                                String amountBaseUnits, String state, String match, Long blockNumber) {
+    }
+
     public record HashStatus(String environment, boolean isSimulated, long chainId, String txHash, String state, Long blockNumber) {
     }
 }

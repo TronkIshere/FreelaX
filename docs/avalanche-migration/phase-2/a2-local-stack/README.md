@@ -15,6 +15,12 @@ random throwaway value created by `run.sh` for this run and discarded with the c
    IN_PROGRESS; then COMPLETED / RELEASED); settlement notifications delivered.
 3. **F13** on a second contract: both parties sign the SAME mutual-refund typed data, with blocks mined between the two
    signatures; the refund is sent with the held pair; REFUNDED / CANCELLED; the held signatures are spent.
+4. **Phase 3 payout** (added 2026-11-04; evidence `../evidence/LOCAL_SIMULATION-a2-local-stack-payout-20261104.json`, PASS):
+   the marketplace runs with `AVALANCHE_PAYOUT_PARTNER=local-mock` (labelled mock, LOCAL only) and the token from the
+   manifest. After the release, the freelancer requests a payout (refused before the release, refused for the client and for
+   the refunded contract 2); the freelancer's own wallet sends the released amount to the mock deposit address; the gateway
+   proves the transfer (FINALIZED, exactly one matching `Transfer`); only then the mock reports a simulated fiat payout. The
+   transfer hash cannot be reused. No custody: FreelaX never holds or sends the funds. See `phase-3/03-avalanche-payout-adapter.md`.
 
 ## Party wallets
 The two party wallets are throwaway keys created inside the Anvil container for one run (the same pattern as the Phase 1

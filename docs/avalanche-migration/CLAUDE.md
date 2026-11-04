@@ -79,13 +79,16 @@ Execution history and the resume point: [AUTONOMOUS_EXECUTION_LOG.md](AUTONOMOUS
   Since 2026-11-04: A1, A2, A3, A6, A7, A8, F12, F13 IMPLEMENTED and tested; A5 closed (D-C). Phase 2 has no open
   engineering residual; B7 (browser wallet) is external. The single-stack harness is `phase-2/a2-local-stack/run.sh`. **A8** waits for R9 (wallet
   linking design); **A2** waits for A8 and F3; **A5** waits for C4. A4 is no longer Phase 2.
-- **Phase 3: PROPOSED, NOT OWNER APPROVED** ([phase-3/00-phase-3-proposal.md](phase-3/00-phase-3-proposal.md), R6/C9 open).
+- **Phase 3: PROPOSED, NOT OWNER APPROVED**; R6 recorded 2026-11-04 as ENGINEERING EXECUTION AUTHORIZED UNDER DELEGATED
+  AUTHORITY — OWNER APPROVAL PENDING (Lead instruction "R6, R12 and Avalanche payout") ([phase-3/00-phase-3-proposal.md](phase-3/00-phase-3-proposal.md), R6/C9 open).
   **Never mark R6 approved.** Since the Lead's delegation of 2026-11-04, engineering may implement Phase 3 items that are
   reversible, simulation-only, default-off (or default to current behaviour) and covered by existing owner decisions; each is
   recorded as ENGINEERING DECIDED UNDER DELEGATED AUTHORITY (PROJECT_STATUS classification table). Done so far: settlement
   notifications (flag, default off), primary-rail policy for new contracts (default SOLANA), stuck-escrow reporting (P3-C4),
-  scanner health (A6), CI workflow (not executed), drills. Fee/tax/payout for Avalanche needs an off-ramp (new custody path):
-  owner decision, do not build. F14 (arbiter loss on a Disputed escrow) is owner request R12: no contract change. Not covered by the delegation:
+  scanner health (A6), CI workflow (not executed), drills. Payout: a non-custodial adapter is built (default off, LOCAL mock
+  partner only); a real partner, platform fee and tax treatment stay owner/external; never add custody or a chain fallback.
+  F14/R12: the two-party settlement exists only as an isolated LOCAL variant (`phase-3/prototypes/escrow-mutual-settlement`);
+  adopting it conflicts with O-5 question 8 and needs an owner decision; the baseline contract stays unchanged. Not covered by the delegation:
   anything irreversible, custody-changing, Fuji signing, real financial settlement.
 - Naming trap: "Phase 3" in older documents (README D2, `04`, `07`, Phase 1 reports) means the Phase 0 roadmap's Solidity
   phase, executed inside P2-M5 to M7. The repository milestone names in [phase-2/README.md](phase-2/README.md) win over any
@@ -112,9 +115,9 @@ network, Mainnet endpoint or production-looking credential.
 ## 7. Testing and evidence requirements
 - Every code change: run the affected module's suite and record counts (run / pass / skipped) in the log and in the
   relevant report. Report environment incompatibilities separately from code failures.
-- Baselines to keep green (2026-11-04, last measured): legacy JDK 17 reactor payment 72, marketplace 414, misa 20,
-  solana-integration 10; avalanche-integration 115 (3 optional skipped); Foundry 55 pass, 1 skipped; frontend 29 files,
-  867 tests; human-signed tooling 11; A2 harness PASS. A drop is a regression unless
+- Baselines to keep green (2026-11-04, last measured): legacy JDK 17 reactor payment 72, marketplace 433, misa 20,
+  solana-integration 10; avalanche-integration 119 (3 optional skipped); Foundry 55 pass, 1 skipped; R12 lab 72; frontend 30
+  files, 873 tests; human-signed tooling 11; A2 harness PASS (with the payout flow). A drop is a regression unless
   explained. The opt-in MySQL ITs (`*MySqlIT`, `-Dfreelax.mysql.url`) run against a throwaway local MySQL only.
 - This machine (B10): JDK 25 only; Maven 3.10.0 in `~/.m2/wrapper/dists/apache-maven-3.10.0/*/bin` (not on `PATH`); JDK 23+
   needs `-Dmaven.compiler.proc=full` for `payment-backend`. Use pinned images for real runtimes: `maven:3.9-eclipse-temurin-17`
@@ -159,7 +162,8 @@ silently "fix" plan text that is historical: add a dated note instead.
 ## 10. Pending owner decisions and external blockers (pointer list; status in PROJECT_STATUS.md)
 Owner: **R1/C1** Fuji human signing procedure and funding owner; **R2 remainder** DB operator identity; **R3** E4;
 **R4** E5/E6; **R5** E7; **R6/C9** Phase 3 approval (**NOT APPROVED**); **R8 remainder** C3 treatment, C4, A5 placement;
-**R9** EVM wallet linking design (A8, A2); **R10** CI proposal (D1); C6/O-8, C7/O-13 DEFERRED; C8, C10, C11 OPEN.
+**R9** EVM wallet linking design (A8, A2); **R10** CI proposal (D1); C6/O-8, C7/O-13 DEFERRED; C8, C10, C11 OPEN;
+**R12** adoption of the mutual-settlement variant (O-5 question 8 conflict); **payout** real partner, platform fee, tax treatment.
 Operators / external: **X1** human-signed Fuji run (after R1); **X2** DB evidence, development database only (after the
 operator is named); **X3** funding and later human-signed escrow deployment; B7 browser wallet extension; B9 owner `.env`
 for `docker compose config`.

@@ -368,6 +368,59 @@ class AvalancheApiTest {
         assertEquals(null, foreignStatus.get("blockNumber"));
     }
 
+    /** Payout rail: a user's own token transfer, verified read-only from the receipt logs; never a fiat payout confirmation. */
+    @Test
+    void aUsersOwnTokenTransferIsVerifiedFromTheReceiptLogs() {
+        String url = LocalStack.anvilUrl();
+        String sender = ContractFixtures.ANVIL_ACCOUNT_0.toLowerCase(Locale.ROOT);
+        String partner = "0x" + "7e".repeat(20);
+        ContractFixtures.sendFromAdmin(url, STACK.usdc(), FunctionEncoder.encode(new Function("mint",
+                List.of(new Address(sender), new org.web3j.abi.datatypes.generated.Uint256(5_000_000)), List.of())));
+        String tx = ContractFixtures.sendFromAdmin(url, STACK.usdc(), FunctionEncoder.encode(new Function("transfer",
+                List.of(new Address(partner), new org.web3j.abi.datatypes.generated.Uint256(2_500_000)), List.of())));
+        AnvilRpc.mine(url);
+        AnvilRpc.mine(url);
+        String base = "/api/v1/avalanche/token-transfers/";
+
+        Map<String, Object> ok = get(base + tx + "?from=" + sender + "&to=" + partner + "&amount=2500000");
+        assertEquals("MATCHED", ok.get("match"), String.valueOf(ok));
+        assertEquals("FINALIZED", ok.get("state"));
+        assertEquals(true, ok.get("isSimulated"));
+        assertEquals(STACK.usdc().toLowerCase(Locale.ROOT), ok.get("token"));
+        assertNotNull(ok.get("blockNumber"));
+
+        assertEquals("AMOUNT_MISMATCH", get(base + tx + "?from=" + sender + "&to=" + partner + "&amount=2500001").get("match"));
+        assertEquals("TRANSFER_NOT_FOUND", get(base + tx + "?from=" + sender + "&to=0x" + "7f".repeat(20) + "&amount=2500000").get("match"),
+                "another recipient is not proven");
+        assertEquals("TRANSFER_NOT_FOUND", get(base + tx + "?from=0x" + "11".repeat(20) + "&to=" + partner + "&amount=2500000").get("match"),
+                "another sender is not proven");
+
+        // a transfer larger than the balance is mined and reverts: never a match
+        String reverted = ContractFixtures.sendFromAdmin(url, STACK.usdc(), FunctionEncoder.encode(new Function("transfer",
+                List.of(new Address(partner), new org.web3j.abi.datatypes.generated.Uint256(new java.math.BigInteger("1000000000000000"))), List.of())));
+        AnvilRpc.mine(url);
+        Map<String, Object> rev = get(base + reverted + "?from=" + sender + "&to=" + partner + "&amount=1000000000000000");
+        assertEquals("REVERTED", rev.get("state"));
+        assertEquals("TRANSFER_NOT_FOUND", rev.get("match"));
+
+        // a receipt of a non-token target, and an unknown hash, prove nothing
+        String foreign = ContractFixtures.sendFromAdmin(url, "0x" + "5b".repeat(20), "0x");
+        AnvilRpc.mine(url);
+        Map<String, Object> other = get(base + foreign + "?from=" + sender + "&to=" + partner + "&amount=1");
+        assertEquals("UNKNOWN", other.get("state"));
+        assertEquals("TRANSFER_NOT_FOUND", other.get("match"));
+        Map<String, Object> unknown = get(base + "0x" + "cd".repeat(32) + "?from=" + sender + "&to=" + partner + "&amount=1");
+        assertEquals("UNKNOWN", unknown.get("state"));
+        assertEquals("NO_RECEIPT", unknown.get("match"));
+
+        // inputs
+        exchange(rest, HttpMethod.GET, base + "0x12?from=" + sender + "&to=" + partner + "&amount=1", null, null, 400);
+        exchange(rest, HttpMethod.GET, base + tx + "?from=" + sender + "&to=" + partner + "&amount=0", null, null, 400);
+        exchange(rest, HttpMethod.GET, base + tx + "?from=" + sender + "&to=" + partner + "&amount=abc", null, null, 400);
+        exchange(rest, HttpMethod.GET, base + tx + "?from=" + sender + "&to=" + sender + "&amount=1", null, null, 400);
+        exchange(rest, HttpMethod.GET, base + tx + "?from=nope&to=" + partner + "&amount=1", null, null, 400);
+    }
+
     private String awaitFirstKey() {
         return new JdbcTemplate(LocalStack.dataSource()).queryForObject("SELECT operation_key FROM avalanche_tx ORDER BY id LIMIT 1", String.class);
     }

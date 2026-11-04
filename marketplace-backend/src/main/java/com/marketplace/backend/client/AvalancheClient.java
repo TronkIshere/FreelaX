@@ -80,6 +80,12 @@ public class AvalancheClient {
         return Boolean.TRUE.equals(body.get("valid"));
     }
 
+    /** Payout rail: read-only on-chain evidence of a user's own token transfer (never a fiat payout confirmation). */
+    public AvalancheResults.TokenTransfer verifyTokenTransfer(String txHash, String from, String to, String amountBaseUnits) {
+        return get("verify-token-transfer", "/token-transfers/" + txHash + "?from=" + from + "&to=" + to + "&amount=" + amountBaseUnits,
+                AvalancheResults.TokenTransfer.class).orElseThrow(() -> notFound("token-transfer"));
+    }
+
     public AvalancheResults.HashStatus getStatusByHash(String txHash) {
         return get("get-status-by-hash", "/transactions/by-hash/" + txHash, AvalancheResults.HashStatus.class).orElseThrow(() -> notFound("status"));
     }

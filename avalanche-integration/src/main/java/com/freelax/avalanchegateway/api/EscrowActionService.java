@@ -12,6 +12,7 @@ import com.freelax.avalanchegateway.contract.EscrowCalls;
 import com.freelax.avalanchegateway.contract.EscrowReader;
 import com.freelax.avalanchegateway.contract.EscrowState;
 import com.freelax.avalanchegateway.contract.FundTerms;
+import com.freelax.avalanchegateway.contract.TokenTransferMatcher;
 import com.freelax.avalanchegateway.contract.VerifiedDeployment;
 import com.freelax.avalanchegateway.env.AvalancheEnvironment;
 import com.freelax.avalanchegateway.signer.Signature;
@@ -362,6 +363,58 @@ public class EscrowActionService {
             state = client.transactionExists(txHash) ? TxState.PENDING.name() : TxState.UNKNOWN.name();
         }
         return new Dtos.HashStatusResponse(environment.environment().name(), true, environment.chainId(), txHash.toLowerCase(Locale.ROOT), state, block);
+    }
+
+    /**
+     * Verifies, read-only, that {@code txHash} moved exactly {@code amount} base units of the manifest token from {@code from}
+     * to {@code to}. The transaction must target the manifest token directly (anything else is UNKNOWN / TRANSFER_NOT_FOUND).
+     * Finality uses the same rule as {@link #statusByHash}.
+     */
+    public Dtos.TokenTransferResponse verifyTokenTransfer(String txHash, String from, String to, String amount) {
+        if (txHash == null || !BYTES32.matcher(txHash).matches()) {
+            throw new ApiException(400, "INVALID_TX_HASH", "a 32-byte transaction hash is required");
+        }
+        String sender = requireAddress(from);
+        String recipient = requireAddress(to);
+        BigInteger value;
+        try {
+            value = new BigInteger(amount == null ? "" : amount);
+        } catch (NumberFormatException e) {
+            throw new ApiException(400, "INVALID_AMOUNT", "amount must be a positive integer in base units");
+        }
+        if (value.signum() <= 0) {
+            throw new ApiException(400, "INVALID_AMOUNT", "amount must be a positive integer in base units");
+        }
+        if (sender.equals(recipient)) {
+            throw new ApiException(400, "INVALID_ADDRESS", "from and to must differ");
+        }
+        String token = deployment().manifest().token().toLowerCase(Locale.ROOT);
+        String hash = txHash.toLowerCase(Locale.ROOT);
+        Optional<TxReceipt> receipt = client.receipt(hash);
+        String state;
+        String match;
+        Long block = null;
+        if (receipt.isEmpty()) {
+            state = client.transactionExists(hash) ? TxState.PENDING.name() : TxState.UNKNOWN.name();
+            match = "NO_RECEIPT";
+        } else if (receipt.get().to() == null || !receipt.get().to().equalsIgnoreCase(token)) {
+            state = TxState.UNKNOWN.name();
+            match = TokenTransferMatcher.Outcome.TRANSFER_NOT_FOUND.name();
+        } else {
+            block = receipt.get().blockNumber();
+            if (!receipt.get().success()) {
+                state = TxState.REVERTED.name();
+                match = TokenTransferMatcher.Outcome.TRANSFER_NOT_FOUND.name();
+            } else {
+                boolean finalized = environment.environment() == AvalancheEnvironment.LOCAL_SIMULATION
+                        ? client.latestBlockNumber() >= block + txProperties.confirmations()
+                        : client.finalizedBlockNumber() >= block;
+                state = (finalized ? TxState.FINALIZED : TxState.CONFIRMED).name();
+                match = TokenTransferMatcher.match(client.receiptLogs(hash).orElse(List.of()), token, sender, recipient, value).name();
+            }
+        }
+        return new Dtos.TokenTransferResponse(environment.environment().name(), true, environment.chainId(), hash, token,
+                sender, recipient, value.toString(), state, match, block);
     }
 
     private boolean isManifestTarget(String to) {

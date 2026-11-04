@@ -10,12 +10,13 @@
 > funds, no Mainnet, no real fiat settlement, banking integration or tax remittance).
 
 ## Implementation record under delegated authority (2026-11-04, second update)
-R6 is **still not owner approved**. Under the Lead's delegation of engineering decisions, the following reversible,
+R6 is **still not owner approved** (since 2026-11-04: ENGINEERING EXECUTION AUTHORIZED UNDER DELEGATED AUTHORITY — OWNER APPROVAL PENDING). Under the Lead's delegation of engineering decisions, the following reversible,
 simulation-only items were built (each defaults to current behaviour):
 | Capability | State | Evidence |
 |---|---|---|
 | P3-C1 (A4) notifications | IMPLEMENTED, flag `avalanche-gateway.settlement-notifications` default off | marketplace tests (3) |
-| P3-C1 (A4) fee, tax/MISA, payout | NOT STARTED (D-B option (b) selected); rail-aware tax label done (A7) | - |
+| P3-C1 (A4) fee, tax/MISA, payout | **payout: non-custodial adapter IMPLEMENTED 2026-11-04** (default off, LOCAL mock partner only, [03](03-avalanche-payout-adapter.md)); fee and tax NOT DEFINED (owner); real partner external; rail-aware tax label done (A7) | marketplace payout tests (19), V8 IT, gateway transfer verification, A2 run |
+| R12 / F14 two-party settlement of a Disputed escrow | **isolated LOCAL variant IMPLEMENTED, NOT ADOPTED** (conflicts with O-5 question 8; baseline unchanged) | [lab](prototypes/escrow-mutual-settlement/README.md), 72 Foundry tests |
 | P3-C2 primary rail | IMPLEMENTED, `marketplace.primary-rail` default SOLANA, fail closed | `PrimaryRailPolicyTest`, `JobAccessAndDiscoveryServiceImplTest` |
 | P3-C3 CI | workflow added, not executed | `.github/workflows/avalanche-ci.yml` |
 | P3-C4 stuck-escrow reporting | IMPLEMENTED (read-only, O-6) | gateway, marketplace, frontend tests; A2 live run |

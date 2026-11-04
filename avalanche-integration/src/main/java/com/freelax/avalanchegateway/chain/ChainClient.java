@@ -90,6 +90,19 @@ public class ChainClient {
     }
 
     /**
+     * The logs carried by a transaction's receipt (empty Optional when there is no receipt yet). Used to verify a token
+     * transfer the gateway did not send (payout rail: the freelancer's own wallet transfer), never to infer absence.
+     */
+    public Optional<List<LogEntry>> receiptLogs(String txHash) {
+        return call("eth_getTransactionReceipt", () -> web3j.ethGetTransactionReceipt(txHash).send(),
+                r -> r.getTransactionReceipt().map(t -> t.getLogs().stream()
+                        .map(log -> new LogEntry(log.getTransactionHash(), log.getLogIndex().intValueExact(),
+                                log.getBlockNumber().longValueExact(), log.getBlockHash(), log.getAddress(),
+                                List.copyOf(log.getTopics()), log.getData(), log.isRemoved()))
+                        .toList()));
+    }
+
+    /**
      * Logs of one contract over an inclusive block range. A provider refusal of the range or result size throws
      * {@link LogRangeExceededException}; callers must never read an empty answer near the head as proof of absence.
      */

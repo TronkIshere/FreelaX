@@ -69,6 +69,14 @@ avalanche-gateway:
   network: ${AVALANCHE_GATEWAY_NETWORK:avalanche-local}
   settlement-notifications: ${AVALANCHE_GATEWAY_SETTLEMENT_NOTIFICATIONS:false}
 
+# Phase 3 non-custodial Avalanche payout adapter. Default: disabled, no partner -> explicit UNSUPPORTED_RAIL, no fallback.
+# Only 'none' and 'local-mock' (LOCAL_SIMULATION, avalanche-local) exist; no real partner is integrated.
+avalanche-payout:
+  enabled: ${AVALANCHE_PAYOUT_ENABLED:false}
+  partner: ${AVALANCHE_PAYOUT_PARTNER:none}
+  local-mock-token-address: ${AVALANCHE_PAYOUT_LOCAL_MOCK_TOKEN_ADDRESS:}
+  local-mock-deposit-address: ${AVALANCHE_PAYOUT_LOCAL_MOCK_DEPOSIT_ADDRESS:0x00000000000000000000000000000000000c0ffe}
+
 solana-cpr:
   base-url: ${SOLANA_CPR_BASE_URL:http://localhost:9193}
   internal-api-key: ${SOLANA_CPR_INTERNAL_API_KEY:}

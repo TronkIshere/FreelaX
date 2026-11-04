@@ -1,6 +1,6 @@
 # Avalanche migration: project status
 
-Last updated: 2026-11-04, second update (delegated engineering decisions applied: A1, A3, A7, A8, F12, F13 implemented; Phase 3 notifications and primary-rail policy; CI workflow; see change note). First update the same day: A1 partial, A3 gateway half, Phase 1 E1/E2 tooling, R6 approval package, request R11. Previous: 2026-11-03 (owner decision update recorded: R2 development database, O-2, O-6, R8; earlier the same day: owner response recorded; Phase 1 closure work; Phase 3 proposal; local re-validation). Previous: 2026-11-02 (after M12, documentation reconciled). Scope: [SIMULATION_SCOPE](../SIMULATION_SCOPE.md) (LOCAL_SIMULATION and AVALANCHE_FUJI only; Mainnet out of scope; no real funds).
+Last updated: 2026-11-04, third update (Lead instruction "R6, R12 and Avalanche payout": R6 recorded as engineering execution under delegated authority, owner approval pending; R12 mutual-settlement variant isolated (LOCAL); non-custodial Avalanche payout adapter; see change note). Second update the same day (delegated engineering decisions applied: A1, A3, A7, A8, F12, F13 implemented; Phase 3 notifications and primary-rail policy; CI workflow; see change note). First update the same day: A1 partial, A3 gateway half, Phase 1 E1/E2 tooling, R6 approval package, request R11. Previous: 2026-11-03 (owner decision update recorded: R2 development database, O-2, O-6, R8; earlier the same day: owner response recorded; Phase 1 closure work; Phase 3 proposal; local re-validation). Previous: 2026-11-02 (after M12, documentation reconciled). Scope: [SIMULATION_SCOPE](../SIMULATION_SCOPE.md) (LOCAL_SIMULATION and AVALANCHE_FUJI only; Mainnet out of scope; no real funds).
 
 This file is the single source of truth for status, owner decisions and outstanding work. Other documents keep their historical text and point here. Final acceptance classification: [phase-2/M12-validation-report.md](phase-2/M12-validation-report.md).
 
@@ -128,7 +128,7 @@ option; every such decision is reversible and recorded with its rationale in the
 | R5 | E7 explorer verification | ENGINEERING DECIDED | option (a) optional: NOT APPLICABLE until a Fuji deployment exists (B2); not a waiver of anything that can run |
 | R4 | E5/E6 after the E1 run | EXTERNAL ACTION REQUIRED | depends on the human-signed E1 run (X1) |
 | R6 / C9 | Phase 3 scope | **ENGINEERING EXECUTION AUTHORIZED UNDER DELEGATED AUTHORITY — OWNER APPROVAL PENDING** (Lead instruction 2026-11-04, "R6, R12 and Avalanche payout"). The owner has **not** approved R6. Engineering may implement independently implementable Phase 3 work inside the agreed migration scope (architecture, interfaces, additive migrations, simulations and mocks, tests, tooling); not external deployments, real financial operations, or anything needing external authorization; CLAUDE.md section 6 hard stops unchanged | see the execution log for each item (L-019 onwards) |
-| D-B / C3 | Treatment of fees, tax/MISA, payout, notifications for an Avalanche settlement | ENGINEERING DECIDED | option (b): reuse the existing downstream stages and their existing rules (no new formula), records labelled simulated, behind a flag that defaults off. Built 2026-11-04: notifications and the rail-aware tax label (A7) only; the fee/tax/payout wiring is **NOT STARTED** (needs the Solana coupling of `SettlementDownstreamService` analysed first; next task) |
+| D-B / C3 | Treatment of fees, tax/MISA, payout, notifications for an Avalanche settlement | ENGINEERING DECIDED | option (b): reuse the existing downstream stages and their existing rules (no new formula), records labelled simulated, behind a flag that defaults off. Built 2026-11-04: notifications and the rail-aware tax label (A7) only; the fee/tax/payout wiring is **NOT STARTED** (needs the Solana coupling of `SettlementDownstreamService` analysed first; next task); **2026-11-04 (third update):** payout built as a separate non-custodial adapter (not through the Solana stages), default off; fee and tax still not wired (no rule to reuse for Avalanche without an owner decision) |
 | R1 / C1 | Fuji signer, funding owner, device | EXTERNAL ACTION REQUIRED | |
 | R2 remainder | DB operator identity | EXTERNAL ACTION REQUIRED | |
 | C6 / O-8, C7 / O-13 | RPC provider; audit, key ceremony | OWNER DEFERRED (owner decisions, kept) | |
@@ -144,7 +144,7 @@ Status words: OPEN, BLOCKED (needs a human or external action), DEFERRED (owner 
 | A1 | Frontend action screens: submit, revise, dispute, resolve (admin), extension-request, mutual-refund; legacy Solana labelling | **IMPLEMENTED 2026-11-04** (all six actions, arbiter resolve on the admin case page, chain-state display; **wallet mutual refund** two-party flow after F13; per-record chain labels incl. "Solana (tham chiếu cũ)" in finance rows). Tested in Vitest only; **no real-browser wallet check (B7)** | execution log L-007, L-012 |
 | A2 | Cross-service run: marketplace plus gateway plus Anvil plus MySQL in one environment | **IMPLEMENTED and PASSING 2026-11-04** (`phase-2/a2-local-stack`): wallet links, fund-submit-release, F13 mutual refund, P3-C4 stuck escrow reported live. Found and fixed: Avalanche-funded contracts could not accept submissions (job status) | execution log L-016 |
 | A3 | Combined fault-injection scenario (timeout, 429, WebSocket drop, duplicate, missed event, revert, nonce conflict, restart, invalid signer/env/contract) at marketplace level | **IMPLEMENTED 2026-11-04** in two halves: gateway `CombinedFaultScenarioTest` (real Anvil and MySQL: timeout after send, duplicate, revert, 429, null lookups, restart, duplicate after restart) and marketplace `AvalancheEscrowServiceTest.combinedGatewayFaultsNeverApplyEarlyNeverFailAndApplyExactlyOnce` (timeout at execute, duplicate, 429 and outage at refresh, UNKNOWN/CONFIRMED, failed chain read after FINALIZED, CHAIN_MISMATCH, restart, duplicate FINALIZED). WebSocket drop and invalid signer/env/contract stay covered per layer (M3, M4, M7 tests). The two halves are joined by mocks, not by a live single stack (that is A2) | execution log L-009, L-011 |
-| A4 | Fees, MISA tax records, payouts and notifications for an Avalanche release | **PARTIAL**: notifications IMPLEMENTED (flag, default off); rail-aware tax label done. **Fee/tax/payout: EXTERNAL DECISION** (2026-11-04 analysis): the existing pipeline starts with an on-chain off-ramp from the freelancer's Solana wallet, and payout and tax run only after it; an Avalanche equivalent is a new money-movement/custody path (freelancer sends USDC to a partner deposit address), which needs separate owner approval | execution log L-017 |
+| A4 | Fees, MISA tax records, payouts and notifications for an Avalanche release | **PARTIAL**: notifications IMPLEMENTED (flag, default off); rail-aware tax label done. **Payout: NON-CUSTODIAL ADAPTER IMPLEMENTED 2026-11-04** (Lead instruction, delegated): independent of the Solana pipeline; the freelancer's own wallet sends the released USDC to a partner deposit address; the gateway proves the transfer from the receipt (`/token-transfers/{hash}`); on-chain transfer and fiat payout confirmations kept apart; explicit `UNSUPPORTED_RAIL` without partner capability for the exact (chain, token); no fallback between chains; **default disabled, partner `none`**; only a labelled LOCAL mock partner exists (LOCAL_SIMULATION only). **Real partner: NOT IMPLEMENTED** (needs partner support for Circle USDC on the target network and external authorization). **Fee and tax: NOT DEFINED** (no formula or rule invented; partner-reported values stored verbatim; `taxTreatment = NOT_DEFINED`): owner decision | execution log L-017, L-020; [phase-3/03](phase-3/03-avalanche-payout-adapter.md) |
 | A5 | Mirror of on-chain Submitted/Revision/Disputed transitions into milestone status | **CLOSED: NOT NEEDED** (D-C engineering decision 2026-11-04: milestone status stays marketplace-driven; scanned events serve reconciliation and reporting). Reversible | delegated decision table |
 | A6 | Scanner metrics and alerting | **IMPLEMENTED 2026-11-04**: `GET /api/v1/avalanche/scan/status` (OK/STARTING/DEGRADED after 3 failures, lag); `ScanHealthTest` | execution log L-017 |
 | A7 | Remaining Solana-literal clean-up in MISA/tax flows and explorer labelling in existing screens | **IMPLEMENTED 2026-11-04**: `TaxRecordBlockchain` sends `avalanche` for Avalanche-rail contracts and keeps `solana` for every legacy rail (existing assertions unchanged); contract summary DTO gains the additive, nullable `paymentNetworkId`; finance rows show a chain label. `misa-backend` unchanged (it stores the label it receives; default `solana` kept for old callers) | execution log L-011 |
@@ -280,20 +280,47 @@ Full per-item tracking (evidence, missing work, who, next action, recommended cl
   - Frontend (Node 24.19.0): `tsc -b` clean, **29 files, 865 tests pass**, `vite build` built.
   - CI hygiene checks and the forge-std pin fetch: pass locally.
 
+- **2026-11-04, third update (R6/R12/payout instruction):**
+  - R12 variant lab (Foundry 1.8.7, LOCAL): **72 passed, 0 failed, 0 skipped** (baseline Core 29, Lifecycle 20 and the invariant
+    contract re-run unchanged against the variant, plus 22 new). Baseline `avalanche-contracts` unchanged, so its Foundry suite
+    (55 pass, 1 skipped) was not re-run.
+  - Gateway JDK 21 (`maven:3.9-eclipse-temurin-21`, Testcontainers via the Docker socket): **119 run, 0 failures, 3 optional
+    skipped**, BUILD SUCCESS (+4: token-transfer matcher 3, Anvil API test 1).
+  - Legacy JDK 17 reactor (memory-capped, detached): **BUILD SUCCESS, exit 0**: payment **72**, marketplace **433** (+19 payout
+    tests), misa **20**, solana-integration **10**; 0 failures, errors, skips. (A first run compiled a mid-edit snapshot and
+    stopped on a compile error in the new payout code, fixed before this run; a targeted run then found 3 Mockito stubbing
+    errors in the new test, fixed in test code only.)
+  - V7 and V8 on MySQL 8.4 (throwaway local container): Flyway V1 to V8 applied, Hibernate `validate` passed,
+    `AvalancheV7MySqlIT` 2/2, `AvalancheV8MySqlIT` 1/1.
+  - Frontend (Node 24.19.0): `tsc -b` clean, **30 files, 873 tests pass** (+6).
+  - A2 single LOCAL stack with the payout flow: **PASS** ([evidence](phase-2/evidence/LOCAL_SIMULATION-a2-local-stack-payout-20261104.json)).
+
 ## Known blockers
 External only (2026-11-04): B1 and C1 / R1 (human-held funded Fuji wallet, signing device, funding owner: Phase 1 E1, X1, X3,
 all Fuji validation and the Phase 3 Fuji demonstration); B6 / E2 (DB operator identity; environment authorized: development
 database only); B7 (a real browser wallet extension); B9 (owner `.env` for `docker compose config`); C10 (native Vietnamese copy
 review); R6 owner approval of Phase 3 (engineering proceeds only on delegated, reversible, simulation-only items); owner-deferred
 O-8 and O-13; C8 legacy rail retirement (irreversible). Engineering items still open: **none independently implementable** (2026-11-04: A2, A6, P3-C4,
-drills and the LOCAL clone measurement are done). The fee/tax/payout part of A4 needs an Avalanche off-ramp (new custody path,
-owner decision) and F14 needs R12.
+drills, the LOCAL clone measurement, the R12 variant and the non-custodial payout adapter are done). A real Avalanche payout needs a
+partner and external authorization; fee and tax need owner decisions; adopting the F14 fix needs R12.
 
 ## Next recommended action
-1. Owner: R6 (Phase 3 approval), R12 (F14 arbiter loss), the Avalanche off-ramp decision for fees/tax/payout (custody), R1
-   (Fuji signer and funding), the DB operator (R2).
-2. Operators: X1 after R1; X2 once the DB operator is named; B7 browser wallet check.
-3. Engineering: re-run the baselines after any owner decision; nothing else is open without a decision.
+1. Owner: R6 (Phase 3 approval; engineering execution is authorized under delegated authority only), R12 (adopt the
+   mutual-settlement variant: needs an O-5 question 8 amendment and a new contract version under O-2, or keep F14 as a
+   documented limitation), the Avalanche payout business decisions (real partner, platform fee, tax treatment), R1 (Fuji
+   signer and funding), the DB operator (R2).
+2. Operators / external: X1 after R1; X2 once the DB operator is named; B7 browser wallet check; a payout partner with
+   Avalanche USDC support and its authorization (before any real payout).
+3. Engineering: nothing independently implementable is left; re-run the baselines after any owner decision.
+
+## Change note (2026-11-04, third update)
+Lead instruction "R6, R12 and Avalanche payout" (delegated engineering). R6 recorded as ENGINEERING EXECUTION AUTHORIZED UNDER
+DELEGATED AUTHORITY — OWNER APPROVAL PENDING (not owner approved). R12: two-party `mutualSettleDispute` built and tested as an
+isolated LOCAL-only variant (`phase-3/prototypes/escrow-mutual-settlement`); **conflict recorded** with owner decision O-5
+(question 8) and O-2; baseline contract unchanged (F14, R12). Payout: non-custodial Avalanche payout adapter (gateway transfer
+verification, marketplace V8 and state machine, disabled default partner, labelled LOCAL mock, frontend section, A2 live run)
+(A4, D-B, `phase-3/03`). No Fuji transaction, no key, no real partner, no fee or tax rule, no database other than throwaway
+local containers, nothing pushed. Execution log L-019, L-020.
 
 ## Change note (2026-11-04, second update)
 Applied the Lead's delegation of engineering decisions (classification table above). Implemented and tested: A1 (complete

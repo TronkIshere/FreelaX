@@ -162,6 +162,9 @@ async function main() {
   record('work submitted in the marketplace', { submissionStatus: submission.status, jobStatus: job1.status });
   await walletAction(freelancer, freelancerWallet, c1.contractId, 'submit', { submissionId: submission.id });
   record('submission anchored on chain', await awaitApplied(freelancer, c1.contractId, 'submit'));
+  const early = await market(`/avalanche/payouts/contracts/${c1.contractId}`, { method: 'POST', token: freelancer.token })
+    .then(() => 'ACCEPTED', () => 'REFUSED');
+  if (early !== 'REFUSED') throw new Error('a payout was accepted before the escrow released');
   await walletAction(client, clientWallet, c1.contractId, 'release');
   const released = await awaitApplied(client, c1.contractId, 'release');
   const after1 = await contractState(client, c1.jobId);
@@ -170,6 +173,42 @@ async function main() {
   const notes = await market('/notifications', { token: freelancer.token });
   const list = Array.isArray(notes) ? notes : (notes?.content ?? notes?.data ?? []);
   record('settlement notification to the freelancer', { types: list.map(n => n.type).filter(Boolean) });
+
+  // ---- flow 1b: non-custodial payout (Phase 3, LOCAL mock partner, simulated) ------------------------------------------
+  // The released USDC is in the freelancer's OWN wallet; the freelancer sends it to the partner deposit address; the gateway
+  // proves the transfer from the receipt; only then is the (simulated) partner asked about the fiat payout.
+  const byClient = await market(`/avalanche/payouts/contracts/${c1.contractId}`, { method: 'POST', token: client.token })
+    .then(() => 'ACCEPTED', () => 'REFUSED');
+  if (byClient !== 'REFUSED') throw new Error('the client could request the freelancer payout');
+  const requested = await market(`/avalanche/payouts/contracts/${c1.contractId}`, { method: 'POST', token: freelancer.token });
+  if (requested.outcome !== 'CREATED') throw new Error('payout not created: ' + JSON.stringify(requested));
+  const po = requested.payout;
+  record('payout requested (local mock partner)', { outcome: requested.outcome, status: po.status, amountBaseUnits: po.amountBaseUnits,
+    depositAddress: po.depositAddress, partnerId: po.partnerId, partnerSimulated: po.partnerSimulated,
+    partnerReportedFee: po.partnerReportedFee, taxTreatment: po.taxTreatment, before: 'refused before release: ' + early });
+  const transfer = JSON.parse(cast(['send', '--json', '--private-key', freelancerWallet.key, ...rpc, config.token,
+    'transfer(address,uint256)', po.depositAddress, po.amountBaseUnits]));
+  let pv = await market(`/avalanche/payouts/${po.id}/transfer`, { method: 'POST', token: freelancer.token, body: { txHash: transfer.transactionHash } });
+  const payoutStates = [pv.status];
+  for (let i = 0; i < 60 && pv.status !== 'FIAT_PAYOUT_CONFIRMED'; i++) {
+    await sleep(1000);
+    pv = await market(`/avalanche/payouts/${po.id}/refresh`, { method: 'POST', token: freelancer.token });
+    if (payoutStates.at(-1) !== pv.status) payoutStates.push(pv.status);
+    if (['TRANSFER_FAILED', 'FIAT_PAYOUT_FAILED'].includes(pv.status)) throw new Error('payout ended ' + pv.status + ' ' + pv.failureReason);
+  }
+  if (pv.status !== 'FIAT_PAYOUT_CONFIRMED' || !pv.onChainTransferConfirmed || !pv.fiatPayoutConfirmed) throw new Error('payout did not complete');
+  if (new Date(pv.transferConfirmedAt) > new Date(pv.fiatConfirmedAt)) throw new Error('fiat confirmed before the on-chain transfer');
+  const deposited = await call(GATEWAY, `/api/v1/avalanche/assets/balance?address=${po.depositAddress}`);
+  if (deposited.balanceBaseUnits !== po.amountBaseUnits) throw new Error('the deposit address did not receive the amount');
+  const freelancerLeft = await call(GATEWAY, `/api/v1/avalanche/assets/balance?address=${freelancerWallet.address}`);
+  record('payout completed (simulated fiat)', { states: payoutStates, transferChainState: pv.transferChainState, transferMatch: pv.transferMatch,
+    transferConfirmedAt: pv.transferConfirmedAt, fiatConfirmedAt: pv.fiatConfirmedAt, fiatReference: pv.fiatReference,
+    depositBalance: deposited.balanceBaseUnits, freelancerBalanceAfter: freelancerLeft.balanceBaseUnits });
+  const reuse = await market(`/avalanche/payouts/${po.id}/transfer`, { method: 'POST', token: freelancer.token, body: { txHash: transfer.transactionHash } })
+    .then(() => 'ACCEPTED', () => 'REFUSED');
+  const again = await market(`/avalanche/payouts/contracts/${c1.contractId}`, { method: 'POST', token: freelancer.token });
+  if (reuse !== 'REFUSED' || again.outcome !== 'EXISTING') throw new Error('a completed payout could be reused');
+  record('completed payout cannot be reused', { transferReuse: reuse, secondRequest: again.outcome });
 
   // ---- flow 2: fund -> two-party wallet mutual refund (F13) ---------------------------------------------------------
   const c2 = await newContract(client, freelancer, 'A2 mutual refund flow');
@@ -211,6 +250,10 @@ async function main() {
   if (after2.contract !== 'CANCELLED' || after2.milestone !== 'REFUNDED') throw new Error('mutual refund did not cancel the contract');
   const finalView = await market(`/contracts/${c2.contractId}/avalanche`, { token: client.token });
   record('held signatures spent', { mutualRefund: finalView.mutualRefund ?? null });
+  const refundPayout = await market(`/avalanche/payouts/contracts/${c2.contractId}`, { method: 'POST', token: freelancer.token })
+    .then(() => 'ACCEPTED', () => 'REFUSED');
+  if (refundPayout !== 'REFUSED') throw new Error('a payout was accepted for a refunded escrow');
+  record('no payout for a refunded escrow', { request: refundPayout });
 
   evidence.result = 'PASS';
 }
