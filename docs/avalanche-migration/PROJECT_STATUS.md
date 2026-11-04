@@ -270,6 +270,8 @@ Full per-item tracking (evidence, missing work, who, next action, recommended cl
     setup gaps, fixed in test code only; the three affected classes then passed **66/66**. A second full reactor run was
     **stopped by the host for low memory** (not a test failure) after payment 72/72. **A single uninterrupted full JDK 17
     reactor pass after the last fix has NOT been obtained yet**; misa and solana-integration are unchanged since `355e019`.
+  - **Resolved 2026-11-04 (third run, memory-capped, detached):** full legacy JDK 17 reactor **BUILD SUCCESS, exit 0**: payment
+    **72**, marketplace **408**, misa **20**, solana-integration **10**; 0 failures, 0 errors, 0 skipped; not OOM-killed.
   - Foundry: not re-run on 2026-11-04 (no contract change; only `install-deps.sh` pinning, verified separately).
   - Marketplace JDK 17 module runs: 400 pass after A8/F13; 403 pass after the notification slice.
   - V7 on MySQL 8.4 (throwaway local container): Flyway V1 to V7 applied, Hibernate `validate` passed, `AvalancheV7MySqlIT` 2/2.

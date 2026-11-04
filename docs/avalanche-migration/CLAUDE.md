@@ -122,6 +122,9 @@ network, Mainnet endpoint or production-looking credential.
   -v "D:/hackathon/FreelaX:/src" -v "C:/Users/Tuan_Minh/.m2:/root/.m2" -w /src -e TESTCONTAINERS_HOST_OVERRIDE=host.docker.internal
   maven:3.9-eclipse-temurin-21 mvn -B -ntp -pl avalanche-integration -am test`; check the skipped count: Docker-gated tests
   skip silently when Testcontainers cannot reach Docker. E2 query dry run: `phase-1/scripts/db_query_validate.sh`.
+  Memory (this machine, 15 GB host, 8 GB Docker VM): run heavy suites one at a time, detached and capped, for example
+  `docker run -d --memory=2560m -e MAVEN_OPTS=-Xmx384m ... mvn -B -ntp test -DargLine=-Xmx1g` writing the log to a mounted file,
+  then `docker wait`; uncapped JVMs size their heap from the VM and a background shell can be reaped under host pressure.
   Frontend: Node 24.19.0, `npm ci`, `npx tsc -b`, `npx vitest run` (Node 22.10 fails 13 suites, B8). Docker Desktop may need
   starting.
 - Evidence files are committed under `phase-1/evidence/` or `phase-2/evidence/`, labelled LOCAL-SIM or FUJI-OBS; Fuji

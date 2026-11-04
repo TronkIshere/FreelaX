@@ -19,9 +19,9 @@ original reasoning. Do not add routine progress entries.
   workflow (not executed). Not started: fee/tax/payout wiring (D-B (b)), P3-C4 stuck-escrow reporting, drills, LOCAL clone
   measurement. Fuji demonstration external.
 - **Last measured:** gateway JDK 21 110 run, 0 failures, 3 skipped; frontend 29 files / 865; human-signed 11; V7 MySQL IT 2/2;
-  marketplace 403 (before primary rail), then primary-rail classes 66/66 after fixes. **Pending:** one uninterrupted full JDK 17
-  reactor pass after the last fix (the run was stopped for low host memory, L-015).
-- **Next executable task:** (1) full JDK 17 reactor when memory allows; (2) A2 single-stack LOCAL run script; (3) P3-C4
+  marketplace 403 (before primary rail), then primary-rail classes 66/66 after fixes. Full JDK 17 reactor after all changes:
+  payment 72, marketplace 408, misa 20, solana 10, all pass (L-015).
+- **Next executable task:** (1) done; (2) A2 single-stack LOCAL run script; (3) P3-C4
   stuck-escrow reporting in the gateway; (4) A6 scanner metrics; (5) D-B fee/tax/payout analysis.
 
 ## Entries
@@ -279,3 +279,8 @@ original reasoning. Do not add routine progress entries.
 - **Status:** primary rail IMPLEMENTED; **verification PARTIAL**: per-class evidence only for the final state. Next session:
   run `mvn -B -ntp test` on `maven:3.9-eclipse-temurin-17` once memory allows and record the counts (expected marketplace 408).
 - **Also not run on 2026-11-04:** Foundry (no contract change).
+- **Update 2026-11-04 (resolved):** host had 15.4 GB RAM, 3.8 GB free (browser about 2 GB); Docker VM 8 GB, no running or
+  orphaned containers. Diagnosis: without a surefire configuration each JVM sized its heap at 25 % of the 8 GB Docker VM. Re-run
+  detached and capped (`--memory=2560m`, `MAVEN_OPTS=-Xmx384m`, `-DargLine=-Xmx1g`; no project file changed): **BUILD SUCCESS,
+  exit 0, payment 72, marketplace 408, misa 20, solana-integration 10, 0 failures/errors/skips**, not OOM-killed, about 7 min.
+  **Status: primary rail VERIFIED.**
