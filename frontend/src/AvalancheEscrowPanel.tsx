@@ -27,6 +27,7 @@ function message(error: unknown): string {
 export function AvalancheEscrowPanel({ contractId, user, isClient, isFreelancer, isArbiter = false, submissions = [], dispute = null, onChanged, walletFactory }: Props) {
   const [view, setView] = useState<AvalancheContractView | null>(null);
   const [extensionDate, setExtensionDate] = useState('');
+  const [evmWallet, setEvmWallet] = useState<string | null | undefined>(undefined);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const lock = useRef(false);
@@ -43,6 +44,11 @@ export function AvalancheEscrowPanel({ contractId, user, isClient, isFreelancer,
   }, [contractId]);
 
   useEffect(() => { void load(); }, [load]);
+  const party = isClient || isFreelancer;
+  useEffect(() => {
+    if (!party || !view?.avalancheEnabled || view.networkId === null) return;
+    api.evmWalletCurrent().then(w => { if (alive.current) setEvmWallet(w?.walletAddress ?? null); }, () => { if (alive.current) setEvmWallet(null); });
+  }, [party, view?.avalancheEnabled, view?.networkId]);
   useEffect(() => {
     const open = view?.transactions.some(t => !['FINALIZED', 'REVERTED', 'FAILED', 'REPLACED'].includes(t.status));
     if (!open) return;
@@ -69,9 +75,51 @@ export function AvalancheEscrowPanel({ contractId, user, isClient, isFreelancer,
     return input;
   }
 
+  const linkWallet = () => run(async () => {
+    const env = view?.environment;
+    if (!env) throw new WalletError('Chưa biết môi trường mạng.', 'NO_ENV');
+    const wallet = (walletFactory ?? (() => new EvmWallet()))();
+    const { address } = await wallet.connect(env.chainId);
+    const challenge = await api.evmWalletChallenge(address);
+    const signature = await wallet.personalSign(challenge.message, address);
+    const bound = await api.evmWalletVerify(challenge.challengeId, signature);
+    setEvmWallet(bound.walletAddress);
+  });
+
+  /** F13: each party signs the SAME typed data (same deadline); the party who completes the pair sends the refund. */
+  async function mutualRefundWithWallet(wallet: EvmWallet, address: string, chainId: number) {
+    const pending = view?.mutualRefund ?? null;
+    let state = pending;
+    const mine = isClient ? pending?.clientSigned : pending?.freelancerSigned;
+    if (!mine) {
+      const prepared = await api.avalanchePrepare(contractId, 'mutual-refund',
+        pending ? { authorizationDeadline: pending.authorizationDeadline } : {});
+      if (!prepared.typedData || !prepared.typedDataDigest || prepared.authorizationDeadline == null) {
+        throw new WalletError('Yêu cầu ký không hợp lệ.', 'TYPED_DATA_INVALID');
+      }
+      const signature = await wallet.signTypedData(prepared.typedData, address, chainId);
+      const next = await api.avalancheMutualRefundSignature(contractId,
+        { authorizationDeadline: prepared.authorizationDeadline, typedDataDigest: prepared.typedDataDigest, signature });
+      if (alive.current) setView(next);
+      state = next.mutualRefund ?? null;
+    }
+    if (!(state?.clientSigned && state?.freelancerSigned)) return; // waiting for the other party
+    const input = { idempotencyKey: crypto.randomUUID() };
+    const final = await api.avalanchePrepare(contractId, 'mutual-refund', input);
+    let last: string | null = null;
+    for (const tx of final.transactions) last = await wallet.sendPrepared(tx, address, chainId);
+    if (last) await api.avalancheRecordTransaction(contractId, 'mutual-refund', last, input);
+  }
+
   const withWallet = (offer: AvalancheActionOffer) => run(async () => {
     const env = view?.environment;
     if (!env) throw new WalletError('Chưa biết môi trường mạng.', 'NO_ENV');
+    if (offer.action === 'mutual-refund') {
+      const wallet = (walletFactory ?? (() => new EvmWallet()))();
+      const { address } = await wallet.connect(env.chainId);
+      await mutualRefundWithWallet(wallet, address, env.chainId);
+      return;
+    }
     const action = offer.action;
     const input = inputFor(offer);
     const prepared = await api.avalanchePrepare(contractId, action, input);
@@ -112,6 +160,15 @@ export function AvalancheEscrowPanel({ contractId, user, isClient, isFreelancer,
       <div><dt>Hạn bàn giao</dt><dd>{chainInstant(view.chain.deliveryDueAt)}</dd></div>
       <div><dt>Hạn review</dt><dd>{chainInstant(view.chain.reviewDueAt)}</dd></div>
     </dl>}
+    {onAvalanche && party && evmWallet === null && env && <ActionGroup label="Ví EVM">
+      <span>Bạn chưa liên kết ví EVM cho ký quỹ Avalanche.</span>
+      <button className="button" disabled={busy} onClick={() => void linkWallet()}>Liên kết ví EVM</button>
+    </ActionGroup>}
+    {onAvalanche && party && evmWallet && <p className="metadata">Ví EVM đã liên kết: <code>{shortHash(evmWallet)}</code></p>}
+    {onAvalanche && view.mutualRefund && <p role="status" data-testid="mutual-refund-state">
+      Hoàn tiền thỏa thuận: Client {view.mutualRefund.clientSigned ? 'đã ký' : 'chưa ký'}, Freelancer {view.mutualRefund.freelancerSigned ? 'đã ký' : 'chưa ký'};
+      chữ ký hết hạn lúc {chainInstant(view.mutualRefund.authorizationDeadline)}.
+    </p>}
     {onAvalanche && env && <ActionGroup label="Thao tác ký quỹ">
       {allowed.map(a => <span key={a.action} data-action={a.action}>
         {a.needsDate && <label>Hạn bàn giao mới<input type="datetime-local" value={extensionDate} disabled={busy}

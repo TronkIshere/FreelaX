@@ -48,10 +48,10 @@ describe('availableAvalancheActions (mirrors marketplace AvalancheEscrowService.
     expect(offer({ isClient: true, dispute: decided }, 'resolve')).toBeUndefined();
   });
 
-  it('never offers a wallet mutual refund (both signatures cannot be exchanged yet, F13)', () => {
-    const m = offer({ isClient: true }, 'mutual-refund')!;
-    expect(m.wallet).toBe(false);
-    expect(m.walletUnavailableReason).toMatch(/chưa hỗ trợ/);
+  it('offers mutual refund by wallet to both parties (F13 resolved) and never to a non-party', () => {
+    expect(offer({ isClient: true }, 'mutual-refund')?.wallet).toBe(true);
+    expect(offer({ isFreelancer: true }, 'mutual-refund')?.wallet).toBe(true);
+    expect(offer({ isArbiter: true }, 'mutual-refund')).toBeUndefined();
   });
 
   it('never puts amounts, parties or signatures into the input', () => {

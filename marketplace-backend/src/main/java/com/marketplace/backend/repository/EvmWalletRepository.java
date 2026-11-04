@@ -1,0 +1,13 @@
+package com.marketplace.backend.repository;
+
+import com.marketplace.backend.entity.EvmWallet;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.Optional;
+import java.util.UUID;
+
+public interface EvmWalletRepository extends JpaRepository<EvmWallet, Long> {
+    Optional<EvmWallet> findByUserId(UUID userId);
+
+    boolean existsByAddress(String address);
+}

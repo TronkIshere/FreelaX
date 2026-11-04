@@ -76,16 +76,37 @@ public class AvalancheEscrowService {
     private final AvalancheChainTransactionRepository chainTransactions;
     private final BlockchainGatewayRegistry gateways;
     private final AvalancheGatewayProperties properties;
+    /** A8: EVM addresses proven by an EIP-191 challenge (V7). Preferred over the legacy `wallets` rows. */
+    private final com.marketplace.backend.repository.EvmWalletRepository evmWallets;
+    /** F13: first signature of a two-party authorization, held until the second party signs the same typed data (V7). */
+    private final com.marketplace.backend.repository.AvalanchePendingAuthorizationRepository pendingAuthorizations;
+
+    static final String MUTUAL_REFUND = "mutual-refund";
+    private static final java.util.regex.Pattern SIGNATURE_HEX = java.util.regex.Pattern.compile("0x[0-9a-fA-F]{130}");
+    private static final java.util.regex.Pattern DIGEST_HEX = java.util.regex.Pattern.compile("0x[0-9a-fA-F]{64}");
 
     public record Input(String idempotencyKey, UUID submissionId, UUID disputeId, Long newDeliveryDueAt, String by,
-                        String clientSignature, String freelancerSignature) {
+                        String clientSignature, String freelancerSignature, Long authorizationDeadline) {
+        public Input(String idempotencyKey, UUID submissionId, UUID disputeId, Long newDeliveryDueAt, String by,
+                     String clientSignature, String freelancerSignature) {
+            this(idempotencyKey, submissionId, disputeId, newDeliveryDueAt, by, clientSignature, freelancerSignature, null);
+        }
+
         public static Input empty() {
-            return new Input(null, null, null, null, null, null, null);
+            return new Input(null, null, null, null, null, null, null, null);
         }
     }
 
+    /** F13: progress of a mutual refund signed by both parties' own wallets over the same deadline and digest. */
+    public record MutualRefundState(long authorizationDeadline, String typedDataDigest, boolean clientSigned, boolean freelancerSigned) {
+    }
+
     public record ContractView(String networkId, boolean avalancheEnabled, EnvironmentInfo environment, String escrowId, EscrowSnapshot chain,
-                               List<AvalancheChainTransaction> transactions, String notice) {
+                               List<AvalancheChainTransaction> transactions, String notice, MutualRefundState mutualRefund) {
+        public ContractView(String networkId, boolean avalancheEnabled, EnvironmentInfo environment, String escrowId, EscrowSnapshot chain,
+                            List<AvalancheChainTransaction> transactions, String notice) {
+            this(networkId, avalancheEnabled, environment, escrowId, chain, transactions, notice, null);
+        }
     }
 
     private BlockchainGateway gateway() {
@@ -150,7 +171,8 @@ public class AvalancheEscrowService {
         EscrowSnapshot snapshot = gateway().escrowSnapshot(new EscrowReference(escrowId));
         return new ContractView(c.getPaymentNetworkId(), true, environment, escrowId, snapshot,
                 chainTransactions.findByContractIdOrderByIdAsc(c.getId()),
-                "Demonstration only: " + environment.environment() + " simulated escrow, testnet USDC with no real-world value.");
+                "Demonstration only: " + environment.environment() + " simulated escrow, testnet USDC with no real-world value.",
+                mutualRefundState(c.getId()));
     }
 
     private Milestone milestone(UUID contractId) {
@@ -158,6 +180,10 @@ public class AvalancheEscrowService {
     }
 
     private String walletAddress(UUID userId) {
+        com.marketplace.backend.entity.EvmWallet linked = evmWallets == null ? null : evmWallets.findByUserId(userId).orElse(null);
+        if (linked != null) {
+            return linked.getAddress().toLowerCase(Locale.ROOT);
+        }
         Wallet wallet = wallets.findFirstByUserIdOrderByIdAsc(userId)
                 .orElseThrow(() -> new ApplicationException(ErrorCode.INVALID_DATA, "a linked wallet is required"));
         String address = wallet.getPublicKey();
@@ -263,6 +289,20 @@ public class AvalancheEscrowService {
                 }
                 if (in.freelancerSignature() != null) {
                     p.put("freelancerSignature", in.freelancerSignature());
+                }
+                if (in.authorizationDeadline() != null) {
+                    p.put("authorizationDeadline", in.authorizationDeadline());
+                }
+                if (in.clientSignature() == null && in.freelancerSignature() == null && in.authorizationDeadline() == null) {
+                    // F13: both parties signed through the marketplace; use the held pair and the deadline they cover
+                    pendingAuthorizations.findByContractIdAndAction(c.getId(), MUTUAL_REFUND)
+                            .filter(a -> a.getClientSignature() != null && a.getFreelancerSignature() != null)
+                            .filter(a -> a.getAuthorizationDeadline() > Instant.now().getEpochSecond())
+                            .ifPresent(a -> {
+                                p.put("clientSignature", a.getClientSignature());
+                                p.put("freelancerSignature", a.getFreelancerSignature());
+                                p.put("authorizationDeadline", a.getAuthorizationDeadline());
+                            });
                 }
             }
             default -> throw new ApplicationException(ErrorCode.INVALID_DATA, "unknown action " + action);
@@ -385,6 +425,63 @@ public class AvalancheEscrowService {
         return view(userId, admin, c);
     }
 
+    /**
+     * F13: stores the caller's signature of the mutual-refund typed data. The deadline and digest are re-derived from the
+     * gateway (which bounds the deadline by its TTL and binds escrow, nonce and chain), so a party can only sign what the
+     * escrow currently expects. A different deadline or digest starts a new pair (the other party must sign again). Each
+     * party can write only its own signature. The escrow contract verifies both signers on chain.
+     */
+    @Transactional
+    public ContractView submitMutualRefundSignature(UUID userId, UUID contractId, Long authorizationDeadline, String typedDataDigest,
+                                                    String signature) {
+        WorkContract c = contract(contractId);
+        requireAvalanche(c);
+        boolean client = isClient(c, userId);
+        boolean freelancer = isFreelancer(c, userId);
+        require(client || freelancer, "only a party takes part in a mutual refund");
+        require(authorizationDeadline != null && authorizationDeadline > Instant.now().getEpochSecond(), "the authorization has expired");
+        require(typedDataDigest != null && DIGEST_HEX.matcher(typedDataDigest).matches(), "a 32-byte typed-data digest is required");
+        require(signature != null && SIGNATURE_HEX.matcher(signature).matches(), "a 65-byte signature is required");
+        String escrowId = AvalancheEscrowIds.fromMilestone(milestone(contractId).getId());
+        Map<String, Object> params = new HashMap<>();
+        params.put("authorizationDeadline", authorizationDeadline);
+        PreparedAction expected = gateway().prepareAction(new EscrowActionRequest(escrowId, MUTUAL_REFUND, null, params));
+        require(typedDataDigest.equalsIgnoreCase(expected.typedDataDigest()), "the signed data does not match the current escrow authorization");
+
+        Instant now = Instant.now();
+        com.marketplace.backend.entity.AvalanchePendingAuthorization pending = pendingAuthorizations
+                .findWithLockByContractIdAndAction(contractId, MUTUAL_REFUND).orElse(null);
+        if (pending == null) {
+            pending = new com.marketplace.backend.entity.AvalanchePendingAuthorization();
+            pending.setContractId(contractId);
+            pending.setAction(MUTUAL_REFUND);
+            pending.setCreatedAt(now);
+        }
+        if (pending.getTypedDataDigest() == null || pending.getAuthorizationDeadline() != authorizationDeadline
+                || !pending.getTypedDataDigest().equalsIgnoreCase(typedDataDigest)) {
+            pending.setAuthorizationDeadline(authorizationDeadline);
+            pending.setTypedDataDigest(typedDataDigest.toLowerCase(Locale.ROOT));
+            pending.setClientSignature(null);
+            pending.setFreelancerSignature(null);
+        }
+        if (client) {
+            pending.setClientSignature(signature.toLowerCase(Locale.ROOT));
+        } else {
+            pending.setFreelancerSignature(signature.toLowerCase(Locale.ROOT));
+        }
+        pending.setUpdatedAt(now);
+        pendingAuthorizations.saveAndFlush(pending);
+        return view(userId, false, c);
+    }
+
+    private MutualRefundState mutualRefundState(UUID contractId) {
+        return pendingAuthorizations.findByContractIdAndAction(contractId, MUTUAL_REFUND)
+                .filter(a -> a.getAuthorizationDeadline() > Instant.now().getEpochSecond())
+                .map(a -> new MutualRefundState(a.getAuthorizationDeadline(), a.getTypedDataDigest(),
+                        a.getClientSignature() != null, a.getFreelancerSignature() != null))
+                .orElse(null);
+    }
+
     /** Business state moves only after the chain state, read independently, agrees with the recorded terms. */
     private void applyBusinessEffect(WorkContract c, AvalancheChainTransaction row) {
         EscrowSnapshot chain = gateway().escrowSnapshot(new EscrowReference(row.getEscrowId()));
@@ -423,6 +520,7 @@ public class AvalancheEscrowService {
                 }
                 m.setStatus(MilestoneStatus.REFUNDED);
                 c.setStatus(ContractStatus.CANCELLED);
+                pendingAuthorizations.findByContractIdAndAction(c.getId(), MUTUAL_REFUND).ifPresent(pendingAuthorizations::delete);
             }
             default -> {
                 row.setBusinessApplied(true);

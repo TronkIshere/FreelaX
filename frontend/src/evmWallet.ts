@@ -16,6 +16,8 @@ export type PreparedEvmTransaction = {
 export type PreparedEvmAction = {
   action: string; escrowId: string; transactions: PreparedEvmTransaction[];
   typedData?: string | null; typedDataDigest?: string | null;
+  /** Deadline the typed data covers (mutual refund: both parties must sign the same one, register F13). */
+  authorizationDeadline?: number | null;
 };
 
 export interface EscrowWalletPort {
@@ -143,6 +145,26 @@ export class EvmWallet implements EscrowWalletPort {
       if (cause instanceof WalletError) throw cause;
       if (rejected(cause)) throw new WalletError('The signature was declined in the wallet.', 'USER_REJECTED');
       throw new WalletError('The wallet could not sign the authorization.', 'SIGN_FAILED');
+    }
+  }
+
+  /**
+   * EIP-191 personal_sign of a FreelaX wallet-binding challenge (register A8). Only messages that start with the binding
+   * header are signed, so this method cannot be used to sign arbitrary text. The marketplace and gateway verify the result.
+   */
+  async personalSign(message: string, from: string): Promise<string> {
+    if (!message.startsWith('FreelaX EVM wallet binding\n') || !HEX_ADDRESS.test(from)) {
+      throw new WalletError('The binding request is malformed.', 'MESSAGE_INVALID');
+    }
+    const hexMessage = '0x' + Array.from(new TextEncoder().encode(message), b => b.toString(16).padStart(2, '0')).join('');
+    try {
+      const signature = await this.provider.request({ method: 'personal_sign', params: [hexMessage, from] });
+      if (typeof signature !== 'string' || !/^0x[0-9a-fA-F]{130}$/.test(signature)) throw new WalletError('The wallet returned an invalid signature.', 'BAD_SIGNATURE');
+      return signature;
+    } catch (cause) {
+      if (cause instanceof WalletError) throw cause;
+      if (rejected(cause)) throw new WalletError('The signature was declined in the wallet.', 'USER_REJECTED');
+      throw new WalletError('The wallet could not sign the binding message.', 'SIGN_FAILED');
     }
   }
 }

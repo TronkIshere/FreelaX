@@ -4,7 +4,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { api } from './api';
 import { AvalancheEscrowPanel } from './AvalancheEscrowPanel';
-import { STATE_TEXT, TRANSACTION_STATES, chainInstant, environmentBadge, explorerTxUrl, stateText, tokenLabel, usdcFromBaseUnits } from './avalanchePresentation';
+import { STATE_TEXT, TRANSACTION_STATES, chainInstant, contractChainLabel, environmentBadge, explorerTxUrl, stateText, tokenLabel, usdcFromBaseUnits } from './avalanchePresentation';
 import type { AvalancheChainTransaction, AvalancheContractView } from './avalancheTypes';
 import type { EvmWallet } from './evmWallet';
 
@@ -61,10 +61,24 @@ describe('chain-state display helpers', () => {
   });
 });
 
+describe('contractChainLabel (A7)', () => {
+  it('labels Avalanche only from the network id, Solana rails as legacy, and mock rails not at all', () => {
+    expect(contractChainLabel({ paymentNetworkId: 'avalanche-local', paymentRail: 'UNIFIED_USDC_PAYOUT' })).toBe('Ký quỹ Avalanche');
+    expect(contractChainLabel({ paymentNetworkId: null, paymentRail: 'SOLANA_ESCROW' })).toBe('Solana (tham chiếu cũ)');
+    expect(contractChainLabel({ paymentRail: 'UNIFIED_USDC_PAYOUT' })).toBe('Solana (tham chiếu cũ)');
+    expect(contractChainLabel({ paymentRail: 'PARTNER_ESCROW_MOCK' })).toBeNull();
+    expect(contractChainLabel({ paymentRail: 'SIMULATED' })).toBeNull();
+    expect(contractChainLabel(null)).toBeNull();
+  });
+});
+
 describe('AvalancheEscrowPanel', () => {
   let host: HTMLDivElement;
   let root: Root;
-  beforeEach(() => { host = document.createElement('div'); document.body.append(host); root = createRoot(host); });
+  beforeEach(() => {
+    host = document.createElement('div'); document.body.append(host); root = createRoot(host);
+    vi.spyOn(api, 'evmWalletCurrent').mockResolvedValue({ walletAddress: '0x' + '1'.repeat(40) });
+  });
   afterEach(() => { act(() => root.unmount()); host.remove(); vi.restoreAllMocks(); });
   const mount = async (isClient = true, isFreelancer = false, wallet?: () => EvmWallet) => {
     await act(async () => root.render(<AvalancheEscrowPanel contractId="c" user={user} isClient={isClient} isFreelancer={isFreelancer} walletFactory={wallet} />));
@@ -207,17 +221,70 @@ describe('AvalancheEscrowPanel', () => {
     expect(host.innerHTML).toBe('');
   });
 
-  it('offers mutual refund only through simulated accounts, never through a wallet, and not at all on Fuji', async () => {
+  it('offers mutual refund by wallet and, in the simulation only, by simulated accounts', async () => {
     vi.spyOn(api, 'avalancheStatus').mockResolvedValue(view());
     await mount();
-    expect(button('Hoàn tiền thỏa thuận bằng ví')).toBeUndefined();
+    expect(button('Hoàn tiền thỏa thuận bằng ví')).toBeDefined();
     expect(button('Hoàn tiền thỏa thuận bằng tài khoản mô phỏng')).toBeDefined();
-    expect(host.querySelector('[data-action="mutual-refund"]')?.textContent).toContain('chưa hỗ trợ');
     vi.spyOn(api, 'avalancheStatus').mockResolvedValue(view({
       environment: { environment: 'AVALANCHE_FUJI', chainId: 43113, simulated: false, explorerBaseUrl: null, backendSignersAvailable: false } }));
     act(() => root.unmount()); root = createRoot(host);
     await mount();
-    expect(host.querySelector('[data-action="mutual-refund"]')).toBeNull();
+    expect(button('Hoàn tiền thỏa thuận bằng ví')).toBeDefined();
     expect(host.textContent).not.toContain('tài khoản mô phỏng');
+  });
+
+  const typed = JSON.stringify({ domain: { chainId: 31337, verifyingContract: '0x' + '3'.repeat(40) }, primaryType: 'MutualRefund' });
+  const SIG = '0x' + '5'.repeat(130);
+
+  it('F13: the first signer stores a signature over the prepared deadline and sends nothing', async () => {
+    vi.spyOn(api, 'avalancheStatus').mockResolvedValue(view());
+    vi.spyOn(api, 'avalancheRefresh').mockResolvedValue(view());
+    const prepare = vi.spyOn(api, 'avalanchePrepare').mockResolvedValue({ action: 'mutual-refund', escrowId: '0x1', transactions: [],
+      typedData: typed, typedDataDigest: '0x' + 'd'.repeat(64), authorizationDeadline: 1_900_000_000 });
+    const store = vi.spyOn(api, 'avalancheMutualRefundSignature').mockResolvedValue(view({
+      mutualRefund: { authorizationDeadline: 1_900_000_000, typedDataDigest: '0x' + 'd'.repeat(64), clientSigned: true, freelancerSigned: false } }));
+    const wallet = { ...fakeWallet(), signTypedData: vi.fn(async () => SIG) } as unknown as EvmWallet;
+    await mount(true, false, () => wallet);
+    await act(async () => { button('Hoàn tiền thỏa thuận bằng ví')!.click(); });
+    expect(prepare).toHaveBeenCalledTimes(1);
+    expect(wallet.signTypedData).toHaveBeenCalledWith(typed, '0x' + '1'.repeat(40), 31337);
+    expect(store).toHaveBeenCalledWith('c', { authorizationDeadline: 1_900_000_000, typedDataDigest: '0x' + 'd'.repeat(64), signature: SIG });
+    expect(wallet.sendPrepared).not.toHaveBeenCalled();
+  });
+
+  it('F13: the second signer reuses the pending deadline, then sends the refund prepared with both signatures', async () => {
+    const pending = { authorizationDeadline: 1_900_000_000, typedDataDigest: '0x' + 'd'.repeat(64), clientSigned: true, freelancerSigned: false };
+    vi.spyOn(api, 'avalancheStatus').mockResolvedValue(view({ mutualRefund: pending }));
+    vi.spyOn(api, 'avalancheRefresh').mockResolvedValue(view());
+    const prepare = vi.spyOn(api, 'avalanchePrepare')
+      .mockResolvedValueOnce({ action: 'mutual-refund', escrowId: '0x1', transactions: [], typedData: typed,
+        typedDataDigest: pending.typedDataDigest, authorizationDeadline: pending.authorizationDeadline })
+      .mockResolvedValueOnce({ action: 'mutual-refund', escrowId: '0x1',
+        transactions: [{ to: '0x' + '2'.repeat(40), data: '0xab', value: '0', chainId: 31337 }] });
+    vi.spyOn(api, 'avalancheMutualRefundSignature').mockResolvedValue(view({ mutualRefund: { ...pending, freelancerSigned: true } }));
+    const record = vi.spyOn(api, 'avalancheRecordTransaction').mockResolvedValue(tx({ action: 'mutual-refund' }));
+    const wallet = { ...fakeWallet(), signTypedData: vi.fn(async () => SIG) } as unknown as EvmWallet;
+    await act(async () => root.render(<AvalancheEscrowPanel contractId="c" user={user} isClient={false} isFreelancer walletFactory={() => wallet} />));
+    expect(host.querySelector('[data-testid="mutual-refund-state"]')?.textContent).toContain('Client đã ký');
+    await act(async () => { button('Hoàn tiền thỏa thuận bằng ví')!.click(); });
+    expect(prepare.mock.calls[0][2]).toEqual({ authorizationDeadline: 1_900_000_000 });
+    expect(wallet.sendPrepared).toHaveBeenCalledTimes(1);
+    expect(record).toHaveBeenCalledWith('c', 'mutual-refund', HASH, expect.objectContaining({ idempotencyKey: expect.any(String) }));
+  });
+
+  it('links an EVM wallet with a personal_sign challenge when none is linked', async () => {
+    vi.spyOn(api, 'evmWalletCurrent').mockResolvedValue(null);
+    vi.spyOn(api, 'avalancheStatus').mockResolvedValue(view());
+    vi.spyOn(api, 'avalancheRefresh').mockResolvedValue(view());
+    const message = 'FreelaX EVM wallet binding\nNonce: n';
+    vi.spyOn(api, 'evmWalletChallenge').mockResolvedValue({ challengeId: 'ch', walletAddress: '0x' + '1'.repeat(40), message, expiresAt: '' });
+    const verify = vi.spyOn(api, 'evmWalletVerify').mockResolvedValue({ walletAddress: '0x' + '1'.repeat(40) });
+    const wallet = { ...fakeWallet(), personalSign: vi.fn(async () => SIG) } as unknown as EvmWallet;
+    await mount(true, false, () => wallet);
+    await act(async () => { button('Liên kết ví EVM')!.click(); });
+    expect(wallet.personalSign).toHaveBeenCalledWith(message, '0x' + '1'.repeat(40));
+    expect(verify).toHaveBeenCalledWith('ch', SIG);
+    expect(host.textContent).toContain('Ví EVM đã liên kết');
   });
 });

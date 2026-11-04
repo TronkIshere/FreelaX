@@ -37,6 +37,18 @@ public class AvalancheEscrowController {
                 .data(service.status(principal.getId(), admin(principal), contractId)).build();
     }
 
+    public record MutualRefundSignatureRequest(Long authorizationDeadline, String typedDataDigest, String signature) {
+    }
+
+    /** F13: each party submits its own wallet signature of the shared mutual-refund typed data. */
+    @PostMapping("/mutual-refund/signatures")
+    public ResponseAPI<AvalancheEscrowService.ContractView> mutualRefundSignature(@AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable UUID contractId, @RequestBody MutualRefundSignatureRequest request) {
+        return ResponseAPI.<AvalancheEscrowService.ContractView>builder().code(200)
+                .data(service.submitMutualRefundSignature(principal.getId(), contractId, request.authorizationDeadline(),
+                        request.typedDataDigest(), request.signature())).build();
+    }
+
     @PostMapping("/enable")
     public ResponseAPI<AvalancheEscrowService.ContractView> enable(@AuthenticationPrincipal UserPrincipal principal, @PathVariable UUID contractId) {
         return ResponseAPI.<AvalancheEscrowService.ContractView>builder().code(200).data(service.enable(principal.getId(), contractId)).build();

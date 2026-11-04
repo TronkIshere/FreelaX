@@ -140,3 +140,23 @@ it('reports a missing wallet without throwing a raw error', () => {
   delete holder.ethereum;
   try { expect(() => new EvmWallet()).toThrowError(/No EVM wallet/); } finally { holder.ethereum = saved; }
 });
+
+describe('personalSign (A8 wallet linking)', () => {
+  const MESSAGE = 'FreelaX EVM wallet binding\nUser: u\nNonce: n';
+  it('signs only a FreelaX binding message, as UTF-8 hex', async () => {
+    const p = provider({ personal_sign: () => SIGNATURE });
+    expect(await new EvmWallet(p).personalSign(MESSAGE, ADDRESS)).toBe(SIGNATURE);
+    const [hex, from] = (p.request.mock.calls[0][0] as { params: [string, string] }).params;
+    expect(from).toBe(ADDRESS);
+    expect(hex).toBe('0x' + Array.from(new TextEncoder().encode(MESSAGE), b => b.toString(16).padStart(2, '0')).join(''));
+  });
+  it('refuses arbitrary text, a bad address, a bad signature and reports a declined request', async () => {
+    const ok = new EvmWallet(provider({ personal_sign: () => SIGNATURE }));
+    expect((await failure(ok.personalSign('Transfer all funds', ADDRESS))).code).toBe('MESSAGE_INVALID');
+    expect((await failure(ok.personalSign(MESSAGE, '0x12'))).code).toBe('MESSAGE_INVALID');
+    const bad = new EvmWallet(provider({ personal_sign: () => '0x12' }));
+    expect((await failure(bad.personalSign(MESSAGE, ADDRESS))).code).toBe('BAD_SIGNATURE');
+    const declined = new EvmWallet(provider({ personal_sign: () => { throw { code: 4001 }; } }));
+    expect((await failure(declined.personalSign(MESSAGE, ADDRESS))).code).toBe('USER_REJECTED');
+  });
+});

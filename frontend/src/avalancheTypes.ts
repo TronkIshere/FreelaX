@@ -47,7 +47,18 @@ export type AvalancheContractView = {
   chain: AvalancheEscrowSnapshot | null;
   transactions: AvalancheChainTransaction[];
   notice: string | null;
+  /** Pending mutual-refund authorization (F13): which party has signed the shared typed data, and until when. */
+  mutualRefund?: AvalancheMutualRefundState | null;
 };
+
+export type AvalancheMutualRefundState = {
+  authorizationDeadline: number;
+  typedDataDigest: string;
+  clientSigned: boolean;
+  freelancerSigned: boolean;
+};
+
+export type EvmWalletChallenge = { challengeId: string; walletAddress: string; message: string; expiresAt: string };
 
 export type AvalancheActionInput = {
   idempotencyKey?: string;
@@ -57,4 +68,5 @@ export type AvalancheActionInput = {
   by?: string;
   clientSignature?: string;
   freelancerSignature?: string;
+  authorizationDeadline?: number;
 };

@@ -68,6 +68,13 @@ public class AvalancheClient {
         return get("get-transaction", "/transactions/" + operationKey, AvalancheResults.Transaction.class);
     }
 
+    /** A8: asks the gateway whether {@code address} signed {@code message} (EIP-191 personal_sign). Verification only. */
+    public boolean verifyWalletSignature(String address, String message, String signature) {
+        Map<?, ?> body = post("verify-wallet-signature", "/wallet-signatures/verify",
+                Map.of("address", address, "message", message, "signature", signature), Map.class);
+        return Boolean.TRUE.equals(body.get("valid"));
+    }
+
     public AvalancheResults.HashStatus getStatusByHash(String txHash) {
         return get("get-status-by-hash", "/transactions/by-hash/" + txHash, AvalancheResults.HashStatus.class).orElseThrow(() -> notFound("status"));
     }

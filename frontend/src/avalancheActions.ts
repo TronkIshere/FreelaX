@@ -31,9 +31,6 @@ export type AvalancheActionOffer = {
 const OPEN_DISPUTE: ReadonlySet<string> = new Set(['OPEN', 'UNDER_REVIEW', 'DECISION_PENDING_RELEASE', 'DECISION_PENDING_REFUND']);
 const DECIDED_DISPUTE: ReadonlySet<string> = new Set(['DECISION_PENDING_RELEASE', 'DECISION_PENDING_REFUND']);
 
-/** Mutual refund needs both parties to sign the same typed data; the marketplace has no exchange for the first signature yet (register F13). */
-export const MUTUAL_REFUND_WALLET_UNAVAILABLE =
-  'Hoàn tiền thỏa thuận bằng ví chưa hỗ trợ: cần cả hai bên ký cùng một dữ liệu, hệ thống chưa có nơi lưu chữ ký thứ nhất.';
 
 function latestSubmission(submissions: AvalancheActionContext['submissions']) {
   return submissions.reduce<AvalancheActionContext['submissions'][number] | null>(
@@ -57,7 +54,8 @@ export function availableAvalancheActions(ctx: AvalancheActionContext): Avalanch
   if (ctx.isArbiter && !party && d && DECIDED_DISPUTE.has(d.status)) {
     offers.push({ action: 'resolve', input: { disputeId: d.disputeId }, wallet: true });
   }
-  if (party) offers.push({ action: 'mutual-refund', input: {}, wallet: false, walletUnavailableReason: MUTUAL_REFUND_WALLET_UNAVAILABLE });
+  // F13 resolved 2026-11-04: each party signs the same typed data with its own wallet; the marketplace holds the first signature.
+  if (party) offers.push({ action: 'mutual-refund', input: {}, wallet: true });
   return offers;
 }
 

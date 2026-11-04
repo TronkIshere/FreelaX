@@ -78,6 +78,10 @@ class AvalancheEscrowServiceTest {
     private final EscrowContractRepository solanaEscrows = mock(EscrowContractRepository.class);
     private final AvalancheChainTransactionRepository chainTransactions = mock(AvalancheChainTransactionRepository.class);
     private final BlockchainGateway gateway = mock(BlockchainGateway.class);
+    private final com.marketplace.backend.repository.EvmWalletRepository evmWallets = mock(com.marketplace.backend.repository.EvmWalletRepository.class);
+    private final com.marketplace.backend.repository.AvalanchePendingAuthorizationRepository pendingAuthorizations =
+            mock(com.marketplace.backend.repository.AvalanchePendingAuthorizationRepository.class);
+    private final java.util.List<com.marketplace.backend.entity.AvalanchePendingAuthorization> pendingRows = new java.util.ArrayList<>();
     private final AvalancheGatewayProperties properties = new AvalancheGatewayProperties();
     private AvalancheEscrowService service;
 
@@ -95,7 +99,7 @@ class AvalancheEscrowServiceTest {
         when(gateway.environmentInfo()).thenReturn(new EnvironmentInfo("LOCAL_SIMULATION", 31337, true, null, true));
         when(gateway.validateAddress(any(BlockchainAddress.class))).thenReturn(true);
         service = new AvalancheEscrowService(contracts, milestones, wallets, submissions, disputes, solanaEscrows, chainTransactions,
-                new BlockchainGatewayRegistry(List.of(gateway)), properties);
+                new BlockchainGatewayRegistry(List.of(gateway)), properties, evmWallets, pendingAuthorizations);
 
         contract = new WorkContract();
         contract.setId(UUID.randomUUID());
@@ -114,6 +118,21 @@ class AvalancheEscrowServiceTest {
         milestone.setStatus(MilestoneStatus.PENDING_FUNDING);
 
         when(contracts.findById(contract.getId())).thenReturn(Optional.of(contract));
+        when(evmWallets.findByUserId(any())).thenReturn(Optional.empty());
+        org.mockito.stubbing.Answer<Optional<com.marketplace.backend.entity.AvalanchePendingAuthorization>> findPending = invocation ->
+                pendingRows.stream().filter(a -> a.getContractId().equals(invocation.getArgument(0))
+                        && a.getAction().equals(invocation.getArgument(1))).findFirst();
+        when(pendingAuthorizations.findByContractIdAndAction(any(), anyString())).thenAnswer(findPending);
+        when(pendingAuthorizations.findWithLockByContractIdAndAction(any(), anyString())).thenAnswer(findPending);
+        when(pendingAuthorizations.saveAndFlush(any(com.marketplace.backend.entity.AvalanchePendingAuthorization.class))).thenAnswer(invocation -> {
+            com.marketplace.backend.entity.AvalanchePendingAuthorization a = invocation.getArgument(0);
+            if (!pendingRows.contains(a)) {
+                pendingRows.add(a);
+            }
+            return a;
+        });
+        org.mockito.Mockito.doAnswer(invocation -> pendingRows.remove(invocation.<Object>getArgument(0)))
+                .when(pendingAuthorizations).delete(any(com.marketplace.backend.entity.AvalanchePendingAuthorization.class));
         when(milestones.findByContractId(contract.getId())).thenReturn(Optional.of(milestone));
         when(wallets.findFirstByUserIdOrderByIdAsc(clientId)).thenReturn(Optional.of(wallet(CLIENT_WALLET)));
         when(wallets.findFirstByUserIdOrderByIdAsc(freelancerId)).thenReturn(Optional.of(wallet(FREELANCER_WALLET)));
@@ -530,7 +549,7 @@ class AvalancheEscrowServiceTest {
         // 7. recovery: the chain agrees; a new service instance (restart) applies the effect once
         org.mockito.Mockito.doReturn(snapshot(NeutralEscrowStatus.FUNDED, "5000000", CLIENT_WALLET)).when(gateway).escrowSnapshot(any());
         AvalancheEscrowService restarted = new AvalancheEscrowService(contracts, milestones, wallets, submissions, disputes, solanaEscrows,
-                chainTransactions, new BlockchainGatewayRegistry(List.of(gateway)), properties);
+                chainTransactions, new BlockchainGatewayRegistry(List.of(gateway)), properties, evmWallets, pendingAuthorizations);
         restarted.refresh(clientId, false, contract.getId());
         assertTrue(row.isBusinessApplied());
         assertNull(row.getErrorClass());
@@ -545,6 +564,126 @@ class AvalancheEscrowServiceTest {
         assertEquals(1, rows.size(), "one row per business operation");
         verify(gateway, times(1)).executeAction(any());
         assertFalse(rows.stream().anyMatch(r -> TransactionStatus.FAILED.name().equals(r.getStatus())));
+    }
+
+    // ---- A8: a proven EVM wallet is used for the escrow parties -------------------------------------------------------
+
+    @Test
+    void aWalletLinkedByChallengeTakesPrecedenceOverTheLegacyWalletRow() {
+        com.marketplace.backend.entity.EvmWallet linked = new com.marketplace.backend.entity.EvmWallet();
+        linked.setUserId(freelancerId);
+        linked.setAddress("0x" + "7e".repeat(20));
+        when(evmWallets.findByUserId(freelancerId)).thenReturn(Optional.of(linked));
+        Map<String, Object> p = service.authorize(clientId, false, contract, "fund", AvalancheEscrowService.Input.empty());
+        assertEquals("0x" + "7e".repeat(20), p.get("freelancer"));
+        assertEquals(CLIENT_WALLET.toLowerCase(), p.get("client"), "without a linked EVM wallet the existing behaviour is kept");
+    }
+
+    // ---- F13: two parties sign the same mutual-refund typed data with their own wallets ----------------------------
+
+    private static final String DIGEST = "0x" + "d1".repeat(32);
+    private static final String CLIENT_SIG = "0x" + "c1".repeat(65);
+    private static final String FREELANCER_SIG = "0x" + "f1".repeat(65);
+
+    private void gatewayExpects(String digest) {
+        when(gateway.prepareAction(any())).thenReturn(new com.marketplace.backend.blockchain.PreparedAction("mutual-refund", "0x1",
+                null, List.of(), 0L, "{}", digest));
+    }
+
+    @Test
+    void eachPartyStoresOnlyItsOwnSignatureOverTheDigestTheGatewayExpects() {
+        contract.setStatus(ContractStatus.ACTIVE);
+        long deadline = Instant.now().getEpochSecond() + 300;
+        gatewayExpects(DIGEST);
+        when(gateway.escrowSnapshot(any())).thenReturn(null);
+
+        AvalancheEscrowService.ContractView afterClient = service.submitMutualRefundSignature(clientId, contract.getId(), deadline, DIGEST, CLIENT_SIG);
+        assertTrue(afterClient.mutualRefund().clientSigned());
+        assertFalse(afterClient.mutualRefund().freelancerSigned());
+        AvalancheEscrowService.ContractView afterBoth = service.submitMutualRefundSignature(freelancerId, contract.getId(), deadline, DIGEST, FREELANCER_SIG);
+        assertTrue(afterBoth.mutualRefund().clientSigned() && afterBoth.mutualRefund().freelancerSigned());
+        assertEquals(1, pendingRows.size());
+        assertEquals(CLIENT_SIG, pendingRows.get(0).getClientSignature(), "the freelancer did not overwrite the client's signature");
+
+        org.mockito.ArgumentCaptor<EscrowActionRequest> sent = org.mockito.ArgumentCaptor.forClass(EscrowActionRequest.class);
+        verify(gateway, times(2)).prepareAction(sent.capture());
+        assertEquals(deadline, sent.getValue().parameters().get("authorizationDeadline"), "the gateway re-derives the digest for this deadline");
+    }
+
+    @Test
+    void signaturesAreRefusedForStrangersExpiredDeadlinesMalformedInputAndAForeignDigest() {
+        long deadline = Instant.now().getEpochSecond() + 300;
+        gatewayExpects(DIGEST);
+        assertRefused(() -> service.submitMutualRefundSignature(strangerId, contract.getId(), deadline, DIGEST, CLIENT_SIG));
+        assertRefused(() -> service.submitMutualRefundSignature(clientId, contract.getId(), Instant.now().getEpochSecond() - 1, DIGEST, CLIENT_SIG));
+        assertRefused(() -> service.submitMutualRefundSignature(clientId, contract.getId(), null, DIGEST, CLIENT_SIG));
+        assertRefused(() -> service.submitMutualRefundSignature(clientId, contract.getId(), deadline, "0x12", CLIENT_SIG));
+        assertRefused(() -> service.submitMutualRefundSignature(clientId, contract.getId(), deadline, DIGEST, "0x12"));
+        assertRefused(() -> service.submitMutualRefundSignature(clientId, contract.getId(), deadline, "0x" + "ee".repeat(32), CLIENT_SIG));
+        assertTrue(pendingRows.isEmpty());
+        contract.setPaymentNetworkId(null);
+        assertRefused(() -> service.submitMutualRefundSignature(clientId, contract.getId(), deadline, DIGEST, CLIENT_SIG));
+    }
+
+    @Test
+    void aNewDeadlineStartsANewPairSoStaleSignaturesAreNeverCombined() {
+        long first = Instant.now().getEpochSecond() + 300;
+        long second = first + 60;
+        gatewayExpects(DIGEST);
+        when(gateway.escrowSnapshot(any())).thenReturn(null);
+        service.submitMutualRefundSignature(clientId, contract.getId(), first, DIGEST, CLIENT_SIG);
+        String otherDigest = "0x" + "d2".repeat(32);
+        gatewayExpects(otherDigest);
+        AvalancheEscrowService.ContractView v = service.submitMutualRefundSignature(freelancerId, contract.getId(), second, otherDigest, FREELANCER_SIG);
+        assertFalse(v.mutualRefund().clientSigned(), "the client signed a different deadline and must sign again");
+        assertTrue(v.mutualRefund().freelancerSigned());
+        assertEquals(second, v.mutualRefund().authorizationDeadline());
+    }
+
+    @Test
+    void theHeldPairAndItsDeadlineAreSentOnlyWhenBothSignedAndNotExpired() {
+        com.marketplace.backend.entity.AvalanchePendingAuthorization a = new com.marketplace.backend.entity.AvalanchePendingAuthorization();
+        a.setContractId(contract.getId());
+        a.setAction("mutual-refund");
+        a.setAuthorizationDeadline(Instant.now().getEpochSecond() + 300);
+        a.setTypedDataDigest(DIGEST);
+        a.setClientSignature(CLIENT_SIG);
+        pendingRows.add(a);
+        Map<String, Object> half = service.authorize(clientId, false, contract, "mutual-refund", AvalancheEscrowService.Input.empty());
+        assertFalse(half.containsKey("clientSignature"), "one signature is never sent");
+
+        a.setFreelancerSignature(FREELANCER_SIG);
+        Map<String, Object> both = service.authorize(freelancerId, false, contract, "mutual-refund", AvalancheEscrowService.Input.empty());
+        assertEquals(CLIENT_SIG, both.get("clientSignature"));
+        assertEquals(FREELANCER_SIG, both.get("freelancerSignature"));
+        assertEquals(a.getAuthorizationDeadline(), both.get("authorizationDeadline"));
+
+        a.setAuthorizationDeadline(Instant.now().getEpochSecond() - 1);
+        assertTrue(service.authorize(clientId, false, contract, "mutual-refund", AvalancheEscrowService.Input.empty()).isEmpty(),
+                "an expired pair is not used");
+        assertRefused(() -> service.authorize(strangerId, false, contract, "mutual-refund", AvalancheEscrowService.Input.empty()));
+
+        Map<String, Object> second = service.authorize(freelancerId, false, contract, "mutual-refund",
+                new AvalancheEscrowService.Input(null, null, null, null, null, null, null, 1_900_000_000L));
+        assertEquals(1_900_000_000L, second.get("authorizationDeadline"), "the second signer prepares over the first deadline");
+    }
+
+    @Test
+    void aFinalizedMutualRefundSpendsTheHeldSignatures() {
+        com.marketplace.backend.entity.AvalanchePendingAuthorization a = new com.marketplace.backend.entity.AvalanchePendingAuthorization();
+        a.setContractId(contract.getId());
+        a.setAction("mutual-refund");
+        a.setAuthorizationDeadline(Instant.now().getEpochSecond() + 300);
+        a.setTypedDataDigest(DIGEST);
+        pendingRows.add(a);
+        contract.setStatus(ContractStatus.ACTIVE);
+        milestone.setStatus(MilestoneStatus.IN_PROGRESS);
+        row("mutual-refund", TransactionStatus.FINALIZED);
+        when(gateway.escrowSnapshot(any())).thenReturn(snapshot(NeutralEscrowStatus.REFUNDED, "5000000", CLIENT_WALLET));
+        AvalancheEscrowService.ContractView v = service.refresh(clientId, false, contract.getId());
+        assertEquals(MilestoneStatus.REFUNDED, milestone.getStatus());
+        assertTrue(pendingRows.isEmpty());
+        assertNull(v.mutualRefund());
     }
 
     @Test

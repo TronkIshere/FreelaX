@@ -370,6 +370,19 @@ export class MarketplaceApi {
     return this.authorized('/contracts/' + encodeURIComponent(contractId) + '/avalanche/actions/' + encodeURIComponent(action) + '/transactions',
       { method: 'POST', body: JSON.stringify({ txHash, input }) });
   }
+  async avalancheMutualRefundSignature(contractId: string, body: { authorizationDeadline: number; typedDataDigest: string; signature: string }): Promise<AvalancheContractView> {
+    return this.authorized('/contracts/' + encodeURIComponent(contractId) + '/avalanche/mutual-refund/signatures',
+      { method: 'POST', body: JSON.stringify(body) });
+  }
+  async evmWalletCurrent(): Promise<{ walletAddress: string } | null> {
+    return this.authorized('/avalanche/wallet-link');
+  }
+  async evmWalletChallenge(walletAddress: string): Promise<import('./avalancheTypes').EvmWalletChallenge> {
+    return this.authorized('/avalanche/wallet-link/challenge', { method: 'POST', body: JSON.stringify({ walletAddress }) });
+  }
+  async evmWalletVerify(challengeId: string, signature: string): Promise<{ walletAddress: string }> {
+    return this.authorized('/avalanche/wallet-link/verify', { method: 'POST', body: JSON.stringify({ challengeId, signature }) });
+  }
   async avalancheRefresh(contractId: string): Promise<AvalancheContractView> {
     return this.authorized('/contracts/' + encodeURIComponent(contractId) + '/avalanche/refresh', { method: 'POST' });
   }
