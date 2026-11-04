@@ -26,6 +26,8 @@ import com.marketplace.backend.repository.PaymentFlowRepository;
 import com.marketplace.backend.repository.PaymentFlowStepRepository;
 import com.marketplace.backend.repository.TaxCertificateRecordRepository;
 import com.marketplace.backend.repository.UserRepository;
+import com.marketplace.backend.repository.WorkContractRepository;
+import com.marketplace.backend.service.TaxRecordBlockchain;
 import com.marketplace.backend.service.NotificationService;
 import com.marketplace.backend.service.TaxCertificateService;
 import lombok.AccessLevel;
@@ -57,7 +59,6 @@ import java.util.stream.Collectors;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class TaxCertificateServiceImpl implements TaxCertificateService {
 
-    private static final String TAX_RECORD_BLOCKCHAIN = "solana";
     private static final Set<TaxCertificateStatus> ISSUED_STATUSES = EnumSet.of(
             TaxCertificateStatus.SIGNED, TaxCertificateStatus.SUBMITTING, TaxCertificateStatus.SUBMITTED,
             TaxCertificateStatus.ACCEPTED, TaxCertificateStatus.REJECTED, TaxCertificateStatus.CORRECTION_REQUIRED,
@@ -74,6 +75,7 @@ public class TaxCertificateServiceImpl implements TaxCertificateService {
     MisaCertificateProperties misaCertificateProperties;
     PaymentFlowRepository paymentFlowRepository;
     PaymentFlowStepRepository paymentFlowStepRepository;
+    WorkContractRepository workContractRepository;
 
     private static final String UNIFIED_REFERENCE = "unified:";
     private static final BigDecimal UNIFIED_WITHHOLDING_RATE = new BigDecimal("0.10");
@@ -312,14 +314,15 @@ public class TaxCertificateServiceImpl implements TaxCertificateService {
             }
 
             if (taxRecord.getMisaPayoutTransactionId() == null) {
+                String blockchain = TaxRecordBlockchain.forJob(workContractRepository, job.getId());
                 MisaPayoutTransactionResult payoutTx =
                         taxRecord.getRateSource() == ExchangeRateSource.LOCKED_PAYOUT_QUOTE
                         ? misaBackendClient.recordPayoutTransaction(taxRecord.getMisaTaxpayerId(),
                             job.getId(), taxRecord.getAmountUsd(), taxRecord.getUsdToVndRate(),
-                            taxRecord.getTransactionReference(), TAX_RECORD_BLOCKCHAIN, true)
+                            taxRecord.getTransactionReference(), blockchain, true)
                         : misaBackendClient.recordPayoutTransaction(taxRecord.getMisaTaxpayerId(),
                             job.getId(), taxRecord.getAmountUsd(), taxRecord.getUsdToVndRate(),
-                            taxRecord.getTransactionReference(), TAX_RECORD_BLOCKCHAIN);
+                            taxRecord.getTransactionReference(), blockchain);
                 taxRecord.setMisaPayoutTransactionId(payoutTx.getId());
                 taxCertificateRecordRepository.save(taxRecord);
             }

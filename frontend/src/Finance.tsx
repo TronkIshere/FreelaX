@@ -1,3 +1,4 @@
+import { contractChainLabel } from './avalanchePresentation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { WalletCards, Coins, LockKeyhole, Clock3, RotateCcw, CircleCheck, CalendarDays, ArrowRight, ArrowLeft, ArrowUpRight, Landmark, CircleAlert, Check, BriefcaseBusiness, FileText, Info, RefreshCw } from 'lucide-react';
@@ -208,6 +209,7 @@ function FinanceLedgerRow({ job, entry }: { job: Job; entry?: PaymentEntry }) {
       {job.contract?.paymentRail === 'UNIFIED_USDC_PAYOUT' ? paymentJourneySummary(entry?.flow ?? undefined) : job.contract?.paymentRail === 'SOLANA_ESCROW' ? 'Đang xử lý thanh toán' : job.contract ? contractFinanceLabel(job, entry?.contract) : status ? checkoutLabel(status.checkoutOrderStatus) : entry?.error || 'Chưa có dữ liệu'}</span>
       <span className="finance-payout-label">{job.contract?.paymentRail === 'UNIFIED_USDC_PAYOUT' ? entry?.flow?.steps.find(s => s.kind === 'VND_PAYOUT')?.status === 'CONFIRMED' ? 'Người làm đã nhận tiền' : 'Đang chờ chuyển tiền' : job.contract?.paymentRail === 'SOLANA_ESCROW' ? 'Tiền đang được giữ an toàn' : job.contract?.paymentRail === 'PARTNER_ESCROW_MOCK' ? entry?.contract?.settlement?.moneyStatus === 'SUCCEEDED' ? 'Đối tác mock đã chi ' + String(entry.contract.settlement.partnerPayoutVnd) + ' VND · phí FreelaX ' + String(entry.contract.settlement.platformFeeUsd) + ' USD' : 'Chưa giải ngân VND' : entry?.contract?.settlement ? 'Chi trả: ' + settlementStageLabel(entry.contract.settlement.offRampStatus)
         : status ? offRampLabel(status.offRampStatus) : 'Chưa có dữ liệu chi trả'}</span>
+      {contractChainLabel(job.contract) && <span className="badge finance-chain-label">{contractChainLabel(job.contract)}</span>}
       {(entry?.flow?.simulation || status?.simulation || entry?.contract?.settlement?.simulation || entry?.contract?.cancellation?.simulation) && <b className="simulation-mark">Mô phỏng</b>}
       {(entry?.error || entry?.contract?.error) && <span className="finance-row-error" role="alert">{entry.error || entry.contract?.error}</span>}
     </div>

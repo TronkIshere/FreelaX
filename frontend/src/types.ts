@@ -119,6 +119,8 @@ export interface ContractSummary {
   id: string;
   status: string;
   paymentRail?: 'SIMULATED' | 'SOLANA_ESCROW' | 'PARTNER_ESCROW_MOCK' | 'UNIFIED_USDC_PAYOUT';
+  /** Escrow chain network (null on legacy Solana rails); added for per-record chain labels (A7). */
+  paymentNetworkId?: string | null;
   milestoneId: string | null;
   milestoneStatus: string | null;
   amount: DecimalValue;

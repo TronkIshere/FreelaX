@@ -1012,6 +1012,7 @@ public class JobServiceImpl implements JobService {
         return ContractSummaryResponse.builder()
                 .id(contract.getId()).status(contract.getStatus().name())
                 .paymentRail(contract.getPaymentRail() == null ? "SIMULATED" : contract.getPaymentRail())
+                .paymentNetworkId(contract.getPaymentNetworkId())
                 .milestoneId(milestone != null ? milestone.getId() : null)
                 .milestoneStatus(milestone != null ? milestone.getStatus().name() : null)
                 .amount(milestone != null ? milestone.getAmount() : contract.getBudgetUsd())

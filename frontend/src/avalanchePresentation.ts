@@ -62,6 +62,17 @@ export function chainInstant(seconds: number | null | undefined): string {
   return seconds ? new Date(seconds * 1000).toLocaleString('vi-VN') : '—';
 }
 
+/**
+ * Per-record chain label for existing screens (register A7; legacy labelling of A1). Avalanche only when the contract's
+ * network id says so; the two Solana rails are labelled as the legacy reference; mock and simulated rails have no chain.
+ */
+export function contractChainLabel(contract: { paymentNetworkId?: string | null; paymentRail?: string | null } | null | undefined): string | null {
+  if (!contract) return null;
+  if (contract.paymentNetworkId && contract.paymentNetworkId.toLowerCase().startsWith('avalanche')) return 'Ký quỹ Avalanche';
+  if (contract.paymentRail === 'SOLANA_ESCROW' || contract.paymentRail === 'UNIFIED_USDC_PAYOUT') return 'Solana (tham chiếu cũ)';
+  return null;
+}
+
 export function shortHash(hash: string | null | undefined): string {
   return hash ? hash.slice(0, 10) + '…' + hash.slice(-6) : '—';
 }

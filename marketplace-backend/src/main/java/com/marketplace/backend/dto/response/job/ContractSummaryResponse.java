@@ -14,6 +14,8 @@ public class ContractSummaryResponse {
     UUID id;
     String status;
     String paymentRail;
+    /** Chain network of the escrow (V6 {@code payment_network_id}); null for every legacy Solana rail. Additive (A7). */
+    String paymentNetworkId;
     UUID milestoneId;
     String milestoneStatus;
     BigDecimal amount;

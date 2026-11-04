@@ -477,6 +477,76 @@ class AvalancheEscrowServiceTest {
         assertEquals(MilestoneStatus.PENDING_FUNDING, milestone.getStatus());
     }
 
+    /**
+     * Register item A3 (marketplace half): the gateway faults seen through the marketplace, in ONE sequence on one contract:
+     * timeout at execute, impatient duplicate, HTTP 429 and outage during refresh, UNKNOWN and non-final states, a FINALIZED
+     * status whose chain read then fails, a chain read that disagrees, recovery, and duplicate FINALIZED observations.
+     * Invariants: one gateway execute per business operation; no business effect before FINALIZED plus an agreeing chain read;
+     * the effect is applied exactly once; no fault turns into FAILED. The gateway half is CombinedFaultScenarioTest.
+     */
+    @Test
+    void combinedGatewayFaultsNeverApplyEarlyNeverFailAndApplyExactlyOnce() {
+        AvalancheEscrowService.Input input = new AvalancheEscrowService.Input("a3-fund", null, null, null, null, null, null);
+
+        // 1. timeout at execute: recorded first, then UNKNOWN (never FAILED)
+        when(gateway.executeAction(any())).thenThrow(new AvalancheGatewayException("timeout", false, null, null));
+        AvalancheChainTransaction row = service.execute(clientId, false, contract.getId(), "fund", input);
+        assertEquals(TransactionStatus.UNKNOWN.name(), row.getStatus());
+        assertEquals("GATEWAY_UNREACHABLE", row.getErrorClass());
+
+        // 2. impatient duplicate with the same idempotency key: same row, no second execute
+        assertSame(row, service.execute(clientId, false, contract.getId(), "fund", input));
+        verify(gateway, times(1)).executeAction(any());
+
+        // 3. HTTP 429 during refresh: state kept, rate-limit code recorded
+        when(gateway.transactionStatus(any())).thenThrow(new AvalancheGatewayException("throttled", false, 429, "RATE_LIMITED"));
+        service.refresh(clientId, false, contract.getId());
+        assertEquals(TransactionStatus.UNKNOWN.name(), row.getStatus());
+        assertEquals("RATE_LIMITED", row.getErrorClass());
+
+        // 4. gateway still unsure, then mined but not final: no business effect
+        org.mockito.Mockito.doReturn(result(TransactionStatus.UNKNOWN)).when(gateway).transactionStatus(any());
+        service.refresh(clientId, false, contract.getId());
+        org.mockito.Mockito.doReturn(result(TransactionStatus.CONFIRMED)).when(gateway).transactionStatus(any());
+        service.refresh(clientId, false, contract.getId());
+        assertEquals(TransactionStatus.CONFIRMED.name(), row.getStatus());
+        assertEquals(MilestoneStatus.PENDING_FUNDING, milestone.getStatus(), "CONFIRMED is not settlement");
+
+        // 5. FINALIZED, but the independent chain read fails: the refresh fails as a whole (rolled back in a transaction),
+        //    nothing is applied
+        org.mockito.Mockito.doReturn(result(TransactionStatus.FINALIZED)).when(gateway).transactionStatus(any());
+        when(gateway.escrowSnapshot(any())).thenThrow(new AvalancheGatewayException("down", false, null, null));
+        assertThrows(AvalancheGatewayException.class, () -> service.refresh(clientId, false, contract.getId()));
+        assertFalse(row.isBusinessApplied());
+        assertEquals(MilestoneStatus.PENDING_FUNDING, milestone.getStatus());
+
+        // 6. the chain read disagrees with the recorded terms (missed or foreign event): CHAIN_MISMATCH, nothing applied
+        org.mockito.Mockito.doReturn(snapshot(NeutralEscrowStatus.NONE, "0", CLIENT_WALLET)).when(gateway).escrowSnapshot(any());
+        service.refresh(clientId, false, contract.getId());
+        assertEquals("CHAIN_MISMATCH", row.getErrorClass());
+        assertFalse(row.isBusinessApplied());
+        assertEquals(MilestoneStatus.PENDING_FUNDING, milestone.getStatus());
+
+        // 7. recovery: the chain agrees; a new service instance (restart) applies the effect once
+        org.mockito.Mockito.doReturn(snapshot(NeutralEscrowStatus.FUNDED, "5000000", CLIENT_WALLET)).when(gateway).escrowSnapshot(any());
+        AvalancheEscrowService restarted = new AvalancheEscrowService(contracts, milestones, wallets, submissions, disputes, solanaEscrows,
+                chainTransactions, new BlockchainGatewayRegistry(List.of(gateway)), properties);
+        restarted.refresh(clientId, false, contract.getId());
+        assertTrue(row.isBusinessApplied());
+        assertNull(row.getErrorClass());
+        assertEquals(MilestoneStatus.FUNDED, milestone.getStatus());
+        assertEquals(ContractStatus.ACTIVE, contract.getStatus());
+
+        // 8. duplicate FINALIZED observations never apply twice; still exactly one execute
+        milestone.setStatus(MilestoneStatus.IN_PROGRESS);
+        restarted.refresh(clientId, false, contract.getId());
+        service.refresh(clientId, false, contract.getId());
+        assertEquals(MilestoneStatus.IN_PROGRESS, milestone.getStatus());
+        assertEquals(1, rows.size(), "one row per business operation");
+        verify(gateway, times(1)).executeAction(any());
+        assertFalse(rows.stream().anyMatch(r -> TransactionStatus.FAILED.name().equals(r.getStatus())));
+    }
+
     @Test
     void onlyParticipantsAndAdministratorsSeeTheStatus() {
         assertRefused(() -> service.status(strangerId, false, contract.getId()));

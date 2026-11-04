@@ -49,6 +49,7 @@ class TaxCertificateContractTest {
     private final NotificationService notifications = mock(NotificationService.class);
     private final PaymentFlowRepository flows = mock(PaymentFlowRepository.class);
     private final PaymentFlowStepRepository flowSteps = mock(PaymentFlowStepRepository.class);
+    private final com.marketplace.backend.repository.WorkContractRepository workContracts = mock(com.marketplace.backend.repository.WorkContractRepository.class);
     private TaxCertificateServiceImpl service;
 
     @BeforeEach
@@ -58,7 +59,7 @@ class TaxCertificateContractTest {
         properties.setAutoSubmit(true);
         properties.setDigitalCertificateSerial("DEMO-CERT");
         service = new TaxCertificateServiceImpl(taxRecords, payouts, jobs, users, misa, notifications, properties,
-                flows, flowSteps);
+                flows, flowSteps, workContracts);
     }
 
     @Test

@@ -22,6 +22,7 @@ public class SettlementTaxService {
     private final JobRepository jobs;
     private final UserRepository users;
     private final MisaBackendClient misa;
+    private final com.marketplace.backend.repository.WorkContractRepository contracts;
 
     public void prepare(ContractSettlement s) {
         FreelancerPayoutRecord p = payouts.findById(s.getPayoutRecordId()).orElseThrow();
@@ -77,7 +78,7 @@ public class SettlementTaxService {
                 }
                 if (r.getMisaPayoutTransactionId() == null) {
                     r.setMisaPayoutTransactionId(misa.recordPayoutTransaction(r.getMisaTaxpayerId(), r.getJobId(),
-                            r.getAmountUsd(), r.getUsdToVndRate(), r.getTransactionReference(), "solana").getId());
+                            r.getAmountUsd(), r.getUsdToVndRate(), r.getTransactionReference(), TaxRecordBlockchain.forJob(contracts, r.getJobId())).getId());
                 }
                 misa.createWithholdingCertificate(r.getMisaPayoutTransactionId(), r.getCertificateCreateKey());
             } catch (HttpClientErrorException ex) {
