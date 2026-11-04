@@ -5,24 +5,19 @@ records *what was done, why, and on what authority*, and the resume point. One e
 new evidence changes an entry's status, edit its **Status** line and add a dated "Update" line under it; do not delete the
 original reasoning. Do not add routine progress entries.
 
-## Current state (updated 2026-11-04, after L-015)
-- **Branch:** `avalanche/phase1-closure-phase3-proposal`; everything after `origin/master` (`1ef0af7`) is **local and unpushed**.
-  Push not authorized.
-- **Decision regime:** the Lead delegated engineering decisions (2026-11-04). PROJECT_STATUS "Delegated decision classification"
-  says which items are OWNER APPROVED, ENGINEERING DECIDED UNDER DELEGATED AUTHORITY, or EXTERNAL. R6 is **not owner approved**.
-- **Phase 1:** PARTIAL. E1 BLOCKED (R1, X1; tooling and evidence checker ready); E2 BLOCKED (DB operator, X2; queries
-  validated); E3 DEFERRED (owner); E4 DOCUMENTED LIMITATION; E5, E6 INCONCLUSIVE (need E1); E7 PARTIAL (explorer verification
-  NOT APPLICABLE until B2).
-- **Phase 2:** A1, A3, A7, A8, F12, F13 IMPLEMENTED; A5 closed (D-C); A4 moved to Phase 3; **open: A2** (single-stack LOCAL run;
-  F3), A6 (optional); B7 browser wallet check external.
-- **Phase 3 (delegated, reversible):** settlement notifications (default off), primary-rail policy (default SOLANA), CI
-  workflow (not executed). Not started: fee/tax/payout wiring (D-B (b)), P3-C4 stuck-escrow reporting, drills, LOCAL clone
-  measurement. Fuji demonstration external.
-- **Last measured:** gateway JDK 21 110 run, 0 failures, 3 skipped; frontend 29 files / 865; human-signed 11; V7 MySQL IT 2/2;
-  marketplace 403 (before primary rail), then primary-rail classes 66/66 after fixes. Full JDK 17 reactor after all changes:
-  payment 72, marketplace 408, misa 20, solana 10, all pass (L-015).
-- **Next executable task:** (1) done; (2) A2 single-stack LOCAL run script; (3) P3-C4
-  stuck-escrow reporting in the gateway; (4) A6 scanner metrics; (5) D-B fee/tax/payout analysis.
+## Current state (updated 2026-11-04, after L-017)
+- **Branch:** `avalanche/phase1-closure-phase3-proposal`; everything after `origin/master` (`1ef0af7`) is local and unpushed.
+- **Decision regime:** Lead delegation of engineering decisions (2026-11-04); PROJECT_STATUS classification table. R6 is
+  **not owner approved**.
+- **Phase 1:** PARTIAL. E1 BLOCKED (R1, X1), E2 BLOCKED (DB operator, X2), E3 DEFERRED (owner), E4 DOCUMENTED LIMITATION,
+  E5/E6 INCONCLUSIVE (need E1), E7 PARTIAL (explorer verification NOT APPLICABLE until B2). Tooling for E1/E2 is complete.
+- **Phase 2:** all engineering residuals done (A1, A2, A3, A6, A7, A8, F12, F13); A5 closed; B7 external.
+- **Phase 3 (delegated, reversible):** notifications (off by default), primary rail (default SOLANA), P3-C4 stuck-escrow
+  reporting, A6 scanner health, CI workflow (not executed), drills. Owner/external: fee/tax/payout off-ramp (custody), F14/R12,
+  Fuji demonstration (C1). Optional engineering left: P3-C6 LOCAL clone measurement.
+- **Last measured:** JDK 17 reactor 72/408/20/10 then marketplace 414; gateway 115/0/3; frontend 867; Foundry 55/1; A2 PASS.
+- **How to run heavy suites here:** one at a time, detached and memory-capped (CLAUDE.md section 7).
+- **Next executable task:** P3-C6 (optional). Everything else needs an owner decision or an external person.
 
 ## Entries
 
