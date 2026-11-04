@@ -14,10 +14,10 @@ original reasoning. Do not add routine progress entries.
 - **Phase 2:** all engineering residuals done (A1, A2, A3, A6, A7, A8, F12, F13); A5 closed; B7 external.
 - **Phase 3 (delegated, reversible):** notifications (off by default), primary rail (default SOLANA), P3-C4 stuck-escrow
   reporting, A6 scanner health, CI workflow (not executed), drills. Owner/external: fee/tax/payout off-ramp (custody), F14/R12,
-  Fuji demonstration (C1). Optional engineering left: P3-C6 LOCAL clone measurement.
+  Fuji demonstration (C1). P3-C6 LOCAL clone measurement DONE (L-018).
 - **Last measured:** JDK 17 reactor 72/408/20/10 then marketplace 414; gateway 115/0/3; frontend 867; Foundry 55/1; A2 PASS.
 - **How to run heavy suites here:** one at a time, detached and memory-capped (CLAUDE.md section 7).
-- **Next executable task:** P3-C6 (optional). Everything else needs an owner decision or an external person.
+- **Next executable task:** none left that is independently implementable; everything open needs an owner decision or an external person.
 
 ## Entries
 
@@ -317,3 +317,12 @@ original reasoning. Do not add routine progress entries.
   a new custody path: EXTERNAL decision, not built.
 - **Not done (usage limit reached):** P3-C6 LOCAL clone measurement (optional); refreshing the CLAUDE.md state lines.
 - **Next:** R12 and the D-B off-ramp decision (owner); P3-C6 (engineering, optional); external items unchanged (R1, X1 to X3, B7, R6).
+
+### L-018: P3-C6 LOCAL clone measurement (2026-11-04)
+- **Decision:** a Foundry lab in `phase-3/prototypes/escrow-clone-lab` (outside `avalanche-contracts/src`, no script, no
+  manifest) measuring EIP-1167 per-escrow vault cost and blacklist blast radius. Authority: O-2 (owner) permits it LOCAL only;
+  engineering decided under delegation.
+- **Alternatives:** a full initializable copy of the escrow (rejected: duplicates the audited baseline for a measurement).
+- **Results:** clone create + init 123,573 gas per escrow (baseline fund about 225k); deposit 62,268; payout 71,755; a
+  blacklisted vault blocks only its escrow; a blacklisted shared holder blocks all. 4 tests passed.
+- **Result:** P3-C6 DONE (evidence only); baseline unchanged.

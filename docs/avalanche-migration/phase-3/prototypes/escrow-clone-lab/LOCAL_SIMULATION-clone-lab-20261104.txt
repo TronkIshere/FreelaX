@@ -1,0 +1,17 @@
+Compiling 38 files with Solc 0.8.38
+Solc 0.8.38 finished in 3.44s
+Compiler run successful!
+
+Ran 4 tests for test/CloneLab.t.sol:CloneLabTest
+[PASS] test_blastRadius_aBlacklistedSharedHolderBlocksEveryEscrow() (gas: 414682)
+[PASS] test_blastRadius_aBlacklistedVaultBlocksOnlyItsOwnEscrow() (gas: 529952)
+[PASS] test_measure_perEscrowCloneOverhead() (gas: 285949)
+Logs:
+  clone create + initialize gas 123573
+  deposit into the clone vault gas 62268
+  payout from the clone vault gas 71755
+
+[PASS] test_onlyTheControllerCanPayOutAndInitializationIsOneShot() (gas: 185976)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 2.70ms (4.12ms CPU time)
+
+Ran 1 test suite in 20.12ms (2.70ms CPU time): 4 tests passed, 0 failed, 0 skipped (4 total tests)

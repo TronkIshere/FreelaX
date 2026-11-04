@@ -18,9 +18,9 @@ simulation-only items were built (each defaults to current behaviour):
 | P3-C1 (A4) fee, tax/MISA, payout | NOT STARTED (D-B option (b) selected); rail-aware tax label done (A7) | - |
 | P3-C2 primary rail | IMPLEMENTED, `marketplace.primary-rail` default SOLANA, fail closed | `PrimaryRailPolicyTest`, `JobAccessAndDiscoveryServiceImplTest` |
 | P3-C3 CI | workflow added, not executed | `.github/workflows/avalanche-ci.yml` |
-| P3-C4 stuck-escrow reporting | NOT STARTED | - |
+| P3-C4 stuck-escrow reporting | IMPLEMENTED (read-only, O-6) | gateway, marketplace, frontend tests; A2 live run |
 | P3-C5 (F13) wallet mutual refund | IMPLEMENTED | gateway Anvil regression, marketplace tests, V7 IT |
-| P3-C6 clone measurement | NOT STARTED (optional, LOCAL only) | - |
+| P3-C6 clone measurement | DONE (LOCAL measurement only) | `prototypes/escrow-clone-lab` |
 | P3-C7 Fuji demonstration | EXTERNAL (C1, B1, E1) | - |
 Decisions D-A, D-C, D-D, D-E, D-F, D-H: ENGINEERING DECIDED (PROJECT_STATUS table). D-G: EXTERNAL. D-B: engineering chose the
 option; only the notification part is built.

@@ -1,0 +1,13 @@
+# P3-C6 LOCAL_SIMULATION-only measurement lab (O-2). Not a deployable project: no script/, no manifest, no Fuji profile.
+[profile.default]
+src = "src"
+test = "test"
+out = "out"
+cache_path = "cache"
+libs = ["../../../../../avalanche-contracts/lib"]
+solc_version = "0.8.38"
+remappings = [
+  "@openzeppelin/contracts/=../../../../../avalanche-contracts/lib/openzeppelin-contracts/contracts/",
+  "forge-std/=../../../../../avalanche-contracts/lib/forge-std/src/",
+  "@freelax/=../../../../../avalanche-contracts/src/",
+]
