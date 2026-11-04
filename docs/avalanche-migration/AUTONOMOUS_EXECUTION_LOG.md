@@ -284,3 +284,41 @@ original reasoning. Do not add routine progress entries.
   detached and capped (`--memory=2560m`, `MAVEN_OPTS=-Xmx384m`, `-DargLine=-Xmx1g`; no project file changed): **BUILD SUCCESS,
   exit 0, payment 72, marketplace 408, misa 20, solana-integration 10, 0 failures/errors/skips**, not OOM-killed, about 7 min.
   **Status: primary rail VERIFIED.**
+
+### L-016: A2 single LOCAL stack, and the integration gap it found (2026-11-04)
+- **Decision:** A2 runs as a self-contained harness (`phase-2/a2-local-stack/run.sh` + `drive.mjs`): its own Docker network,
+  memory-capped containers (MySQL 8.4, Redis 7, Anvil 1.8.7, gateway JDK 21, marketplace JDK 17), per-run throwaway secrets,
+  never the owner's `.env`. Party wallets are throwaway LOCAL keys inside the Anvil container (Phase 1 precedent), redacted
+  from every error and refused in the evidence. F3: deploy first with Anvil's unlocked account as placeholder roles, start the
+  gateway, read its ephemeral signers from the startup log, grant `AUTH_SIGNER_ROLE` and set the default arbiter.
+- **Authority:** delegated engineering (A2 approved Phase 2 residual; LOCAL_SIMULATION only).
+- **Alternatives:** `docker compose up` (rejected: needs the owner's `.env`, B9); simulated-account execution (rejected:
+  marketplace users cannot link the gateway's ephemeral wallets, so it would not test A8); deterministic gateway signers
+  (rejected: M2 keeps them ephemeral).
+- **Findings (each fixed and documented in the harness README):** (1) **an Avalanche-funded contract could not accept a work
+  submission** (`ContractSubmissionService` required a Solana escrow or fiat funding record; the job stayed
+  `AWAITING_PAYMENT`): fixed by making the job follow the applied escrow outcome exactly as on the Solana rail and by accepting
+  an Avalanche-rail milestone that reached FUNDED through the verified path; legacy rails unchanged; (2) the escrow releases
+  only from `Submitted` (D4): the driver submits and anchors first; (3) freelancer registration needs tax and bank details:
+  fake demonstration values; (4) **a failed `cast` call echoed a throwaway key into a scratch log and evidence file** (outside
+  the repository; the key belonged to a destroyed Anvil chain): redacted in place, and the driver now redacts every error and
+  checks the evidence against the generated keys; (5) Windows path and manifest-ordering issues in the harness.
+- **Risks:** the harness depends on log-line formats for the signer addresses; the freelancer details are placeholders.
+- **Files:** `phase-2/a2-local-stack/{run.sh,drive.mjs,README.md}`; evidence
+  `phase-2/evidence/LOCAL_SIMULATION-a2-local-stack-20261104.json`; `ContractSubmissionService`, `AvalancheEscrowService` and
+  tests. Commit `3c83392`.
+- **Tests:** A2 run **PASS** (wallet links with replay refused; fund, submit, release FINALIZED with contract COMPLETED, job
+  COMPLETED and notifications; F13 mutual refund with blocks mined between signatures, contract CANCELLED, signatures spent).
+  Marketplace JDK 17 **412 pass** (memory-capped run). Full legacy reactor before the fix: 72 / 408 / 20 / 10 (L-015).
+- **Result:** A2 IMPLEMENTED and PASSING.
+
+### L-017: P3-C4, A6, drills, D-B analysis (2026-11-04)
+- **Done:** P3-C4 stuck-escrow reporting (gateway issuer-control reader, `/escrows/{id}/alerts`, marketplace view, panel banner;
+  read-only, O-6); A6 scanner health endpoint; drill report `phase-3/02-simulation-drills-2026-11-04.md`. Commit `ecd94e8`
+  plus the drill commit.
+- **Tests:** gateway JDK 21 115/0/3; marketplace JDK 17 414 pass; frontend 867; Foundry 55 pass 1 skipped; A2 with live
+  blacklist reported and lifted: PASS.
+- **Findings:** F14 arbiter loss on a Disputed escrow (owner request R12). D-B fee/tax/payout needs an Avalanche off-ramp,
+  a new custody path: EXTERNAL decision, not built.
+- **Not done (usage limit reached):** P3-C6 LOCAL clone measurement (optional); refreshing the CLAUDE.md state lines.
+- **Next:** R12 and the D-B off-ramp decision (owner); P3-C6 (engineering, optional); external items unchanged (R1, X1 to X3, B7, R6).
