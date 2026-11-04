@@ -4,7 +4,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { api } from './api';
 import { AvalancheEscrowPanel } from './AvalancheEscrowPanel';
-import { STATE_TEXT, TRANSACTION_STATES, environmentBadge, explorerTxUrl, stateText } from './avalanchePresentation';
+import { STATE_TEXT, TRANSACTION_STATES, chainInstant, environmentBadge, explorerTxUrl, stateText, tokenLabel, usdcFromBaseUnits } from './avalanchePresentation';
 import type { AvalancheChainTransaction, AvalancheContractView } from './avalancheTypes';
 import type { EvmWallet } from './evmWallet';
 
@@ -40,6 +40,24 @@ describe('presentation', () => {
     expect(explorerTxUrl(null, HASH)).toBeNull();
     expect(explorerTxUrl('javascript:alert(1)', HASH)).toBeNull();
     expect(explorerTxUrl('https://x.test', '0x12')).toBeNull();
+  });
+});
+
+describe('chain-state display helpers', () => {
+  it('formats USDC base units exactly, without floating point', () => {
+    expect(usdcFromBaseUnits('100000000')).toBe('100');
+    expect(usdcFromBaseUnits('1500000')).toBe('1.5');
+    expect(usdcFromBaseUnits('1')).toBe('0.000001');
+    expect(usdcFromBaseUnits('0')).toBe('0');
+    expect(usdcFromBaseUnits('123456789012345678901')).toBe('123456789012345.678901');
+    expect(usdcFromBaseUnits('-1')).toBeNull();
+    expect(usdcFromBaseUnits('1e6')).toBeNull();
+    expect(usdcFromBaseUnits(null)).toBeNull();
+  });
+  it('labels the token per environment and shows unset deadlines as a dash', () => {
+    expect(tokenLabel(true)).toBe('USDC mô phỏng');
+    expect(tokenLabel(false)).toBe('Testnet USDC');
+    expect(chainInstant(0)).toBe('—');
   });
 });
 
@@ -122,5 +140,84 @@ describe('AvalancheEscrowPanel', () => {
     expect(host.querySelectorAll('button')).toHaveLength(0);
     await act(async () => root.render(<AvalancheEscrowPanel contractId="c" user={user} isClient isFreelancer={false} />));
     expect(host.textContent).toContain('Dùng ký quỹ Avalanche');
+  });
+
+  const button = (text: string) => [...host.querySelectorAll('button')].find(b => b.textContent === text);
+  const fakeWallet = () => ({
+    connect: vi.fn(async () => ({ address: '0x' + '1'.repeat(40), chainId: 31337 })),
+    sendPrepared: vi.fn(async () => HASH),
+  }) as unknown as EvmWallet;
+
+  it('anchors the recorded submission with the freelancer wallet (A1 submit)', async () => {
+    vi.spyOn(api, 'avalancheStatus').mockResolvedValue(view());
+    vi.spyOn(api, 'avalancheRefresh').mockResolvedValue(view());
+    const prepare = vi.spyOn(api, 'avalanchePrepare').mockResolvedValue({ action: 'submit', escrowId: '0x1',
+      transactions: [{ to: '0x' + '2'.repeat(40), data: '0xab', value: '0', chainId: 31337 }] });
+    const record = vi.spyOn(api, 'avalancheRecordTransaction').mockResolvedValue(tx({ action: 'submit' }));
+    const wallet = fakeWallet();
+    await act(async () => root.render(<AvalancheEscrowPanel contractId="c" user={user} isClient={false} isFreelancer
+      submissions={[{ id: 's2', version: 2, status: 'SUBMITTED' }]} walletFactory={() => wallet} />));
+    await act(async () => { button('Ghi nhận bàn giao bằng ví')!.click(); });
+    expect(prepare).toHaveBeenCalledWith('c', 'submit', expect.objectContaining({ submissionId: 's2', idempotencyKey: expect.any(String) }));
+    expect(record).toHaveBeenCalledWith('c', 'submit', HASH, expect.objectContaining({ submissionId: 's2' }));
+  });
+
+  it('requires a date before an extension request and sends it as epoch seconds', async () => {
+    vi.spyOn(api, 'avalancheStatus').mockResolvedValue(view());
+    vi.spyOn(api, 'avalancheRefresh').mockResolvedValue(view());
+    const execute = vi.spyOn(api, 'avalancheExecute').mockResolvedValue(tx({ action: 'extension-request' }));
+    await act(async () => root.render(<AvalancheEscrowPanel contractId="c" user={user} isClient={false} isFreelancer />));
+    const simulated = () => button('Xin gia hạn bằng tài khoản mô phỏng')!;
+    expect(simulated().disabled).toBe(true);
+    const input = host.querySelector<HTMLInputElement>('[data-action="extension-request"] input[type="datetime-local"]')!;
+    await act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!;
+      setter.call(input, '2026-11-10T12:00');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    expect(simulated().disabled).toBe(false);
+    await act(async () => { simulated().click(); });
+    expect(execute).toHaveBeenCalledWith('c', 'extension-request', expect.objectContaining({
+      newDeliveryDueAt: Math.floor(new Date('2026-11-10T12:00').getTime() / 1000) }));
+  });
+
+  it('lets a non-participant arbiter settle a recorded decision (A1 resolve)', async () => {
+    vi.spyOn(api, 'avalancheStatus').mockResolvedValue(view());
+    vi.spyOn(api, 'avalancheRefresh').mockResolvedValue(view());
+    const execute = vi.spyOn(api, 'avalancheExecute').mockResolvedValue(tx({ action: 'resolve' }));
+    await act(async () => root.render(<AvalancheEscrowPanel contractId="c" user={user} isClient={false} isFreelancer={false} isArbiter
+      dispute={{ disputeId: 'd', status: 'DECISION_PENDING_RELEASE', openedBy: 'x' }} />));
+    expect([...host.querySelectorAll('[data-action]')].map(e => e.getAttribute('data-action'))).toEqual(['resolve']);
+    await act(async () => { button('Thực thi quyết định tranh chấp bằng tài khoản mô phỏng')!.click(); });
+    expect(execute).toHaveBeenCalledWith('c', 'resolve', expect.objectContaining({ disputeId: 'd' }));
+  });
+
+  it('shows amount and revisions read from the chain snapshot with the environment token label', async () => {
+    vi.spyOn(api, 'avalancheStatus').mockResolvedValue(view({ chain: { status: 'Funded', client: '0x1', freelancer: '0x2',
+      amountBaseUnits: '250000000', maxRevisions: 2, revisionsUsed: 1, deliveryDueAt: 0, reviewDueAt: 0 } }));
+    await mount();
+    const facts = host.querySelector('.avalanche-chain-facts')!.textContent!;
+    expect(facts).toContain('250 USDC mô phỏng');
+    expect(facts).toContain('1/2');
+  });
+
+  it('renders nothing for the arbiter on a contract that is not on the Avalanche rail', async () => {
+    vi.spyOn(api, 'avalancheStatus').mockResolvedValue(view({ networkId: null }));
+    await act(async () => root.render(<AvalancheEscrowPanel contractId="c" user={user} isClient={false} isFreelancer={false} isArbiter />));
+    expect(host.innerHTML).toBe('');
+  });
+
+  it('offers mutual refund only through simulated accounts, never through a wallet, and not at all on Fuji', async () => {
+    vi.spyOn(api, 'avalancheStatus').mockResolvedValue(view());
+    await mount();
+    expect(button('Hoàn tiền thỏa thuận bằng ví')).toBeUndefined();
+    expect(button('Hoàn tiền thỏa thuận bằng tài khoản mô phỏng')).toBeDefined();
+    expect(host.querySelector('[data-action="mutual-refund"]')?.textContent).toContain('chưa hỗ trợ');
+    vi.spyOn(api, 'avalancheStatus').mockResolvedValue(view({
+      environment: { environment: 'AVALANCHE_FUJI', chainId: 43113, simulated: false, explorerBaseUrl: null, backendSignersAvailable: false } }));
+    act(() => root.unmount()); root = createRoot(host);
+    await mount();
+    expect(host.querySelector('[data-action="mutual-refund"]')).toBeNull();
+    expect(host.textContent).not.toContain('tài khoản mô phỏng');
   });
 });

@@ -43,6 +43,25 @@ export function explorerTxUrl(baseUrl: string | null | undefined, hash: string |
   }
 }
 
+/** USDC has 6 decimals. Exact string arithmetic: no floating point on amounts. */
+export function usdcFromBaseUnits(baseUnits: string | null | undefined): string | null {
+  if (!baseUnits || !/^\d+$/.test(baseUnits)) return null;
+  const padded = baseUnits.padStart(7, '0');
+  const whole = padded.slice(0, -6).replace(/^0+(?=\d)/, '');
+  const fraction = padded.slice(-6).replace(/0+$/, '');
+  return fraction ? whole + '.' + fraction : whole;
+}
+
+/** Token label per environment, using the scope document's terminology. */
+export function tokenLabel(simulated: boolean): string {
+  return simulated ? 'USDC mô phỏng' : 'Testnet USDC';
+}
+
+/** Chain deadline (epoch seconds) for display; '—' when unset (0). */
+export function chainInstant(seconds: number | null | undefined): string {
+  return seconds ? new Date(seconds * 1000).toLocaleString('vi-VN') : '—';
+}
+
 export function shortHash(hash: string | null | undefined): string {
   return hash ? hash.slice(0, 10) + '…' + hash.slice(-6) : '—';
 }

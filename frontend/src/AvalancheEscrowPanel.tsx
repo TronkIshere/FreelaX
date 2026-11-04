@@ -1,20 +1,22 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, ApiError } from './api';
 import { ActionGroup, SectionHeading } from './components';
-import type { AvalancheContractView } from './avalancheTypes';
-import { actionText, environmentBadge, environmentBanner, explorerTxUrl, shortHash, stateText } from './avalanchePresentation';
+import { availableAvalancheActions, deliveryDateSeconds, type AvalancheActionOffer } from './avalancheActions';
+import type { AvalancheActionInput, AvalancheContractView } from './avalancheTypes';
+import { actionText, chainInstant, environmentBadge, environmentBanner, explorerTxUrl, shortHash, stateText, tokenLabel, usdcFromBaseUnits } from './avalanchePresentation';
 import { EvmWallet, WalletError } from './evmWallet';
-import type { User } from './types';
+import type { ContractSubmission, Dispute, User } from './types';
 
 export const avalancheUiEnabled = () => import.meta.env.VITE_AVALANCHE_ENABLED === 'true';
 
-type Props = { contractId: string; user: User; isClient: boolean; isFreelancer: boolean; onChanged?: () => void; walletFactory?: () => EvmWallet };
-
-const SIMPLE_ACTIONS: { action: string; client: boolean; freelancer: boolean }[] = [
-  { action: 'fund', client: true, freelancer: false },
-  { action: 'extension-approve', client: true, freelancer: false },
-  { action: 'release', client: true, freelancer: true },
-];
+type Props = {
+  contractId: string; user: User; isClient: boolean; isFreelancer: boolean;
+  /** Administrator who is not a participant: may settle a recorded dispute decision (arbiter role). */
+  isArbiter?: boolean;
+  submissions?: readonly Pick<ContractSubmission, 'id' | 'version' | 'status'>[];
+  dispute?: Pick<Dispute, 'disputeId' | 'status' | 'openedBy'> | null;
+  onChanged?: () => void; walletFactory?: () => EvmWallet;
+};
 
 function message(error: unknown): string {
   if (error instanceof WalletError) return error.message;
@@ -22,8 +24,9 @@ function message(error: unknown): string {
   return 'Không thể hoàn tất thao tác. Hãy thử lại.';
 }
 
-export function AvalancheEscrowPanel({ contractId, isClient, isFreelancer, onChanged, walletFactory }: Props) {
+export function AvalancheEscrowPanel({ contractId, user, isClient, isFreelancer, isArbiter = false, submissions = [], dispute = null, onChanged, walletFactory }: Props) {
   const [view, setView] = useState<AvalancheContractView | null>(null);
+  const [extensionDate, setExtensionDate] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const lock = useRef(false);
@@ -56,10 +59,21 @@ export function AvalancheEscrowPanel({ contractId, isClient, isFreelancer, onCha
 
   const enable = () => run(async () => { setView(await api.avalancheEnable(contractId)); });
 
-  const withWallet = (action: string) => run(async () => {
+  function inputFor(offer: AvalancheActionOffer): AvalancheActionInput {
+    const input: AvalancheActionInput = { ...offer.input, idempotencyKey: crypto.randomUUID() };
+    if (offer.needsDate) {
+      const seconds = deliveryDateSeconds(extensionDate);
+      if (seconds === null) throw new WalletError('Hãy chọn hạn bàn giao mới.', 'NO_DATE');
+      input.newDeliveryDueAt = seconds;
+    }
+    return input;
+  }
+
+  const withWallet = (offer: AvalancheActionOffer) => run(async () => {
     const env = view?.environment;
     if (!env) throw new WalletError('Chưa biết môi trường mạng.', 'NO_ENV');
-    const input = { idempotencyKey: crypto.randomUUID() };
+    const action = offer.action;
+    const input = inputFor(offer);
     const prepared = await api.avalanchePrepare(contractId, action, input);
     const wallet = (walletFactory ?? (() => new EvmWallet()))();
     const { address } = await wallet.connect(env.chainId);
@@ -68,16 +82,18 @@ export function AvalancheEscrowPanel({ contractId, isClient, isFreelancer, onCha
     if (last) await api.avalancheRecordTransaction(contractId, action, last, input);
   });
 
-  const withSimulatedAccount = (action: string) => run(async () => {
-    await api.avalancheExecute(contractId, action, { idempotencyKey: crypto.randomUUID() });
+  const withSimulatedAccount = (offer: AvalancheActionOffer) => run(async () => {
+    await api.avalancheExecute(contractId, offer.action, inputFor(offer));
   });
 
-  if (!view || !view.avalancheEnabled) {
+  if (!view || !view.avalancheEnabled || (isArbiter && view.networkId === null)) {
     return error ? <p role="alert">{error}</p> : null;
   }
   const env = view.environment;
   const onAvalanche = view.networkId !== null;
-  const allowed = SIMPLE_ACTIONS.filter(a => (a.client && isClient) || (a.freelancer && isFreelancer));
+  const simulatedAccounts = !!env && env.backendSignersAvailable && env.simulated;
+  const allowed = availableAvalancheActions({ userId: user.id, isClient, isFreelancer, isArbiter, submissions, dispute })
+    .filter(a => a.wallet || simulatedAccounts);
   return <section className="review-action avalanche-panel" aria-label="Ký quỹ Avalanche">
     <SectionHeading title="Ký quỹ Avalanche" />
     {env && <p className={'avalanche-banner' + (env.simulated ? ' simulated' : ' testnet')} role="note">
@@ -90,11 +106,20 @@ export function AvalancheEscrowPanel({ contractId, isClient, isFreelancer, onCha
     </ActionGroup>}
     {!onAvalanche && !isClient && <p>Hợp đồng này chưa dùng ký quỹ Avalanche.</p>}
     {onAvalanche && view.chain && <p>Trạng thái trên chuỗi: <strong>{view.chain.status}</strong></p>}
+    {onAvalanche && view.chain && <dl className="avalanche-chain-facts" aria-label="Dữ liệu ký quỹ đọc từ chuỗi">
+      <div><dt>Số tiền ký quỹ</dt><dd>{usdcFromBaseUnits(view.chain.amountBaseUnits) ?? '—'} {tokenLabel(env?.simulated ?? true)}</dd></div>
+      <div><dt>Lượt chỉnh sửa</dt><dd>{view.chain.revisionsUsed}/{view.chain.maxRevisions}</dd></div>
+      <div><dt>Hạn bàn giao</dt><dd>{chainInstant(view.chain.deliveryDueAt)}</dd></div>
+      <div><dt>Hạn review</dt><dd>{chainInstant(view.chain.reviewDueAt)}</dd></div>
+    </dl>}
     {onAvalanche && env && <ActionGroup label="Thao tác ký quỹ">
-      {allowed.map(a => <span key={a.action}>
-        <button className="button" disabled={busy} onClick={() => void withWallet(a.action)}>{actionText(a.action)} bằng ví</button>
-        {env.backendSignersAvailable && env.simulated && <button className="button button-secondary" disabled={busy}
-          onClick={() => void withSimulatedAccount(a.action)}>{actionText(a.action)} bằng tài khoản mô phỏng</button>}
+      {allowed.map(a => <span key={a.action} data-action={a.action}>
+        {a.needsDate && <label>Hạn bàn giao mới<input type="datetime-local" value={extensionDate} disabled={busy}
+          onChange={event => setExtensionDate(event.target.value)} /></label>}
+        {a.wallet && <button className="button" disabled={busy || (a.needsDate && !extensionDate)} onClick={() => void withWallet(a)}>{actionText(a.action)} bằng ví</button>}
+        {simulatedAccounts && <button className="button button-secondary" disabled={busy || (a.needsDate && !extensionDate)}
+          onClick={() => void withSimulatedAccount(a)}>{actionText(a.action)} bằng tài khoản mô phỏng</button>}
+        {!a.wallet && a.walletUnavailableReason && <small> {a.walletUnavailableReason}</small>}
       </span>)}
     </ActionGroup>}
     {onAvalanche && <ul className="avalanche-transactions" aria-label="Giao dịch ký quỹ">

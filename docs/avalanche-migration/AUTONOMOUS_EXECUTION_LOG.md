@@ -110,4 +110,31 @@ original reasoning. Do not add routine progress entries.
   C4; A4 is Phase 3. A7 first because it is bounded and reduces wording risk before more UI is added.
 - **Authorization:** owner response 2026-11-03 section 10 ("implement approved Phase 2 tasks").
 - **Status:** NEXT (not started).
+  - Update 2026-11-04: order changed to A1 first (largest user-visible residual; A7 inspection showed its MISA part sits in Java 17
+    legacy code tied to A4, see L-008). A1 done as L-007.
 - **Remaining dependencies:** none for A7/A1/A3; Vietnamese copy review stays C10.
+
+### L-007: A1 frontend action screens (2026-11-04)
+- **Date:** 2026-11-04. **Phase / task:** Phase 2 A1.
+- **Action:** added `frontend/src/avalancheActions.ts`, a pure rule set that mirrors marketplace
+  `AvalancheEscrowService.authorize` and offers only actions the recorded data supports: submit (latest submission in review),
+  revise (latest submission REVISION_REQUESTED), dispute (recorded open dispute opened by the user), extension-request (date
+  input, epoch seconds), extension-approve, release, resolve (non-participant administrator, decision pending), mutual refund.
+  Panel rewired to it; mounted on the admin dispute case page as arbiter (hidden for participant admins and for contracts not
+  on the Avalanche rail). Chain snapshot display: amount (exact 6-decimal string arithmetic), revisions, deadlines, with the
+  scope token label ("USDC mô phỏng" / "Testnet USDC").
+- **Reasoning / alternatives:** the UI passes only recorded ids (submission, dispute) and a date; the backend still builds all
+  calldata and typed data (M11 rule "UI cannot bypass backend authorization"). Free selection of submissions or disputes was
+  rejected. Admin participants are excluded in the UI to match the existing admin page rule; the **backend `resolve` check does
+  not exclude participant admins** (recorded here; the on-chain arbiter snapshot O-3 still limits who can resolve on chain).
+  Mutual refund by wallet was **not** built: the two signatures must cover the same deadline and there is no exchange for the
+  first one (F13, new register row); offering it would produce transactions that revert. Legacy Solana labelling not done: the
+  Avalanche view has no rail field and inventing one would change the API.
+- **Authorization:** owner response 2026-11-03 section 10 (approved Phase 2 task A1); project lead instruction 2026-11-04.
+- **Files:** `frontend/src/avalancheActions.ts` (new), `avalancheActions.test.ts` (new), `AvalancheEscrowPanel.tsx`,
+  `avalanchePresentation.ts`, `AvalanchePanel.test.tsx`, `ContractLifecycle.tsx`, `AdminDisputes.tsx`; `PROJECT_STATUS.md`
+  (A1, F13).
+- **Tests / evidence:** Node 24.19.0: `npx tsc -b` clean; `npx vitest run` **29 files, 859 tests pass** (baseline 28 / 841;
+  +10 rule tests, +8 panel/helper tests); `npx vite build` built. No browser or wallet-extension run (B7).
+- **Status:** PARTIAL (A1): implemented items tested; mutual-refund wallet path and legacy labelling outstanding.
+- **Remaining dependencies:** F13 (Phase 3 proposal item); B7 for a real browser check; C10 Vietnamese copy review.

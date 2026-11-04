@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api, ApiError, hasAuthority } from './api';
 import { ActionGroup, EvidenceDisclosure, FactGrid, PageHeading, SectionHeading, StatePanel } from './components';
+import { AvalancheEscrowPanel, avalancheUiEnabled } from './AvalancheEscrowPanel';
 import { DisputeError, DisputeLink, DisputeRecord } from './ContractDispute';
 import { disputeLabel, disputeLabels, fundingLabel, submissionLabel } from './status';
 import { clearAttempt, localInstant, readAttempt, saveAttempt } from './workflowContracts';
@@ -171,6 +172,8 @@ function AdminCase({ id, user }: { id: string; user: User }) {
         </>}
         {notice && <p role="status">{notice}</p>}
       </section>
+      {avalancheUiEnabled() && !participant && <AvalancheEscrowPanel contractId={detail.contract.contractId} user={user} isClient={false} isFreelancer={false}
+        isArbiter dispute={detail.dispute} onChanged={() => void read().catch(setError)} />}
       <section className="admin-audit"><SectionHeading title="Audit hồ sơ" description="Request ID dưới đây là tham chiếu audit/idempotency; khác mã yêu cầu HTTP của lỗi API." />
         {detail.audit.map((item, i) => <details className="ledger-row" key={i}><summary>{({ OPENED: 'Mở hồ sơ', CLAIMED: 'Admin tiếp nhận', DECIDED: 'Admin quyết định', EVIDENCE_ADDED: 'Bổ sung bằng chứng', RESOLVED: 'Hoàn tất hồ sơ' } as Record<string, string>)[item.action] || 'Cập nhật hồ sơ'} · {localInstant(item.createdAt)}</summary>
           <div className="ledger-body"><p>{disputeLabel(item.beforeStatus || '')} → {disputeLabel(item.afterStatus)}</p>{item.reason && <p>{item.reason}</p>}<p className="metadata">Actor: <code>{item.actorId}</code></p>{item.requestId && <p className="metadata">Tham chiếu audit: <code>{item.requestId}</code></p>}</div>
