@@ -82,6 +82,7 @@ class AvalancheEscrowServiceTest {
     private final com.marketplace.backend.repository.AvalanchePendingAuthorizationRepository pendingAuthorizations =
             mock(com.marketplace.backend.repository.AvalanchePendingAuthorizationRepository.class);
     private final java.util.List<com.marketplace.backend.entity.AvalanchePendingAuthorization> pendingRows = new java.util.ArrayList<>();
+    private final NotificationService notifications = mock(NotificationService.class);
     private final AvalancheGatewayProperties properties = new AvalancheGatewayProperties();
     private AvalancheEscrowService service;
 
@@ -99,7 +100,7 @@ class AvalancheEscrowServiceTest {
         when(gateway.environmentInfo()).thenReturn(new EnvironmentInfo("LOCAL_SIMULATION", 31337, true, null, true));
         when(gateway.validateAddress(any(BlockchainAddress.class))).thenReturn(true);
         service = new AvalancheEscrowService(contracts, milestones, wallets, submissions, disputes, solanaEscrows, chainTransactions,
-                new BlockchainGatewayRegistry(List.of(gateway)), properties, evmWallets, pendingAuthorizations);
+                new BlockchainGatewayRegistry(List.of(gateway)), properties, evmWallets, pendingAuthorizations, notifications);
 
         contract = new WorkContract();
         contract.setId(UUID.randomUUID());
@@ -549,7 +550,7 @@ class AvalancheEscrowServiceTest {
         // 7. recovery: the chain agrees; a new service instance (restart) applies the effect once
         org.mockito.Mockito.doReturn(snapshot(NeutralEscrowStatus.FUNDED, "5000000", CLIENT_WALLET)).when(gateway).escrowSnapshot(any());
         AvalancheEscrowService restarted = new AvalancheEscrowService(contracts, milestones, wallets, submissions, disputes, solanaEscrows,
-                chainTransactions, new BlockchainGatewayRegistry(List.of(gateway)), properties, evmWallets, pendingAuthorizations);
+                chainTransactions, new BlockchainGatewayRegistry(List.of(gateway)), properties, evmWallets, pendingAuthorizations, notifications);
         restarted.refresh(clientId, false, contract.getId());
         assertTrue(row.isBusinessApplied());
         assertNull(row.getErrorClass());
@@ -684,6 +685,56 @@ class AvalancheEscrowServiceTest {
         assertEquals(MilestoneStatus.REFUNDED, milestone.getStatus());
         assertTrue(pendingRows.isEmpty());
         assertNull(v.mutualRefund());
+    }
+
+    // ---- Phase 3 D-B notifications slice ----------------------------------------------------------------------------
+
+    @Test
+    void settlementNotificationsAreOffByDefault() {
+        contract.setStatus(ContractStatus.ACTIVE);
+        milestone.setStatus(MilestoneStatus.SUBMITTED);
+        row("release", TransactionStatus.FINALIZED);
+        when(gateway.escrowSnapshot(any())).thenReturn(snapshot(NeutralEscrowStatus.RELEASED, "5000000", CLIENT_WALLET));
+        service.refresh(clientId, false, contract.getId());
+        assertEquals(MilestoneStatus.RELEASED, milestone.getStatus());
+        org.mockito.Mockito.verifyNoInteractions(notifications);
+    }
+
+    @Test
+    void whenEnabledBothPartiesAreNotifiedOnceAndOnlyWhenTheEffectIsApplied() {
+        properties.setSettlementNotifications(true);
+        contract.setJobId(UUID.randomUUID());
+        contract.setStatus(ContractStatus.ACTIVE);
+        milestone.setStatus(MilestoneStatus.SUBMITTED);
+        row("release", TransactionStatus.FINALIZED);
+        when(gateway.escrowSnapshot(any())).thenReturn(snapshot(NeutralEscrowStatus.SUBMITTED, "5000000", CLIENT_WALLET));
+        service.refresh(clientId, false, contract.getId());
+        org.mockito.Mockito.verifyNoInteractions(notifications);
+
+        when(gateway.escrowSnapshot(any())).thenReturn(snapshot(NeutralEscrowStatus.RELEASED, "5000000", CLIENT_WALLET));
+        service.refresh(clientId, false, contract.getId());
+        service.refresh(clientId, false, contract.getId());
+        for (UUID party : List.of(clientId, freelancerId)) {
+            verify(notifications, times(1)).notify(org.mockito.ArgumentMatchers.eq(party),
+                    org.mockito.ArgumentMatchers.eq(com.marketplace.backend.entity.NotificationType.RELEASE_CONFIRMED),
+                    org.mockito.ArgumentMatchers.contains("mô phỏng"), org.mockito.ArgumentMatchers.contains("không có tiền thật"),
+                    org.mockito.ArgumentMatchers.eq(contract.getJobId()), any());
+        }
+    }
+
+    @Test
+    void aRefundNotifiesRefundAndACancelledRevertNotifiesNothing() {
+        properties.setSettlementNotifications(true);
+        contract.setStatus(ContractStatus.DISPUTED);
+        milestone.setStatus(MilestoneStatus.DISPUTED);
+        row("resolve", TransactionStatus.REVERTED);
+        row("mutual-refund", TransactionStatus.FINALIZED);
+        when(gateway.escrowSnapshot(any())).thenReturn(snapshot(NeutralEscrowStatus.REFUNDED, "5000000", CLIENT_WALLET));
+        service.refresh(clientId, false, contract.getId());
+        verify(notifications, times(2)).notify(any(), org.mockito.ArgumentMatchers.eq(com.marketplace.backend.entity.NotificationType.REFUND_CONFIRMED),
+                anyString(), anyString(), any(), any());
+        verify(notifications, never()).notify(any(), org.mockito.ArgumentMatchers.eq(com.marketplace.backend.entity.NotificationType.RELEASE_CONFIRMED),
+                anyString(), anyString(), any(), any());
     }
 
     @Test

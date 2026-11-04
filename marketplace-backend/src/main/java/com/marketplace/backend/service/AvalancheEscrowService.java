@@ -80,6 +80,8 @@ public class AvalancheEscrowService {
     private final com.marketplace.backend.repository.EvmWalletRepository evmWallets;
     /** F13: first signature of a two-party authorization, held until the second party signs the same typed data (V7). */
     private final com.marketplace.backend.repository.AvalanchePendingAuthorizationRepository pendingAuthorizations;
+    /** Phase 3 D-B (notifications only; fees, tax and payout are not wired): used only when settlement-notifications is on. */
+    private final NotificationService notifications;
 
     static final String MUTUAL_REFUND = "mutual-refund";
     private static final java.util.regex.Pattern SIGNATURE_HEX = java.util.regex.Pattern.compile("0x[0-9a-fA-F]{130}");
@@ -531,5 +533,35 @@ public class AvalancheEscrowService {
         contracts.save(c);
         row.setBusinessApplied(true);
         row.setErrorClass(null);
+        notifySettlement(c, row.getAction(), m.getStatus());
+    }
+
+    /**
+     * Phase 3 D-B, notifications slice: tells both parties that an Avalanche escrow step took effect, once, at the moment the
+     * business effect is applied (FINALIZED and an agreeing chain read). Wording follows SIMULATION_SCOPE: a simulated escrow,
+     * testnet or simulated USDC, no real funds. Off by default ({@code avalanche-gateway.settlement-notifications}).
+     */
+    private void notifySettlement(WorkContract c, String action, MilestoneStatus result) {
+        if (!properties.isSettlementNotifications() || notifications == null) {
+            return;
+        }
+        com.marketplace.backend.entity.NotificationType type;
+        String title;
+        if (action.equals("fund")) {
+            type = com.marketplace.backend.entity.NotificationType.FUNDING_CONFIRMED;
+            title = "Ký quỹ Avalanche (mô phỏng) đã được xác nhận";
+        } else if (result == MilestoneStatus.RELEASED) {
+            type = com.marketplace.backend.entity.NotificationType.RELEASE_CONFIRMED;
+            title = "Ký quỹ Avalanche (mô phỏng) đã giải ngân cho Freelancer";
+        } else if (result == MilestoneStatus.REFUNDED) {
+            type = com.marketplace.backend.entity.NotificationType.REFUND_CONFIRMED;
+            title = "Ký quỹ Avalanche (mô phỏng) đã hoàn cho Client";
+        } else {
+            return;
+        }
+        String message = "Giao dịch đã chốt trên chuỗi. Demonstration only: USDC mô phỏng hoặc testnet, không có tiền thật.";
+        for (UUID party : List.of(c.getClientUserId(), c.getFreelancerId())) {
+            notifications.notify(party, type, title, message, c.getJobId(), c.getBudgetUsd());
+        }
     }
 }

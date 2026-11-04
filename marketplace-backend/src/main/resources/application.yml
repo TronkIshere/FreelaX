@@ -63,6 +63,7 @@ avalanche-gateway:
   base-url: ${AVALANCHE_GATEWAY_BASE_URL:http://localhost:9194}
   internal-api-key: ${AVALANCHE_GATEWAY_INTERNAL_API_KEY:}
   network: ${AVALANCHE_GATEWAY_NETWORK:avalanche-local}
+  settlement-notifications: ${AVALANCHE_GATEWAY_SETTLEMENT_NOTIFICATIONS:false}
 
 solana-cpr:
   base-url: ${SOLANA_CPR_BASE_URL:http://localhost:9193}
