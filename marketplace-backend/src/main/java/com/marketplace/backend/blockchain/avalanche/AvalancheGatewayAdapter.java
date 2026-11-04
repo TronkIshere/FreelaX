@@ -85,6 +85,16 @@ public class AvalancheGatewayAdapter implements BlockchainGateway {
     }
 
     @Override
+    public java.util.List<com.marketplace.backend.blockchain.IssuerAlert> issuerAlerts(EscrowReference escrow) {
+        return avalanche.issuerAlerts(escrow.id())
+                .map(r -> r.alerts() == null ? java.util.List.<com.marketplace.backend.blockchain.IssuerAlert>of() : r.alerts().stream()
+                        .map(a -> new com.marketplace.backend.blockchain.IssuerAlert(a.code(), a.address(),
+                                a.blocks() == null ? java.util.List.of() : java.util.List.copyOf(a.blocks())))
+                        .toList())
+                .orElse(java.util.List.of());
+    }
+
+    @Override
     public EscrowSnapshot escrowSnapshot(EscrowReference escrow) {
         return avalanche.findEscrow(escrow.id()).map(e -> new EscrowSnapshot(new EscrowReference(e.escrowId()),
                 null, NeutralEscrowStatus.parse(e.status()), e.client(), e.freelancer(), e.arbiter(), e.amountBaseUnits(), e.maxRevisions(),

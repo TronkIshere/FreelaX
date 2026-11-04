@@ -73,6 +73,20 @@ export function contractChainLabel(contract: { paymentNetworkId?: string | null;
   return null;
 }
 
+const ALERT_TEXT: Record<string, string> = {
+  TOKEN_PAUSED: 'Nhà phát hành token đang tạm dừng mọi chuyển USDC',
+  ESCROW_BLACKLISTED: 'Nhà phát hành token đã chặn địa chỉ hợp đồng ký quỹ',
+  FREELANCER_BLACKLISTED: 'Nhà phát hành token đã chặn địa chỉ ví của Freelancer',
+  CLIENT_BLACKLISTED: 'Nhà phát hành token đã chặn địa chỉ ví của Client',
+};
+
+/** P3-C4 (O-6): a stuck escrow is reported plainly; the text never suggests a workaround, because none exists. */
+export function issuerAlertText(code: string, blocks: readonly string[]): string {
+  const what = ALERT_TEXT[code] ?? 'Nhà phát hành token đang áp dụng một biện pháp kiểm soát';
+  const blocked = blocks.map(b => actionText(b.split(':')[0])).filter((v, i, a) => a.indexOf(v) === i).join(', ');
+  return what + (blocked ? '. Bị chặn: ' + blocked + '.' : '.');
+}
+
 export function shortHash(hash: string | null | undefined): string {
   return hash ? hash.slice(0, 10) + '…' + hash.slice(-6) : '—';
 }

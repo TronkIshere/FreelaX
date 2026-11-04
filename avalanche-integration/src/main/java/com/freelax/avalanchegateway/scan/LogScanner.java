@@ -85,6 +85,16 @@ public class LogScanner {
         return new ScanResult(first, cursor, fetched, accepted, fresh, cursor, chunks);
     }
 
+    /** A6/F6: the head the scanner may read up to right now (LOCAL: latest minus confirmations; Fuji: finalized). */
+    public long safeHeadNow() {
+        return safeHead();
+    }
+
+    /** A6/F6: the persisted cursor, if any pass has stored one. */
+    public java.util.Optional<Long> cursorNow() {
+        return repository.cursor(environment.environment().name(), environment.chainId(), contract);
+    }
+
     private long safeHead() {
         if (environment.environment() == AvalancheEnvironment.LOCAL_SIMULATION) {
             return client.latestBlockNumber() - confirmations;

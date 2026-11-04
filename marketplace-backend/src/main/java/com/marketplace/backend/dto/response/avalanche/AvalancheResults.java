@@ -31,6 +31,13 @@ public final class AvalancheResults {
                               Long nonce, Long blockNumber, String errorClass, String signerRole) {
     }
 
+    public record IssuerAlert(String code, String address, List<String> blocks) {
+    }
+
+    public record IssuerAlerts(String environment, boolean isSimulated, long chainId, String escrowId, String escrowStatus,
+                               List<IssuerAlert> alerts, String note) {
+    }
+
     public record HashStatus(String environment, boolean isSimulated, long chainId, String txHash, String state, Long blockNumber) {
     }
 }

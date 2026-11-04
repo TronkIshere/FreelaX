@@ -62,6 +62,11 @@ public final class Dtos {
     public record WalletSignatureResponse(String address, boolean valid) {
     }
 
+    /** P3-C4: stuck-and-reported escrow (O-6). {@code alerts} is empty when nothing blocks the escrow. */
+    public record IssuerAlertsResponse(String environment, boolean isSimulated, long chainId, String escrowId, String escrowStatus,
+                                       java.util.List<com.freelax.avalanchegateway.contract.IssuerControls.Alert> alerts, String note) {
+    }
+
     @JsonIgnoreProperties(ignoreUnknown = false)
     public record FaucetRequest(String address, String amount) {
     }

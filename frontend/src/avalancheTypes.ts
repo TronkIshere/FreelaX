@@ -49,7 +49,11 @@ export type AvalancheContractView = {
   notice: string | null;
   /** Pending mutual-refund authorization (F13): which party has signed the shared typed data, and until when. */
   mutualRefund?: AvalancheMutualRefundState | null;
+  /** P3-C4: token issuer controls (blacklist, pause) blocking this escrow; stuck and reported, never bypassed (O-6). */
+  issuerAlerts?: AvalancheIssuerAlert[] | null;
 };
+
+export type AvalancheIssuerAlert = { code: string; address: string | null; blocks: string[] };
 
 export type AvalancheMutualRefundState = {
   authorizationDeadline: number;

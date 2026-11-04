@@ -68,6 +68,11 @@ public class AvalancheClient {
         return get("get-transaction", "/transactions/" + operationKey, AvalancheResults.Transaction.class);
     }
 
+    /** P3-C4: issuer controls blocking an escrow (read-only); empty when the escrow does not exist. */
+    public Optional<AvalancheResults.IssuerAlerts> issuerAlerts(String escrowId) {
+        return get("get-issuer-alerts", "/escrows/" + escrowId + "/alerts", AvalancheResults.IssuerAlerts.class);
+    }
+
     /** A8: asks the gateway whether {@code address} signed {@code message} (EIP-191 personal_sign). Verification only. */
     public boolean verifyWalletSignature(String address, String message, String signature) {
         Map<?, ?> body = post("verify-wallet-signature", "/wallet-signatures/verify",

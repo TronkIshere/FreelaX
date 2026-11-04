@@ -35,6 +35,11 @@ public interface BlockchainGateway {
         throw unsupported();
     }
 
+    /** P3-C4: issuer controls blocking an escrow. Networks without such a report return an empty list. */
+    default java.util.List<IssuerAlert> issuerAlerts(EscrowReference escrow) {
+        return java.util.List.of();
+    }
+
     private UnsupportedOperationException unsupported() {
         return new UnsupportedOperationException("not supported on network " + network().id());
     }

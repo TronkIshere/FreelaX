@@ -322,6 +322,34 @@ class AvalancheApiTest {
         exchange(rest, HttpMethod.POST, "/api/v1/avalanche/wallet-signatures/verify", KEY,
                 verifyBody.replace("}", ",\"privateKey\":\"x\"}"), 400);
 
+        // 4d. P3-C4 stuck-and-reported (O-6): issuer controls on MockUSDC are reported, read-only; lifting them restores the
+        //     normal path; nothing is withdrawn, bypassed or rerouted
+        String five = newEscrowId();
+        execute(five, "fund", fundFields(7_000_000L));
+        String alertsPath = "/api/v1/avalanche/escrows/" + five + "/alerts";
+        assertTrue(((List<?>) get(alertsPath).get("alerts")).isEmpty(), "an unblocked escrow has no alerts");
+        String token = STACK.usdc();
+        ContractFixtures.sendFromAdmin(LocalStack.anvilUrl(), token, FunctionEncoder.encode(new Function("setBlacklisted",
+                List.of(new Address(freelancer()), new org.web3j.abi.datatypes.Bool(true)), List.of())));
+        ContractFixtures.sendFromAdmin(LocalStack.anvilUrl(), token, FunctionEncoder.encode(new Function("setPaused",
+                List.of(new org.web3j.abi.datatypes.Bool(true)), List.of())));
+        AnvilRpc.mine(LocalStack.anvilUrl());
+        Map<String, Object> stuck = get(alertsPath);
+        List<?> codes = ((List<?>) stuck.get("alerts")).stream().map(x -> ((Map<?, ?>) x).get("code")).toList();
+        assertEquals(List.of("TOKEN_PAUSED", "FREELANCER_BLACKLISTED"), codes);
+        assertEquals("FUNDED", stuck.get("escrowStatus"));
+        assertTrue(((String) stuck.get("note")).contains("no privileged withdrawal, bypass or rerouting"));
+        ContractFixtures.sendFromAdmin(LocalStack.anvilUrl(), token, FunctionEncoder.encode(new Function("setPaused",
+                List.of(new org.web3j.abi.datatypes.Bool(false)), List.of())));
+        ContractFixtures.sendFromAdmin(LocalStack.anvilUrl(), token, FunctionEncoder.encode(new Function("setBlacklisted",
+                List.of(new Address(freelancer()), new org.web3j.abi.datatypes.Bool(false)), List.of())));
+        AnvilRpc.mine(LocalStack.anvilUrl());
+        assertTrue(((List<?>) get(alertsPath).get("alerts")).isEmpty(), "lifting the controls clears the report");
+        execute(five, "submit", ",\"evidenceHash\":\"" + Hash.sha3String("w5") + "\"");
+        execute(five, "release", ",\"by\":\"client\"");
+        assertEquals("RELEASED", status(five), "the normal release succeeds once the issuer lifts the controls");
+        assertEquals(404, exchange(rest, HttpMethod.GET, "/api/v1/avalanche/escrows/" + newEscrowId() + "/alerts", null, null, 404).get("status"));
+
         // 5. status of a transaction broadcast elsewhere is derived live from the chain
         Map<String, Object> firstTx = get("/api/v1/avalanche/transactions/" + awaitFirstKey());
         assertTrue(firstTx.keySet().containsAll(List.of("environment", "isSimulated", "chainId", "operationKey", "state", "txHash", "nonce",

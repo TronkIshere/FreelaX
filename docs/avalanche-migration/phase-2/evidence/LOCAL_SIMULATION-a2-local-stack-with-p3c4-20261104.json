@@ -1,0 +1,173 @@
+{
+  "label": "LOCAL_SIMULATION",
+  "tool": "phase-2/a2-local-stack",
+  "startedAt": "2026-11-04T05:42:01.535Z",
+  "steps": [
+    {
+      "step": "gateway",
+      "at": "2026-11-04T05:42:01.758Z",
+      "environment": "LOCAL_SIMULATION",
+      "chainId": 31337,
+      "escrow": "0xe7f1725e7734ce288f8367e1bb143e90bb3f0512",
+      "token": "0x5fbdb2315678afecb367f032d93f642f64180aa3",
+      "tokenKind": "MOCK"
+    },
+    {
+      "step": "users registered",
+      "at": "2026-11-04T05:42:02.769Z",
+      "client": "a2-client-85072d89@example.test",
+      "freelancer": "a2-freelancer-b0011fef@example.test"
+    },
+    {
+      "step": "A8 wallet link client",
+      "at": "2026-11-04T05:42:03.637Z",
+      "linked": "0x87ae1ba41b0493d8a7169a235a9a039a2f4587f8",
+      "replayOfUsedChallenge": "REFUSED"
+    },
+    {
+      "step": "A8 wallet link freelancer",
+      "at": "2026-11-04T05:42:03.796Z",
+      "linked": "0xb457d051e71c0a0dcfd48d462e5e0d15054158c4",
+      "replayOfUsedChallenge": "REFUSED"
+    },
+    {
+      "step": "contract 1 on the Avalanche rail",
+      "at": "2026-11-04T05:42:04.110Z",
+      "jobId": "e0cc8d1c-1904-45ac-a8cd-07a422f8ab3b",
+      "contractId": "2671399b-8bf5-4ec5-b4ef-9094f81fb163",
+      "networkId": "avalanche-local",
+      "paymentNetworkIdInJob": null
+    },
+    {
+      "step": "MockUSDC faucet to the client wallet (LOCAL only)",
+      "at": "2026-11-04T05:42:04.230Z",
+      "amountBaseUnits": "20000000"
+    },
+    {
+      "step": "fund applied",
+      "at": "2026-11-04T05:42:07.835Z",
+      "states": [
+        "CONFIRMED",
+        "FINALIZED"
+      ],
+      "chainStatus": "FUNDED",
+      "txHash": "0xff8d462632a09f6a861c30981671ea2dec5195ab5b18a3ccbfc36e612ae6a9b2",
+      "contract": "ACTIVE",
+      "milestone": "FUNDED"
+    },
+    {
+      "step": "work submitted in the marketplace",
+      "at": "2026-11-04T05:42:07.964Z",
+      "submissionStatus": "SUBMITTED",
+      "jobStatus": "IN_PROGRESS"
+    },
+    {
+      "step": "submission anchored on chain",
+      "at": "2026-11-04T05:42:09.804Z",
+      "states": [
+        "CONFIRMED",
+        "FINALIZED"
+      ],
+      "chainStatus": "SUBMITTED",
+      "txHash": "0x271c3c01641b3b1122a8b05156f28882c0a7b8b8a8d0e3eab880b30fbed8dad3"
+    },
+    {
+      "step": "release applied",
+      "at": "2026-11-04T05:42:11.640Z",
+      "states": [
+        "CONFIRMED",
+        "FINALIZED"
+      ],
+      "chainStatus": "RELEASED",
+      "txHash": "0xca85616d5d27c6712752bfcf1c909e1846c4daa27f6f0b192ea5a88fe0df55a4",
+      "contract": "COMPLETED",
+      "milestone": "RELEASED"
+    },
+    {
+      "step": "settlement notification to the freelancer",
+      "at": "2026-11-04T05:42:11.673Z",
+      "types": [
+        "RELEASE_CONFIRMED",
+        "FUNDING_CONFIRMED",
+        "JOB_ASSIGNED"
+      ]
+    },
+    {
+      "step": "contract 2 on the Avalanche rail",
+      "at": "2026-11-04T05:42:11.824Z",
+      "jobId": "eab1866b-a1c2-4360-b884-b890a78dfa61",
+      "contractId": "ac2fca79-45d6-4041-8e07-5fe259b83fb0",
+      "networkId": "avalanche-local",
+      "paymentNetworkIdInJob": null
+    },
+    {
+      "step": "fund applied (contract 2)",
+      "at": "2026-11-04T05:42:14.760Z",
+      "states": [
+        "CONFIRMED",
+        "FINALIZED"
+      ],
+      "chainStatus": "FUNDED",
+      "txHash": "0xaa1e706611ef5ee90112c6eeb783feb2a4b69795a8c0d4b3c183827fcfbd855f"
+    },
+    {
+      "step": "P3-C4 stuck escrow reported",
+      "at": "2026-11-04T05:42:15.658Z",
+      "alerts": [
+        {
+          "code": "CLIENT_BLACKLISTED",
+          "address": "0x87ae1ba41b0493d8a7169a235a9a039a2f4587f8",
+          "blocks": [
+            "mutual-refund",
+            "resolve:refund"
+          ]
+        }
+      ],
+      "chainStatus": "FUNDED"
+    },
+    {
+      "step": "P3-C4 report cleared after the issuer lifted the control",
+      "at": "2026-11-04T05:42:16.583Z",
+      "alerts": []
+    },
+    {
+      "step": "F13 client signed",
+      "at": "2026-11-04T05:42:16.815Z",
+      "mutualRefund": {
+        "authorizationDeadline": 1793771536,
+        "typedDataDigest": "0xe2ac10201bffc49fe005e414464ee30a25b512133d4b5b0d76d0b8364fb4a186",
+        "clientSigned": true,
+        "freelancerSigned": false
+      }
+    },
+    {
+      "step": "F13 freelancer signed",
+      "at": "2026-11-04T05:42:17.080Z",
+      "mutualRefund": {
+        "authorizationDeadline": 1793771536,
+        "typedDataDigest": "0xe2ac10201bffc49fe005e414464ee30a25b512133d4b5b0d76d0b8364fb4a186",
+        "clientSigned": true,
+        "freelancerSigned": true
+      }
+    },
+    {
+      "step": "mutual refund applied",
+      "at": "2026-11-04T05:42:18.661Z",
+      "states": [
+        "CONFIRMED",
+        "FINALIZED"
+      ],
+      "chainStatus": "REFUNDED",
+      "txHash": "0x7dbeb32a7e4f744e4ba979801e5542d4cabf43aec11595bd2813e855c4203e91",
+      "contract": "CANCELLED",
+      "milestone": "REFUNDED"
+    },
+    {
+      "step": "held signatures spent",
+      "at": "2026-11-04T05:42:18.697Z",
+      "mutualRefund": null
+    }
+  ],
+  "result": "PASS",
+  "finishedAt": "2026-11-04T05:42:18.697Z"
+}

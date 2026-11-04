@@ -3,7 +3,7 @@ import { api, ApiError } from './api';
 import { ActionGroup, SectionHeading } from './components';
 import { availableAvalancheActions, deliveryDateSeconds, type AvalancheActionOffer } from './avalancheActions';
 import type { AvalancheActionInput, AvalancheContractView } from './avalancheTypes';
-import { actionText, chainInstant, environmentBadge, environmentBanner, explorerTxUrl, shortHash, stateText, tokenLabel, usdcFromBaseUnits } from './avalanchePresentation';
+import { actionText, chainInstant, environmentBadge, environmentBanner, explorerTxUrl, issuerAlertText, shortHash, stateText, tokenLabel, usdcFromBaseUnits } from './avalanchePresentation';
 import { EvmWallet, WalletError } from './evmWallet';
 import type { ContractSubmission, Dispute, User } from './types';
 
@@ -153,6 +153,11 @@ export function AvalancheEscrowPanel({ contractId, user, isClient, isFreelancer,
       <button className="button" disabled={busy} onClick={() => void enable()}>Dùng ký quỹ Avalanche cho hợp đồng này</button>
     </ActionGroup>}
     {!onAvalanche && !isClient && <p>Hợp đồng này chưa dùng ký quỹ Avalanche.</p>}
+    {onAvalanche && !!view.issuerAlerts?.length && <div className="avalanche-stuck" role="alert" data-testid="issuer-alerts">
+      <strong>Ký quỹ đang bị kẹt (mô phỏng/testnet)</strong>
+      <ul>{view.issuerAlerts.map(a => <li key={a.code + (a.address ?? '')}>{issuerAlertText(a.code, a.blocks)}</li>)}</ul>
+      <small>Không có rút tiền đặc quyền, đường vòng hay chuyển hướng tiền. Ký quỹ giữ nguyên cho đến khi nhà phát hành gỡ biện pháp kiểm soát; khi đó thao tác bình thường sẽ thành công.</small>
+    </div>}
     {onAvalanche && view.chain && <p>Trạng thái trên chuỗi: <strong>{view.chain.status}</strong></p>}
     {onAvalanche && view.chain && <dl className="avalanche-chain-facts" aria-label="Dữ liệu ký quỹ đọc từ chuỗi">
       <div><dt>Số tiền ký quỹ</dt><dd>{usdcFromBaseUnits(view.chain.amountBaseUnits) ?? '—'} {tokenLabel(env?.simulated ?? true)}</dd></div>

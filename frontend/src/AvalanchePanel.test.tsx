@@ -215,6 +215,25 @@ describe('AvalancheEscrowPanel', () => {
     expect(facts).toContain('1/2');
   });
 
+  it('P3-C4: reports a stuck escrow plainly, names the blocked paths and offers no workaround', async () => {
+    vi.spyOn(api, 'avalancheStatus').mockResolvedValue(view({ issuerAlerts: [
+      { code: 'FREELANCER_BLACKLISTED', address: '0x' + 'f'.repeat(40), blocks: ['release', 'resolve:release'] },
+      { code: 'TOKEN_PAUSED', address: null, blocks: ['release', 'resolve', 'mutual-refund'] }] }));
+    await mount();
+    const box = host.querySelector('[data-testid="issuer-alerts"]')!;
+    expect(box.getAttribute('role')).toBe('alert');
+    expect(box.textContent).toContain('Freelancer');
+    expect(box.textContent).toContain('Giải ngân');
+    expect(box.textContent).toContain('Không có rút tiền đặc quyền');
+    expect(box.querySelectorAll('button')).toHaveLength(0);
+  });
+
+  it('shows no stuck-escrow box when nothing blocks the escrow', async () => {
+    vi.spyOn(api, 'avalancheStatus').mockResolvedValue(view({ issuerAlerts: [] }));
+    await mount();
+    expect(host.querySelector('[data-testid="issuer-alerts"]')).toBeNull();
+  });
+
   it('renders nothing for the arbiter on a contract that is not on the Avalanche rail', async () => {
     vi.spyOn(api, 'avalancheStatus').mockResolvedValue(view({ networkId: null }));
     await act(async () => root.render(<AvalancheEscrowPanel contractId="c" user={user} isClient={false} isFreelancer={false} isArbiter />));

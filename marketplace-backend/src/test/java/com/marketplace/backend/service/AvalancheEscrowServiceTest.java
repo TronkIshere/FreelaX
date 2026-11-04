@@ -784,6 +784,29 @@ class AvalancheEscrowServiceTest {
         assertEquals(com.marketplace.backend.entity.JobStatus.CANCELLED, job.getStatus());
     }
 
+    // ---- P3-C4 stuck-and-reported escrow -------------------------------------------------------------------------------
+
+    @Test
+    void issuerAlertsAreShownForAnExistingEscrowAndAReportFailureNeverBreaksTheView() {
+        when(gateway.escrowSnapshot(any())).thenReturn(snapshot(NeutralEscrowStatus.FUNDED, "5000000", CLIENT_WALLET));
+        List<com.marketplace.backend.blockchain.IssuerAlert> alerts = List.of(
+                new com.marketplace.backend.blockchain.IssuerAlert("FREELANCER_BLACKLISTED", FREELANCER_WALLET, List.of("release")));
+        when(gateway.issuerAlerts(any())).thenReturn(alerts);
+        assertEquals(alerts, service.status(clientId, false, contract.getId()).issuerAlerts());
+
+        when(gateway.issuerAlerts(any())).thenThrow(new AvalancheGatewayException("down", false, null, null));
+        AvalancheEscrowService.ContractView v = service.status(clientId, false, contract.getId());
+        assertNull(v.issuerAlerts(), "unknown, not 'nothing blocks'");
+        assertTrue(v.avalancheEnabled());
+    }
+
+    @Test
+    void noEscrowYetMeansNoAlertsAndNoReportCall() {
+        when(gateway.escrowSnapshot(any())).thenReturn(null);
+        assertTrue(service.status(clientId, false, contract.getId()).issuerAlerts().isEmpty());
+        verify(gateway, never()).issuerAlerts(any());
+    }
+
     @Test
     void onlyParticipantsAndAdministratorsSeeTheStatus() {
         assertRefused(() -> service.status(strangerId, false, contract.getId()));

@@ -89,6 +89,15 @@ public class EscrowActionService {
         return new EscrowReader(client, deployment().manifest().escrow());
     }
 
+    /** P3-C4: issuer controls (blacklist, pause) that block an open escrow. Read-only; 404 for an escrow that does not exist. */
+    public List<com.freelax.avalanchegateway.contract.IssuerControls.Alert> issuerAlerts(String rawEscrowId) {
+        String id = requireEscrowId(rawEscrowId);
+        EscrowState s = reader().read(id);
+        requireExists(s);
+        com.freelax.avalanchegateway.contract.DeploymentManifest m = deployment().manifest();
+        return new com.freelax.avalanchegateway.contract.IssuerControls(client, m.token(), m.tokenKind()).assess(s, m.escrow());
+    }
+
     public ChainClient chain() {
         return client;
     }

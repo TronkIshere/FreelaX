@@ -106,10 +106,16 @@ public class AvalancheEscrowService {
     }
 
     public record ContractView(String networkId, boolean avalancheEnabled, EnvironmentInfo environment, String escrowId, EscrowSnapshot chain,
-                               List<AvalancheChainTransaction> transactions, String notice, MutualRefundState mutualRefund) {
+                               List<AvalancheChainTransaction> transactions, String notice, MutualRefundState mutualRefund,
+                               List<com.marketplace.backend.blockchain.IssuerAlert> issuerAlerts) {
         public ContractView(String networkId, boolean avalancheEnabled, EnvironmentInfo environment, String escrowId, EscrowSnapshot chain,
                             List<AvalancheChainTransaction> transactions, String notice) {
-            this(networkId, avalancheEnabled, environment, escrowId, chain, transactions, notice, null);
+            this(networkId, avalancheEnabled, environment, escrowId, chain, transactions, notice, null, null);
+        }
+
+        public ContractView(String networkId, boolean avalancheEnabled, EnvironmentInfo environment, String escrowId, EscrowSnapshot chain,
+                            List<AvalancheChainTransaction> transactions, String notice, MutualRefundState mutualRefund) {
+            this(networkId, avalancheEnabled, environment, escrowId, chain, transactions, notice, mutualRefund, null);
         }
     }
 
@@ -176,7 +182,7 @@ public class AvalancheEscrowService {
         return new ContractView(c.getPaymentNetworkId(), true, environment, escrowId, snapshot,
                 chainTransactions.findByContractIdOrderByIdAsc(c.getId()),
                 "Demonstration only: " + environment.environment() + " simulated escrow, testnet USDC with no real-world value.",
-                mutualRefundState(c.getId()));
+                mutualRefundState(c.getId()), snapshot == null ? List.of() : issuerAlerts(escrowId));
     }
 
     private Milestone milestone(UUID contractId) {
@@ -476,6 +482,15 @@ public class AvalancheEscrowService {
         pending.setUpdatedAt(now);
         pendingAuthorizations.saveAndFlush(pending);
         return view(userId, false, c);
+    }
+
+    /** P3-C4: a failed report never breaks the view; null means "not known right now", an empty list means "nothing blocks". */
+    private List<com.marketplace.backend.blockchain.IssuerAlert> issuerAlerts(String escrowId) {
+        try {
+            return gateway().issuerAlerts(new EscrowReference(escrowId));
+        } catch (RuntimeException e) {
+            return null;
+        }
     }
 
     private MutualRefundState mutualRefundState(UUID contractId) {

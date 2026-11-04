@@ -177,6 +177,20 @@ async function main() {
   await walletAction(client, clientWallet, c2.contractId, 'fund');
   record('fund applied (contract 2)', await awaitApplied(client, c2.contractId, 'fund'));
 
+  // P3-C4 on the live stack: an issuer blacklist on the client is reported (refund blocked), then lifted; nothing is bypassed
+  const ANVIL_ACCOUNT_0 = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266';
+  const setBlacklisted = value => cast(['send', '--unlocked', '--from', ANVIL_ACCOUNT_0, ...rpc, config.token,
+    'setBlacklisted(address,bool)', clientWallet.address, String(value)]);
+  setBlacklisted(true);
+  const stuck = await market(`/contracts/${c2.contractId}/avalanche`, { token: client.token });
+  const stuckCodes = (stuck.issuerAlerts ?? []).map(a => a.code);
+  if (!stuckCodes.includes('CLIENT_BLACKLISTED')) throw new Error('the issuer blacklist was not reported: ' + JSON.stringify(stuck.issuerAlerts));
+  record('P3-C4 stuck escrow reported', { alerts: stuck.issuerAlerts, chainStatus: stuck.chain?.status ?? null });
+  setBlacklisted(false);
+  const clear = await market(`/contracts/${c2.contractId}/avalanche`, { token: client.token });
+  if ((clear.issuerAlerts ?? []).length !== 0) throw new Error('the report did not clear after the control was lifted');
+  record('P3-C4 report cleared after the issuer lifted the control', { alerts: clear.issuerAlerts });
+
   const first = await market(`/contracts/${c2.contractId}/avalanche/actions/mutual-refund/prepare`, { method: 'POST', token: client.token, body: {} });
   const clientSig = cast(['wallet', 'sign', '--private-key', clientWallet.key, '--data', first.typedData]);
   let view = await market(`/contracts/${c2.contractId}/avalanche/mutual-refund/signatures`, { method: 'POST', token: client.token,

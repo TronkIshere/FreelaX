@@ -86,6 +86,15 @@ public class AvalancheController {
         return new FaucetResponse(envName(), true, request.address(), request.amount(), toResponse(record));
     }
 
+    /** P3-C4: which issuer controls block this escrow; read-only, never a recovery path (O-6). */
+    @GetMapping("/escrows/{escrowId}/alerts")
+    public Dtos.IssuerAlertsResponse alerts(@PathVariable("escrowId") String escrowId) {
+        var alerts = service.issuerAlerts(escrowId);
+        String id = EscrowActionService.requireEscrowId(escrowId);
+        return new Dtos.IssuerAlertsResponse(envName(), true, service.environment().chainId(), id,
+                service.reader().read(id).statusName().toUpperCase(), alerts, com.freelax.avalanchegateway.contract.IssuerControls.NOTE);
+    }
+
     @GetMapping("/escrows/{escrowId}")
     public EscrowResponse escrow(@PathVariable("escrowId") String escrowId) {
         String id = EscrowActionService.requireEscrowId(escrowId);
