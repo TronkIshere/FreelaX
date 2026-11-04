@@ -1,0 +1,79 @@
+# FreelaX CI per docs/avalanche-migration/ci-proposal.md (R10, engineering decided under delegated authority 2026-11-04).
+# Legacy modules on JDK 17, the Avalanche gateway on JDK 21; no global Java baseline change. No Fuji, no Mainnet, no secrets:
+# the Fuji fork suite skips without FUJI_RPC, which CI never sets. Written locally; it runs only once the branch is pushed.
+name: avalanche-ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  legacy-jdk17:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17', cache: maven }
+      # JDK 17 activates only the legacy reactor (Avalanche is excluded by its JDK 21 profile): Solana regression included
+      - run: mvn -B -ntp test
+
+  avalanche-jdk21:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '21', cache: maven }
+      # Testcontainers (Anvil 1.8.7, MySQL 8.4) use the runner's Docker
+      - run: mvn -B -ntp -pl avalanche-integration -am test
+
+  contracts:
+    runs-on: ubuntu-latest
+    container: ghcr.io/foundry-rs/foundry:v1.8.7
+    defaults:
+      run:
+        working-directory: avalanche-contracts
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash scripts/install-deps.sh   # OpenZeppelin v5.7.0, forge-std dc647cc (pinned, F12)
+      - run: forge test
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '24.19.0', cache: npm, cache-dependency-path: frontend/package-lock.json }
+      - run: npm ci
+      - run: npx tsc -b
+      - run: npx vitest run
+
+  phase1-tooling:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '24.19.0' }
+      - run: node --test broadcast_signed.test.mjs check_evidence.test.mjs
+        working-directory: docs/avalanche-migration/phase-1/prototypes/human-signed
+
+  hygiene:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: No private keys or mnemonics in tracked files
+        run: |
+          # check_evidence.test.mjs carries a deliberate fake PEM header as a negative test case
+          if git grep -nE 'BEGIN [A-Z ]*PRIVATE KEY' -- . ':!docs/avalanche-migration/phase-1/prototypes/human-signed/check_evidence.test.mjs'; then
+            echo "private key material found"; exit 1
+          fi
+      - name: Mainnet chain id only in deny-lists and their tests
+        run: |
+          allowed='^(avalanche-contracts/script/Deploy\.s\.sol|avalanche-contracts/test/Deploy\.t\.sol|avalanche-integration/src/main/java/com/freelax/avalanchegateway/env/EnvironmentGuard\.java|avalanche-integration/src/test/.*|frontend/src/evmWallet\.test\.ts|docs/.*)$'
+          bad=$(git grep -l '43114' | grep -vE "$allowed" || true)
+          if [ -n "$bad" ]; then echo "unexpected Mainnet chain id in: $bad"; exit 1; fi

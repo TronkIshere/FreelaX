@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Installs the pinned Solidity dependencies into lib/ (ignored by git). Versions are the ones validated in Phase 1:
-# OpenZeppelin Contracts 5.7.0. Prefer copying the already-vendored Phase 1 copy; otherwise fetch the pinned tag.
+# OpenZeppelin Contracts 5.7.0 and forge-std dc647cc. Prefer copying the already-vendored Phase 1 copy; otherwise fetch the pinned tag.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 PROTO="../docs/avalanche-migration/phase-1/prototypes/solidity-foundry/lib"
@@ -9,5 +9,10 @@ if [ -d "$PROTO/openzeppelin-contracts" ] && [ -d "$PROTO/forge-std" ]; then
 else
   mkdir -p lib
   git clone --depth 1 --branch v5.7.0 https://github.com/OpenZeppelin/openzeppelin-contracts.git lib/openzeppelin-contracts
-  git clone --depth 1 https://github.com/foundry-rs/forge-std.git lib/forge-std
+  # forge-std pinned to the commit of the 2026-11-03 baseline (register F12; pin decided with R10 on 2026-11-04)
+  FORGE_STD_COMMIT=dc647cc030d9d65910d8f1172a0cde48d7106e32
+  git init -q lib/forge-std
+  git -C lib/forge-std fetch -q --depth 1 https://github.com/foundry-rs/forge-std.git "$FORGE_STD_COMMIT"
+  git -C lib/forge-std checkout -q FETCH_HEAD
+  test "$(git -C lib/forge-std rev-parse HEAD)" = "$FORGE_STD_COMMIT"
 fi
