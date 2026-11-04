@@ -388,3 +388,12 @@ original reasoning. Do not add routine progress entries.
   code); a line-continuation slip in `run.sh` (cosmetic).
 - **Result:** A4 payout part IMPLEMENTED (simulation, default off); real partner NOT IMPLEMENTED (external); fee and tax NOT
   DEFINED (owner).
+
+### L-021: Push to origin on owner instruction (2026-11-04)
+- **Decision:** push branch `avalanche/phase1-closure-phase3-proposal` (all local commits after `1ef0af7`) to `origin` as a new
+  remote branch. `master` unchanged, no merge, no PR.
+- **Authority:** owner instruction in the session, recorded in PROJECT_STATUS "Owner push decision (2026-11-04)"; covers this
+  push only.
+- **Checks before the push:** working tree clean; audit of `origin/master..HEAD` found no secrets, no Mainnet configuration,
+  no change to `avalanche-contracts/src` or the Solana and legacy modules.
+- **Effect:** the CI workflow runs on GitHub for the first time (D1); result to be recorded when known.

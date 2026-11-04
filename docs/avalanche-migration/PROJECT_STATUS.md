@@ -313,6 +313,12 @@ partner and external authorization; fee and tax need owner decisions; adopting t
    Avalanche USDC support and its authorization (before any real payout).
 3. Engineering: nothing independently implementable is left; re-run the baselines after any owner decision.
 
+## Owner push decision (2026-11-04)
+The owner instructed in the session (2026-11-04, "tạm thời push lượng commit lên repo trước đi bạn"): push the local commits to
+the repository. Applied as: push of branch `avalanche/phase1-closure-phase3-proposal` to `origin` (new remote branch); `master`
+is not changed and nothing is merged. This authorizes this push only; later pushes need their own instruction (CLAUDE.md
+section 6). Pushing triggers `.github/workflows/avalanche-ci.yml` (D1) on GitHub for the first time; its result is not yet known.
+
 ## Change note (2026-11-04, third update)
 Lead instruction "R6, R12 and Avalanche payout" (delegated engineering). R6 recorded as ENGINEERING EXECUTION AUTHORIZED UNDER
 DELEGATED AUTHORITY — OWNER APPROVAL PENDING (not owner approved). R12: two-party `mutualSettleDispute` built and tested as an
