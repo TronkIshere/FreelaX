@@ -89,6 +89,7 @@ public class JobServiceImpl implements JobService {
     AcceptanceCriterionRepository acceptanceCriterionRepository;
     DeliverableRequirementRepository deliverableRequirementRepository;
     PaymentFlowService paymentFlowService;
+    com.marketplace.backend.service.PrimaryRailPolicy primaryRailPolicy;
 
     @Override
     @Transactional
@@ -226,6 +227,7 @@ public class JobServiceImpl implements JobService {
             contract.setAcceptedTermsFingerprint(request.getAcceptedTermsFingerprint());
             contract.setClientTermsAcceptedAt(Instant.now());
         }
+        primaryRailPolicy.applyToNewContract(contract); // P3-C2: new contracts only; SOLANA (default) changes nothing
         workContractRepository.save(contract);
 
         Milestone milestone = new Milestone();

@@ -174,3 +174,13 @@ status: PARTIAL (unchanged).** Nothing was waived, no Fuji transaction was signe
 | E5 | Local handling re-run with the gateway suite (`RetryAfterInterceptorTest`, S5 429 handling, combined scenario of register A3). No threshold measured or inferred | **INCONCLUSIVE** (threshold); faucet part BLOCKED on E1 |
 | E6 | Local conservative handling re-run (null lookups never become FAILED or REPLACED, timeout is UNKNOWN, restart reconciliation) in the combined scenario; Fuji observations unchanged | **INCONCLUSIVE** (needs E1 data, R4) |
 | E7 | No change; no verification is claimed without a deployment (B2) | **PARTIAL** |
+
+### Update: engineering decisions under delegated authority (2026-11-04, second update)
+The project Lead delegated engineering decisions to the engineering agent (classification in PROJECT_STATUS). Applied here,
+**none of them is a waiver and none was personally approved by the Lead or the owner:**
+- **E4 → DOCUMENTED LIMITATION** (R3 option (a)): no official Circle or Ava Labs source names the USDC.e address; the code's
+  safety does not depend on one. The deny-list entry stays.
+- **E7 explorer verification → NOT APPLICABLE until a Fuji deployment exists** (R5 option (a); optional per backlog row 19).
+  ACP-283 and FiatToken parts keep their 2026-11-03 evidence.
+- **Unchanged and external:** E1 (needs R1 and the human operator, X1), E2 (needs the DB operator, X2), E5 and E6 (need the E1
+  run; R4), E3 (owner deferred O-8). **Phase 1 stays PARTIAL** because E1 and E2 cannot be produced by engineering.

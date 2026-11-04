@@ -76,12 +76,15 @@ Execution history and the resume point: [AUTONOMOUS_EXECUTION_LOG.md](AUTONOMOUS
 - **Phase 2: IMPLEMENTATION COMPLETE WITH EXTERNAL VALIDATION PENDING** (not "accepted", not "fully validated"). Authorized
   remaining work: approved residuals **A1** (frontend action screens), **A3** (combined fault injection at marketplace level),
   **A7** (Solana-literal clean-up in MISA/tax flows and explorer labels), **A6** (optional).
-  Since 2026-11-04: A1 PARTIAL (remaining: wallet mutual refund, F13; legacy labelling); the gateway half of A3 is done; the
-  marketplace half of A3 and all of A7 need Java 17 changes and wait for **R11**. **A8** waits for R9 (wallet
+  Since 2026-11-04 (second update): A1, A3, A7, A8, F12, F13 IMPLEMENTED and tested; A5 closed (D-C); remaining Phase 2:
+  A2 (single-stack run, F3), A6 (optional). **A8** waits for R9 (wallet
   linking design); **A2** waits for A8 and F3; **A5** waits for C4. A4 is no longer Phase 2.
-- **Phase 3: PROPOSED, NOT APPROVED** ([phase-3/00-phase-3-proposal.md](phase-3/00-phase-3-proposal.md), R6/C9 open).
-  **Never mark R6 approved and never start Phase 3 implementation** (P3-M1 to M5, including A4 and the O-2 prototype) until
-  PROJECT_STATUS records the owner's approval. Editing the proposal to reflect recorded decisions is allowed.
+- **Phase 3: PROPOSED, NOT OWNER APPROVED** ([phase-3/00-phase-3-proposal.md](phase-3/00-phase-3-proposal.md), R6/C9 open).
+  **Never mark R6 approved.** Since the Lead's delegation of 2026-11-04, engineering may implement Phase 3 items that are
+  reversible, simulation-only, default-off (or default to current behaviour) and covered by existing owner decisions; each is
+  recorded as ENGINEERING DECIDED UNDER DELEGATED AUTHORITY (PROJECT_STATUS classification table). Done so far: settlement
+  notifications (flag, default off), primary-rail policy for new contracts (default SOLANA). Not covered by the delegation:
+  anything irreversible, custody-changing, Fuji signing, real financial settlement.
 - Naming trap: "Phase 3" in older documents (README D2, `04`, `07`, Phase 1 reports) means the Phase 0 roadmap's Solidity
   phase, executed inside P2-M5 to M7. The repository milestone names in [phase-2/README.md](phase-2/README.md) win over any
   differently numbered prompt.
@@ -98,18 +101,19 @@ Never, without a new explicit owner decision recorded in PROJECT_STATUS.md:
 - change, reinterpret or pre-empt an owner decision, mark anything WAIVED or APPROVED, or fabricate operator evidence
   (X1 to X3), DB counts, Fuji results, faucet limits or explorer data;
 - perform global installs or toolchain upgrades on the machine;
-- modify Java 17 legacy modules (`marketplace-backend`, `misa-backend`, `payment-backend`, `solana-integration`), including
-  their tests (project lead instruction 2026-11-04), until the owner answers **R11** (and, for Phase 3, D-A of the
-  [R6 package](phase-3/01-r6-approval-package.md)). The frontend and the Java 21 `avalanche-integration` module are not affected.
+- change Java 17 modules beyond **additive** changes: R11 (engineering decided under the Lead's delegation, 2026-11-04)
+  allows additive code, migrations and tests in `marketplace-backend` (and `misa-backend` only if needed); the Java level,
+  Solana behaviour, legacy defaults and existing persisted values stay unchanged, and the full legacy JDK 17 reactor must pass.
 Every new configuration flag defaults to current behaviour. The application must keep failing closed on an unsupported
 network, Mainnet endpoint or production-looking credential.
 
 ## 7. Testing and evidence requirements
 - Every code change: run the affected module's suite and record counts (run / pass / skipped) in the log and in the
   relevant report. Report environment incompatibilities separately from code failures.
-- Baselines to keep green (2026-11-03): reactor payment 72, marketplace 381, misa 20, solana-integration 10,
-  avalanche-integration 104 (3 optional skipped); Foundry 55 pass, 1 skipped; frontend 28/28 files, 841 tests. A drop is a
-  regression unless explained.
+- Baselines to keep green (2026-11-04): legacy JDK 17 reactor (payment 72, marketplace 403+ after the primary-rail tests,
+  misa 20, solana-integration 10; see PROJECT_STATUS for the last measured numbers); avalanche-integration 110 (3 optional
+  skipped); Foundry 55 pass, 1 skipped; frontend 29 files, 865 tests; human-signed tooling 11. A drop is a regression unless
+  explained. The opt-in MySQL ITs (`*MySqlIT`, `-Dfreelax.mysql.url`) run against a throwaway local MySQL only.
 - This machine (B10): JDK 25 only; Maven 3.10.0 in `~/.m2/wrapper/dists/apache-maven-3.10.0/*/bin` (not on `PATH`); JDK 23+
   needs `-Dmaven.compiler.proc=full` for `payment-backend`. Use pinned images for real runtimes: `maven:3.9-eclipse-temurin-17`
   (legacy reactor), `maven:3.9-eclipse-temurin-21` (`-pl avalanche-integration -am test`, Testcontainers via the Docker

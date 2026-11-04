@@ -5,23 +5,24 @@ records *what was done, why, and on what authority*, and the resume point. One e
 new evidence changes an entry's status, edit its **Status** line and add a dated "Update" line under it; do not delete the
 original reasoning. Do not add routine progress entries.
 
-## Current state (updated 2026-11-04, after L-010)
-- **Branch:** `avalanche/phase1-closure-phase3-proposal`. `origin/master` = `1ef0af7`. All later commits are **local and
-  unpushed** (see `git log --oneline origin/master..HEAD`). Push is **not authorized**.
-- **Phase 1:** PARTIAL. E1 BLOCKED (R1/C1, B1; keyless tooling and evidence checker ready); E2 BLOCKED (DB operator;
-  development DB only; queries validated on an empty local schema); E3 DEFERRED; E4 OPEN (R3); E5, E6 INCONCLUSIVE (R4); E7
-  PARTIAL (R5). Nothing waived.
-- **Phase 2:** IMPLEMENTATION COMPLETE WITH EXTERNAL VALIDATION PENDING. A1 PARTIAL (wallet mutual refund blocked by F13,
-  legacy labelling open); A3 PARTIAL (gateway half done; marketplace half waits for R11); A7 BLOCKED (R11); A8 waits for R9;
-  A2 for A8 and F3; A5 for C4; A4 is Phase 3 (R8); A6 optional.
-- **Phase 3:** PROPOSED, **NOT APPROVED** (R6). Approval package ready: `phase-3/01-r6-approval-package.md` (D-A to D-H).
-- **Rule added 2026-11-04:** no changes to Java 17 legacy modules (including their tests) until R11.
-- **Baselines (2026-11-04):** frontend 29 files / 859 tests; gateway JDK 21 105 run, 0 failures, 3 optional skipped; human-signed tooling 11 tests. Unchanged since 2026-11-03: legacy reactor payment 72, marketplace 381,
-  misa 20, solana-integration 10; Foundry 55 pass, 1 skipped.
-- **Waiting on owner:** R1, R2 remainder (DB operator), R3 to R6 (with D-A to D-H), R8 remainder, R9, R10, R11. **Operators:**
-  X1 to X3.
-- **Recommended next action:** owner answers R11 and R6 (with D-A, D-B). Engineering, no gate: if R11 (a) or (b), the
-  marketplace half of A3; if R9, A8 then A2. Nothing else is authorized and unblocked.
+## Current state (updated 2026-11-04, after L-015)
+- **Branch:** `avalanche/phase1-closure-phase3-proposal`; everything after `origin/master` (`1ef0af7`) is **local and unpushed**.
+  Push not authorized.
+- **Decision regime:** the Lead delegated engineering decisions (2026-11-04). PROJECT_STATUS "Delegated decision classification"
+  says which items are OWNER APPROVED, ENGINEERING DECIDED UNDER DELEGATED AUTHORITY, or EXTERNAL. R6 is **not owner approved**.
+- **Phase 1:** PARTIAL. E1 BLOCKED (R1, X1; tooling and evidence checker ready); E2 BLOCKED (DB operator, X2; queries
+  validated); E3 DEFERRED (owner); E4 DOCUMENTED LIMITATION; E5, E6 INCONCLUSIVE (need E1); E7 PARTIAL (explorer verification
+  NOT APPLICABLE until B2).
+- **Phase 2:** A1, A3, A7, A8, F12, F13 IMPLEMENTED; A5 closed (D-C); A4 moved to Phase 3; **open: A2** (single-stack LOCAL run;
+  F3), A6 (optional); B7 browser wallet check external.
+- **Phase 3 (delegated, reversible):** settlement notifications (default off), primary-rail policy (default SOLANA), CI
+  workflow (not executed). Not started: fee/tax/payout wiring (D-B (b)), P3-C4 stuck-escrow reporting, drills, LOCAL clone
+  measurement. Fuji demonstration external.
+- **Last measured:** gateway JDK 21 110 run, 0 failures, 3 skipped; frontend 29 files / 865; human-signed 11; V7 MySQL IT 2/2;
+  marketplace 403 (before primary rail), then primary-rail classes 66/66 after fixes. **Pending:** one uninterrupted full JDK 17
+  reactor pass after the last fix (the run was stopped for low host memory, L-015).
+- **Next executable task:** (1) full JDK 17 reactor when memory allows; (2) A2 single-stack LOCAL run script; (3) P3-C4
+  stuck-escrow reporting in the gateway; (4) A6 scanner metrics; (5) D-B fee/tax/payout analysis.
 
 ## Entries
 
@@ -194,3 +195,87 @@ original reasoning. Do not add routine progress entries.
 - **Status:** A3 PARTIAL (gateway half DONE); E1 BLOCKED (tooling complete); E2 BLOCKED (queries validated); E3 DEFERRED;
   E4 OPEN; E5, E6 INCONCLUSIVE; E7 PARTIAL. Phase 1 PARTIAL.
 - **Remaining dependencies:** R11 (marketplace half of A3); R1/X1 (E1); DB operator/X2 (E2); R3, R4, R5.
+
+### L-011: Delegated decisions; A7 and A3 marketplace half (2026-11-04, second update)
+- **Decision:** classified every open decision (PROJECT_STATUS "Delegated decision classification"); R11/D-A, D-D, R9/D-E, D-H,
+  C11, D-C, R10, R3, R5 ENGINEERING DECIDED; R1, R2 remainder, R4, C10, C8 EXTERNAL; O-8, O-13 kept OWNER DEFERRED; R6 **not
+  owner approved**. Implemented A7 (rail-aware MISA label, additive `paymentNetworkId` in the contract summary, chain label in
+  finance rows) and the marketplace half of A3.
+- **Authority:** Lead instruction 2026-11-04 (delegation of engineering decisions); it superseded the same Lead's earlier
+  "no Java 17 changes" rule (L-008), now resolved as R11 option (a).
+- **Rationale:** A7: the label is derived from the V6 network id, so every legacy row and every existing caller keeps
+  `solana`; misa-backend needs no change because it stores the label it receives. A3: the marketplace scenario chains the faults
+  the per-fault tests cover one at a time, on the same contract, through `AvalancheEscrowService`.
+- **Alternatives:** changing misa-backend's default label (rejected: would change old callers); a rail enum on the DTO
+  (rejected: the network id already exists and is additive); a live single-stack fault run (that is A2, not done).
+- **Risks:** a contract whose network id starts with "avalanche" but is not the configured network would be labelled
+  avalanche (acceptable: such contracts can only come from the Avalanche rail); the refresh throws if the chain read fails after
+  FINALIZED (pinned by the test; transactional rollback, retried next refresh).
+- **Files:** `TaxRecordBlockchain.java` (new), `SettlementTaxService`, `TaxCertificateServiceImpl`, `ContractSummaryResponse`,
+  `JobServiceImpl`, tests; `Finance.tsx`, `types.ts`, `avalanchePresentation.ts`. Commit `355e019`.
+- **Tests:** JDK 17 legacy reactor: payment 72, marketplace 385, misa 20, solana-integration 10, all pass (before: 381).
+- **Result:** A7 IMPLEMENTED; A3 IMPLEMENTED (with L-009).
+
+### L-012: A8 EVM wallet linking and F13 wallet mutual refund, end to end (2026-11-04)
+- **Decision:** A8: EIP-191 personal_sign challenge, verified by the Java 21 gateway, stored in a new `evm_wallets` table.
+  F13: gateway reuses a supplied deadline bounded by the TTL; marketplace holds the first signature in
+  `avalanche_pending_authorizations`; both tables in V7.
+- **Authority:** delegated (R9/D-E, D-D); design as planned in `phase-2/04` section 3 and the R6 package section 2.5.
+- **Rationale:** verifying secp256k1 in the gateway avoids new crypto dependencies in a Java 17 module; a separate EVM table
+  keeps every Solana service that reads a user's first `wallets` row unchanged; the challenge is consumed even when rejected
+  (`noRollbackFor`), so a challenge cannot be retried with other signatures; the marketplace re-derives the typed-data digest
+  from the gateway for the signed deadline, so a party can only sign what the escrow expects; each party writes only its own
+  column; a new deadline resets the pair.
+- **Alternatives:** EVM rows in `wallets` (rejected: could change which wallet Solana flows pick); web3j in the marketplace
+  (rejected: dependency risk on Java 17); refusing a new deadline while a pair is pending (rejected: could deadlock after expiry).
+- **Risks:** the marketplace does not itself verify the typed-data signature (the escrow contract does; a bad signature only
+  makes the refund revert); linking needs the gateway up (an outage rolls back and is retryable); no real-browser check (B7).
+- **Files:** gateway `WalletSignatureVerifier`, `AvalancheController`, `Dtos`, `EscrowActionService` (+tests); marketplace V7,
+  `EvmWallet`, `AvalanchePendingAuthorization`, repositories, `EvmWalletLinkService`, `EvmWalletLinkController`,
+  `AvalancheClient`, `AvalancheEscrowService`, `AvalancheEscrowController` (+tests, `AvalancheV7MySqlIT`); frontend panel,
+  `evmWallet.ts` (`personalSign`), `api.ts`, types (+tests). Commits `2b857ca`, `4d4da3a`.
+- **Tests:** gateway JDK 21 110 run, 0 failures, 3 optional skipped (F13 Anvil regression mines blocks between signatures);
+  marketplace JDK 17 400 pass; V7 on MySQL 8.4 (Flyway V1 to V7, Hibernate validate) IT 2/2; frontend 865 pass. Two compile
+  errors in the first gateway test runs (a newline in a string literal written by a shell heredoc; an undeclared checked
+  exception) were fixed in the test code only.
+- **Result:** A8 IMPLEMENTED; F13 FIXED; A1 complete apart from B7.
+
+### L-013: Phase 3 under delegated authority: settlement notifications and primary rail (2026-11-04)
+- **Decision:** D-B option (b) (existing stages and rules, flag default off); built only the notification part. P3-C2:
+  `PrimaryRailPolicy` (`marketplace.primary-rail`, default SOLANA) applied at the single contract-creation point.
+- **Authority:** delegated; reversible, simulation-only, default to current behaviour; R6 itself still not owner approved.
+- **Rationale:** notifications reuse existing types (no enum or schema change) and fire exactly once when the business effect
+  is applied; the primary rail affects new contracts only and fails closed (unknown value stops startup; AVALANCHE without the
+  gateway refuses creation, no silent fallback).
+- **Alternatives:** new notification types (rejected: needs a migration for nothing); applying the rail at enable time
+  (rejected: that is the existing opt-in); a fallback to Solana when the gateway is down (rejected by the scope rules).
+- **Risks:** fee, tax and payout are not wired (A4 remains PARTIAL); with AVALANCHE as primary and a unified-flow job, the
+  existing unified Solana draft is still created (same as today's opt-in path).
+- **Files:** `AvalancheGatewayProperties`, `application.yml`, `AvalancheEscrowService` (+3 tests); `PrimaryRailPolicy` (new),
+  `JobServiceImpl`, `PrimaryRailPolicyTest`, `JobAccessAndDiscoveryServiceImplTest`. Commit `a81bced` (notifications); primary
+  rail in the commit after the final reactor run.
+- **Tests:** marketplace 403 pass after notifications; primary rail: see L-015 (not a clean single full-reactor pass yet).
+- **Result:** notifications IMPLEMENTED (default off); primary rail IMPLEMENTED (default SOLANA).
+
+### L-014: CI workflow and forge-std pin (2026-11-04)
+- **Decision:** R10 accepted as proposed; workflow written locally; F12 pinned.
+- **Authority:** delegated (R10). Nothing pushed, so no runner executed the workflow.
+- **Rationale / alternatives:** pin by full hash fetched with `git fetch <sha>` (a tag does not exist for that commit); the
+  Slither job of the proposal was left out of the first workflow (needs solc-select setup; recorded as next CI step).
+- **Risks:** the workflow is unexecuted; the first real run may need small fixes.
+- **Files:** `.github/workflows/avalanche-ci.yml`, `avalanche-contracts/scripts/install-deps.sh`. Commit `61cb35a`.
+- **Tests:** both hygiene checks pass locally; the pinned fetch resolved `dc647cc030d9d65910d8f1172a0cde48d7106e32` in the
+  Foundry image.
+- **Result:** D1 WORKFLOW ADDED (not executed); F12 FIXED.
+
+### L-015: Final regression state and an interrupted run (2026-11-04)
+- **What happened:** the first full JDK 17 reactor run after the primary-rail change failed with 49 errors in marketplace (408
+  run): 48 because the `ContractCancellationServiceTest` `@DataJpaTest` slice imports `JobServiceImpl` explicitly and lacked the
+  new `PrimaryRailPolicy` (plus `AvalancheGatewayProperties`) bean; 1 because the new primary-rail test lacked the deliverable
+  and acceptance-criterion stubs that `assignFreelancer` requires. Both were caused by this change; both fixed in **test code
+  only** (no production change, no assertion weakened). The three classes re-ran **66/66**.
+- **Interrupted:** the second full reactor run was stopped by Claude Code because the host was critically low on memory
+  (after payment-backend 72/72). The orphaned Maven container was stopped. Not restarted automatically.
+- **Status:** primary rail IMPLEMENTED; **verification PARTIAL**: per-class evidence only for the final state. Next session:
+  run `mvn -B -ntp test` on `maven:3.9-eclipse-temurin-17` once memory allows and record the counts (expected marketplace 408).
+- **Also not run on 2026-11-04:** Foundry (no contract change).

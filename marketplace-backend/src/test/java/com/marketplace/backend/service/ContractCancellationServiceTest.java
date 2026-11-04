@@ -47,7 +47,8 @@ class ContractCancellationServiceTest {
     @Configuration @EntityScan(basePackageClasses = Job.class)
     @EnableJpaRepositories(basePackageClasses = JobRepository.class)
     @Import({ContractCancellationService.class, SettlementService.class, FundingService.class, ContractSubmissionService.class, BusinessDayClock.class,
-            com.marketplace.backend.service.impl.JobServiceImpl.class})
+            com.marketplace.backend.service.impl.JobServiceImpl.class, PrimaryRailPolicy.class,
+            com.marketplace.backend.configuration.AvalancheGatewayProperties.class})
     static class Config {
         @Bean TransactionTemplate transactions(PlatformTransactionManager manager) { return new TransactionTemplate(manager); }
         @Bean ObjectMapper objectMapper() { return new ObjectMapper().findAndRegisterModules(); }

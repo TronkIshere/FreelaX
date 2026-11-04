@@ -72,7 +72,8 @@ class JobWorkflowServiceImplTest {
         service = new JobServiceImpl(userRepository, jobRepository, applicationRepository, submissionRepository,
                 paymentBackendClient, misaBackendClient, notificationService, payoutService, payoutRecordRepository,
                 contractRepository, milestoneRepository, criterionRepository, deliverableRepository,
-                mock(com.marketplace.backend.service.PaymentFlowService.class));
+                mock(com.marketplace.backend.service.PaymentFlowService.class),
+                new com.marketplace.backend.service.PrimaryRailPolicy("SOLANA", new com.marketplace.backend.configuration.AvalancheGatewayProperties()));
         when(submissionRepository.save(any(JobSubmission.class))).thenAnswer(invocation -> {
             JobSubmission submission = invocation.getArgument(0);
             if (submission.getId() == null) {

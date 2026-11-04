@@ -9,6 +9,22 @@
 > payout and notification work (A4) belongs to Phase 3; M2 no backend signer or signing on Fuji; SIMULATION_SCOPE (no real
 > funds, no Mainnet, no real fiat settlement, banking integration or tax remittance).
 
+## Implementation record under delegated authority (2026-11-04, second update)
+R6 is **still not owner approved**. Under the Lead's delegation of engineering decisions, the following reversible,
+simulation-only items were built (each defaults to current behaviour):
+| Capability | State | Evidence |
+|---|---|---|
+| P3-C1 (A4) notifications | IMPLEMENTED, flag `avalanche-gateway.settlement-notifications` default off | marketplace tests (3) |
+| P3-C1 (A4) fee, tax/MISA, payout | NOT STARTED (D-B option (b) selected); rail-aware tax label done (A7) | - |
+| P3-C2 primary rail | IMPLEMENTED, `marketplace.primary-rail` default SOLANA, fail closed | `PrimaryRailPolicyTest`, `JobAccessAndDiscoveryServiceImplTest` |
+| P3-C3 CI | workflow added, not executed | `.github/workflows/avalanche-ci.yml` |
+| P3-C4 stuck-escrow reporting | NOT STARTED | - |
+| P3-C5 (F13) wallet mutual refund | IMPLEMENTED | gateway Anvil regression, marketplace tests, V7 IT |
+| P3-C6 clone measurement | NOT STARTED (optional, LOCAL only) | - |
+| P3-C7 Fuji demonstration | EXTERNAL (C1, B1, E1) | - |
+Decisions D-A, D-C, D-D, D-E, D-F, D-H: ENGINEERING DECIDED (PROJECT_STATUS table). D-G: EXTERNAL. D-B: engineering chose the
+option; only the notification part is built.
+
 ## 0. One-page summary for the owner
 **What approving R6 starts:** P3-M0 (entry checks) then, in dependency order, the business completion of the Avalanche rail
 (O2), CI and simulation drills (O3), Avalanche as the default development rail for new contracts (O1), an optional

@@ -88,7 +88,7 @@ class JobAccessAndDiscoveryServiceImplTest {
         service = new JobServiceImpl(userRepository, jobRepository, applicationRepository, submissionRepository,
                 paymentBackendClient, misaBackendClient, notificationService, payoutService, payoutRecordRepository,
                 contractRepository, milestoneRepository, criterionRepository, deliverableRepository,
-                paymentFlowService);
+                paymentFlowService, new com.marketplace.backend.service.PrimaryRailPolicy("SOLANA", new com.marketplace.backend.configuration.AvalancheGatewayProperties()));
         when(contractRepository.save(any(WorkContract.class))).thenAnswer(invocation -> {
             WorkContract contract = invocation.getArgument(0);
             if (contract.getId() == null) contract.setId(UUID.randomUUID());
@@ -203,10 +203,44 @@ class JobAccessAndDiscoveryServiceImplTest {
         assertThat(job.getStatus()).isEqualTo(JobStatus.AWAITING_PAYMENT);
         verify(contractRepository).save(org.mockito.ArgumentMatchers.argThat(contract ->
                 contract.getStatus() == ContractStatus.PENDING_FUNDING
-                        && contract.getBudgetUsd().compareTo(job.getBudgetUsd()) == 0));
+                        && contract.getBudgetUsd().compareTo(job.getBudgetUsd()) == 0
+                        && contract.getPaymentNetworkId() == null));
         verify(milestoneRepository).save(org.mockito.ArgumentMatchers.argThat(milestone ->
                 milestone.getStatus() == MilestoneStatus.PENDING_FUNDING
                         && "USD".equals(milestone.getCurrency())));
+    }
+
+    @Test
+    void withAvalancheAsThePrimaryRailANewContractIsCreatedOnTheAvalancheNetwork() {
+        com.marketplace.backend.configuration.AvalancheGatewayProperties avalanche = new com.marketplace.backend.configuration.AvalancheGatewayProperties();
+        avalanche.setEnabled(true);
+        service = new JobServiceImpl(userRepository, jobRepository, applicationRepository, mock(JobSubmissionRepository.class),
+                paymentBackendClient, mock(MisaBackendClient.class), notificationService, mock(PayoutService.class),
+                mock(FreelancerPayoutRecordRepository.class), contractRepository, milestoneRepository, criterionRepository,
+                deliverableRepository, paymentFlowService, new com.marketplace.backend.service.PrimaryRailPolicy("AVALANCHE", avalanche));
+        User client = user(UserType.CLIENT);
+        User freelancer = user(UserType.FREELANCER);
+        Job job = job(client.getId(), JobStatus.OPEN);
+        JobApplication application = application(job.getId(), freelancer.getId(), JobApplicationStatus.PENDING);
+        when(userRepository.findById(client.getId())).thenReturn(Optional.of(client));
+        when(userRepository.findById(freelancer.getId())).thenReturn(Optional.of(freelancer));
+        when(jobRepository.findWithLockById(job.getId())).thenReturn(Optional.of(job));
+        when(applicationRepository.findByJobIdAndFreelancerId(job.getId(), freelancer.getId())).thenReturn(Optional.of(application));
+        when(applicationRepository.findByJobIdAndStatus(job.getId(), JobApplicationStatus.PENDING)).thenReturn(List.of());
+        AcceptanceCriterion criterion = new AcceptanceCriterion();
+        criterion.setDescription("API passes acceptance tests");
+        DeliverableRequirement deliverable = new DeliverableRequirement();
+        deliverable.setTitle("Source code");
+        deliverable.setDescription("Repository and instructions");
+        when(criterionRepository.findByJobIdOrderByOrderAsc(job.getId())).thenReturn(List.of(criterion));
+        when(deliverableRepository.findByJobIdOrderByOrderAsc(job.getId())).thenReturn(List.of(deliverable));
+        AssignFreelancerRequest request = new AssignFreelancerRequest();
+        request.setFreelancerId(freelancer.getId());
+
+        service.assignFreelancer(client.getId(), job.getId(), request);
+
+        verify(contractRepository).save(org.mockito.ArgumentMatchers.argThat(contract ->
+                "avalanche-local".equals(contract.getPaymentNetworkId())));
     }
 
     @Test

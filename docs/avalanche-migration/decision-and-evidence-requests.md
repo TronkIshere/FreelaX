@@ -3,6 +3,12 @@
 Status register: [PROJECT_STATUS](PROJECT_STATUS.md). This page only asks; it decides nothing. Questions already answered by the
 owner response of 2026-11-03 are not repeated.
 
+**Engineering decisions under delegated authority (2026-11-04, Lead instruction):** R3 (option a), R5 (option a), R9 (EIP-191
+challenge verified in the gateway, implemented as A8), R10 (CI proposal accepted, workflow added locally), R11 (option a,
+additive Java 17 changes) and the R8 remainder for C4 (marketplace-driven status, A5 closed) were **decided by engineering**,
+not by the owner; see PROJECT_STATUS "Delegated decision classification". Still open for the owner or external people: **R1,
+R2 remainder (DB operator), R4, R6** (Phase 3 approval), the business part of R8/C3 beyond notifications, and X1 to X3.
+
 **Owner decision update (2026-11-03)** recorded in [PROJECT_STATUS](PROJECT_STATUS.md) "Owner decision update":
 
 | Request | Status |
