@@ -285,14 +285,15 @@ External only (2026-11-04): B1 and C1 / R1 (human-held funded Fuji wallet, signi
 all Fuji validation and the Phase 3 Fuji demonstration); B6 / E2 (DB operator identity; environment authorized: development
 database only); B7 (a real browser wallet extension); B9 (owner `.env` for `docker compose config`); C10 (native Vietnamese copy
 review); R6 owner approval of Phase 3 (engineering proceeds only on delegated, reversible, simulation-only items); owner-deferred
-O-8 and O-13; C8 legacy rail retirement (irreversible). Engineering items still open (not blocked): A2, A6, the fee/tax/payout
-part of A4, P3-C4 stuck-escrow reporting, drills, the LOCAL clone measurement.
+O-8 and O-13; C8 legacy rail retirement (irreversible). Engineering items still open: **none independently implementable** (2026-11-04: A2, A6, P3-C4,
+drills and the LOCAL clone measurement are done). The fee/tax/payout part of A4 needs an Avalanche off-ramp (new custody path,
+owner decision) and F14 needs R12.
 
 ## Next recommended action
-1. Engineering (no gate): A2 single-stack LOCAL run (resolve F3 by granting roles to the current signers in the run script),
-   then P3-C4 stuck-escrow reporting, A6 scanner metrics, and the fee/tax/payout analysis for D-B.
-2. Owner: R6 (Phase 3 approval), R1 (Fuji signer and funding), the DB operator for R2.
-3. Operators: X1 after R1; X2 once the DB operator is named.
+1. Owner: R6 (Phase 3 approval), R12 (F14 arbiter loss), the Avalanche off-ramp decision for fees/tax/payout (custody), R1
+   (Fuji signer and funding), the DB operator (R2).
+2. Operators: X1 after R1; X2 once the DB operator is named; B7 browser wallet check.
+3. Engineering: re-run the baselines after any owner decision; nothing else is open without a decision.
 
 ## Change note (2026-11-04, second update)
 Applied the Lead's delegation of engineering decisions (classification table above). Implemented and tested: A1 (complete
