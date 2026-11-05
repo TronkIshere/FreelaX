@@ -48,6 +48,12 @@ public class ApiExceptionHandler {
         return body(502, "CHAIN_UNAVAILABLE", request);
     }
 
+    @ExceptionHandler(com.freelax.avalanchegateway.contract.UnreadableChainStateException.class)
+    ResponseEntity<ApiError> unreadable(com.freelax.avalanchegateway.contract.UnreadableChainStateException e, HttpServletRequest request) {
+        log.warn("chain state unreadable: {}", e.getMessage());
+        return body(502, "CHAIN_STATE_UNREADABLE", request);
+    }
+
     @ExceptionHandler(Exception.class)
     ResponseEntity<ApiError> other(Exception e, HttpServletRequest request) {
         log.error("unexpected failure: {}", e.getClass().getSimpleName());

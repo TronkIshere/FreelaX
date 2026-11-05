@@ -25,7 +25,7 @@ public class EscrowReader {
         }
         String hex = Numeric.cleanHexPrefix(result.data());
         if (hex.length() != WORDS * 64) {
-            throw new IllegalStateException("unexpected getEscrow answer length " + hex.length());
+            throw new UnreadableChainStateException("unexpected getEscrow answer length " + hex.length());
         }
         return new EscrowState(address(hex, 0), address(hex, 1), address(hex, 2), number(hex, 3), number(hex, 4).intValueExact(),
                 number(hex, 5).intValueExact(), number(hex, 6).intValueExact(), number(hex, 7).signum() != 0,
@@ -41,7 +41,7 @@ public class EscrowReader {
     }
 
     public boolean paused() {
-        return new BigInteger(Numeric.cleanHexPrefix(call("paused()")), 16).signum() != 0;
+        return hexNumber(call("paused()"), "paused()").signum() != 0;
     }
 
     /** ERC-20 balance in base units (6 decimals) of an owner for a token. */
@@ -52,7 +52,7 @@ public class EscrowReader {
         if (result.reverted()) {
             throw new IllegalStateException("balanceOf reverted");
         }
-        return new BigInteger(Numeric.cleanHexPrefix(result.data()), 16);
+        return hexNumber(result.data(), "balanceOf");
     }
 
     private String call(String signature) {
@@ -66,7 +66,19 @@ public class EscrowReader {
 
     private static String addressAnswer(String word) {
         String hex = Numeric.cleanHexPrefix(word);
+        if (hex.length() < 40) {
+            throw new UnreadableChainStateException("defaultArbiter() returned no address (no contract at that address?)");
+        }
         return "0x" + hex.substring(hex.length() - 40).toLowerCase();
+    }
+
+    /** A numeric eth_call answer; an empty one (no code at the address) is reported, never parsed. */
+    private static BigInteger hexNumber(String data, String what) {
+        String hex = Numeric.cleanHexPrefix(data == null ? "" : data);
+        if (hex.isEmpty()) {
+            throw new UnreadableChainStateException(what + " returned no data (no contract at that address?)");
+        }
+        return new BigInteger(hex, 16);
     }
 
     private static String word(String hex, int index) {
