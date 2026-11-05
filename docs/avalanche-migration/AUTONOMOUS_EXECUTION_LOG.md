@@ -397,3 +397,14 @@ original reasoning. Do not add routine progress entries.
 - **Checks before the push:** working tree clean; audit of `origin/master..HEAD` found no secrets, no Mainnet configuration,
   no change to `avalanche-contracts/src` or the Solana and legacy modules.
 - **Effect:** the CI workflow runs on GitHub for the first time (D1); result to be recorded when known.
+
+### L-022: Owner decisions R6 and payout recorded (2026-11-05)
+- **Decision:** the owner answered the recommendation questions in the session: R6 **APPROVED as proposed**; payout = mock
+  partner only, fee and tax reuse the existing Solana-rail rules, labelled simulated (real partner out of scope).
+- **Not decided:** R12 (owner asked for more explanation); R1/C1 and the DB operator (owner asked for a more detailed
+  proposal); R4 waits for E1.
+- **Files:** PROJECT_STATUS (new section "Owner decisions (2026-11-05)", R6 row), decision-and-evidence-requests, CLAUDE.md
+  section 5 and 10. Documentation only; no code, contract or configuration change.
+- **Next:** fee/tax wiring for an Avalanche release reusing the Solana-rail rules (default off), after the Solana coupling of
+  `SettlementDownstreamService` is analysed.
+

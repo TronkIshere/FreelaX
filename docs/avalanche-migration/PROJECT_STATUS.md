@@ -108,6 +108,17 @@ Not answered by this update and therefore still open: the **treatment** option o
 stages, or left off the rail); **C4** (scanner-driven versus marketplace-driven milestone status) and therefore the placement
 of **A5**; the identity of the DB operator; R1, R3 to R6, R9, R10 and X1 to X3.
 
+### Owner decisions (2026-11-05, in session, authoritative)
+Given by the owner in the session of 2026-11-05 by answering the recommendation questions. Recorded as stated.
+
+| Request | Decision | Register effect |
+|---|---|---|
+| R6 / C9 | **Phase 3 proposal APPROVED as proposed** ([phase-3/00-phase-3-proposal.md](phase-3/00-phase-3-proposal.md)) | C9 DECIDED. Phase 3 is owner approved. CLAUDE.md section 6 hard stops (Fuji signing, Mainnet, contract changes in `avalanche-contracts/src` without their own decision, real funds) are **unchanged**; R12 is a separate decision |
+| Payout (A4, C3 fee and tax) | **Mock partner only; fee and tax follow the existing Solana-rail rules, labelled simulated.** No real payout partner (out of scope under [SIMULATION_SCOPE](../SIMULATION_SCOPE.md)) | Real partner: OUT OF SCOPE (was OPEN). Fee and tax for an Avalanche release: DECIDED (reuse the existing Solana-rail rules unchanged, no new formula, records labelled simulated, behind the existing default-off flag). Wiring: NOT STARTED (engineering task) |
+
+Still open after this update: R12 (owner asked for more explanation), R1/C1 and the DB operator (owner asked for a more detailed
+proposal), R4 (after E1), X1 to X3.
+
 ### Delegated decision classification (2026-11-04, Lead instruction "autonomous engineering decisions")
 The project Lead delegated to engineering every decision that can reasonably be made within technical authority. Each open
 decision is classified below. **OWNER APPROVED** = decided by the owner (recorded above); **ENGINEERING DECIDED UNDER
@@ -127,7 +138,7 @@ option; every such decision is reversible and recorded with its rationale in the
 | R3 | E4 USDC.e address source | ENGINEERING DECIDED | option (a) documented limitation (not a waiver) |
 | R5 | E7 explorer verification | ENGINEERING DECIDED | option (a) optional: NOT APPLICABLE until a Fuji deployment exists (B2); not a waiver of anything that can run |
 | R4 | E5/E6 after the E1 run | EXTERNAL ACTION REQUIRED | depends on the human-signed E1 run (X1) |
-| R6 / C9 | Phase 3 scope | **ENGINEERING EXECUTION AUTHORIZED UNDER DELEGATED AUTHORITY — OWNER APPROVAL PENDING** (Lead instruction 2026-11-04, "R6, R12 and Avalanche payout"). The owner has **not** approved R6. Engineering may implement independently implementable Phase 3 work inside the agreed migration scope (architecture, interfaces, additive migrations, simulations and mocks, tests, tooling); not external deployments, real financial operations, or anything needing external authorization; CLAUDE.md section 6 hard stops unchanged | see the execution log for each item (L-019 onwards) |
+| R6 / C9 | Phase 3 scope | **OWNER APPROVED 2026-11-05** (see "Owner decisions (2026-11-05)"). Historical text: ENGINEERING EXECUTION AUTHORIZED UNDER DELEGATED AUTHORITY — OWNER APPROVAL PENDING (Lead instruction 2026-11-04, "R6, R12 and Avalanche payout"); at that time the owner had **not** approved R6. Engineering may implement independently implementable Phase 3 work inside the agreed migration scope (architecture, interfaces, additive migrations, simulations and mocks, tests, tooling); not external deployments, real financial operations, or anything needing external authorization; CLAUDE.md section 6 hard stops unchanged | see the execution log for each item (L-019 onwards) |
 | D-B / C3 | Treatment of fees, tax/MISA, payout, notifications for an Avalanche settlement | ENGINEERING DECIDED | option (b): reuse the existing downstream stages and their existing rules (no new formula), records labelled simulated, behind a flag that defaults off. Built 2026-11-04: notifications and the rail-aware tax label (A7) only; the fee/tax/payout wiring is **NOT STARTED** (needs the Solana coupling of `SettlementDownstreamService` analysed first; next task); **2026-11-04 (third update):** payout built as a separate non-custodial adapter (not through the Solana stages), default off; fee and tax still not wired (no rule to reuse for Avalanche without an owner decision) |
 | R1 / C1 | Fuji signer, funding owner, device | EXTERNAL ACTION REQUIRED | |
 | R2 remainder | DB operator identity | EXTERNAL ACTION REQUIRED | |

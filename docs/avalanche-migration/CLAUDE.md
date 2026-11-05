@@ -79,9 +79,10 @@ Execution history and the resume point: [AUTONOMOUS_EXECUTION_LOG.md](AUTONOMOUS
   Since 2026-11-04: A1, A2, A3, A6, A7, A8, F12, F13 IMPLEMENTED and tested; A5 closed (D-C). Phase 2 has no open
   engineering residual; B7 (browser wallet) is external. The single-stack harness is `phase-2/a2-local-stack/run.sh`. **A8** waits for R9 (wallet
   linking design); **A2** waits for A8 and F3; **A5** waits for C4. A4 is no longer Phase 2.
-- **Phase 3: PROPOSED, NOT OWNER APPROVED**; R6 recorded 2026-11-04 as ENGINEERING EXECUTION AUTHORIZED UNDER DELEGATED
-  AUTHORITY — OWNER APPROVAL PENDING (Lead instruction "R6, R12 and Avalanche payout") ([phase-3/00-phase-3-proposal.md](phase-3/00-phase-3-proposal.md), R6/C9 open).
-  **Never mark R6 approved.** Since the Lead's delegation of 2026-11-04, engineering may implement Phase 3 items that are
+- **Phase 3: OWNER APPROVED 2026-11-05** (R6/C9, PROJECT_STATUS "Owner decisions (2026-11-05)";
+  [phase-3/00-phase-3-proposal.md](phase-3/00-phase-3-proposal.md)). The approval does not lift the section 6 hard stops and
+  does not decide R12. Payout (2026-11-05): mock partner only, fee and tax reuse the existing Solana-rail rules labelled
+  simulated; a real partner is out of scope. Before that, since the Lead's delegation of 2026-11-04, engineering may implement Phase 3 items that are
   reversible, simulation-only, default-off (or default to current behaviour) and covered by existing owner decisions; each is
   recorded as ENGINEERING DECIDED UNDER DELEGATED AUTHORITY (PROJECT_STATUS classification table). Done so far: settlement
   notifications (flag, default off), primary-rail policy for new contracts (default SOLANA), stuck-escrow reporting (P3-C4),
@@ -161,9 +162,9 @@ silently "fix" plan text that is historical: add a dated note instead.
 
 ## 10. Pending owner decisions and external blockers (pointer list; status in PROJECT_STATUS.md)
 Owner: **R1/C1** Fuji human signing procedure and funding owner; **R2 remainder** DB operator identity; **R3** E4;
-**R4** E5/E6; **R5** E7; **R6/C9** Phase 3 approval (**NOT APPROVED**); **R8 remainder** C3 treatment, C4, A5 placement;
+**R4** E5/E6; **R5** E7; **R8 remainder** C3 treatment, C4, A5 placement;
 **R9** EVM wallet linking design (A8, A2); **R10** CI proposal (D1); C6/O-8, C7/O-13 DEFERRED; C8, C10, C11 OPEN;
-**R12** adoption of the mutual-settlement variant (O-5 question 8 conflict); **payout** real partner, platform fee, tax treatment.
+**R12** adoption of the mutual-settlement variant (O-5 question 8 conflict); payout fee/tax **decided 2026-11-05** (wiring not started).
 Operators / external: **X1** human-signed Fuji run (after R1); **X2** DB evidence, development database only (after the
 operator is named); **X3** funding and later human-signed escrow deployment; B7 browser wallet extension; B9 owner `.env`
 for `docker compose config`.

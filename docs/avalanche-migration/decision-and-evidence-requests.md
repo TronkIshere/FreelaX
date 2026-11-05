@@ -16,12 +16,12 @@ R2 remainder (DB operator), R4, R6** (Phase 3 approval), the business part of R8
 | R1 | **PENDING** (Fuji signer and funding owner; with X3) |
 | R2 | **ANSWERED IN PART**: development database only, six read-only queries; DB operator identity and evidence **PENDING** |
 | R3, R4, R5 | **PENDING** (E4 limitation or waiver; E5/E6 after E1 and evidence review; E7 optional/pending) |
-| R6 | **PENDING (owner)**: Phase 3 proposal NOT owner approved. Since 2026-11-04: ENGINEERING EXECUTION AUTHORIZED UNDER DELEGATED AUTHORITY — OWNER APPROVAL PENDING |
+| R6 | **ANSWERED 2026-11-05: APPROVED as proposed** by the owner (PROJECT_STATUS "Owner decisions (2026-11-05)"). Before: engineering execution under delegated authority, owner approval pending |
 | R12 | **PENDING (owner)**: Lead target design (two-party settlement, no reassignment, no privileged withdrawal) built as an isolated LOCAL variant; adoption conflicts with O-5 question 8 and needs a new contract version (O-2) |
 | R7 | **ANSWERED**: O-2 shared immutable baseline, clone prototype LOCAL_SIMULATION only; O-6 stuck-and-reported accepted, no privileged withdrawal, bypass or automatic rerouting |
 | R8 | **ANSWERED IN PART**: fee, tax/MISA, payout and notification work (A4) moves to Phase 3. Still open: the C3 treatment option; C4 and the placement of A5 |
 | R9, R10 | **PENDING** |
-| Payout (new 2026-11-04) | **OPEN (owner / external)**: a non-custodial Avalanche payout adapter exists, default off, LOCAL mock partner only ([phase-3/03](phase-3/03-avalanche-payout-adapter.md)). Needed before any real payout: a partner that supports the exact Avalanche USDC token and network, its authorization and credentials; the platform fee (if any) and the tax treatment of an Avalanche payout (no rule was invented) |
+| Payout (new 2026-11-04) | **ANSWERED 2026-11-05**: mock partner only (real partner out of scope); fee and tax reuse the existing Solana-rail rules, labelled simulated. Previous text: **OPEN (owner / external)**: a non-custodial Avalanche payout adapter exists, default off, LOCAL mock partner only ([phase-3/03](phase-3/03-avalanche-payout-adapter.md)). Needed before any real payout: a partner that supports the exact Avalanche USDC token and network, its authorization and credentials; the platform fee (if any) and the tax treatment of an Avalanche payout (no rule was invented) |
 | R11 (new 2026-11-04) | **PENDING**: Java 17 module changes for Phase 2 residuals A3 (marketplace half) and A7 |
 
 ## A. Owner decision requests
