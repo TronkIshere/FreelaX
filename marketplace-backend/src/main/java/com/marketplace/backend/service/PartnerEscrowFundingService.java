@@ -53,6 +53,7 @@ public class PartnerEscrowFundingService {
                     .orElseThrow(() -> new ApplicationException(ErrorCode.FUNDING_NOT_FOUND));
             Job job = jobs.findById(contract.getJobId()).orElseThrow();
             if (solanaEscrows.existsByContractId(contractId)
+                    || com.marketplace.backend.blockchain.avalanche.AvalancheEscrowIds.isAvalancheNetwork(contract.getPaymentNetworkId())
                     || contract.getPaymentRail() != null && !RAIL.equals(contract.getPaymentRail()))
                 throw new ApplicationException(ErrorCode.FUNDING_INVALID_STATE);
             FundingTransaction prior = transactions.findByClientUserIdAndIdempotencyKey(clientId, key).orElse(null);

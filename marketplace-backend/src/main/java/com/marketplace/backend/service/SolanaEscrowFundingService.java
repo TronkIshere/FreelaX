@@ -64,6 +64,9 @@ public class SolanaEscrowFundingService {
         Job job = jobs.findById(contract.getJobId())
                 .orElseThrow(() -> new ApplicationException(ErrorCode.FUNDING_NOT_FOUND));
         boolean unified = PaymentFlow.RAIL.equals(contract.getPaymentRail());
+        if (com.marketplace.backend.blockchain.avalanche.AvalancheEscrowIds.isAvalancheNetwork(contract.getPaymentNetworkId())) {
+            throw new ApplicationException(ErrorCode.FUNDING_INVALID_STATE);
+        }
         if (milestone.getStatus() != MilestoneStatus.PENDING_FUNDING
                 || contract.getStatus() != ContractStatus.PENDING_FUNDING
                 || job.getStatus() != JobStatus.AWAITING_PAYMENT

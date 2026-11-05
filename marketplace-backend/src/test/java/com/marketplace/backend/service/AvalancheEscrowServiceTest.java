@@ -902,4 +902,30 @@ class AvalancheEscrowServiceTest {
         assertTrue(pendingRows.isEmpty());
         assertTrue(v.mutualSettlements().isEmpty());
     }
+
+    @Test
+    void anArbiterResolveClosesTheRecordedDisputeAndADisputeIsAnchoredOnlyWhenTheChainReadsDisputed() {
+        ContractDispute d = dispute(clientId, DisputeStatus.DECISION_PENDING_REFUND);
+        when(disputes.findFirstByContractIdAndStatusInOrderByCreatedAtDesc(any(), any())).thenReturn(Optional.of(d));
+        contract.setStatus(ContractStatus.DISPUTED);
+        milestone.setStatus(MilestoneStatus.DISPUTED);
+        AvalancheChainTransaction anchor = row("dispute", TransactionStatus.FINALIZED);
+        when(gateway.escrowSnapshot(any())).thenReturn(snapshot(NeutralEscrowStatus.SUBMITTED, "5000000", CLIENT_WALLET));
+        service.refresh(clientId, false, contract.getId());
+        assertEquals("CHAIN_MISMATCH", anchor.getErrorClass(), "a dispute is not anchored while the chain is not Disputed");
+        assertFalse(anchor.isBusinessApplied());
+
+        when(gateway.escrowSnapshot(any())).thenReturn(snapshot(NeutralEscrowStatus.DISPUTED, "5000000", CLIENT_WALLET));
+        service.refresh(clientId, false, contract.getId());
+        assertTrue(anchor.isBusinessApplied());
+        assertEquals(DisputeStatus.DECISION_PENDING_REFUND, d.getStatus());
+
+        AvalancheChainTransaction resolve = row("resolve", TransactionStatus.FINALIZED);
+        when(gateway.escrowSnapshot(any())).thenReturn(snapshot(NeutralEscrowStatus.REFUNDED, "5000000", CLIENT_WALLET));
+        service.refresh(clientId, false, contract.getId());
+        assertTrue(resolve.isBusinessApplied());
+        assertEquals(MilestoneStatus.REFUNDED, milestone.getStatus());
+        assertEquals(ContractStatus.CANCELLED, contract.getStatus());
+        assertEquals(DisputeStatus.RESOLVED_REFUND, d.getStatus());
+    }
 }

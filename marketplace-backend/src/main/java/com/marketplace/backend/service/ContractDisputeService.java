@@ -5,6 +5,7 @@ import com.marketplace.backend.client.PaymentBackendClient;
 import com.marketplace.backend.dto.request.dispute.*;
 import com.marketplace.backend.dto.response.dispute.*;
 import com.marketplace.backend.dto.response.solana.SolanaEscrowResult;
+import com.marketplace.backend.blockchain.avalanche.AvalancheEscrowIds;
 import com.marketplace.backend.entity.*;
 import com.marketplace.backend.exception.*;
 import com.marketplace.backend.repository.*;
@@ -46,6 +47,7 @@ public class ContractDisputeService {
     private final AcceptanceCriterionRepository criteria;
     private final FundingTransactionRepository funding;
     private final EscrowContractRepository escrowContracts;
+    private final AvalancheChainTransactionRepository avalancheTransactions;
     private final SolanaCprClient solana;
     private final PaymentBackendClient payment;
     private final ContractSettlementRepository settlements;
@@ -74,11 +76,14 @@ public class ContractDisputeService {
         if (escrowContracts.existsByContractId(contractId)) {
             return openEscrow(actor, c, m, j, request, items);
         }
-        // Avalanche rail (A2 finding, 2026-11-05): funding is proven by the milestone itself, which AvalancheEscrowService moves
-        // to FUNDED only after a FINALIZED transaction and an agreeing chain read; there is no fiat FundingTransaction. The state
-        // checks below still apply. Legacy rails unchanged.
+        // Avalanche rail (A2 finding, 2026-11-05): there is no fiat FundingTransaction. Funding is proven by an applied Avalanche
+        // `fund` transaction (FINALIZED and an agreeing chain read, recorded by AvalancheEscrowService), not by the milestone state
+        // alone: the legacy funding paths do not refuse a contract that carries an Avalanche network id. State checks below still
+        // apply. Legacy rails unchanged.
         boolean avalancheRail = c.getPaymentNetworkId() != null
                 && c.getPaymentNetworkId().toLowerCase(Locale.ROOT).startsWith("avalanche");
+        if (avalancheRail && avalancheTransactions.findByContractIdOrderByIdAsc(contractId).stream()
+                .noneMatch(t -> "fund".equals(t.getAction()) && t.isBusinessApplied())) throw ineligible();
         if (!avalancheRail) {
             FundingTransaction f = funding.findFirstByMilestoneIdOrderByCreatedAtDesc(m.getId()).orElseThrow(this::ineligible);
             if (f.getStatus() != FundingStatus.SUCCEEDED || f.getCheckoutOrderId() == null
@@ -307,6 +312,9 @@ public class ContractDisputeService {
         if (escrowContracts.existsByContractId(c.getId())) {
             return resolveEscrow(adminId, d, c, m, j, key, request, hash);
         }
+        if (AvalancheEscrowIds.isAvalancheNetwork(c.getPaymentNetworkId())) {
+            return resolveAvalanche(adminId, d, c, m, j, key, request, hash);
+        }
         FundingTransaction f = funding.findFirstByMilestoneIdOrderByCreatedAtDesc(m.getId()).orElseThrow(this::ineligible);
         if (c.getStatus() != ContractStatus.DISPUTED || f.getStatus() != FundingStatus.SUCCEEDED
                 || (j.getStatus() != JobStatus.IN_PROGRESS && j.getStatus() != JobStatus.REVISION_REQUESTED
@@ -415,6 +423,32 @@ public class ContractDisputeService {
                 "Admin đã quyết định tranh chấp escrow", "Đang chờ xác nhận giao dịch Solana.", j.getId());
         notifications.notify(c.getFreelancerId(), NotificationType.DISPUTE_DECIDED,
                 "Admin đã quyết định tranh chấp escrow", "Đang chờ xác nhận giao dịch Solana.", j.getId());
+        return response(d);
+    }
+
+    /**
+     * Avalanche rail: the administrator records the decision only. The arbiter transaction (`resolve`, AvalancheEscrowService)
+     * moves the money, and its applied business effect closes the dispute. Requires the dispute to be anchored on chain (an
+     * applied `dispute` transaction, which AvalancheEscrowService applies only when the chain reads DISPUTED). No payment
+     * scheduler may handle it (retryable false), as for the Solana escrow.
+     */
+    private DisputeResponse resolveAvalanche(UUID adminId, ContractDispute d, WorkContract c,
+            Milestone m, Job j, String key, ResolveDisputeRequest request, String hash) {
+        if (c.getStatus() != ContractStatus.DISPUTED || m.getStatus() != MilestoneStatus.DISPUTED
+                || avalancheTransactions.findByContractIdOrderByIdAsc(c.getId()).stream()
+                        .noneMatch(t -> "dispute".equals(t.getAction()) && t.isBusinessApplied())) throw ineligible();
+        boolean release = request.outcome() == ResolveDisputeRequest.Outcome.RELEASE_TO_FREELANCER;
+        d.setResolvedBy(adminId); d.setDecisionAt(Instant.now());
+        d.setResolutionReason(request.reason().trim()); d.setResolutionKey(key); d.setResolutionHash(hash);
+        d.setStatus(release ? DisputeStatus.DECISION_PENDING_RELEASE : DisputeStatus.DECISION_PENDING_REFUND);
+        d.setRetryable(false);
+        m.setStatus(release ? MilestoneStatus.RELEASE_PENDING : MilestoneStatus.REFUND_PENDING);
+        disputes.saveAndFlush(d);
+        log(d, adminId, "DECIDED", DisputeStatus.UNDER_REVIEW.name(), d.getStatus().name(), d.getResolutionReason(), key);
+        for (UUID party : List.of(c.getClientUserId(), c.getFreelancerId())) {
+            notifications.notify(party, NotificationType.DISPUTE_DECIDED, "Admin đã quyết định tranh chấp escrow",
+                    "Đang chờ giao dịch trọng tài Avalanche (mô phỏng) được xác nhận.", j.getId());
+        }
         return response(d);
     }
 

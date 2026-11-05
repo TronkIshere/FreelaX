@@ -610,6 +610,13 @@ public class AvalancheEscrowService {
                     c.setStatus(ContractStatus.ACTIVE);
                 }
             }
+            case "dispute" -> {
+                // anchored only when the chain reads Disputed (the administrator decision requires this applied row)
+                if (status != NeutralEscrowStatus.DISPUTED) {
+                    row.setErrorClass("CHAIN_MISMATCH");
+                    return;
+                }
+            }
             case "release", "resolve" -> {
                 if (status == NeutralEscrowStatus.RELEASED) {
                     m.setStatus(MilestoneStatus.RELEASED);
@@ -620,6 +627,9 @@ public class AvalancheEscrowService {
                 } else {
                     row.setErrorClass("CHAIN_MISMATCH");
                     return;
+                }
+                if (row.getAction().equals("resolve")) {
+                    closeUnresolvedDispute(c, status == NeutralEscrowStatus.RELEASED);
                 }
             }
             case "mutual-refund" -> {
@@ -640,12 +650,7 @@ public class AvalancheEscrowService {
                 }
                 m.setStatus(released ? MilestoneStatus.RELEASED : MilestoneStatus.REFUNDED);
                 c.setStatus(released ? ContractStatus.COMPLETED : ContractStatus.CANCELLED);
-                disputes.findFirstByContractIdAndStatusInOrderByCreatedAtDesc(c.getId(), UNRESOLVED_DISPUTE)
-                        .ifPresent(d -> {
-                            d.setStatus(released ? DisputeStatus.RESOLVED_RELEASE : DisputeStatus.RESOLVED_REFUND);
-                            d.setResolvedAt(Instant.now());
-                            disputes.save(d);
-                        });
+                closeUnresolvedDispute(c, released);
                 for (boolean release : new boolean[]{true, false}) {
                     pendingAuthorizations.findByContractIdAndAction(c.getId(), settlementKey(release)).ifPresent(pendingAuthorizations::delete);
                 }
@@ -661,6 +666,16 @@ public class AvalancheEscrowService {
         row.setBusinessApplied(true);
         row.setErrorClass(null);
         notifySettlement(c, row.getAction(), m.getStatus());
+    }
+
+    /** The recorded dispute follows the chain outcome (existing RESOLVED_* values). */
+    private void closeUnresolvedDispute(WorkContract c, boolean released) {
+        disputes.findFirstByContractIdAndStatusInOrderByCreatedAtDesc(c.getId(), UNRESOLVED_DISPUTE)
+                .ifPresent(d -> {
+                    d.setStatus(released ? DisputeStatus.RESOLVED_RELEASE : DisputeStatus.RESOLVED_REFUND);
+                    d.setResolvedAt(Instant.now());
+                    disputes.save(d);
+                });
     }
 
     /** Mirrors SolanaEscrowFundingService / SolanaEscrowTimeoutService: the job status follows an applied escrow outcome. */

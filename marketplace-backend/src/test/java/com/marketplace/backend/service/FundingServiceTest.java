@@ -121,6 +121,17 @@ class FundingServiceTest {
     }
 
     @Test
+    void fiatFundingRefusesAContractThatChoseTheAvalancheRail() {
+        contract.setPaymentNetworkId("avalanche-local");
+        assertThatThrownBy(() -> service.fund(client.getId(), contract.getId(), milestone.getId(), "key-1", request("500.00")))
+                .isInstanceOf(ApplicationException.class)
+                .extracting(ex -> ((ApplicationException) ex).getErrorCode())
+                .isEqualTo(ErrorCode.FUNDING_INVALID_STATE);
+        verifyNoInteractions(payment);
+        assertThat(milestone.getStatus()).isEqualTo(MilestoneStatus.PENDING_FUNDING);
+    }
+
+    @Test
     void reusedKeyWithChangedPayloadIsConflict() {
         saved = new FundingTransaction();
         saved.setPayloadHash("different");

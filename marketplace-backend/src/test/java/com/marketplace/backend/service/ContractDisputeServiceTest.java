@@ -58,6 +58,7 @@ class ContractDisputeServiceTest {
     @Autowired ContractCancellationRepository cancellations;
     @Autowired ContractSettlementRepository settlements;
     @Autowired JobSubmissionRepository submissions;
+    @Autowired AvalancheChainTransactionRepository avalancheTransactions;
     @Autowired TransactionTemplate tx;
     @MockitoBean PaymentBackendClient payment;
     @MockitoBean PartnerReconciliationService partnerReconciliation;
@@ -72,7 +73,7 @@ class ContractDisputeServiceTest {
 
     @BeforeEach void setup() {
         audit.deleteAll(); evidence.deleteAll(); evidenceBatches.deleteAll(); disputes.deleteAll(); cancellations.deleteAll();
-        settlements.deleteAll(); submissions.deleteAll(); funding.deleteAll();
+        settlements.deleteAll(); submissions.deleteAll(); funding.deleteAll(); avalancheTransactions.deleteAll();
         milestones.deleteAll(); contracts.deleteAll(); jobs.deleteAll();
         tx.executeWithoutResult(s -> {
             job = new Job(); job.setTitle("Dispute test"); job.setBudgetUsd(new BigDecimal("500.00"));
@@ -126,14 +127,53 @@ class ContractDisputeServiceTest {
         tx.executeWithoutResult(s -> { funding.deleteAll(); contract = contracts.findById(contract.getId()).orElseThrow();
             contract.setPaymentNetworkId("avalanche-local"); contracts.saveAndFlush(contract); });
         reviewState();
+        appliedFund(true);
         UUID id = service.open(client(), contract.getId(), reason).disputeId();
         assertThat(disputes.findById(id).orElseThrow().getStatus()).isEqualTo(DisputeStatus.OPEN);
         assertThat(contracts.findById(contract.getId()).orElseThrow().getStatus()).isEqualTo(ContractStatus.DISPUTED);
         assertThat(milestones.findById(milestone.getId()).orElseThrow().getStatus()).isEqualTo(MilestoneStatus.DISPUTED);
     }
+    void appliedFund(boolean applied) { appliedAction("fund", applied); }
+    void appliedAction(String action, boolean applied) {
+        AvalancheChainTransaction t = new AvalancheChainTransaction();
+        t.setNetworkId("avalanche-local"); t.setContractId(contract.getId()); t.setAction(action);
+        t.setOperationKey(action + "-" + UUID.randomUUID()); t.setBusinessApplied(applied);
+        t.setEnvironment("LOCAL_SIMULATION"); t.setChainId(31337); t.setEscrowId("0x" + "0".repeat(64)); t.setActorUserId(client());
+        t.setStatus("FINALIZED"); t.setCreatedAt(Instant.now()); t.setUpdatedAt(Instant.now());
+        avalancheTransactions.saveAndFlush(t);
+    }
+    @Test void avalancheRailRefusesAMilestoneMarkedFundedWithoutAnAppliedFundTransaction() {
+        tx.executeWithoutResult(s -> { funding.deleteAll(); contract = contracts.findById(contract.getId()).orElseThrow();
+            contract.setPaymentNetworkId("avalanche-local"); contracts.saveAndFlush(contract); });
+        reviewState();
+        assertThatThrownBy(() -> service.open(client(), contract.getId(), reason)).isInstanceOf(ApplicationException.class);
+        appliedFund(false);
+        assertThatThrownBy(() -> service.open(client(), contract.getId(), reason)).isInstanceOf(ApplicationException.class);
+    }
+    @Test void administratorDecisionOnTheAvalancheRailNeedsAnAnchoredDisputeAndMovesNoMoney() {
+        tx.executeWithoutResult(s -> { funding.deleteAll(); contract = contracts.findById(contract.getId()).orElseThrow();
+            contract.setPaymentNetworkId("avalanche-local"); contracts.saveAndFlush(contract); });
+        reviewState();
+        appliedFund(true);
+        UUID id = service.open(client(), contract.getId(), reason).disputeId();
+        claimed(id);
+        var request = new ResolveDisputeRequest(ResolveDisputeRequest.Outcome.REFUND_TO_CLIENT, "Evidence reviewed");
+        assertThatThrownBy(() -> service.resolve(admin, id, "k1", request)).isInstanceOf(ApplicationException.class);
+        assertThat(disputes.findById(id).orElseThrow().getStatus()).isEqualTo(DisputeStatus.UNDER_REVIEW);
+
+        appliedAction("dispute", true);
+        var decided = service.resolve(admin, id, "k1", request);
+        assertThat(decided.status()).isEqualTo(DisputeStatus.DECISION_PENDING_REFUND);
+        assertThat(milestones.findById(milestone.getId()).orElseThrow().getStatus()).isEqualTo(MilestoneStatus.REFUND_PENDING);
+        assertThat(disputes.findById(id).orElseThrow().isRetryable()).isFalse();
+        assertThat(disputes.findById(id).orElseThrow().getRefundStatus()).isNull();
+        verifyNoInteractions(payment);
+    }
     @Test void avalancheRailStillRefusesAnUnfundedMilestone() {
         tx.executeWithoutResult(s -> { funding.deleteAll(); contract = contracts.findById(contract.getId()).orElseThrow();
-            contract.setPaymentNetworkId("avalanche-local"); contracts.saveAndFlush(contract);
+            contract.setPaymentNetworkId("avalanche-local"); contracts.saveAndFlush(contract); });
+        appliedFund(true);
+        tx.executeWithoutResult(s -> {
             milestone = milestones.findById(milestone.getId()).orElseThrow();
             milestone.setStatus(MilestoneStatus.DISPUTED); milestones.saveAndFlush(milestone); });
         assertThatThrownBy(() -> service.open(client(), contract.getId(), reason)).isInstanceOf(ApplicationException.class);

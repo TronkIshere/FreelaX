@@ -7,6 +7,11 @@ public final class AvalancheEscrowIds {
     private AvalancheEscrowIds() {
     }
 
+    /** True for a contract that chose the Avalanche rail; the legacy funding paths must refuse such a contract (no mixed rails). */
+    public static boolean isAvalancheNetwork(String paymentNetworkId) {
+        return paymentNetworkId != null && paymentNetworkId.toLowerCase(java.util.Locale.ROOT).startsWith("avalanche");
+    }
+
     public static String fromMilestone(UUID milestoneId) {
         return "0x" + milestoneId.toString().replace("-", "") + "0".repeat(32);
     }

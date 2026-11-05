@@ -70,6 +70,7 @@ public class FundingService {
                     .filter(m -> m.getContractId().equals(contractId))
                     .orElseThrow(() -> new ApplicationException(ErrorCode.FUNDING_NOT_FOUND));
             if (escrowContracts.existsByContractId(contractId)
+                    || com.marketplace.backend.blockchain.avalanche.AvalancheEscrowIds.isAvalancheNetwork(contract.getPaymentNetworkId())
                     || "PARTNER_ESCROW_MOCK".equals(contract.getPaymentRail())
                     || PaymentFlow.RAIL.equals(contract.getPaymentRail())) {
                 throw new ApplicationException(ErrorCode.FUNDING_INVALID_STATE);
