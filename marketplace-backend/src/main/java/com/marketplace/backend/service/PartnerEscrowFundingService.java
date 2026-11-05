@@ -156,7 +156,8 @@ public class PartnerEscrowFundingService {
             Job job = jobs.findById(c.getJobId()).orElseThrow();
             if (locked.getStatus() == FundingStatus.SUCCEEDED) return;
             if (milestone.getStatus() != MilestoneStatus.PENDING_FUNDING
-                    || c.getStatus() != ContractStatus.PENDING_FUNDING || !RAIL.equals(c.getPaymentRail()))
+                    || c.getStatus() != ContractStatus.PENDING_FUNDING || !RAIL.equals(c.getPaymentRail())
+                    || com.marketplace.backend.blockchain.avalanche.AvalancheEscrowIds.isAvalancheNetwork(c.getPaymentNetworkId()))
                 throw new ApplicationException(ErrorCode.FUNDING_INVALID_STATE);
             locked.setCheckoutOrderId(locked.getMilestoneId());
             locked.setStatus(FundingStatus.SUCCEEDED);

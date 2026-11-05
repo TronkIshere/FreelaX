@@ -132,6 +132,27 @@ class FundingServiceTest {
     }
 
     @Test
+    void aFiatOrderStartedBeforeTheAvalancheRailWasChosenNeverActivatesThatContract() {
+        CheckoutOrderResult created = order("CREATED");
+        CheckoutOrderResult captured = order("CAPTURED");
+        captured.setId(created.getId());
+        when(payment.createFundingOrder(eq(client.getId()), eq(job.getId()), any(), anyString(), anyString(),
+                anyString(), anyString())).thenReturn(created);
+        when(payment.captureFundingOrder(created.getId())).thenAnswer(invocation -> {
+            contract.setPaymentNetworkId("avalanche-local");
+            return captured;
+        });
+        try {
+            service.fund(client.getId(), contract.getId(), milestone.getId(), "key-1", request("500.00"));
+        } catch (ApplicationException expectedRefusal) {
+            // the completion is refused; what matters is that nothing was activated
+        }
+        assertThat(milestone.getStatus()).isEqualTo(MilestoneStatus.PENDING_FUNDING);
+        assertThat(contract.getStatus()).isEqualTo(ContractStatus.PENDING_FUNDING);
+        assertThat(job.getStatus()).isEqualTo(JobStatus.AWAITING_PAYMENT);
+    }
+
+    @Test
     void reusedKeyWithChangedPayloadIsConflict() {
         saved = new FundingTransaction();
         saved.setPayloadHash("different");

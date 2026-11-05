@@ -6,6 +6,8 @@
 # Docker VM). F3 is handled as the gateway's own tests do: start the gateway, read its ephemeral signer addresses from the
 # log, deploy with those as arbiter and authorization signer, and let the gateway load the manifest lazily.
 #
+# The dev-profile seed administrator (admin.e2e@example.test, random throwaway password, discarded with the containers) stands for
+# the arbiter role: the administrator decides the dispute and triggers the gateway's ephemeral LOCAL arbiter signer.
 # Prerequisites: Docker running; boot jars built (marketplace on JDK 17, gateway on JDK 21; see README.md); Node >= 22.
 # Usage: bash docs/avalanche-migration/phase-2/a2-local-stack/run.sh [evidence-output.json]
 set -euo pipefail
@@ -25,7 +27,7 @@ ANVIL_SENDER=0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266   # Anvil's well-known u
 
 rnd() { openssl rand -hex "$1"; }
 DB_PW="a2db-$(rnd 12)"; JWT="$(rnd 48)"; GW_KEY="a2gw-$(rnd 24)"; MISA_PW="A2misa-$(rnd 12)!"
-DEMO_C="A2client-$(rnd 8)!Aa1"; DEMO_F="A2freelancer-$(rnd 8)!Aa1"
+DEMO_C="A2client-$(rnd 8)!Aa1"; DEMO_F="A2freelancer-$(rnd 8)!Aa1"; DEMO_A="A2admin-$(rnd 12)!Aa1-throwaway"
 
 down() {
   for c in marketplace gateway anvil redis mysql; do docker rm -f "$P-$c" >/dev/null 2>&1 || true; done
@@ -92,7 +94,7 @@ docker run -d --name "$P-marketplace" --network "$NET" --memory 1200m -p 127.0.0
   -v "$WINROOT/marketplace-backend/target:/app:ro" \
   -e SPRING_PROFILES_ACTIVE=dev -e DB_URL="jdbc:mysql://$P-mysql:3306/marketplace?useUnicode=true&characterEncoding=UTF-8" \
   -e DB_USERNAME=root -e DB_PASSWORD="$DB_PW" -e REDIS_HOST="$P-redis" -e REDIS_PORT=6379 -e JWT_SECRET="$JWT" \
-  -e MISA_PLATFORM_ACCOUNT_PASSWORD="$MISA_PW" -e DEMO_CLIENT_PASSWORD="$DEMO_C" -e DEMO_FREELANCER_PASSWORD="$DEMO_F" \
+  -e MISA_PLATFORM_ACCOUNT_PASSWORD="$MISA_PW" -e DEMO_CLIENT_PASSWORD="$DEMO_C" -e DEMO_FREELANCER_PASSWORD="$DEMO_F" -e DEMO_ADMIN_PASSWORD="$DEMO_A" \
   -e AVALANCHE_GATEWAY_ENABLED=true -e AVALANCHE_GATEWAY_BASE_URL="http://$P-gateway:9194" \
   -e AVALANCHE_GATEWAY_INTERNAL_API_KEY="$GW_KEY" -e AVALANCHE_GATEWAY_SETTLEMENT_NOTIFICATIONS=true \
   -e AVALANCHE_PAYOUT_ENABLED=true -e AVALANCHE_PAYOUT_PARTNER=local-mock -e AVALANCHE_PAYOUT_LOCAL_MOCK_TOKEN_ADDRESS="$TOKEN" \
@@ -107,5 +109,6 @@ docker logs "$P-marketplace" 2>&1 | grep -q "Started .*Application" || { echo "m
 
 echo "[a2] drive the Avalanche rail end to end"
 MARKET=http://127.0.0.1:19191 GATEWAY=http://127.0.0.1:19194 GATEWAY_KEY="$GW_KEY" ANVIL="$P-anvil" OUT="$OUT" \
+  ADMIN_EMAIL=admin.e2e@example.test ADMIN_PASSWORD="$DEMO_A" \
   node "$WINHERE/drive.mjs"
 echo "[a2] evidence: $OUT"

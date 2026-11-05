@@ -307,6 +307,7 @@ public class AvalancheEscrowService {
             }
             case "resolve" -> {
                 require(admin, "only the arbiter role (administrator) resolves a dispute");
+                require(!client && !freelancer, "a party cannot act as the arbiter of its own contract");
                 ContractDispute d = recordedDispute(c, in.disputeId());
                 require(d.getStatus() == DisputeStatus.DECISION_PENDING_RELEASE || d.getStatus() == DisputeStatus.DECISION_PENDING_REFUND,
                         "no recorded administrator decision awaits settlement");

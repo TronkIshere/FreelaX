@@ -6,13 +6,15 @@
 // Flows: (1) wallet link (A8) for both parties; (2) fund -> release with the users' own wallets, FINALIZED-only business
 // effects and settlement notifications; (3) a second contract funded and closed by a two-party wallet mutual refund (F13);
 // (4) R12: two more contracts, disputed on chain and settled by both parties' own signatures (RELEASE, then REFUND), with the
-// negative checks (no signature, one signature, non-party, wrong digest, forged signature, mutual refund while Disputed).
+// negative checks (no signature, one signature, non-party, wrong digest, forged signature, mutual refund while Disputed);
+// (5) administrator decision and arbiter resolution of a Disputed escrow (a different workflow from the two-party settlement):
+// the dev-profile seed administrator claims and decides, then triggers the gateway's ephemeral LOCAL arbiter signer.
 import { execFileSync } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 
-const { MARKET, GATEWAY, GATEWAY_KEY, ANVIL, OUT } = process.env;
-if (!MARKET || !GATEWAY || !GATEWAY_KEY || !ANVIL || !OUT) throw new Error('run through run.sh');
+const { MARKET, GATEWAY, GATEWAY_KEY, ANVIL, OUT, ADMIN_EMAIL, ADMIN_PASSWORD } = process.env;
+if (!MARKET || !GATEWAY || !GATEWAY_KEY || !ANVIL || !OUT || !ADMIN_EMAIL || !ADMIN_PASSWORD) throw new Error('run through run.sh');
 for (const url of [MARKET, GATEWAY]) {
   const host = new URL(url).hostname;
   if (host !== '127.0.0.1' && host !== 'localhost') throw new Error('A2 talks to the local stack only');
@@ -264,15 +266,20 @@ async function main() {
   await settleDisputedEscrow(client, freelancer, clientWallet, freelancerWallet, thirdParty, config, true);
   await settleDisputedEscrow(client, freelancer, clientWallet, freelancerWallet, thirdParty, config, false);
 
+  // ---- flow 5 and 6: administrator decision, then arbiter resolution (REFUND, then RELEASE) -------------------------------
+  const adminSignIn = await market('/auth/sign-in', { method: 'POST', body: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD } });
+  const admin = { token: adminSignIn.accessToken };
+  await arbiterResolveEscrow(client, freelancer, clientWallet, freelancerWallet, admin, false);
+  await arbiterResolveEscrow(client, freelancer, clientWallet, freelancerWallet, admin, true);
+
   evidence.result = 'PASS';
 }
 
 const refused = promise => promise.then(() => 'ACCEPTED', e => 'REFUSED: ' + String(e.message).slice(0, 160));
 
-async function settleDisputedEscrow(client, freelancer, clientWallet, freelancerWallet, thirdParty, config, release) {
-  const tag = release ? 'RELEASE' : 'REFUND';
-  const c = await newContract(client, freelancer, `A2 mutual settlement ${tag}`);
-  record(`R12 ${tag}: contract on the Avalanche rail`, c);
+async function openDisputedEscrow(client, freelancer, clientWallet, freelancerWallet, title, tag) {
+  const c = await newContract(client, freelancer, title);
+  record(`${tag}: contract on the Avalanche rail`, c);
   await call(GATEWAY, '/api/v1/avalanche/assets/faucet', { method: 'POST', internal: true, body: { address: clientWallet.address, amount: '5000000' } });
   await walletAction(client, clientWallet, c.contractId, 'fund');
   await awaitApplied(client, c.contractId, 'fund');
@@ -283,14 +290,20 @@ async function settleDisputedEscrow(client, freelancer, clientWallet, freelancer
     body: { summary: 'A2 delivery (local simulation).', deliverables: [{ requirementId: requirement, url: 'https://example.test/a2-delivery', description: 'A2 artefact' }] } });
   await walletAction(freelancer, freelancerWallet, c.contractId, 'submit', { submissionId: submission.id });
   await awaitApplied(freelancer, c.contractId, 'submit');
-  record(`R12 ${tag}: funded and submitted on chain`, {});
+  record(`${tag}: funded and submitted on chain`, {});
 
   const dispute = await market(`/contracts/${c.contractId}/disputes`, { method: 'POST', token: client.token,
     body: { reasonCode: 'QUALITY', description: 'A2 LOCAL_SIMULATION dispute (no real funds).' } });
   await walletAction(client, clientWallet, c.contractId, 'dispute', { disputeId: dispute.disputeId });
   const disputed = await awaitApplied(client, c.contractId, 'dispute');
   if (disputed.chainStatus !== 'DISPUTED') throw new Error('the escrow is not Disputed on chain: ' + disputed.chainStatus);
-  record(`R12 ${tag}: escrow Disputed on chain`, { disputeId: dispute.disputeId, chainStatus: disputed.chainStatus });
+  record(`${tag}: escrow Disputed on chain`, { disputeId: dispute.disputeId, chainStatus: disputed.chainStatus });
+  return { c, dispute };
+}
+
+async function settleDisputedEscrow(client, freelancer, clientWallet, freelancerWallet, thirdParty, config, release) {
+  const tag = release ? 'RELEASE' : 'REFUND';
+  const { c, dispute } = await openDisputedEscrow(client, freelancer, clientWallet, freelancerWallet, `A2 mutual settlement ${tag}`, `R12 ${tag}`);
 
   const settleInput = { disputeId: dispute.disputeId, releaseToFreelancer: release };
   const prepare = (party, extra = {}) => market(`/contracts/${c.contractId}/avalanche/actions/mutual-settle/prepare`,
@@ -350,6 +363,63 @@ async function settleDisputedEscrow(client, freelancer, clientWallet, freelancer
     disputeStatus: resolved?.status ?? null, settleAgainWhenNotDisputed: settledAgain, heldSignaturesSpent: spent.mutualSettlements ?? null,
     clientBalanceBaseUnits: clientBalance.balanceBaseUnits, freelancerBalanceBaseUnits: freelancerBalance.balanceBaseUnits });
   if (!settledAgain.startsWith('REFUSED')) throw new Error('a second settlement could be prepared for a settled escrow');
+}
+
+// Administrator decision and arbiter resolution: distinct from the two-party settlement. The administrator only RECORDS the decision
+// (claim, then resolve with an Idempotency-Key); the arbiter transaction moves the money, its outcome cannot be chosen by the caller
+// (it follows the recorded decision), and the dispute is closed only after the chain outcome is read and agrees.
+async function arbiterResolveEscrow(client, freelancer, clientWallet, freelancerWallet, admin, release) {
+  const tag = release ? 'RELEASE' : 'REFUND';
+  const outcome = release ? 'RELEASE_TO_FREELANCER' : 'REFUND_TO_CLIENT';
+  const { c, dispute } = await openDisputedEscrow(client, freelancer, clientWallet, freelancerWallet, `A2 arbiter ${tag}`, `ARBITER ${tag}`);
+  const id = dispute.disputeId;
+  const decide = (token, key, body = { outcome, reason: 'A2 LOCAL_SIMULATION decision (no real funds).' }) =>
+    market(`/admin/disputes/${id}/resolve`, { method: 'POST', token, headers: { 'Idempotency-Key': key }, body });
+  const arbiterExecute = token => market(`/contracts/${c.contractId}/avalanche/actions/resolve/execute`,
+    { method: 'POST', token, body: { idempotencyKey: randomUUID(), disputeId: id } });
+  const disputeOf = async token => market(`/contracts/${c.contractId}/disputes`, { token });
+
+  const negatives = {};
+  negatives.decisionBeforeClaim = await refused(decide(admin.token, 'a2-early-' + randomUUID()));
+  negatives.partyCannotClaim = await refused(market(`/admin/disputes/${id}/claim`, { method: 'POST', token: client.token }));
+  negatives.partyCannotDecide = await refused(decide(client.token, 'a2-party-' + randomUUID()));
+  for (const [name, value] of Object.entries(negatives)) if (!value.startsWith('REFUSED')) throw new Error(`${name} was accepted`);
+  await market(`/admin/disputes/${id}/claim`, { method: 'POST', token: admin.token });
+  negatives.arbiterBeforeDecision = await refused(arbiterExecute(admin.token));
+  if (!negatives.arbiterBeforeDecision.startsWith('REFUSED')) throw new Error('the arbiter acted before a recorded decision');
+
+  const key = 'a2-decision-' + randomUUID();
+  const decided = await decide(admin.token, key);
+  if (decided.status !== 'DECISION_PENDING_' + tag) throw new Error('unexpected decision state ' + decided.status);
+  const sameKey = await decide(admin.token, key);
+  negatives.otherKeyAfterDecision = await refused(decide(admin.token, 'a2-other-' + randomUUID()));
+  if (sameKey.status !== decided.status || !negatives.otherKeyAfterDecision.startsWith('REFUSED')) throw new Error('the decision is not idempotent and final');
+  const beforeMoney = await market(`/contracts/${c.contractId}/avalanche`, { token: client.token });
+  if (beforeMoney.chain?.status !== 'DISPUTED') throw new Error('the decision moved money: ' + beforeMoney.chain?.status);
+  record(`ARBITER ${tag}: administrator decision recorded, no money moved`, { status: decided.status, negatives, chainStatus: beforeMoney.chain.status });
+
+  negatives.clientCannotArbitrate = await refused(arbiterExecute(client.token));
+  negatives.freelancerCannotArbitrate = await refused(arbiterExecute(freelancer.token));
+  if (!negatives.clientCannotArbitrate.startsWith('REFUSED') || !negatives.freelancerCannotArbitrate.startsWith('REFUSED')) throw new Error('a party acted as the arbiter');
+  const sent = await arbiterExecute(admin.token);
+  if (['FAILED', 'REVERTED', 'REPLACED'].includes(sent.status)) throw new Error('the arbiter transaction ended ' + sent.status + ' ' + sent.errorClass);
+  const applied = await awaitApplied(client, c.contractId, 'resolve');
+  const after = await contractState(client, c.jobId);
+  const expected = release ? { contract: 'COMPLETED', milestone: 'RELEASED', chain: 'RELEASED' } : { contract: 'CANCELLED', milestone: 'REFUNDED', chain: 'REFUNDED' };
+  if (after.contract !== expected.contract || after.milestone !== expected.milestone || applied.chainStatus !== expected.chain) {
+    throw new Error(`ARBITER ${tag}: unexpected outcome ${JSON.stringify({ after, chain: applied.chainStatus })}`);
+  }
+  const closed = await disputeOf(client.token);
+  if (closed?.status !== 'RESOLVED_' + tag) throw new Error('the dispute was not closed from the chain outcome: ' + closed?.status);
+  negatives.secondArbiterRun = await refused(arbiterExecute(admin.token));
+  negatives.otherKeyAfterResolution = await refused(decide(admin.token, 'a2-late-' + randomUUID()));
+  negatives.mutualSettleAfterResolution = await refused(market(`/contracts/${c.contractId}/avalanche/actions/mutual-settle/prepare`,
+    { method: 'POST', token: client.token, body: { idempotencyKey: randomUUID(), disputeId: id, releaseToFreelancer: release } }));
+  for (const name of ['secondArbiterRun', 'otherKeyAfterResolution', 'mutualSettleAfterResolution']) {
+    if (!negatives[name].startsWith('REFUSED')) throw new Error(`${name} was accepted after the resolution`);
+  }
+  record(`ARBITER ${tag}: arbiter resolution finalized`, { txHash: applied.txHash, states: applied.states, chainStatus: applied.chainStatus,
+    ...after, disputeStatus: closed.status, negatives });
 }
 
 main().catch(error => { evidence.result = 'FAIL'; evidence.error = redact(String(error.message ?? error)).slice(0, 800); process.exitCode = 1; })

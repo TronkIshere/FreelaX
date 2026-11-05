@@ -212,7 +212,9 @@ public class FundingService {
                 WorkContract contract = contracts.findById(locked.getContractId()).orElseThrow();
                 Job job = jobs.findById(contract.getJobId()).orElseThrow();
                 if (locked.getStatus() == FundingStatus.SUCCEEDED) return;
-                if (milestone.getStatus() != MilestoneStatus.PENDING_FUNDING) {
+                // a fiat order started before the client chose the Avalanche rail must not complete on that contract
+                if (milestone.getStatus() != MilestoneStatus.PENDING_FUNDING
+                        || com.marketplace.backend.blockchain.avalanche.AvalancheEscrowIds.isAvalancheNetwork(contract.getPaymentNetworkId())) {
                     throw new ApplicationException(ErrorCode.FUNDING_INVALID_STATE);
                 }
                 milestone.setStatus(MilestoneStatus.FUNDED);

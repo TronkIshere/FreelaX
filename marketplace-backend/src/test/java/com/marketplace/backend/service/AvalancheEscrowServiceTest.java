@@ -333,6 +333,11 @@ class AvalancheEscrowServiceTest {
             assertRefused(() -> service.authorize(notAdmin, false, contract, "resolve",
                     new AvalancheEscrowService.Input(null, null, release.getId(), null, null, null, null)));
         }
+        // a party holding the administrator role cannot arbitrate its own contract
+        for (UUID party : List.of(clientId, freelancerId)) {
+            assertRefused(() -> service.authorize(party, true, contract, "resolve",
+                    new AvalancheEscrowService.Input(null, null, release.getId(), null, null, null, null)));
+        }
     }
 
     @Test
