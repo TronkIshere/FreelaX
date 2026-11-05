@@ -382,6 +382,24 @@ counting artifact (Foundry reports the invariant contract as one test). No owner
 ## Change note (2026-11-02 documentation reconciliation)
 Updated: this file; `README.md`; `04-migration-roadmap.md`; `05-risk-register.md`; `06-implementation-backlog.md`; `phase-1/README.md`; `phase-2/README.md`, `01`, `02`, `03`, `05`, `06`, `08`, `09`. No source, configuration or migration file was modified; no owner decision was changed.
 
+## Change note (2026-11-05, second session: technical gap closure; NO TEST WAS EXECUTED)
+Implementation and test preparation only, as instructed; nothing below has been run, so no status is raised to EXECUTED PASS.
+1. **Legacy rail isolation, completed:** besides the three entry guards (fiat `fund`, Solana escrow `prepare`, partner escrow `fund`), the
+   fiat and partner **completion** points now refuse a contract that carries an Avalanche network id, which closes the race "fiat order
+   started, then the client chose Avalanche, then the order completed" (`FundingService`, `PartnerEscrowFundingService`). The Solana escrow
+   completion needs an escrow record that `enable` already refuses. `AvalancheEscrowIds.isAvalancheNetwork` now trims its input. Not
+   guarded and recorded: a pre-funding cancellation of an Avalanche contract is allowed (nothing is funded then); a funded Avalanche contract
+   cannot be cancelled through the legacy cancellation or settlement services because they require a fiat funding record (fail closed, by
+   code reading).
+2. **Arbiter hardening:** a party that also holds the administrator role can no longer authorize the arbiter `resolve` of its own contract.
+3. **Tests written, not run:** `SolanaEscrowFundingServiceTest` (2), `PartnerEscrowFundingServiceTest` (2), `AvalancheEscrowIdsTest` (2),
+   `FundingServiceTest` race test (1), extended `AvalancheEscrowServiceTest` assertion. The Solana and partner tests are mock-based.
+4. **A2 harness extended, not run:** administrator decision and arbiter resolution, REFUND and RELEASE, with negatives (see its README, flow 6).
+   `run.sh` seeds a throwaway dev administrator (dev profile only). `bash -n` and `node --check` only.
+5. Commands for the final validation: [validation-matrix](validation-matrix.md). The expected marketplace count after this work is about
+   453 (446 + 7), to be confirmed.
+Risks of unrun code: the new tests and the harness may need small fixes on their first run.
+
 ## Validation results (2026-11-05, coordinated run after the dispute lifecycle review; this machine, LOCAL-SIM only)
 | Suite | Environment | Result |
 |---|---|---|

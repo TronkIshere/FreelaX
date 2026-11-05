@@ -5,7 +5,7 @@ records *what was done, why, and on what authority*, and the resume point. One e
 new evidence changes an entry's status, edit its **Status** line and add a dated "Update" line under it; do not delete the
 original reasoning. Do not add routine progress entries.
 
-## Current state (updated 2026-11-05, after L-028)
+## Current state (updated 2026-11-05, after L-029)
 - **Branch:** `avalanche/phase1-closure-phase3-proposal`; pushed to `origin` on owner instruction 2026-11-05 (`5b75208`); later
   commits are local. Commit messages carry **no** Claude attribution trailer (owner instruction 2026-11-05).
 - **Owner decisions 2026-11-05:** R6 Phase 3 APPROVED; R12 option (1) adopted; R1/C1 and R2 remainder: the owner signs (keystore),
@@ -20,6 +20,7 @@ original reasoning. Do not add routine progress entries.
   IMPLEMENTED), Fuji escrow deployment (B2/X3, owner signs), CI result of the 2026-11-05 push (unknown, no `gh` here).
 - **Last measured (2026-11-05, L-028, full coordinated run):** JDK 17 reactor 72 / 446 / 20 / 10; gateway 119/0/3; Foundry 77/1;
   frontend 30 files / 877 (Node 24.19.0); human-signed tooling 13; A2 PASS. MySQL ITs V7 to V9 (3/3 on 2026-11-05, earlier) not re-run: no schema change since.
+- **L-029 (no tests executed):** rail-isolation completion guards, party-as-arbiter hardening, new unit tests and the A2 admin/arbiter flow are written but NOT RUN; run the commands in `validation-matrix.md` before trusting them.
 - **A2 with R12:** PASS on 2026-11-05 (LOCAL-SIM, L-027); re-baselined on this machine in L-028. Open engineering gaps (not owner-gated): unit tests for the Solana-escrow and partner-escrow funding guards; a live administrator decision plus arbiter `resolve` in the A2 harness (see validation-matrix.md).
 - **Next executable task:** owner answers R4 and X2; owner browser-wallet check (B7); Fuji escrow deployment (B2/X3, owner signs).
 
@@ -494,4 +495,20 @@ original reasoning. Do not add routine progress entries.
   `FundingServiceTest` 9/9. The full coordinated validation is recorded in PROJECT_STATUS "Validation results".
 - **Gaps recorded, not closed:** no unit test for the Solana-escrow and partner-escrow funding guards; the administrator decision is not
   driven on the live single stack. `validation-matrix.md` tracks them.
+
+### L-029: Technical gap closure without test execution (2026-11-05, second session)
+- **Instruction:** finish the remaining executable gaps; do not run any test, suite or harness in this session.
+- **Gap A (legacy rail isolation):** completion guards added to the fiat and partner funding completion points (race with `enable`);
+  helper trims its input; mock-based tests added for the Solana and partner entry guards, a race test for the fiat completion and a helper
+  test. All **IMPLEMENTED, NOT EXECUTED**.
+- **Gap B (admin decision and arbiter resolution end to end):** A2 `run.sh` seeds a throwaway dev-profile administrator; `drive.mjs` gains
+  `arbiterResolveEscrow` (REFUND and RELEASE) and a shared `openDisputedEscrow`; the arbiter `resolve` now refuses a party that holds the
+  administrator role. **IMPLEMENTED, NOT EXECUTED**.
+- **Gap C (cross-module review by code reading):** `ContractCancellationService` and `SettlementService` fail closed for a funded Avalanche
+  contract (they need a fiat funding record); the arbiter outcome follows the recorded decision (the caller cannot choose it); the decision
+  is idempotent for the same key and conflicts for another; DB state moves before the chain only for the administrator decision
+  (`DECISION_PENDING_*`, milestone `RELEASE_PENDING` / `REFUND_PENDING`, as on the Solana escrow) and the final states follow the chain read.
+  No further defect found by reading; a pre-funding cancellation racing an already prepared `fund` transaction is recorded as an edge case
+  (the escrow's own funding expiry applies), not changed.
+- **No test, build, harness or CI was executed.** Commands for the final validation: `validation-matrix.md`.
 
