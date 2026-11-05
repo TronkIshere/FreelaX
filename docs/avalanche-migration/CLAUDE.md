@@ -154,8 +154,9 @@ silently "fix" plan text that is historical: add a dated note instead.
 ## 9. Git and change management
 - Work on a branch, never directly on `master`. Current branch: see the log. Conventional commit prefixes as used so far:
   `feat(avalanche):`, `fix(avalanche):`, `test(avalanche):`, `docs(avalanche):`.
-- Commit locally after each validated unit of work; one logical change per commit; end messages with the attribution line
-  from the session's system reminder. **Do not push.** Do not amend or rewrite pushed history; do not skip hooks.
+- Commit locally after each validated unit of work; one logical change per commit. **No `Co-Authored-By` or other Claude
+  attribution trailer in commit messages** (owner instruction 2026-11-05; overrides the session attribution reminder).
+  **Do not push** without a new owner instruction. Do not amend or rewrite pushed history; do not skip hooks.
 - Historical documents keep their text: add supersession notes and dated change notes rather than rewriting. Update
   PROJECT_STATUS.md (register row, change note) and the log in the same commit as the change they describe.
 - Do not modify vendored code (`avalanche-contracts/lib/`, including its third-party `CLAUDE.md`), `node_modules`, or `target/`.
