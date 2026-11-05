@@ -382,6 +382,39 @@ counting artifact (Foundry reports the invariant contract as one test). No owner
 ## Change note (2026-11-02 documentation reconciliation)
 Updated: this file; `README.md`; `04-migration-roadmap.md`; `05-risk-register.md`; `06-implementation-backlog.md`; `phase-1/README.md`; `phase-2/README.md`, `01`, `02`, `03`, `05`, `06`, `08`, `09`. No source, configuration or migration file was modified; no owner decision was changed.
 
+## Validation results (2026-11-05, coordinated run after the dispute lifecycle review; this machine, LOCAL-SIM only)
+| Suite | Environment | Result |
+|---|---|---|
+| Foundry 1.8.7 | pinned image | 77 passed, 0 failed, 1 skipped |
+| Gateway `avalanche-integration` | `maven:3.9-eclipse-temurin-21`, Testcontainers | 119 run, 0 failures, 3 skipped, BUILD SUCCESS |
+| Legacy reactor | `maven:3.9-eclipse-temurin-17`, memory-capped | payment 72, **marketplace 446** (442 + 4), misa 20, solana-integration 10; BUILD SUCCESS |
+| Frontend | `node:24.19.0` image, `npm ci`, `tsc -b` clean | 30 files, 877 tests passed |
+| Human-signed tooling | local Node 22.10 | 13/13 |
+| A2 single stack | Docker, rebuilt jars | PASS (R12 RELEASE and REFUND with negatives; [evidence](phase-2/evidence/LOCAL_SIMULATION-a2-local-stack-r12-20261105.json) overwritten by this run) |
+Not run: MySQL ITs (`*MySqlIT`, no schema change in this work). Nothing here is Fuji or external validation.
+
+## Change note (2026-11-05, Avalanche dispute lifecycle review)
+Review of the `ContractDisputeService.open` patch of `6cca328` and of the dispute lifecycle on the Avalanche rail. Findings, all fixed
+(additive, R11), each with unit tests:
+1. **Funding proof too weak (security, in the patch itself):** the patch trusted the milestone state, but the legacy funding paths
+   (fiat `FundingService`, `SolanaEscrowFundingService`, `PartnerEscrowFundingService`) did not refuse a contract that already
+   carried an Avalanche network id, so a mixed-rail contract could reach FUNDED without chain evidence. Now: dispute opening on the
+   Avalanche rail requires an applied Avalanche `fund` transaction, and the three legacy funding paths refuse a contract with an
+   Avalanche network id (`AvalancheEscrowIds.isAvalancheNetwork`). Unit test for the fiat path; the Solana-escrow and partner-escrow
+   guards have **no unit test** (no test class exists for those services; recorded in [validation-matrix](validation-matrix.md)).
+   The 2026-11-04 submission patch (`ContractSubmissionService`) is now protected by the same funding-path guards; it still relies on
+   the milestone state.
+2. **Administrator decision unreachable:** `ContractDisputeService.resolve` had only the fiat and Solana-escrow branches, so no
+   decision (`DECISION_PENDING_*`) could be recorded for an Avalanche dispute and the arbiter `resolve` action had nothing to follow.
+   New branch: needs an applied (chain-anchored) `dispute` transaction, records the decision, sets `retryable=false`, makes no
+   payment call.
+3. **`dispute` anchoring unverified and dispute not closed after `resolve`:** `AvalancheEscrowService` marked a `dispute` transaction
+   applied without reading the chain, and an arbiter `resolve` left the dispute in `DECISION_PENDING_*`. Now `dispute` is applied only
+   when the chain reads DISPUTED (otherwise CHAIN_MISMATCH) and `resolve` closes the dispute (`RESOLVED_RELEASE` or `RESOLVED_REFUND`),
+   as `mutual-settle` already did.
+Not exercised live: the administrator decision plus arbiter `resolve` on the single stack (the A2 harness has no administrator
+account); unit level only. [validation-matrix.md](validation-matrix.md) created.
+
 ## Change note (2026-11-05, A2 harness with R12)
 `phase-2/a2-local-stack/drive.mjs` gains two flows on the single LOCAL_SIMULATION stack: fund, submit, dispute (marketplace record, then
 the party's wallet `dispute` action; chain DISPUTED) and a two-party `mutual-settle` of a Disputed escrow, once RELEASE and once REFUND,

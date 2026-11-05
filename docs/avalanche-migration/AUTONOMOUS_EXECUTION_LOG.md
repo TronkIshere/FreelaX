@@ -5,7 +5,7 @@ records *what was done, why, and on what authority*, and the resume point. One e
 new evidence changes an entry's status, edit its **Status** line and add a dated "Update" line under it; do not delete the
 original reasoning. Do not add routine progress entries.
 
-## Current state (updated 2026-11-05, after L-027)
+## Current state (updated 2026-11-05, after L-028)
 - **Branch:** `avalanche/phase1-closure-phase3-proposal`; pushed to `origin` on owner instruction 2026-11-05 (`5b75208`); later
   commits are local. Commit messages carry **no** Claude attribution trailer (owner instruction 2026-11-05).
 - **Owner decisions 2026-11-05:** R6 Phase 3 APPROVED; R12 option (1) adopted; R1/C1 and R2 remainder: the owner signs (keystore),
@@ -18,7 +18,7 @@ original reasoning. Do not add routine progress entries.
 - **Phase 3:** approved. Done: R12 settlement, payout fee/tax (V9), notifications, stuck-escrow reporting, scanner health,
   drills, clone lab. Open: A2 harness re-run with a settlement (engineering, next), MISA record for Avalanche payouts (NOT
   IMPLEMENTED), Fuji escrow deployment (B2/X3, owner signs), CI result of the 2026-11-05 push (unknown, no `gh` here).
-- **Last measured (2026-11-05):** JDK 17 reactor 72 / 442 / 20 / 10 (L-027); gateway 119/0/3; Foundry 77 pass, 1 skipped; frontend 30
+- **Last measured (2026-11-05, L-028, full coordinated run):** JDK 17 reactor 72 / 446 / 20 / 10; gateway 119/0/3; Foundry 77/1; frontend 30 files / 877 (Node 24.19.0); tooling 13; A2 PASS; gateway 119/0/3; Foundry 77 pass, 1 skipped; frontend 30
   files / 877; human-signed tooling 13; MySQL ITs V7+V8 with V9 3/3.
 - **A2 with R12:** PASS on 2026-11-05 (LOCAL-SIM, L-027); no engineering item that needs no owner input is left except re-baselining gateway/Foundry/frontend on this machine (Node 24.19.0 needed).
 - **Next executable task:** owner answers R4 and X2; owner browser-wallet check (B7); Fuji escrow deployment (B2/X3, owner signs).
@@ -483,3 +483,15 @@ original reasoning. Do not add routine progress entries.
 - **Limits:** the "mutual refund while Disputed" check shows only that nothing can be prepared without signatures (contract refusal is a
   Foundry test); the forged-signature rejection is seen as a refused send at gas estimation (no revert reason recorded). LOCAL-SIM is not
   Fuji evidence.
+
+### L-028: Dispute lifecycle review on the Avalanche rail; legacy funding paths close the mixed-rail gap (2026-11-05)
+- **Authority:** the owner's instruction to review the `6cca328` patch and finish the executable scope; additive marketplace changes (R11).
+- **Findings and fixes:** see PROJECT_STATUS "Change note (2026-11-05, Avalanche dispute lifecycle review)": (1) a mixed-rail contract
+  could reach FUNDED through a legacy funding path, so the dispute patch now requires an applied Avalanche `fund` row and the three
+  legacy funding services refuse a contract with an Avalanche network id; (2) the administrator decision now has an Avalanche branch;
+  (3) `dispute` is applied only when the chain reads DISPUTED and an arbiter `resolve` closes the dispute.
+- **Tests:** targeted runs (security-sensitive): `ContractDisputeServiceTest` 19/19, `AvalancheEscrowServiceTest` 35/35,
+  `FundingServiceTest` 9/9. The full coordinated validation is recorded in PROJECT_STATUS "Validation results".
+- **Gaps recorded, not closed:** no unit test for the Solana-escrow and partner-escrow funding guards; the administrator decision is not
+  driven on the live single stack. `validation-matrix.md` tracks them.
+
