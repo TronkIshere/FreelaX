@@ -1,0 +1,72 @@
+label: LOCAL-SIM synthetic-data validation of the six E2 queries (NOT the E2 evidence; no real or development data)
+generated_at_utc: 2026-11-05T10:22:02Z
+mysql: 8.4.11
+latest migration applied: marketplace V9__avalanche_payout_fee_and_tax.sql, payment V1__baseline_schema.sql
+statements extracted from the request document: marketplace 4, payment 2 (expected 4 and 2)
+Q1 MATCH
+  statement: SELECT payment_flow_version, status, COUNT(*) AS n FROM jobs GROUP BY 1,2 ORDER BY 1,2;
+  expected:
+    NULL	COMPLETED	3
+    2	COMPLETED	1
+    2	IN_PROGRESS	2
+  got:
+    NULL	COMPLETED	3
+    2	COMPLETED	1
+    2	IN_PROGRESS	2
+Q2 MATCH
+  statement:  SELECT payment_rail, status, COUNT(*) AS n FROM work_contracts GROUP BY 1,2 ORDER BY 1,2;
+  expected:
+    NULL	ACTIVE	2
+    PARTNER_ESCROW_MOCK	ACTIVE	1
+    SOLANA_ESCROW	COMPLETED	1
+  got:
+    NULL	ACTIVE	2
+    PARTNER_ESCROW_MOCK	ACTIVE	1
+    SOLANA_ESCROW	COMPLETED	1
+Q3 MATCH
+  statement:  SELECT on_ramp_status, off_ramp_status, client_payment_status, on_chain_off_ramp_status,        contract_settlement_id IS NOT NULL AS contract_driven, COUNT(*) AS n FROM freelancer_payout_records GROUP BY 1,2,3,4,5 ORDER BY 1,2,3,4,5;
+  expected:
+    CONFIRMED	COMPLETED	CONFIRMED	CONFIRMED	1	1
+    NOT_STARTED	NOT_STARTED	NOT_STARTED	NOT_STARTED	0	2
+  got:
+    CONFIRMED	COMPLETED	CONFIRMED	CONFIRMED	1	1
+    NOT_STARTED	NOT_STARTED	NOT_STARTED	NOT_STARTED	0	2
+Q4 MATCH
+  statement:  SELECT status, COUNT(*) AS n FROM jobs WHERE checkout_order_id IS NOT NULL GROUP BY 1;
+  expected:
+    COMPLETED	3
+  got:
+    COMPLETED	3
+Q5 MATCH
+  statement: SELECT status, COUNT(*) AS n FROM bofa_checkout_orders GROUP BY 1;
+  expected:
+    CAPTURED	2
+    CREATED	1
+    FAILED	1
+  got:
+    CAPTURED	2
+    CREATED	1
+    FAILED	1
+Q6 MATCH
+  statement:  SELECT COUNT(*) AS unfinished_checkout_orders FROM bofa_checkout_orders WHERE status = 'CREATED';
+  expected:
+    1
+  got:
+    1
+--- write and DDL refusal under the SELECT-only account (each must print an ERROR)
+refused: ERROR 1142 (42000) at line 2: DELETE command denied to user 'e2_readonly'@'localhost' for table 'jobs'
+refused: ERROR 1142 (42000) at line 2: UPDATE command denied to user 'e2_readonly'@'localhost' for table 'work_contracts'
+refused: ERROR 1142 (42000) at line 1: CREATE command denied to user 'e2_readonly'@'localhost' for table 'e2_probe'
+--- unchanged state (CHECKSUM TABLE and row counts before and after all queries and refused writes)
+before:
+marketplace.jobs checksum=2153633261 rows=6
+marketplace.work_contracts checksum=3352962267 rows=4
+marketplace.freelancer_payout_records checksum=2800455653 rows=3
+payment.bofa_checkout_orders checksum=3687634783 rows=4
+after:
+marketplace.jobs checksum=2153633261 rows=6
+marketplace.work_contracts checksum=3352962267 rows=4
+marketplace.freelancer_payout_records checksum=2800455653 rows=3
+payment.bofa_checkout_orders checksum=3687634783 rows=4
+state: UNCHANGED
+result: PASS
