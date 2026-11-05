@@ -24,7 +24,7 @@ function JobRow({ job, kind }: { job: Job | DiscoverJob; kind: 'client' | 'disco
     ? applicationLabel(discovered.applicationStatus)
     : discovered?.hasApplied ? 'Đã ứng tuyển' : 'Chưa ứng tuyển';
   const ownership = discovered
-    ? discovered.client?.displayName || 'Khách hàng'
+    ? discovered.client?.displayName || 'Client'
     : participant?.freelancerId ? 'Đã giao người thực hiện' : 'Chưa giao người thực hiện';
   const due = participant?.contract?.deliveryDueAt ?? job.deliveryDueAt;
   const maxRevisions = participant?.contract?.maxRevisions ?? job.maxRevisions;
@@ -71,7 +71,7 @@ function ExploreJobRow({ job, primary }: { job: DiscoverJob; primary: boolean })
         {job.skills.map(skill => <span className="skill-tag" key={skill}>{skill}</span>)}</div>}</>}
     status={<span className={'state-mark job-progress-marker ' + jobStateTone(job.status)}>{jobLabel(job.status)}</span>}
     metadata={<><span>{job.createdAt ? <>Đăng {date(job.createdAt)}</> : 'Ngày đăng chưa có'}</span>
-      <span className="explore-client">{job.client?.displayName || 'Khách hàng'} · Ứng tuyển: {application}</span></>}
+      <span className="explore-client">{job.client?.displayName || 'Client'} · Ứng tuyển: {application}</span></>}
     action={<span className="job-row-next">
       <span className="explore-budget"><span>Ngân sách</span><strong>{money(job.budgetUsd)}</strong></span>
       <Link className="button explore-job-action" to={'/work/' + job.id} state={{ job }}>
@@ -125,7 +125,7 @@ function JobResults<T extends Job | DiscoverJob>({ result, loading, error, retry
 // Client list presentation only. All actions open existing screens; no work/money mutations.
 const clientJobStates = {
   OPEN: { surface: 'vermilion', icon: BriefcaseBusiness, action: 'Xem ứng viên', copy: 'Mở danh sách ứng viên để xem và chọn người thực hiện.' },
-  AWAITING_PAYMENT: { surface: 'cream', icon: Hourglass, action: 'Xem funding', copy: 'Công việc đang chờ funding trước khi Freelancer bắt đầu.' },
+  AWAITING_PAYMENT: { surface: 'cream', icon: Hourglass, action: 'Xem funding', copy: 'Công việc đang chờ nạp tiền trước khi Freelancer bắt đầu.' },
   IN_PROGRESS: { surface: 'cobalt', icon: PencilLine, action: 'Theo dõi công việc', copy: 'Đang chờ Freelancer bàn giao.' },
   SUBMITTED_FOR_REVIEW: { surface: 'acid', icon: Clock3, action: 'Duyệt bàn giao', copy: 'Cần bạn xem và phản hồi bàn giao.' },
   REVISION_REQUESTED: { surface: 'vermilion', icon: RotateCcw, action: 'Xem tiến độ chỉnh sửa', copy: 'Đang chờ Freelancer gửi bản sửa.' },

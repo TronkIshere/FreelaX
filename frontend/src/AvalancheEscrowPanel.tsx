@@ -87,6 +87,15 @@ export function AvalancheEscrowPanel({ contractId, user, isClient, isFreelancer,
     setEvmWallet(bound.walletAddress);
   });
 
+  /** Connects the wallet and refuses an account other than the linked one before anything is signed or sent (the escrow would reject it on chain anyway). */
+  async function connectLinked(wallet: EvmWallet, chainId: number) {
+    const connected = await wallet.connect(chainId);
+    if (evmWallet && connected.address.toLowerCase() !== evmWallet.toLowerCase()) {
+      throw new WalletError('The selected account is not the linked wallet.', 'ACCOUNT_NOT_LINKED');
+    }
+    return connected;
+  }
+
   /** F13: each party signs the SAME typed data (same deadline); the party who completes the pair sends the refund. */
   async function mutualRefundWithWallet(wallet: EvmWallet, address: string, chainId: number) {
     const pending = view?.mutualRefund ?? null;
@@ -145,13 +154,13 @@ export function AvalancheEscrowPanel({ contractId, user, isClient, isFreelancer,
     if (!env) throw new WalletError('Chưa biết môi trường mạng.', 'NO_ENV');
     if (offer.action === 'mutual-settle') {
       const wallet = (walletFactory ?? (() => new EvmWallet()))();
-      const { address } = await wallet.connect(env.chainId);
+      const { address } = await connectLinked(wallet, env.chainId);
       await mutualSettleWithWallet(offer, wallet, address, env.chainId);
       return;
     }
     if (offer.action === 'mutual-refund') {
       const wallet = (walletFactory ?? (() => new EvmWallet()))();
-      const { address } = await wallet.connect(env.chainId);
+      const { address } = await connectLinked(wallet, env.chainId);
       await mutualRefundWithWallet(wallet, address, env.chainId);
       return;
     }
@@ -159,7 +168,7 @@ export function AvalancheEscrowPanel({ contractId, user, isClient, isFreelancer,
     const input = inputFor(offer);
     const prepared = await api.avalanchePrepare(contractId, action, input);
     const wallet = (walletFactory ?? (() => new EvmWallet()))();
-    const { address } = await wallet.connect(env.chainId);
+    const { address } = await connectLinked(wallet, env.chainId);
     let last: string | null = null;
     for (const tx of prepared.transactions) last = await wallet.sendPrepared(tx, address, env.chainId);
     if (last) await api.avalancheRecordTransaction(contractId, action, last, input);

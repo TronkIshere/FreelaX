@@ -49,7 +49,7 @@ describe('P1 independent contract financial truth', () => {
   const release = { moneyStatus: 'SUCCEEDED', onChainStatus: 'FAILED', offRampStatus: 'UNKNOWN', taxStatus: 'NOT_STARTED', retryable: false } as ContractSettlement;
   it('retains confirmed primary money while unresolved downstream evidence needs refresh', () => {
     const value = { settlement: release, cancellation: null, error: '' };
-    expect(contractFinanceLabel(job, value)).toBe('Release đã xác nhận');
+    expect(contractFinanceLabel(job, value)).toBe('Giải ngân đã xác nhận');
     expect(contractFinanceTone(job, value)).toBe('done');
     expect(contractFinanceNeedsRefresh(job, value)).toBe(true);
     expect(contractFinanceNeedsRefresh(job, { ...value, settlement: { ...release, offRampStatus: 'FAILED', taxStatus: 'SUCCEEDED' } })).toBe(false);

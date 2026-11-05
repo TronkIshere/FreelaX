@@ -336,7 +336,7 @@ function LegacyWorkLifecycle({ job, user, onJobUpdated, children, footer }: {
 
 // List presentation only: links open the existing workspace and never mutate work or money.
 const myWorkStates = {
-  AWAITING_PAYMENT: { surface: 'cream', icon: Hourglass, action: 'Xem trạng thái', copy: 'Đang chờ Client hoàn tất funding trước khi công việc bắt đầu.' },
+  AWAITING_PAYMENT: { surface: 'cream', icon: Hourglass, action: 'Xem trạng thái', copy: 'Đang chờ Client hoàn tất nạp tiền trước khi công việc bắt đầu.' },
   IN_PROGRESS: { surface: 'cobalt', icon: PencilLine, action: 'Tiếp tục công việc', copy: 'Bạn có thể tiếp tục chuẩn bị và gửi bàn giao.' },
   SUBMITTED_FOR_REVIEW: { surface: 'acid', icon: Clock3, action: 'Xem bàn giao', copy: 'Bàn giao đang chờ Client phản hồi.' },
   REVISION_REQUESTED: { surface: 'vermilion', icon: RotateCcw, action: 'Xem phản hồi', copy: 'Client đã yêu cầu chỉnh sửa. Mở công việc để xem phản hồi.' },

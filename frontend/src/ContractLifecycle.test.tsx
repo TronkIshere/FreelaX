@@ -73,7 +73,7 @@ describe('unified contract awaiting funding', () => {
     await mount(pending, client);
 
     expect(host.textContent).not.toContain('Không thể đối chiếu lịch sử');
-    expect(host.querySelector('[aria-label="Trạng thái escrow Solana"]')).toBeNull();
+    expect(host.querySelector('[aria-label="Trạng thái ký quỹ Solana"]')).toBeNull();
   });
 });
 
@@ -127,7 +127,7 @@ describe('P06.4B contract workflow', () => {
   });
   it.each([4027, 4028])('conflict %s refreshes and removes stale decisions', async code => {
     vi.mocked(api.contractSubmissions).mockResolvedValueOnce([v1]).mockResolvedValue([{ ...v1, status: 'APPROVED' }]); vi.mocked(api.job).mockResolvedValue({ ...review, contract: { ...review.contract!, milestoneStatus: 'RELEASE_PENDING' } }); const post = vi.spyOn(api, 'decideSubmission').mockRejectedValue(new ApiError('changed', 409, code));
-    await mount(review, client); await click('Duyệt bàn giao'); await submit('.decision-form'); expect(post).toHaveBeenCalledTimes(1); expect(api.job).toHaveBeenCalled(); expect(button('Duyệt bàn giao')).toBeUndefined(); expect(host.textContent).toContain('đang đối soát release'); expect(host.textContent).not.toContain('payout completed');
+    await mount(review, client); await click('Duyệt bàn giao'); await submit('.decision-form'); expect(post).toHaveBeenCalledTimes(1); expect(api.job).toHaveBeenCalled(); expect(button('Duyệt bàn giao')).toBeUndefined(); expect(host.textContent).toContain('đang đối soát giải ngân'); expect(host.textContent).not.toContain('payout completed');
   });
   it('approval confirmation prevents double decisions', async () => {
     vi.mocked(api.contractSubmissions).mockResolvedValue([v1]); const post = vi.spyOn(api, 'decideSubmission').mockReturnValue(new Promise(() => {})); await mount(review, client); await click('Duyệt bàn giao'); expect(host.textContent).toContain('chưa giải ngân'); await act(async () => { const f = host.querySelector('.decision-form')!; f.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); f.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); }); expect(post).toHaveBeenCalledTimes(1);
@@ -160,7 +160,7 @@ describe('P06.4C server review timing', () => {
     await act(async () => root.render(<ReviewTiming submission={v1} contract={contract} now={Date.now()} />)); expect(host.textContent).toContain('48 giờ'); expect(host.textContent).not.toContain('Hạn gia hạn');
     await act(async () => root.render(<ReviewTiming submission={{ ...v1, reviewGraceDueAt: '2030-01-04T00:00:00Z' }} contract={{ ...contract, amount: '500.01' }} now={Date.now()} />)); expect(host.textContent).toContain('Hạn gia hạn'); expect(host.textContent).toContain('24 giờ');
     await act(async () => root.render(<ReviewTiming submission={v1} contract={{ ...contract, amount: '800.00', paymentRail: 'UNIFIED_USDC_PAYOUT' }} now={new Date('2030-01-02T23:00:00Z').getTime()} />));
-    expect(host.textContent).toContain('tự duyệt và release USDC; không gia hạn thêm'); expect(host.textContent).not.toContain('thêm 24 giờ'); expect(host.textContent).toContain('Còn 60 phút đến hạn review');
+    expect(host.textContent).toContain('tự duyệt và giải ngân USDC; không gia hạn thêm'); expect(host.textContent).not.toContain('thêm 24 giờ'); expect(host.textContent).toContain('Còn 60 phút đến hạn review');
   });
   it('deadline boundary only refetches and waits for server, cleans timers', async () => {
     vi.useFakeTimers(); vi.setSystemTime(new Date('2026-10-05T00:00:00Z')); const due = { ...v1, reviewDueAt: '2026-10-05T00:00:02Z' }; vi.mocked(api.contractSubmissions).mockResolvedValue([due]); vi.mocked(api.job).mockResolvedValue(review); const approve = vi.spyOn(api, 'decideSubmission');
@@ -266,13 +266,13 @@ describe('Pre-P06.7 completed Job review entry point', () => {
     const saved = { ...invitation, submitted: true, overall: 4, publishedAt: null };
     vi.mocked(api.contractReviews).mockResolvedValue([saved]); await act(async () => resolve(saved));
     expect(callout()).toBeNull(); expect(host.querySelector('.review-composer')).toBeNull(); expect(host.textContent).toContain('Nội dung công khai theo trạng thái công bố của máy chủ'); expect(api.contractReviews).toHaveBeenCalledTimes(2);
-    expect(host.querySelector('.ownership-band')?.textContent).toContain('Đã xác nhận release mô phỏng');
+    expect(host.querySelector('.ownership-band')?.textContent).toContain('Đã xác nhận giải ngân mô phỏng');
   });
   it('keeps uncertain unsaved review opportunity without changing completion or payment truth', async () => {
     reviewReads(); const post = vi.spyOn(api, 'submitReview').mockRejectedValue(new ApiError('Timeout', 0));
     await mount(completedJob, client); await fillRating(); await submit('.review-composer');
     expect(callout()).toBeTruthy(); expect(button('Gửi đánh giá')?.disabled).toBe(true); expect(host.textContent).toContain('Chưa xác nhận được kết quả'); expect(post).toHaveBeenCalledOnce(); expect(host.textContent).not.toContain('Đã gửi đánh giá');
-    expect(host.querySelector('.ownership-band')?.textContent).toContain('Đã xác nhận release mô phỏng'); expect(api.contractReviews).toHaveBeenCalledTimes(2);
+    expect(host.querySelector('.ownership-band')?.textContent).toContain('Đã xác nhận giải ngân mô phỏng'); expect(api.contractReviews).toHaveBeenCalledTimes(2);
   });
   it('removes the callout when uncertain submit is reconciled as already saved', async () => {
     reviewReads(); vi.spyOn(api, 'submitReview').mockImplementation(async () => { vi.mocked(api.contractReviews).mockResolvedValue([{ ...invitation, submitted: true, publishedAt: null }]); throw new ApiError('Timeout', 0); });

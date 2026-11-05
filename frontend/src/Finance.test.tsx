@@ -81,7 +81,7 @@ describe('P06.5C tax evidence contract', () => {
     expect(host.textContent).toContain('Chứng từ này được phát hành theo cách tính cũ');
     expect(host.textContent).toContain('Giá trị công việc quy đổi3.000.000');
     expect(host.textContent).toContain('Phí dịch vụ90.000');
-    expect(host.textContent).toContain('Đã chuyển cho người làm2.910.000');
+    expect(host.textContent).toContain('Đã chuyển cho Freelancer2.910.000');
     expect(button('Đồng bộ trạng thái')).toBeTruthy();
   });
 
@@ -97,7 +97,7 @@ describe('P06.5C tax evidence contract', () => {
     await render(<Routes><Route path="/finance/tax-records/:taxRecordId" element={<TaxRecordDetail />} /></Routes>, '/finance/tax-records/tax-1');
     expect(host.textContent).toContain('Số tiền sau phí để tính thuế2.910.000');
     expect(host.textContent).toContain('Thuế trên chứng từ291.000');
-    expect(host.textContent).toContain('Đã chuyển cho người làm2.619.000');
+    expect(host.textContent).toContain('Đã chuyển cho Freelancer2.619.000');
     expect(host.textContent).not.toContain('chưa khớp');
   });
 
@@ -334,15 +334,15 @@ describe('P1 contract financial evidence', () => {
     vi.mocked(api.settlement).mockResolvedValue({ ...release, moneyStatus: 'UNKNOWN', retryable: true });
     await render(<FinanceHome user={freelancer} />);
     expect(host.textContent).toContain('Editorial work');
-    expect(host.textContent).toContain('Đang đối soát release');
+    expect(host.textContent).toContain('Đang đối soát giải ngân');
     expect(api.myJobs).toHaveBeenCalledExactlyOnceWith(0, 20);
     expect(api.paymentStatus).not.toHaveBeenCalled();
   });
   it('does not infer release or refund from CAPTURED checkout or confirmed funding', async () => {
     await evidence();
-    expect(host.querySelector('[aria-label="Tiền chính của hợp đồng"]')?.textContent).toContain('Chưa có bản ghi release');
-    expect(host.textContent).toContain('Funding đã xác nhận');
-    expect(host.textContent).not.toContain('Release đã xác nhận');
+    expect(host.querySelector('[aria-label="Tiền chính của hợp đồng"]')?.textContent).toContain('Chưa có bản ghi giải ngân');
+    expect(host.textContent).toContain('Nạp tiền đã xác nhận');
+    expect(host.textContent).not.toContain('Giải ngân đã xác nhận');
     expect(host.textContent).not.toContain('Hoàn tiền đã xác nhận');
     expect(host.querySelector('.finance-stages')).toBeNull();
     expect(host.querySelectorAll('.contract-money-spine > li')).toHaveLength(5);
@@ -355,9 +355,9 @@ describe('P1 contract financial evidence', () => {
     await evidence();
     const primary = host.querySelector('[aria-label="Tiền chính của hợp đồng"]')!;
     expect(primary.textContent).toContain('Chưa xác minh hồ sơ tài chính');
-    expect(primary.textContent).toContain('Chưa xác minh release');
+    expect(primary.textContent).toContain('Chưa xác minh giải ngân');
     expect(primary.textContent).toContain('Chưa xác minh hoàn tiền');
-    expect(primary.textContent).not.toContain('Chưa có bản ghi release');
+    expect(primary.textContent).not.toContain('Chưa có bản ghi giải ngân');
     expect(primary.classList.contains('finance-primary-error')).toBe(true);
     expect([...host.querySelectorAll('button')].filter(item => item.textContent === 'Đối chiếu lại')).toHaveLength(1);
     expect(button('Thử lại')).toBeUndefined();
@@ -366,7 +366,7 @@ describe('P1 contract financial evidence', () => {
     await act(async () => button('Đối chiếu lại')!.click());
     expect(api.settlement).toHaveBeenCalledTimes(2);
     expect(request).not.toHaveBeenCalled(); expect(decision).not.toHaveBeenCalled();
-    expect(host.querySelector('.finance-primary')?.textContent).toContain('Chưa có bản ghi release');
+    expect(host.querySelector('.finance-primary')?.textContent).toContain('Chưa có bản ghi giải ngân');
   });
   it('keeps technical evidence empty and collapsed without a wall of missing fields', async () => {
     await evidence();
@@ -380,7 +380,7 @@ describe('P1 contract financial evidence', () => {
       releaseKey: 'TEST_ONLY_INTERNAL_KEY', accessToken: 'TEST_ONLY_TOKEN', bankAccountNumber: '9876543210987654321' } as ContractSettlement);
     await evidence();
     const disclosure = host.querySelector('details')!;
-    expect(disclosure.textContent).toContain('Tham chiếu release');
+    expect(disclosure.textContent).toContain('Tham chiếu giải ngân');
     expect(disclosure.textContent).toContain('sim-release');
     expect(disclosure.querySelectorAll('dt')).toHaveLength(1);
     expect(host.textContent).not.toContain('TEST_ONLY_');
@@ -399,14 +399,14 @@ describe('P1 contract financial evidence', () => {
   it('keeps primary release confirmed through downstream failure without claiming ACCEPTED', async () => {
     vi.mocked(api.settlement).mockResolvedValue({ ...release, onChainStatus: 'FAILED', onChainError: 'chain failure', retryable: true });
     await evidence();
-    expect(host.querySelector('[aria-label="Tiền chính của hợp đồng"]')?.textContent).toContain('Release đã xác nhận');
+    expect(host.querySelector('[aria-label="Tiền chính của hợp đồng"]')?.textContent).toContain('Giải ngân đã xác nhận');
     expect(host.querySelector('.finance-primary-done')).not.toBeNull();
-    expect(host.textContent).toContain('Đã xác nhận bản ghi release mô phỏng');
+    expect(host.textContent).toContain('Đã xác nhận bản ghi giải ngân mô phỏng');
     expect(host.textContent).toContain('Không xác nhận tiền đã về ngân hàng thật');
     expect(host.textContent).toContain('Mô phỏng');
     expect(host.textContent).not.toContain('Cơ quan thuế đã chấp nhận');
     expect(host.querySelector('details')?.hasAttribute('open')).toBe(false);
-    expect(host.querySelector('[aria-label="Xử lý sau release"]')?.textContent).toContain('•••• 7890');
+    expect(host.querySelector('[aria-label="Xử lý sau giải ngân"]')?.textContent).toContain('•••• 7890');
     expect(host.textContent).not.toContain('1234567890');
   });
   it('uses the actual accepted certificate and its existing destination', async () => {
@@ -431,7 +431,7 @@ describe('P1 contract financial evidence', () => {
     expect(host.textContent).toContain('Đang đối soát hoàn tiền');
     expect(host.textContent).toContain('chưa phải hủy và hoàn tiền cuối cùng');
     expect(host.querySelector('.finance-statement')?.textContent).not.toContain('Hợp đồng đã hủy');
-    expect(button('Funding mô phỏng')).toBeUndefined();
+    expect(button('Nạp tiền mô phỏng')).toBeUndefined();
   });
   it('renders confirmed refund and stops polling after final cancellation', async () => {
     vi.useFakeTimers();
@@ -452,7 +452,7 @@ describe('P1 contract financial evidence', () => {
     await evidence();
     await act(async () => { await vi.advanceTimersByTimeAsync(30000); });
     expect(api.settlement).toHaveBeenCalledTimes(2);
-    expect(host.querySelector('.finance-statement')?.textContent).toContain('Release đã xác nhận');
+    expect(host.querySelector('.finance-statement')?.textContent).toContain('Giải ngân đã xác nhận');
     vi.mocked(api.settlement).mockResolvedValue(release);
     await act(async () => { await vi.advanceTimersByTimeAsync(30000); });
     await act(async () => { await vi.advanceTimersByTimeAsync(60000); });
@@ -484,9 +484,9 @@ describe('P1 contract financial evidence', () => {
       .mockRejectedValue(new Error('Read unavailable'));
     await evidence();
     await act(async () => { await vi.advanceTimersByTimeAsync(30000); });
-    expect(host.querySelector('.finance-statement')?.textContent).toContain('Release đã xác nhận');
+    expect(host.querySelector('.finance-statement')?.textContent).toContain('Giải ngân đã xác nhận');
     await act(async () => { await vi.advanceTimersByTimeAsync(30000); });
-    expect(host.querySelector('.finance-statement')?.textContent).toContain('Release đã xác nhận');
+    expect(host.querySelector('.finance-statement')?.textContent).toContain('Giải ngân đã xác nhận');
     expect(host.textContent).toContain('Read unavailable');
     act(() => root.unmount()); root = createRoot(host);
     await act(async () => { await vi.advanceTimersByTimeAsync(90000); });
@@ -501,7 +501,7 @@ describe('P1 contract financial evidence', () => {
     await render(<FinanceHome user={client} />, '/finance?jobId=other');
     await act(async () => resolve(release));
     expect(host.textContent).toContain('Other contract');
-    expect(host.querySelector('.finance-statement')?.textContent).not.toContain('Release đã xác nhận');
+    expect(host.querySelector('.finance-statement')?.textContent).not.toContain('Giải ngân đã xác nhận');
   });
 });
 
@@ -524,7 +524,7 @@ describe('P06.5B single-job money evidence spine', () => {
     expect(host.querySelector('.eyebrow')?.textContent).toBe(receiver ? 'Freelancer / Thu nhập' : 'Client / Thanh toán');
     expect(host.querySelector('h1')?.textContent).toBe('Chi tiết hồ sơ tiền.');
     expect(host.querySelector('.page-head p')?.textContent).toBe(receiver
-      ? 'Theo dõi release, chi trả và chứng từ của công việc này.'
+      ? 'Theo dõi giải ngân, chi trả và chứng từ của công việc này.'
       : 'Theo dõi dòng tiền của một công việc, từ thanh toán đến chứng từ thuế.');
     expect(host.querySelector('.finance-detail-back a')?.textContent?.trim()).toBe(receiver ? 'Lịch sử thu nhập' : 'Danh sách thanh toán');
     expect(host.querySelector('.finance-detail-back a')?.getAttribute('href')).toBe('/finance');
@@ -565,7 +565,7 @@ describe('P06.5B single-job money evidence spine', () => {
     expect(host.querySelectorAll('.connector-completed')).toHaveLength(3);
     expect(host.querySelectorAll('.connector-current')).toHaveLength(1);
     expect(host.querySelectorAll('.connector-upcoming')).toHaveLength(1);
-    expect(host.querySelector('[data-stage="withdrawal"] h3')?.textContent).toBe('Người làm rút tiền');
+    expect(host.querySelector('[data-stage="withdrawal"] h3')?.textContent).toBe('Freelancer rút tiền');
   });
 
   it('does not advance when local time or animation completes; advances after a new API response', async () => {
@@ -742,7 +742,7 @@ describe('P06.5B single-job money evidence spine', () => {
     expect(resolveMoneySpine(stages).current).toBe(2);
     const refund = contractMoneyStages({ ...contractJob, contract: { ...contractJob.contract!, status: 'CANCELLED' } },
       { settlement: null, cancellation: { ...cancellation, cancellationStatus: 'CANCELLED', refundStatus: 'SUCCEEDED' }, error: '' }, null, null);
-    expect(refund[1].title).toBe('Hoàn tiền cho khách');
+    expect(refund[1].title).toBe('Hoàn tiền cho Client');
     expect(refund.slice(2).every(stage => stage.applicable === false)).toBe(true);
     expect(resolveMoneySpine(refund).current).toBe(-1);
   });

@@ -129,7 +129,7 @@ function AdminCase({ id, user }: { id: string; user: User }) {
     } finally { lock.current = false; if (alive.current) setBusy(false); }
   }
   return <>
-    <PageHeading eyebrow="Quản trị / Hồ sơ tranh chấp" title={detail?.contract.title || 'Đối chiếu hồ sơ.'} description="Quyết định release hoặc hoàn tiền toàn bộ. Marketplace thực thi và đối soát kết quả tài chính." />
+    <PageHeading eyebrow="Quản trị / Hồ sơ tranh chấp" title={detail?.contract.title || 'Đối chiếu hồ sơ.'} description="Quyết định giải ngân hoặc hoàn tiền toàn bộ. Marketplace thực thi và đối soát kết quả tài chính." />
     <Link className="text-link" to="/admin/disputes">← Hàng đợi tranh chấp</Link>
     {loading && <StatePanel kind="loading" title="Đang tải hồ sơ" body="Đang đọc hợp đồng, bằng chứng và audit được phép truy cập." />}
     <DisputeError error={error} />
@@ -140,7 +140,7 @@ function AdminCase({ id, user }: { id: string; user: User }) {
         <FactGrid facts={[{ label: 'Giá trị hợp đồng', value: String(detail.contract.amount) + ' ' + detail.contract.currency },
           { label: 'Hạn bàn giao', value: localInstant(detail.contract.deliveryDueAt) },
           { label: 'Lượt sửa đã dùng', value: detail.contract.revisionsUsed + '/' + detail.contract.maxRevisions },
-          { label: 'Funding', value: detail.fundingStatus ? fundingLabel(detail.fundingStatus) : 'Theo luồng USDC · xem Đối soát USDC' }]} />
+          { label: 'Nạp tiền', value: detail.fundingStatus ? fundingLabel(detail.fundingStatus) : 'Theo luồng USDC · xem Đối soát USDC' }]} />
         <SectionHeading level={3} title="Sản phẩm bàn giao" />{detail.deliverables.map(item => <p key={item.id}>{item.title} · {item.description}{item.required && ' (bắt buộc)'}</p>)}
         <SectionHeading level={3} title="Tiêu chí nghiệm thu" />{detail.acceptanceCriteria.map(item => <p key={item.id}>{item.description}{item.required && ' (bắt buộc)'}</p>)}
         <EvidenceDisclosure summary="Danh tính các bên / Hợp đồng"><p>Client: <code>{detail.contract.clientId}</code></p><p>Freelancer: <code>{detail.contract.freelancerId}</code></p><p>Contract: <code>{detail.contract.contractId}</code></p></EvidenceDisclosure>

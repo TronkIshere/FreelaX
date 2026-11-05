@@ -115,8 +115,8 @@ function FinanceList({ user }: { user: User }) {
         <RoughBurst seedKey="finance:left" accent="vermilion" size={38} className="finance-rays finance-rays--left" /></span>
         <span className="finance-title-emphasis">công việc.<RoughUnderline seedKey="finance:underline" size={260} />
           <RoughBurst seedKey="finance:right" accent="ink" size={38} className="finance-rays finance-rays--right" /></span></>}
-      description={freelancer ? 'Theo dõi release, chi trả và chứng từ theo từng công việc.'
-        : 'Theo dõi thanh toán, release và hoàn tiền theo từng công việc.'} />
+      description={freelancer ? 'Theo dõi giải ngân, chi trả và chứng từ theo từng công việc.'
+        : 'Theo dõi thanh toán, giải ngân và hoàn tiền theo từng công việc.'} />
     <FinanceNav />
     {loading && <StatePanel kind="loading" title="Đang tải hồ sơ tài chính" body="Đang đối chiếu công việc và trạng thái thanh toán." />}
     {!loading && error && <StatePanel kind="error" title="Không thể tải công việc" body={error}
@@ -143,10 +143,10 @@ function FinanceList({ user }: { user: User }) {
 // are a reading key, not invented totals or interactive filters.
 function FinanceSummary({ count, freelancer }: { count: number; freelancer: boolean }) {
   const steps = [
-    { key: 'funding', label: 'Khách thanh toán', title: 'Giữ tiền', note: 'Tiền được giữ trước khi công việc bắt đầu', Icon: LockKeyhole, tone: 'active' },
-    { key: 'release', label: 'Trả tiền người làm', title: 'Chi trả',
+    { key: 'funding', label: 'Client thanh toán', title: 'Giữ tiền', note: 'Tiền được giữ trước khi công việc bắt đầu', Icon: LockKeyhole, tone: 'active' },
+    { key: 'release', label: 'Trả tiền Freelancer', title: 'Chi trả',
       note: 'Sau khi kết quả được duyệt', Icon: CircleCheck, tone: 'done' },
-    { key: 'refund', label: 'Hoàn tiền khách', title: 'Hoàn tiền', note: 'Khi công việc đủ điều kiện hủy', Icon: RotateCcw, tone: 'refund' },
+    { key: 'refund', label: 'Hoàn tiền Client', title: 'Hoàn tiền', note: 'Khi công việc đủ điều kiện hủy', Icon: RotateCcw, tone: 'refund' },
   ];
   if (!freelancer) [steps[1], steps[2]] = [steps[2], steps[1]];
   const TotalIcon = freelancer ? Coins : WalletCards;
@@ -207,7 +207,7 @@ function FinanceLedgerRow({ job, entry }: { job: Job; entry?: PaymentEntry }) {
       {status?.estimatedAmountVnd != null && <span>{vnd(status.estimatedAmountVnd)} dự kiến</span>}</div>
     <div className="finance-ledger-state"><span className="finance-status-badge"><Icon size={19} aria-hidden="true" />
       {job.contract?.paymentRail === 'UNIFIED_USDC_PAYOUT' ? paymentJourneySummary(entry?.flow ?? undefined) : job.contract?.paymentRail === 'SOLANA_ESCROW' ? 'Đang xử lý thanh toán' : job.contract ? contractFinanceLabel(job, entry?.contract) : status ? checkoutLabel(status.checkoutOrderStatus) : entry?.error || 'Chưa có dữ liệu'}</span>
-      <span className="finance-payout-label">{job.contract?.paymentRail === 'UNIFIED_USDC_PAYOUT' ? entry?.flow?.steps.find(s => s.kind === 'VND_PAYOUT')?.status === 'CONFIRMED' ? 'Người làm đã nhận tiền' : 'Đang chờ chuyển tiền' : job.contract?.paymentRail === 'SOLANA_ESCROW' ? 'Tiền đang được giữ an toàn' : job.contract?.paymentRail === 'PARTNER_ESCROW_MOCK' ? entry?.contract?.settlement?.moneyStatus === 'SUCCEEDED' ? 'Đối tác mock đã chi ' + String(entry.contract.settlement.partnerPayoutVnd) + ' VND · phí FreelaX ' + String(entry.contract.settlement.platformFeeUsd) + ' USD' : 'Chưa giải ngân VND' : entry?.contract?.settlement ? 'Chi trả: ' + settlementStageLabel(entry.contract.settlement.offRampStatus)
+      <span className="finance-payout-label">{job.contract?.paymentRail === 'UNIFIED_USDC_PAYOUT' ? entry?.flow?.steps.find(s => s.kind === 'VND_PAYOUT')?.status === 'CONFIRMED' ? 'Freelancer đã nhận tiền' : 'Đang chờ chuyển tiền' : job.contract?.paymentRail === 'SOLANA_ESCROW' ? 'Tiền đang được giữ an toàn' : job.contract?.paymentRail === 'PARTNER_ESCROW_MOCK' ? entry?.contract?.settlement?.moneyStatus === 'SUCCEEDED' ? 'Đối tác mock đã chi ' + String(entry.contract.settlement.partnerPayoutVnd) + ' VND · phí FreelaX ' + String(entry.contract.settlement.platformFeeUsd) + ' USD' : 'Chưa giải ngân VND' : entry?.contract?.settlement ? 'Chi trả: ' + settlementStageLabel(entry.contract.settlement.offRampStatus)
         : status ? offRampLabel(status.offRampStatus) : 'Chưa có dữ liệu chi trả'}</span>
       {contractChainLabel(job.contract) && <span className="badge finance-chain-label">{contractChainLabel(job.contract)}</span>}
       {(entry?.flow?.simulation || status?.simulation || entry?.contract?.settlement?.simulation || entry?.contract?.cancellation?.simulation) && <b className="simulation-mark">Mô phỏng</b>}
@@ -225,7 +225,7 @@ function FinanceProcess({ freelancer }: { freelancer: boolean }) {
     <Icon className="finance-process-icon" aria-hidden="true" strokeWidth={1.8} />
     <div><h2 id="finance-process-title">{freelancer ? 'Quy trình nhận tiền' : 'Quy trình thanh toán'}</h2>
       <p>{freelancer ? 'Xem lúc tiền được giữ, lúc kết quả được duyệt, khoản đã nhận và chứng từ của từng công việc.'
-        : 'Xem lúc khách thanh toán, lúc tiền được trả cho người làm hoặc hoàn lại cho khách.'}</p>
+        : 'Xem lúc Client thanh toán, lúc tiền được trả cho Freelancer hoặc hoàn lại cho Client.'}</p>
       <details><summary>Tìm hiểu thêm <ArrowRight size={20} aria-hidden="true" /></summary>
         <p>{financialCopy.fundingVsRelease} {financialCopy.releaseSimulation} {financialCopy.taxVsCertificate}</p></details>
     </div>
@@ -337,10 +337,10 @@ function TechnicalEvidence({ payment, tax }: { payment: JobPaymentStatus; tax: T
       ['Chữ ký tỷ giá', payment.rateTransactionSignature], ['Rate PDA', payment.rateSnapshotPda],
       ['Invoice ID', payment.invoiceId], ['Invoice PDA', payment.invoicePda],
       ['Chữ ký hóa đơn', payment.invoiceTransactionSignature]] },
-    { title: 'Thanh toán on-chain', entries: [['Chữ ký thanh toán', payment.paymentTransactionSignature],
+    { title: 'Thanh toán trên chuỗi', entries: [['Chữ ký thanh toán', payment.paymentTransactionSignature],
       ['Payment mint', payment.paymentMint], ['Freelancer public key', payment.freelancerPublicKey]],
       explorer: payment.paymentExplorerUrl },
-    { title: 'Rút on-chain', entries: [['Withdrawal ID', payment.withdrawalId],
+    { title: 'Rút trên chuỗi', entries: [['Withdrawal ID', payment.withdrawalId],
       ['Withdrawal PDA', payment.withdrawalPda], ['Chữ ký rút', payment.withdrawalTransactionSignature],
       ['Treasury public key', payment.treasuryPublicKey], ['Treasury USDC ATA', payment.treasuryUsdcAta]],
       explorer: payment.withdrawalExplorerUrl },
@@ -419,20 +419,20 @@ function ContractEvidence({ initialJob }: { initialJob: Job }) {
   const stages = contractMoneyStages(job, record, funding, tax, fundingError, taxError);
   const simulated = !!(settlement?.simulation || cancellation?.simulation || funding?.simulation);
   const technicalFacts = [
-    { label: 'Tham chiếu release', value: settlement?.releaseReference },
+    { label: 'Tham chiếu giải ngân', value: settlement?.releaseReference },
     { label: 'Tham chiếu hoàn tiền', value: cancellation?.refundReference },
-    { label: 'Tham chiếu on-chain', value: settlement?.onChainReference },
+    { label: 'Tham chiếu trên chuỗi', value: settlement?.onChainReference },
     { label: 'Tham chiếu chi trả VND', value: settlement?.offRampReference },
     { label: 'Tham chiếu chứng từ', value: settlement?.taxReference },
-    { label: 'Lỗi release', value: settlement?.lastError },
-    { label: 'Lỗi on-chain', value: settlement?.onChainError },
+    { label: 'Lỗi giải ngân', value: settlement?.lastError },
+    { label: 'Lỗi trên chuỗi', value: settlement?.onChainError },
     { label: 'Lỗi VND', value: settlement?.offRampError },
     { label: 'Lỗi thuế', value: settlement?.taxError },
     { label: 'Lỗi hoàn tiền', value: cancellation?.lastError },
     { label: 'Lỗi bản ghi chi trả', value: paymentError },
   ].filter(fact => fact.value);
   return <>
-    {!ready && <StatePanel kind="loading" title="Đang đối chiếu hồ sơ hợp đồng" body="Đọc funding, release và đề nghị hủy từ Marketplace." />}
+    {!ready && <StatePanel kind="loading" title="Đang đối chiếu hồ sơ hợp đồng" body="Đọc nạp tiền, giải ngân và đề nghị hủy từ Marketplace." />}
     {ready && <>
       <FinanceJobStatement job={job} payment={paymentError ? null : payment} tax={taxError ? null : tax} record={record} simulated={simulated} />
       <div className="finance-case-layout">
@@ -451,8 +451,8 @@ function ContractEvidence({ initialJob }: { initialJob: Job }) {
             { label: 'Giá trị đề nghị', value: decimal(cancellation.amount) + ' ' + cancellation.currency },
             { label: 'Cập nhật đề nghị', value: stamp(cancellation.updatedAt) }]} />
         </section>}
-        {settlement && <section className="settlement-document" aria-label="Xử lý sau release">
-          <SectionHeading title="Dữ liệu hỗ trợ sau release" description="Lỗi ở chặng sau không đảo ngược release đã xác nhận." />
+        {settlement && <section className="settlement-document" aria-label="Xử lý sau giải ngân">
+          <SectionHeading title="Dữ liệu hỗ trợ sau giải ngân" description="Lỗi ở chặng sau không đảo ngược giải ngân đã xác nhận." />
           <FactGrid facts={[
             ...(payment?.amountUsdcReceived != null && !paymentError ? [{ label: 'USDC theo bản ghi chi trả', value: usdc(payment.amountUsdcReceived) }] : []),
             ...(payment?.estimatedAmountVnd != null && !paymentError ? [{ label: 'VND dự kiến', value: vnd(payment.estimatedAmountVnd) }] : []),
@@ -470,11 +470,11 @@ function ContractEvidence({ initialJob }: { initialJob: Job }) {
         <SectionHeading title={contractFinanceLabel(job, record)} aside={settlement?.simulation || cancellation?.simulation || funding?.simulation ? 'Mô phỏng' : undefined} />
         <p>{cancellation?.refundStatus === 'SUCCEEDED' && cancellation.simulation ? financialCopy.refundSimulation :
           settlement?.moneyStatus === 'SUCCEEDED' && settlement.simulation ? financialCopy.releaseSimulation :
-          'Funding, release và hoàn tiền là ba bản ghi riêng. Bản ghi mô phỏng không xác nhận chuyển khoản ngân hàng thật.'}</p>
+          'Nạp tiền, giải ngân và hoàn tiền là ba bản ghi riêng. Bản ghi mô phỏng không xác nhận chuyển khoản ngân hàng thật.'}</p>
         <FactGrid facts={[
           { label: 'Giá trị hợp đồng', value: decimal(job.contract!.amount) + ' ' + job.contract!.currency },
-          { label: 'Funding', value: funding ? fundingLabel(funding.fundingStatus) : fundingError ? 'Chưa đọc được funding' : 'Chưa có bản ghi funding' },
-          { label: 'Release', value: settlement ? settlementMoneyLabel(settlement.moneyStatus) : record.error ? 'Chưa xác minh release' : 'Chưa có bản ghi release' },
+          { label: 'Nạp tiền', value: funding ? fundingLabel(funding.fundingStatus) : fundingError ? 'Chưa đọc được nạp tiền' : 'Chưa có bản ghi nạp tiền' },
+          { label: 'Giải ngân', value: settlement ? settlementMoneyLabel(settlement.moneyStatus) : record.error ? 'Chưa xác minh giải ngân' : 'Chưa có bản ghi giải ngân' },
           { label: 'Hoàn tiền', value: cancellation ? refundLabel(cancellation.refundStatus) : record.error ? 'Chưa xác minh hoàn tiền' : refundLabel(null) },
         ]} />
       </section>
@@ -514,10 +514,10 @@ function EscrowFinanceEvidence({ job }: { job: Job }) {
   const explorer = (signature: string | null) => signature && (cluster === 'devnet' || cluster === 'mainnet-beta')
     ? 'https://explorer.solana.com/tx/' + encodeURIComponent(signature) + (cluster === 'devnet' ? '?cluster=devnet' : '') : null;
   const signature = (label: string, value: string | null) => <div><dt>{label}</dt><dd>{value ? <><code>{value}</code>{explorer(value) && <a href={explorer(value)!} target="_blank" rel="noopener noreferrer"> Xem Solana Explorer ↗</a>}</> : 'Chưa có giao dịch'}</dd></div>;
-  return <section className="settlement-document" aria-label="Tài chính escrow Solana">
+  return <section className="settlement-document" aria-label="Tài chính ký quỹ Solana">
     <SectionHeading title="Escrow Solana" aside={cluster || 'Mạng chưa cấu hình'} />
-    <p>Tiền được giữ trong vault Solana. Trạng thái release hoặc refund chỉ được ghi nhận sau khi chain xác nhận.</p>
-    {loading && <p role="status">Đang đối soát escrow…</p>}
+    <p>Tiền được giữ trong vault Solana. Trạng thái giải ngân hoặc hoàn tiền chỉ được ghi nhận sau khi chain xác nhận.</p>
+    {loading && <p role="status">Đang đối soát ký quỹ…</p>}
     {error && <p role="alert">{error}</p>}
     {escrow && <><FactGrid facts={[
       { label: 'Trạng thái chain', value: escrow.status },
@@ -528,8 +528,8 @@ function EscrowFinanceEvidence({ job }: { job: Job }) {
       { label: 'Token mint', value: escrow.mint || 'Chưa xác minh' },
       { label: 'Số tiền token', value: escrow.amountBaseUnits ? (Number(escrow.amountBaseUnits) / 1_000_000).toFixed(6) : 'Chưa xác minh' },
       { label: 'Hạn nghiệm thu trên chuỗi', value: escrow.reviewDueAt ? new Date(Number(escrow.reviewDueAt) * 1000).toLocaleString('vi-VN') : 'Chưa có' },
-    ]} /><dl className="reference-list">{signature('Funding', escrow.fundSignature)}
-      {signature('Release', escrow.releaseSignature)}{signature('Refund', escrow.refundSignature)}
+    ]} /><dl className="reference-list">{signature('Nạp tiền', escrow.fundSignature)}
+      {signature('Giải ngân', escrow.releaseSignature)}{signature('Hoàn tiền', escrow.refundSignature)}
       {signature('Quyết định tranh chấp', escrow.resolutionSignature)}</dl></>}
     <button className="text-button" disabled={loading} onClick={() => setTick(value => value + 1)}>Đối soát lại</button>
   </section>;
@@ -600,7 +600,7 @@ function UnifiedFinanceEvidence({ job, user }: { job: Job; user: User }) {
       <PaymentJourney flow={flow} />
       {status('VND_PAYOUT')?.status === 'CONFIRMED' && <p>Chứng từ khấu trừ thuế được phát hành qua MISA sau khi đối tác xác nhận chi VND.{' '}
         <Link className="text-link" to="/finance/tax-records">Xem chứng từ thuế</Link></p>}
-      {withdrawal?.payoutVnd && <p>Người làm dự kiến thực nhận {vnd(withdrawal.payoutVnd)} sau phí dịch vụ và thuế.</p>}
+      {withdrawal?.payoutVnd && <p>Freelancer dự kiến thực nhận {vnd(withdrawal.payoutVnd)} sau phí dịch vụ và thuế.</p>}
       {permitted && withdrawal?.status !== 'CONFIRMED' && !withdrawal?.transactionSignature && !build &&
         <button className="button" disabled={busy} onClick={() => void prepare()}>
           {payout ? 'Xem số tiền sẽ nhận' : 'Xem khoản hoàn tiền'}
@@ -698,7 +698,7 @@ function JobEvidence({ jobId, user }: { jobId: string; user: User }) {
         <span className="finance-detail-title-emphasis">hồ sơ tiền.<RoughUnderline size={230} seedKey="finance-detail:underline" />
           <RoughBurst className="finance-detail-rays finance-detail-rays--right" size={35} accent="ink" seedKey="finance-detail:right" /></span></>}
       description={user.userType === 'FREELANCER'
-        ? 'Theo dõi release, chi trả và chứng từ của công việc này.'
+        ? 'Theo dõi giải ngân, chi trả và chứng từ của công việc này.'
         : 'Theo dõi dòng tiền của một công việc, từ thanh toán đến chứng từ thuế.'} />
     <div className="finance-detail-back"><Link to="/finance"><ArrowLeft size={22} aria-hidden="true" />
       {user.userType === 'FREELANCER' ? 'Lịch sử thu nhập' : 'Danh sách thanh toán'}</Link></div>
@@ -718,7 +718,7 @@ function JobEvidence({ jobId, user }: { jobId: string; user: User }) {
         <summary>Dữ liệu chi trả & tỷ giá</summary>
         <dl>
           <div><dt>Checkout Client</dt><dd>{checkoutLabel(payment.checkoutOrderStatus)}</dd></div>
-          <div><dt>Thanh toán on-chain</dt><dd>{clientPaymentLabel(payment.clientPaymentStatus)}
+          <div><dt>Thanh toán trên chuỗi</dt><dd>{clientPaymentLabel(payment.clientPaymentStatus)}
             {payment.network?.toLowerCase() === 'devnet' && ' · DEVNET'}</dd></div>
           <div><dt>Chi trả VND</dt><dd>{offRampLabel(payment.offRampStatus)}</dd></div>
           <div><dt>VND trước phí off-ramp</dt><dd>{vnd(payment.amountVndBeforeOffRampFee)}</dd></div>
@@ -935,7 +935,7 @@ export function TaxRecordDetail() {
           <div><dt>Phí dịch vụ</dt><dd>{vnd(feeVnd)}</dd></div>
           <div><dt>Số tiền sau phí để tính thuế</dt><dd>{vnd(jobVnd! - feeVnd!)}</dd></div>
           <div><dt>Thuế trên chứng từ</dt><dd>{vnd(taxVnd)}</dd></div>
-          <div><dt>Đã chuyển cho người làm</dt><dd>{vnd(payoutVnd)}</dd></div>
+          <div><dt>Đã chuyển cho Freelancer</dt><dd>{vnd(payoutVnd)}</dd></div>
         </>}
         <div><dt>{record.rateSource === 'LOCKED_PAYOUT_QUOTE' ? 'Số USDC dùng để tính thuế' : 'Giá trị công việc'}</dt><dd>{record.amountUsd == null ? '—' : record.rateSource === 'LOCKED_PAYOUT_QUOTE' ? usdc(record.amountUsd) : money(Number(record.amountUsd))}</dd></div>
         <div><dt>{record.rateSource === 'LOCKED_PAYOUT_QUOTE' ? 'Tỷ giá USDC sang VND' : 'Tỷ giá USD sang VND'}</dt><dd>{record.usdToVndRate == null ? '—' : decimal(record.usdToVndRate, 4)}

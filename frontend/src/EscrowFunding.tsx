@@ -106,20 +106,20 @@ export function EscrowFundingPanel({ job, user, onJobUpdated, blocked = false,
   return <section className="funding-document" id="funding" tabIndex={-1} aria-label="Giữ tiền cho công việc">
     <SectionHeading title="Giữ tiền cho công việc" />
     <strong>{expectedUsdc == null ? `${contract.amount} ${contract.currency}` : `${expectedUsdc} USD`}</strong>
-    <p role="status">{loading ? 'Đang cập nhật…' : view && liveStatuses.has(view.status) ? 'Đã giữ tiền. Người làm có thể bắt đầu.' : 'Đang chờ giữ tiền.'}</p>
+    <p role="status">{loading ? 'Đang cập nhật…' : view && liveStatuses.has(view.status) ? 'Đã giữ tiền. Freelancer có thể bắt đầu.' : 'Đang chờ giữ tiền.'}</p>
     {view?.fundingExpiresAt && <p>Hạn ký quỹ: {new Date(Number(view.fundingExpiresAt) * 1000).toLocaleString('vi-VN')}.</p>}
-    <p>Công việc bắt đầu khi khoản tiền này được xác nhận. Nếu hủy trước khi trả cho người làm, tiền sẽ được hoàn theo điều khoản.</p>
+    <p>Công việc bắt đầu khi khoản tiền này được xác nhận. Nếu hủy trước khi trả cho Freelancer, tiền sẽ được hoàn theo điều khoản.</p>
     {eligible && !build && !liveStatuses.has(view?.status ?? '') && <ActionGroup>
       <button className="button" disabled={blocked || busy || loading || view?.status === 'PENDING_CONFIRMATION'} onClick={() => void prepare()}>{busy ? 'Đang chuẩn bị…' : 'Chuẩn bị giữ tiền'}</button>
       {!view && onChooseBack && contract.paymentRail !== 'SOLANA_ESCROW' && contract.paymentRail !== 'UNIFIED_USDC_PAYOUT' && <button className="button button-secondary" disabled={busy} onClick={onChooseBack}>Quay lại thanh toán mô phỏng</button>}
     </ActionGroup>}
     {build && <div className="approval-confirm" role="group" aria-label="Xác nhận giữ tiền">
       <strong>Xác nhận giữ {expectedUsdc == null ? contract.amount : expectedUsdc} {expectedUsdc == null ? contract.currency : 'USD'} cho công việc</strong>
-      <p>Người làm chỉ bắt đầu sau khi khoản tiền được xác nhận.</p>
+      <p>Freelancer chỉ bắt đầu sau khi khoản tiền được xác nhận.</p>
       <label><input type="checkbox" checked={confirmedTerms} disabled={busy} onChange={event => setConfirmedTerms(event.target.checked)} /> Tôi đồng ý giữ khoản tiền này theo điều khoản công việc.</label>
       <ActionGroup><button className="button" disabled={busy || blocked || !confirmedTerms} onClick={() => void signAndFund()}>{busy ? 'Đang xác nhận…' : 'Xác nhận giữ tiền'}</button></ActionGroup>
     </div>}
-    {!owner && <p>Đang chờ khách xác nhận khoản tiền. Người làm sẽ bắt đầu sau đó.</p>}
+    {!owner && <p>Đang chờ Client xác nhận khoản tiền. Freelancer sẽ bắt đầu sau đó.</p>}
     {error && <p role="alert" className="form-error">{error}</p>}
     <button className="text-button" disabled={busy || loading} onClick={() => { setLoading(true); setTick(value => value + 1); }}>Làm mới trạng thái</button>
   </section>;

@@ -24,14 +24,14 @@ afterEach(() => { act(() => root.unmount()); host.remove(); vi.restoreAllMocks()
 async function mount(user = client) { await act(async () => root.render(<FundingPanel job={job} user={user} onJobUpdated={updated} />)); }
 function button(text: string) { return [...host.querySelectorAll('button')].find(b => b.textContent === text)!; }
 async function click(text: string) { await act(async () => button(text).click()); }
-async function fund() { await click('Funding mô phỏng'); await click('Xác nhận funding'); }
+async function fund() { await click('Nạp tiền mô phỏng'); await click('Xác nhận nạp tiền'); }
 async function input(index: number, value: string) { const el = host.querySelectorAll('input')[index]; await act(async () => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(el, value); el.dispatchEvent(new Event('input', { bubbles: true })); }); }
 
 describe('P06.4A funding', () => {
   it('formats immutable decimals without rounding arithmetic', () => { expect(contractAmount('500')).toBe('500.00'); expect(contractAmount('500.01')).toBe('500.01'); expect(() => contractAmount('1.005')).toThrow(); });
   it('reads latest and requires bank readiness', async () => {
     vi.mocked(api.clientBank).mockResolvedValue({ ...ready, ready: false, maskedAccountNumber: null }); await mount();
-    expect(api.funding).toHaveBeenCalledWith('contract', 'milestone'); expect(button('Funding mô phỏng').disabled).toBe(true);
+    expect(api.funding).toHaveBeenCalledWith('contract', 'milestone'); expect(button('Nạp tiền mô phỏng').disabled).toBe(true);
   });
   it('clears full banking values after successful save and renders masked response only', async () => {
     vi.spyOn(api, 'saveClientBank').mockResolvedValue(ready); await mount(); await click('Cập nhật ngân hàng');
@@ -39,29 +39,29 @@ describe('P06.4A funding', () => {
     await act(async () => host.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
     expect(host.querySelector('input')).toBeNull(); expect(host.textContent).toContain('••••1234'); expect(host.textContent).not.toContain('123456781234'); expect(sessionStorage.length).toBe(0);
   });
-  it('never reads Client bank or exposes bank/fund controls to Freelancer', async () => { await mount(freelancer); expect(api.clientBank).not.toHaveBeenCalled(); expect(button('Funding mô phỏng')).toBeUndefined(); expect(host.textContent).toContain('Đang chờ Client'); });
+  it('never reads Client bank or exposes bank/fund controls to Freelancer', async () => { await mount(freelancer); expect(api.clientBank).not.toHaveBeenCalled(); expect(button('Nạp tiền mô phỏng')).toBeUndefined(); expect(host.textContent).toContain('Đang chờ Client'); });
   it('confirms contract amount and prevents double-click mutations', async () => {
-    const post = vi.spyOn(api, 'fund').mockReturnValue(new Promise(() => {})); await mount(); await click('Funding mô phỏng');
+    const post = vi.spyOn(api, 'fund').mockReturnValue(new Promise(() => {})); await mount(); await click('Nạp tiền mô phỏng');
     expect(host.textContent).toContain('500.00 USD · Mô phỏng');
-    await act(async () => { button('Xác nhận funding').click(); button('Xác nhận funding').click(); });
+    await act(async () => { button('Xác nhận nạp tiền').click(); button('Xác nhận nạp tiền').click(); });
     expect(post).toHaveBeenCalledTimes(1); expect(post.mock.calls[0].slice(3)).toEqual(['500.00', 'USD']);
   });
   it('keeps same key after timeout and remount, reconciles before same-key retry', async () => {
     const post = vi.spyOn(api, 'fund').mockRejectedValue(new ApiError('timeout', 0)); await mount(); await fund();
     const key = post.mock.calls[0][2]; expect(api.funding).toHaveBeenCalledTimes(2);
     await act(async () => { root.unmount(); root = createRoot(host); }); await mount();
-    await click('Tiếp tục lần funding trước'); await click('Xác nhận funding'); expect(post.mock.calls[1][2]).toBe(key);
+    await click('Tiếp tục lần nạp tiền trước'); await click('Xác nhận nạp tiền'); expect(post.mock.calls[1][2]).toBe(key);
   });
   it.each(['UNKNOWN', 'PROCESSING', 'PENDING'] as const)('polls %s exact attempt, disables new mutation and cleans up', async status => {
     vi.useFakeTimers(); vi.mocked(api.funding).mockResolvedValue(result(status)); await mount();
-    expect(button('Funding mô phỏng').disabled).toBe(true); if (status === 'UNKNOWN') expect(host.textContent).toContain('Đang đối soát');
+    expect(button('Nạp tiền mô phỏng').disabled).toBe(true); if (status === 'UNKNOWN') expect(host.textContent).toContain('Đang đối soát');
     await act(async () => { await vi.advanceTimersByTimeAsync(5000); }); expect(api.funding).toHaveBeenCalledWith('contract', 'milestone', 'tx');
     await act(async () => root.unmount()); root = createRoot(host); const count = vi.mocked(api.funding).mock.calls.length;
     await act(async () => { await vi.advanceTimersByTimeAsync(60000); }); expect(api.funding).toHaveBeenCalledTimes(count);
   });
   it('FAILED retries with a fresh key', async () => {
     const post = vi.spyOn(api, 'fund').mockResolvedValue(result('FAILED')); await mount(); await fund(); const first = post.mock.calls[0][2];
-    await click('Thử funding lại'); await click('Xác nhận funding'); expect(post.mock.calls[1][2]).not.toBe(first);
+    await click('Thử nạp tiền lại'); await click('Xác nhận nạp tiền'); expect(post.mock.calls[1][2]).not.toBe(first);
   });
   it('SUCCEEDED clears recovery key and trusts job refetch', async () => {
     const fresh = { ...job, status: 'IN_PROGRESS' }; vi.mocked(api.job).mockResolvedValue(fresh); vi.spyOn(api, 'fund').mockResolvedValue(result('SUCCEEDED'));
@@ -104,7 +104,7 @@ describe('unified payment flow draft', () => {
     expect(host.textContent).toContain('Giữ tiền cho công việc');
     expect(host.querySelectorAll('.payment-journey-stage')).toHaveLength(8);
     expect(host.textContent).not.toContain('flow-1');
-    expect(button('Funding mô phỏng')).toBeUndefined();
+    expect(button('Nạp tiền mô phỏng')).toBeUndefined();
     expect(button('Chọn ký quỹ Solana')).toBeUndefined();
     expect(button('Chọn ký quỹ đối tác mock')).toBeUndefined();
     expect(api.funding).not.toHaveBeenCalled();

@@ -59,7 +59,7 @@ export function ProfileRecord({ profile }: { profile: Profile }) {
       { label: 'Tranh chấp', value: r.disputeCount }, { label: 'Đánh giá công bố', value: r.reviewCount },
       { label: 'Điểm trung bình', value: r.averageRating == null ? <span className="profile-no-rating">Chưa có đánh giá công bố</span> : `${r.averageRating} / 5` },
       ...(r.onTimeRate != null ? [{ label: 'Tỷ lệ đúng hạn', value: String(r.onTimeRate) }] : []),
-      ...(r.paymentReleaseRate != null ? [{ label: 'Tỷ lệ release', value: String(r.paymentReleaseRate) }] : []),
+      ...(r.paymentReleaseRate != null ? [{ label: 'Tỷ lệ giải ngân', value: String(r.paymentReleaseRate) }] : []),
       ...(r.medianReviewHours != null ? [{ label: 'Thời gian duyệt trung vị', value: `${r.medianReviewHours} giờ` }] : []),
     ]} /></section>
     <EvidenceDisclosure summary="Nguồn hồ sơ và trạng thái xác minh">

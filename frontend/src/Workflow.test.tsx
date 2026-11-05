@@ -173,7 +173,7 @@ describe('Client C3 candidate decision desk', () => {
     expect(assign).not.toHaveBeenCalled();
     expect(host.querySelector('.candidate-confirmation h4')?.textContent).toBe('Xác nhận lựa chọn');
     expect(host.querySelector('.candidate-confirmation')?.textContent).toContain('các hồ sơ đang chờ còn lại sẽ được đóng');
-    expect(host.querySelector('.candidate-confirmation')?.textContent).toContain('chỉ bắt đầu sau khi milestone được funding');
+    expect(host.querySelector('.candidate-confirmation')?.textContent).toContain('chỉ bắt đầu sau khi milestone được nạp tiền');
     expect(host.querySelector('.candidate-row')?.classList.contains('application-pending')).toBe(true);
     expect(host.querySelector('.candidate-status')?.textContent).not.toContain('Đã được chọn');
     await click('Quay lại'); expect(host.querySelector('.candidate-confirmation')).toBeNull(); expect(assign).not.toHaveBeenCalled();
@@ -190,7 +190,7 @@ describe('Client C3 candidate decision desk', () => {
     expect(assign).toHaveBeenCalledExactlyOnceWith(job.id, freelancer.id);
     expect(api.job).toHaveBeenCalledTimes(2); expect(api.applicants).toHaveBeenCalledTimes(2);
     expect([...host.querySelectorAll('.candidate-status')].map(e => e.textContent)).toEqual(['Đã được chọn', 'Không được chọn']);
-    expect(host.querySelector('.candidates-job-context')?.textContent).toContain('Chờ funding');
+    expect(host.querySelector('.candidates-job-context')?.textContent).toContain('Chờ nạp tiền');
     expect(button('Chọn Freelancer')).toBeUndefined();
   });
 
@@ -506,7 +506,7 @@ describe('P05.2 job detail and workflow', () => {
     expect(host.textContent).not.toMatch(/rating|avatar|kỹ năng/i);
     expect(button('Chọn Freelancer')).toBeTruthy();
     await click('Chọn Freelancer');
-    expect(host.textContent).toContain('chỉ bắt đầu sau khi milestone được funding');
+    expect(host.textContent).toContain('chỉ bắt đầu sau khi milestone được nạp tiền');
   });
 
   it('assigns the real applicant once and renders server-refreshed AWAITING_PAYMENT/ACCEPTED', async () => {
@@ -519,7 +519,7 @@ describe('P05.2 job detail and workflow', () => {
     await click('Chọn Freelancer');
     await click('Xác nhận chọn');
     expect(assign).toHaveBeenCalledExactlyOnceWith(job.id, freelancer.id);
-    expect(host.textContent).toContain('Chờ funding');
+    expect(host.textContent).toContain('Chờ nạp tiền');
     expect(host.textContent).toContain('Đã được chọn');
     expect(button('Chọn Freelancer')).toBeUndefined();
   });

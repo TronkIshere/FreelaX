@@ -19,13 +19,13 @@ const message = (error: unknown) => error instanceof Error ? error.message : 'Y�
 const timestamp = (value: string | null | undefined) => value ? value.replace('T', ' ').slice(0, 16) : '—';
 
 const contractLabels: Record<string, string> = {
-  PENDING_FUNDING: 'Chờ funding', ACTIVE: 'Đang hiệu lực', UNDER_REVIEW: 'Đang xét bàn giao',
+  PENDING_FUNDING: 'Chờ nạp tiền', ACTIVE: 'Đang hiệu lực', UNDER_REVIEW: 'Đang xét bàn giao',
   REVISION: 'Đang chỉnh sửa', COMPLETED: 'Đã hoàn tất', CANCELLED: 'Đã hủy',
   DISPUTED: 'Đang tranh chấp',
 };
 const milestoneLabels: Record<string, string> = {
-  PENDING_FUNDING: 'Chờ funding', FUNDED: 'Đã funding', IN_PROGRESS: 'Đang thực hiện',
-  SUBMITTED: 'Đã bàn giao', RELEASE_PENDING: 'Chờ xác nhận release', RELEASED: 'Release đã xác nhận',
+  PENDING_FUNDING: 'Chờ nạp tiền', FUNDED: 'Đã nạp tiền', IN_PROGRESS: 'Đang thực hiện',
+  SUBMITTED: 'Đã bàn giao', RELEASE_PENDING: 'Chờ xác nhận giải ngân', RELEASED: 'Giải ngân đã xác nhận',
   REFUND_PENDING: 'Chờ hoàn tiền', REFUNDED: 'Đã hoàn tiền', CANCELLED: 'Đã hủy',
   DISPUTED: 'Đang tranh chấp',
 };
@@ -60,12 +60,12 @@ function JobDocument({ job }: { job: Detail }) {
     <p>Điều khoản công việc được chốt khi Freelancer ứng tuyển và Client giao việc.</p>
     {job.localPaymentTerms ? <section className="job-terms-document" aria-label="Điều khoản thanh toán thống nhất">
       <SectionHeading title="Tiền của công việc đi như thế nào?" level={3} />
-      <p>Khách thanh toán bằng USD. Hệ thống giữ số tiền tương đương trong ví cho đến khi kết quả được duyệt. Sau đó tiền được đổi sang VND để trả cho người làm.</p>
+      <p>Client thanh toán bằng USD. Hệ thống giữ số tiền tương đương trong ví cho đến khi kết quả được duyệt. Sau đó tiền được đổi sang VND để trả cho Freelancer.</p>
       {job.localPaymentTerms.legacyPayout && <p role="alert" className="finance-inline-error">Công việc này đã khóa khoản chi theo cách tính cũ. Khoản đã chi chỉ trừ phí dịch vụ; số thuế trên chứng từ cũ chưa được trừ khỏi tiền nhận. Xem chứng từ để đối chiếu.</p>}
       <ol className="job-payment-explainer">
-        <li><strong>1. Khách thanh toán</strong><span>{money(Number(job.localPaymentTerms.grossUsd))}</span></li>
+        <li><strong>1. Client thanh toán</strong><span>{money(Number(job.localPaymentTerms.grossUsd))}</span></li>
         <li><strong>2. Giữ tiền cho công việc</strong><span>{Number(job.localPaymentTerms.escrowUsdc).toFixed(2)} USDC mô phỏng</span></li>
-        <li><strong>3. Người làm nhận tiền</strong><span>{Number(job.localPaymentTerms.estimatedPayoutVnd).toLocaleString('vi-VN')} VND {job.localPaymentTerms.legacyPayout ? 'theo khoản chi cũ, sau phí dịch vụ' : 'dự kiến, sau phí và thuế'}</span></li>
+        <li><strong>3. Freelancer nhận tiền</strong><span>{Number(job.localPaymentTerms.estimatedPayoutVnd).toLocaleString('vi-VN')} VND {job.localPaymentTerms.legacyPayout ? 'theo khoản chi cũ, sau phí dịch vụ' : 'dự kiến, sau phí và thuế'}</span></li>
       </ol>
       <FactGrid facts={[
         { label: 'Tỷ giá dùng để ước tính', value: '1 USD = 1 USDC mô phỏng; 1 USDC = ' + Number(job.localPaymentTerms.usdcVndRate).toLocaleString('vi-VN') + ' VND' },
@@ -73,8 +73,8 @@ function JobDocument({ job }: { job: Detail }) {
         { label: 'Phí dịch vụ (3%)', value: (Number(job.localPaymentTerms.platformFeeUsdc) * Number(job.localPaymentTerms.usdcVndRate)).toLocaleString('vi-VN') + ' VND' },
         { label: job.localPaymentTerms.legacyPayout ? 'Chứng từ cũ tính thuế trên' : 'Số tiền dùng để tính thuế sau phí', value: Number(job.localPaymentTerms.estimatedTaxableVnd).toLocaleString('vi-VN') + ' VND' },
         { label: job.localPaymentTerms.legacyPayout ? 'Thuế trên chứng từ cũ (chưa trừ khi chi)' : 'Thuế dự kiến (10%)', value: Number(job.localPaymentTerms.estimatedTaxVnd).toLocaleString('vi-VN') + ' VND' },
-        { label: job.localPaymentTerms.legacyPayout ? 'Khoản chi theo cách cũ' : 'Người làm dự kiến thực nhận', value: Number(job.localPaymentTerms.estimatedPayoutVnd).toLocaleString('vi-VN') + ' VND' },
-        { label: 'Nếu hủy trước khi trả tiền', value: 'Khách nhận lại đủ ' + money(Number(job.localPaymentTerms.fullRefundUsd)) },
+        { label: job.localPaymentTerms.legacyPayout ? 'Khoản chi theo cách cũ' : 'Freelancer dự kiến thực nhận', value: Number(job.localPaymentTerms.estimatedPayoutVnd).toLocaleString('vi-VN') + ' VND' },
+        { label: 'Nếu hủy trước khi trả tiền', value: 'Client nhận lại đủ ' + money(Number(job.localPaymentTerms.fullRefundUsd)) },
         { label: 'Hạn thanh toán', value: job.localPaymentTerms.fundingHours + ' giờ từ khi giao việc' },
         { label: 'Thời hạn duyệt', value: job.localPaymentTerms.reviewWindowHours + ' giờ sau bàn giao hợp lệ' },
         { label: 'Số lần sửa tối đa', value: String(job.localPaymentTerms.maxRevisions) },
@@ -111,7 +111,7 @@ function JobRecordFooter({ job }: { job: Detail }) {
     <EvidenceDisclosure summary="Mã tham chiếu công việc">
       <dl className="reference-list">
         <div><dt>Công việc</dt><dd><CopyId value={job.id} label="công việc" /></dd></div>
-        <div><dt>Client</dt><dd><CopyId value={isDiscover(job) ? job.client.id : job.clientUserId} label="khách hàng" /></dd></div>
+        <div><dt>Client</dt><dd><CopyId value={isDiscover(job) ? job.client.id : job.clientUserId} label="Client" /></dd></div>
         {participant?.freelancerId && <div><dt>Freelancer</dt><dd><CopyId value={participant.freelancerId} label="Freelancer" /></dd></div>}
         {participant?.contract && <div><dt>Hợp đồng</dt><dd><CopyId value={participant.contract.id} label="hợp đồng" /></dd></div>}
         {participant?.contract?.milestoneId && <div><dt>Milestone</dt><dd><CopyId value={participant.contract.milestoneId} label="milestone" /></dd></div>}
@@ -222,7 +222,7 @@ export function JobDetail({ user }: { user: User }) {
   const workState = (owner || assignedFreelancer) && (!!participant?.contract ||
     ['IN_PROGRESS', 'SUBMITTED_FOR_REVIEW', 'REVISION_REQUESTED', 'COMPLETED'].includes(job.status));
   const applied = !!discovered?.hasApplied;
-  const context = discovered ? 'Client · ' + (discovered.client?.displayName || 'Khách hàng')
+  const context = discovered ? 'Client · ' + (discovered.client?.displayName || 'Client')
     : owner ? (participant?.freelancerId ? 'Bạn là Client · Đã chọn Freelancer' : 'Bạn là Client · Chưa phân công')
     : assignedFreelancer ? 'Bạn là Freelancer được giao công việc' : 'Hồ sơ công việc';
   const document = <JobDocument job={job} />;
@@ -248,13 +248,13 @@ export function JobDetail({ user }: { user: User }) {
             {applied && <Link className="text-link" to="/work/applications">Xem ứng tuyển của tôi →</Link>}
           </ActionGroup>
         </>}
-        {owner && <><h2>{job.status === 'OPEN' ? 'Xem người ứng tuyển' : job.status === 'AWAITING_PAYMENT' ? 'Cần bạn funding hợp đồng' : 'Không có bước cần xử lý'}</h2>
+        {owner && <><h2>{job.status === 'OPEN' ? 'Xem người ứng tuyển' : job.status === 'AWAITING_PAYMENT' ? 'Cần bạn nạp tiền cho hợp đồng' : 'Không có bước cần xử lý'}</h2>
           {job.status === 'AWAITING_PAYMENT' && <p>Hợp đồng đã chốt; Freelancer chưa thể bắt đầu công việc.</p>}
           {job.status === 'OPEN' && <ActionGroup><Link className="button" to={'/work/' + jobId + '/applications'}>Xem ứng viên</Link>
             <Link className="button button-secondary" to={'/work/' + jobId + '/edit'}>Sửa công việc</Link></ActionGroup>}</>}
-        {owner && participant?.contract?.milestoneId && job.status === 'AWAITING_PAYMENT' && <ActionGroup><a className="text-link" href="#funding">Kiểm tra ngân hàng / Funding mô phỏng ↓</a></ActionGroup>}
+        {owner && participant?.contract?.milestoneId && job.status === 'AWAITING_PAYMENT' && <ActionGroup><a className="text-link" href="#funding">Kiểm tra ngân hàng / Nạp tiền mô phỏng ↓</a></ActionGroup>}
         {participant && !owner && user.userType === 'FREELANCER' && <>
-          <h2>{assignedFreelancer && job.status === 'AWAITING_PAYMENT' ? 'Đang chờ Client hoàn tất funding' : 'Không có thao tác công việc khả dụng'}</h2>
+          <h2>{assignedFreelancer && job.status === 'AWAITING_PAYMENT' ? 'Đang chờ Client hoàn tất nạp tiền' : 'Không có thao tác công việc khả dụng'}</h2>
           {assignedFreelancer && job.status === 'AWAITING_PAYMENT' && <p>Bàn giao sẽ mở khi trạng thái công việc cho phép.</p>}
         </>}
         {mutationError && <p className="form-error" role="alert">{mutationError} <button className="text-button" onClick={() => reload().then(data => { setJob(data); setApplyBlocked(false); setMutationError(''); }, cause => setMutationError(message(cause)))}>Tải lại</button></p>}
@@ -535,8 +535,8 @@ export function ClientApplicants({ user }: { user: User }) {
                 {confirming && <div className="candidate-confirmation" id={'candidate-confirm-' + application.id} role="group" aria-label="Xác nhận chọn Freelancer">
                   <div><h4>Xác nhận lựa chọn</h4>
                     <p>Khi xác nhận, hồ sơ này sẽ được chấp nhận và các hồ sơ đang chờ còn lại sẽ được đóng (không được chọn).
-                      Công việc chuyển sang bước funding. Freelancer chỉ bắt đầu sau khi milestone được funding.</p></div>
-                  {job?.localPaymentTerms && <div><p>Khách thanh toán {money(Number(job.localPaymentTerms.grossUsd))}. Người làm {job.localPaymentTerms.legacyPayout ? 'nhận theo cách tính cũ' : 'dự kiến thực nhận'} {Number(job.localPaymentTerms.estimatedPayoutVnd).toLocaleString('vi-VN')} VND {job.localPaymentTerms.legacyPayout ? 'sau phí dịch vụ' : 'sau phí dịch vụ và thuế'}. Nếu hủy trước khi trả tiền, khách được hoàn đủ {money(Number(job.localPaymentTerms.fullRefundUsd))}.</p>
+                      Công việc chuyển sang bước nạp tiền. Freelancer chỉ bắt đầu sau khi milestone được nạp tiền.</p></div>
+                  {job?.localPaymentTerms && <div><p>Client thanh toán {money(Number(job.localPaymentTerms.grossUsd))}. Freelancer {job.localPaymentTerms.legacyPayout ? 'nhận theo cách tính cũ' : 'dự kiến thực nhận'} {Number(job.localPaymentTerms.estimatedPayoutVnd).toLocaleString('vi-VN')} VND {job.localPaymentTerms.legacyPayout ? 'sau phí dịch vụ' : 'sau phí dịch vụ và thuế'}. Nếu hủy trước khi trả tiền, Client được hoàn đủ {money(Number(job.localPaymentTerms.fullRefundUsd))}.</p>
                     <label><input type="checkbox" checked={termsAccepted} onChange={event => setTermsAccepted(event.target.checked)} /> Tôi đã đọc và đồng ý điều khoản thanh toán mô phỏng local này.</label></div>}
                   <ActionGroup><button className="button" type="button" disabled={busy || (!!job?.localPaymentTerms && !termsAccepted)} onClick={() => assign(application.freelancerId)}>
                     {busy ? 'Đang phân công…' : 'Xác nhận chọn'}</button>

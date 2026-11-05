@@ -18,7 +18,7 @@ export function Account({ user, onLogout, loggingOut, onReconcileUser }: {
       <h2 id="account-identity-title">{user.displayName}</h2>
       <dl className="account-record">
         <div><dt>Email</dt><dd>{user.email}</dd></div>
-        <div><dt>Vai trò</dt><dd>{client ? 'Client / Khách hàng' : 'Freelancer / Người thực hiện'}</dd></div>
+        <div><dt>Vai trò</dt><dd>{client ? 'Client' : 'Freelancer'}</dd></div>
       </dl>
       <details className="technical-evidence account-technical"><summary>Mã tài khoản Marketplace</summary>
         <code>{user.id}</code></details></div>

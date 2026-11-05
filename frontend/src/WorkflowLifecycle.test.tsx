@@ -250,7 +250,7 @@ describe('VP.5 assigned work tracker', () => {
   });
 
   it.each([
-    ['AWAITING_PAYMENT', 'cream', 'Xem trạng thái', 'Đang chờ Client hoàn tất funding'],
+    ['AWAITING_PAYMENT', 'cream', 'Xem trạng thái', 'Đang chờ Client hoàn tất nạp tiền'],
     ['IN_PROGRESS', 'cobalt', 'Tiếp tục công việc', 'Bạn có thể tiếp tục chuẩn bị'],
     ['SUBMITTED_FOR_REVIEW', 'acid', 'Xem bàn giao', 'Bàn giao đang chờ Client phản hồi'],
     ['REVISION_REQUESTED', 'vermilion', 'Xem phản hồi', 'Client đã yêu cầu chỉnh sửa'],

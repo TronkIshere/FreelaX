@@ -14,8 +14,8 @@ it('shows completed payment stages in green and later stages as waiting', () => 
   expect(html.match(/payment-journey-current/g)).toHaveLength(1);
   expect(html).toContain('Đã nhận tiền');
   expect(html).toContain('Đang chờ');
-  expect(html).toContain('Tiền USD của khách đã được xác nhận.');
-  expect(html).toContain('Đang chờ tiền vào ví của khách.');
+  expect(html).toContain('Tiền USD của Client đã được xác nhận.');
+  expect(html).toContain('Đang chờ tiền vào ví của Client.');
   expect(html).not.toContain('USD_ORDER');
   expect(html).not.toContain('localnet');
 });

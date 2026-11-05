@@ -45,18 +45,18 @@ export function contractMoneyStages(job: Job, record: ContractFinance, funding: 
   const downstream = (key: string, title: string, status?: string, error?: string | null): MoneyStage => ({
     key, title, tone: refund ? 'pending' : status ? status === 'NOT_STARTED' ? 'pending' : financialMoneyTone(status) : 'pending',
     status: refund ? 'Không thuộc luồng hoàn tiền' : status ? settlementStageLabel(status) : record.error ? 'Chưa xác minh' : 'Chưa bắt đầu',
-    note: refund ? 'Công việc đang đi theo hướng hoàn tiền cho khách.' : 'Đang chờ hệ thống xác nhận bước này.',
+    note: refund ? 'Công việc đang đi theo hướng hoàn tiền cho Client.' : 'Đang chờ hệ thống xác nhận bước này.',
     error: refund ? null : error, facts: [], applicable: !refund,
   });
   return [
-    { key: 'funding', title: 'Khách giữ tiền cho công việc', tone: fundingError ? 'error' : funding ? financialMoneyTone(funding.fundingStatus) : 'pending',
-      status: fundingError ? 'Chưa đọc được funding' : funding ? fundingLabel(funding.fundingStatus) : 'Chưa có bản ghi funding',
-      note: funding?.fundingStatus === 'SUCCEEDED' ? 'Khoản tiền đã được giữ; người làm có thể bắt đầu.' : 'Đang chờ khách hoàn tất việc giữ tiền.', error: fundingError, facts: amount, applicable: !cancelled },
-    { key: refund ? 'refund' : 'release', title: refund ? 'Hoàn tiền cho khách' : 'Trả tiền cho người làm',
+    { key: 'funding', title: 'Client giữ tiền cho công việc', tone: fundingError ? 'error' : funding ? financialMoneyTone(funding.fundingStatus) : 'pending',
+      status: fundingError ? 'Chưa đọc được nạp tiền' : funding ? fundingLabel(funding.fundingStatus) : 'Chưa có bản ghi nạp tiền',
+      note: funding?.fundingStatus === 'SUCCEEDED' ? 'Khoản tiền đã được giữ; Freelancer có thể bắt đầu.' : 'Đang chờ Client hoàn tất việc giữ tiền.', error: fundingError, facts: amount, applicable: !cancelled },
+    { key: refund ? 'refund' : 'release', title: refund ? 'Hoàn tiền cho Client' : 'Trả tiền cho Freelancer',
       tone: record.error && !(refund ? cancellation : settlement) ? 'error' : financialMoneyTone(refund ? cancellation?.refundStatus : settlement?.moneyStatus),
       status: refund ? cancellation?.refundStatus ? refundLabel(cancellation.refundStatus) : cancelled ? 'Hợp đồng đã hủy; chưa có xác nhận hoàn tiền' : 'Chưa có xác nhận hoàn tiền'
-        : settlement ? settlementMoneyLabel(settlement.moneyStatus) : record.error ? 'Chưa xác minh release' : 'Chưa có bản ghi release',
-      note: refund ? 'Sau khi hủy, tiền được trả lại cho khách khi khoản hoàn được xác nhận.' : 'Sau khi kết quả được duyệt, tiền bắt đầu chuyển cho người làm.',
+        : settlement ? settlementMoneyLabel(settlement.moneyStatus) : record.error ? 'Chưa xác minh giải ngân' : 'Chưa có bản ghi giải ngân',
+      note: refund ? 'Sau khi hủy, tiền được trả lại cho Client khi khoản hoàn được xác nhận.' : 'Sau khi kết quả được duyệt, tiền bắt đầu chuyển cho Freelancer.',
       error: refund ? cancellation?.lastError : settlement?.lastError,
       facts: amount, applicable: !(cancelled && !cancellation?.refundStatus) },
     downstream('onchain', 'Xác nhận chuyển tiền trong ví', settlement?.onChainStatus, settlement?.onChainError),

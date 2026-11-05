@@ -37,8 +37,8 @@ export function DisputeRecord({ dispute }: { dispute: Dispute }) {
     {dispute.status === 'OPEN' && <p>{dispute.negotiationUntil ? 'Tiền đang đóng băng; hai bên có thể tự thương lượng trước hạn. Nếu không thống nhất, Admin tiếp nhận sau hạn.' : 'Chờ Admin tiếp nhận.'} Hai bên có thể bổ sung bằng chứng.</p>}
     {dispute.negotiationOutcome && dispute.status === 'OPEN' && <p>Đề xuất: {dispute.negotiationOutcome === 'REFUND_TO_CLIENT' ? 'Hoàn đủ USD cho Client' : 'Giải ngân cho Freelancer (phí 3%)'} · {dispute.negotiationReason}</p>}
     {dispute.status === 'UNDER_REVIEW' && <p>Admin đã tiếp nhận; bằng chứng đã khóa.</p>}
-    {dispute.status === 'DECISION_PENDING_RELEASE' && <p>Quyết định release đã lưu. Chưa xác nhận release thành công; các chặng tài chính được đối soát riêng.</p>}
-    {dispute.status === 'RESOLVED_RELEASE' && <p>Hồ sơ đã giải quyết. Xem bản ghi settlement để đối chiếu release; không suy ra chi trả ngân hàng từ quyết định Admin.</p>}
+    {dispute.status === 'DECISION_PENDING_RELEASE' && <p>Quyết định giải ngân đã lưu. Chưa xác nhận giải ngân thành công; các chặng tài chính được đối soát riêng.</p>}
+    {dispute.status === 'RESOLVED_RELEASE' && <p>Hồ sơ đã giải quyết. Xem bản ghi settlement để đối chiếu giải ngân; không suy ra chi trả ngân hàng từ quyết định Admin.</p>}
     {['DECISION_PENDING_REFUND', 'RESOLVED_REFUND'].includes(dispute.status) && <>
       <p>{dispute.status === 'DECISION_PENDING_REFUND' ? 'Quyết định hoàn tiền đã lưu. Chưa xác nhận hoàn tiền hoàn tất.' : 'Hồ sơ hoàn tiền đã giải quyết. Đối chiếu trạng thái hợp đồng và bản ghi hoàn tiền từ máy chủ.'}</p>
       <p>{refundLabel(dispute.refundStatus)}</p>

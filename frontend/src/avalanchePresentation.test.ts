@@ -23,7 +23,7 @@ describe('Avalanche presentation text (Vietnamese UI)', () => {
   });
 
   it('never shows the English text of a wallet error to the user', () => {
-    const codes = ['NO_WALLET', 'USER_REJECTED', 'CONNECT_FAILED', 'NO_ACCOUNT', 'CHAIN_UNREADABLE', 'CHAIN_NOT_ALLOWED', 'WRONG_CHAIN', 'CHAIN_MISMATCH', 'TX_INVALID',
+    const codes = ['NO_WALLET', 'USER_REJECTED', 'CONNECT_FAILED', 'NO_ACCOUNT', 'CHAIN_UNREADABLE', 'CHAIN_NOT_ALLOWED', 'ACCOUNT_NOT_LINKED', 'WRONG_CHAIN', 'CHAIN_MISMATCH', 'TX_INVALID',
       'NO_HASH', 'SEND_FAILED', 'TYPED_DATA_INVALID', 'BAD_SIGNATURE', 'SIGN_FAILED', 'MESSAGE_INVALID'];
     for (const code of codes) {
       const text = walletErrorText(Object.assign(new Error('The wallet could not do something in English.'), { code }));

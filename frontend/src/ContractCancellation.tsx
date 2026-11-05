@@ -219,7 +219,7 @@ export function ContractCancellation({ job, user, submissionCount, workflowBusy,
       {row.cancellationStatus === 'REJECTED' && <p>Đề nghị hủy đã bị từ chối. Công việc tiếp tục, không có hoàn tiền.</p>}
       {row.cancellationStatus === 'REFUND_PENDING' && <p>Hai bên đã đồng ý; hợp đồng chưa được xác nhận hủy cuối cùng. {refundLabel(row.refundStatus)}.</p>}
       {refundConfirmed && <p>{row.simulation ? financialCopy.refundSimulation : 'Marketplace đã xác nhận hoàn tiền. Không suy ra chuyển khoản ngân hàng từ bản ghi này.'}</p>}
-      {row.cancellationStatus === 'CANCELLED' && row.refundStatus === null && <p>Đã hủy trước funding. Không có hoàn tiền.</p>}
+      {row.cancellationStatus === 'CANCELLED' && row.refundStatus === null && <p>Đã hủy trước nạp tiền. Không có hoàn tiền.</p>}
       <p className="submission-summary">{row.reason}</p>
       <FactGrid facts={[{ label: 'Giá trị hợp đồng', value: row.amount + ' ' + row.currency },
         { label: 'Gửi đề nghị', value: localInstant(row.requestedAt) },
@@ -241,15 +241,15 @@ export function ContractCancellation({ job, user, submissionCount, workflowBusy,
       </dl></EvidenceDisclosure>
     </>}
     {ready && !row && !uncertain && <>
-      {eligible && !form && <button className="text-button" disabled={busy || workflowBusy} onClick={() => setForm(true)}>{contract.status === 'PENDING_FUNDING' ? 'Hủy trước funding' : 'Đề nghị hủy hợp đồng'}</button>}
+      {eligible && !form && <button className="text-button" disabled={busy || workflowBusy} onClick={() => setForm(true)}>{contract.status === 'PENDING_FUNDING' ? 'Hủy trước nạp tiền' : 'Đề nghị hủy hợp đồng'}</button>}
       {form && eligible && <form className="cancellation-form" onSubmit={request}>
-        <p>{contract.status === 'PENDING_FUNDING' ? 'Chỉ hủy khi chưa có bất kỳ lần funding nào. Không có hoàn tiền.' : 'Gửi đề nghị cho đối tác. Công việc vẫn tiếp tục khi đề nghị chờ quyết định; nếu hai bên đồng ý, máy chủ đối soát hoàn tiền.'}</p>
+        <p>{contract.status === 'PENDING_FUNDING' ? 'Chỉ hủy khi chưa có bất kỳ lần nạp tiền nào. Không có hoàn tiền.' : 'Gửi đề nghị cho đối tác. Công việc vẫn tiếp tục khi đề nghị chờ quyết định; nếu hai bên đồng ý, máy chủ đối soát hoàn tiền.'}</p>
         <label>Mã lý do<input required maxLength={60} value={reasonCode} disabled={busy || workflowBusy} onChange={e => setReasonCode(e.target.value)} /></label>
         <label>Lý do hủy<textarea required maxLength={2000} value={description} disabled={busy || workflowBusy} onChange={e => setDescription(e.target.value)} /></label>
-        <ActionGroup><button className={'button button-secondary' + (contract.status === 'PENDING_FUNDING' ? ' button-caution' : '')} disabled={busy || workflowBusy}>Xác nhận {contract.status === 'PENDING_FUNDING' ? 'hủy trước funding' : 'gửi đề nghị'}</button>
+        <ActionGroup><button className={'button button-secondary' + (contract.status === 'PENDING_FUNDING' ? ' button-caution' : '')} disabled={busy || workflowBusy}>Xác nhận {contract.status === 'PENDING_FUNDING' ? 'hủy trước nạp tiền' : 'gửi đề nghị'}</button>
           <button className="text-button" type="button" disabled={busy || workflowBusy} onClick={() => setForm(false)}>Quay lại</button></ActionGroup>
       </form>}
-      {!eligible && <p className="metadata">Chưa đủ điều kiện hủy theo trạng thái, lịch sử funding hoặc bàn giao hiện có.</p>}
+      {!eligible && <p className="metadata">Chưa đủ điều kiện hủy theo trạng thái, lịch sử nạp tiền hoặc bàn giao hiện có.</p>}
     </>}
     {busy && <p role="status">Đang ghi nhận; chưa gửi thao tác khác.</p>}
     {uncertain && <p role="status">Chưa xác nhận kết quả lần thao tác trước. Đọc lại trạng thái trước khi tiếp tục.</p>}

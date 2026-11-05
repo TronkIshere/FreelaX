@@ -9,8 +9,8 @@ export const cancelledContract = (job: Job) => job.contract?.status === 'CANCELL
   job.contract?.milestoneStatus === 'REFUNDED' || job.status === 'CANCELLED';
 export const refundOwned = (job: Job) => job.contract?.milestoneStatus === 'REFUND_PENDING';
 export const financialCopy = {
-  fundingVsRelease: 'Funding đã xác nhận không có nghĩa Freelancer đã nhận release.',
-  releaseSimulation: 'Đã xác nhận bản ghi release mô phỏng cho Freelancer. Không xác nhận tiền đã về ngân hàng thật.',
+  fundingVsRelease: 'Nạp tiền đã xác nhận không có nghĩa Freelancer đã nhận giải ngân.',
+  releaseSimulation: 'Đã xác nhận bản ghi giải ngân mô phỏng cho Freelancer. Không xác nhận tiền đã về ngân hàng thật.',
   refundSimulation: 'Đã xác nhận bản ghi hoàn tiền mô phỏng cho Client. Không xác nhận hoàn tiền ngân hàng thật.',
   taxVsCertificate: 'Trạng thái tạo chứng từ không xác nhận cơ quan thuế đã ACCEPTED. Xem trạng thái riêng trong hồ sơ chứng từ.',
 };
@@ -37,9 +37,9 @@ export function contractFinanceLabel(job: Job, value?: ContractFinance): string 
   if (cancelledContract(job) || cancellation?.cancellationStatus === 'CANCELLED') return 'Hợp đồng đã hủy';
   if (value?.settlement) return settlementMoneyLabel(value.settlement.moneyStatus);
   if (value?.error) return 'Chưa xác minh hồ sơ tài chính';
-  if (releaseOwned(job)) return 'Chưa có bản ghi release';
+  if (releaseOwned(job)) return 'Chưa có bản ghi giải ngân';
   if (cancellation) return cancellationLabel(cancellation.cancellationStatus);
-  return job.status === 'AWAITING_PAYMENT' ? 'Chờ funding' : 'Funding và hồ sơ hợp đồng';
+  return job.status === 'AWAITING_PAYMENT' ? 'Chờ nạp tiền' : 'Nạp tiền và hồ sơ hợp đồng';
 }
 
 export function contractFinanceNeedsRefresh(job: Job, value: ContractFinance): boolean {
@@ -55,9 +55,9 @@ export function contractFinanceNeedsRefresh(job: Job, value: ContractFinance): b
 }
 
 export const settlementMoneyLabel = (status: string) => ({
-  PENDING: 'Chờ xác nhận release', PROCESSING: 'Đang xử lý release', UNKNOWN: 'Đang đối soát release',
-  SUCCEEDED: 'Release đã xác nhận', FAILED_RETRYABLE: 'Release cần đối soát lại', FAILED: 'Release chưa thành công',
-}[status] || 'Chưa xác minh release');
+  PENDING: 'Chờ xác nhận giải ngân', PROCESSING: 'Đang xử lý giải ngân', UNKNOWN: 'Đang đối soát giải ngân',
+  SUCCEEDED: 'Giải ngân đã xác nhận', FAILED_RETRYABLE: 'Giải ngân cần đối soát lại', FAILED: 'Giải ngân chưa thành công',
+}[status] || 'Chưa xác minh giải ngân');
 export const settlementStageLabel = (status: string) => ({
   NOT_STARTED: 'Chưa bắt đầu', PROCESSING: 'Đang xử lý', SUCCEEDED: 'Đã xác nhận',
   FAILED_RETRYABLE: 'Máy chủ đang thử lại', FAILED: 'Cần xử lý lỗi', UNKNOWN: 'Đang đối soát',
@@ -92,8 +92,8 @@ const onRamp: Record<string, string> = {
 const clientPayment: Record<string, string> = {
   NOT_STARTED: 'Chưa bắt đầu', RATE_SUBMITTED: 'Đã gửi tỷ giá',
   RATE_CONFIRMED: 'Tỷ giá đã xác nhận', INVOICE_SUBMITTED: 'Đang tạo hóa đơn',
-  INVOICE_CREATED: 'Đã tạo hóa đơn', PAYMENT_SUBMITTED: 'Đã gửi thanh toán on-chain',
-  CONFIRMED: 'Thanh toán on-chain đã xác nhận', FAILED: 'Thanh toán on-chain thất bại',
+  INVOICE_CREATED: 'Đã tạo hóa đơn', PAYMENT_SUBMITTED: 'Đã gửi thanh toán trên chuỗi',
+  CONFIRMED: 'Thanh toán trên chuỗi đã xác nhận', FAILED: 'Thanh toán trên chuỗi thất bại',
 };
 const withdrawal: Record<string, string> = {
   NOT_STARTED: 'Chưa bắt đầu', REQUEST_SUBMITTED: 'Đã gửi yêu cầu rút',
@@ -152,22 +152,22 @@ export function paymentStages(payment: JobPaymentStatus, tax: TaxRecord | null):
   const taxFailed = taxStatus === 'EXPORT_FAILED' || taxStatus === 'REJECTED' ||
     taxStatus === 'CANCELLED' || payment.taxExportStatus === 'FAILED';
   return [
-    { key: 'checkout', title: 'Khách thanh toán',
+    { key: 'checkout', title: 'Client thanh toán',
       tone: payment.checkoutOrderStatus === 'CAPTURED' ? 'done' : payment.checkoutOrderStatus === 'FAILED' ? 'error' : 'pending',
       status: checkoutLabel(payment.checkoutOrderStatus),
-      note: payment.checkoutOrderStatus === 'CAPTURED' ? 'Hệ thống đã nhận khoản thanh toán của khách.' : 'Đang chờ khoản thanh toán của khách được xác nhận.' },
+      note: payment.checkoutOrderStatus === 'CAPTURED' ? 'Hệ thống đã nhận khoản thanh toán của Client.' : 'Đang chờ khoản thanh toán của Client được xác nhận.' },
     { key: 'settlement', title: 'Tiền vào ví',
       tone: clientFailed ? 'error' : settlementDone ? 'done'
         : payment.onRampStatus || payment.clientPaymentStatus ? 'active' : 'pending',
       status: onRampLabel(payment.onRampStatus) + ' · ' + clientPaymentLabel(payment.clientPaymentStatus),
       note: settlementDone ? 'Tiền đã được đổi và xác nhận trong ví.' : 'Đang chờ tiền được đổi và xác nhận trong ví.',
       error: payment.clientPaymentError },
-    { key: 'withdrawal', title: 'Người làm rút tiền',
+    { key: 'withdrawal', title: 'Freelancer rút tiền',
       tone: payment.onChainOffRampStatus === 'FAILED' ? 'error'
         : payment.onChainOffRampStatus === 'CONFIRMED' ? 'done'
           : payment.onChainOffRampStatus === 'REQUEST_SUBMITTED' ? 'active' : 'pending',
       status: withdrawalLabel(payment.onChainOffRampStatus),
-      note: payment.onChainOffRampStatus === 'CONFIRMED' ? 'Người làm đã xác nhận rút tiền từ ví.' : 'Đang chờ người làm xác nhận rút tiền từ ví.',
+      note: payment.onChainOffRampStatus === 'CONFIRMED' ? 'Freelancer đã xác nhận rút tiền từ ví.' : 'Đang chờ Freelancer xác nhận rút tiền từ ví.',
       error: payment.onChainOffRampError },
     { key: 'vnd', title: 'Chi trả VND',
       tone: payment.offRampStatus === 'FAILED' ? 'error'

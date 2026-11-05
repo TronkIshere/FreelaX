@@ -38,7 +38,7 @@ export function MutualRefundPanel({ contractId, escrow, client, freelancer, onRe
           || !hasEscrowSignerSignature(signed, built.clientWallet))
         throw new Error('Chữ ký Client không hợp lệ cho giao dịch hoàn tiền.');
       await api.signMutualRefund(contractId, built.intentId, signed);
-      setNotice('Khách hàng đã xác nhận. Đang chờ người làm xác nhận hoàn tiền.');
+      setNotice('Client đã xác nhận. Đang chờ Freelancer xác nhận hoàn tiền.');
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Chưa tạo được yêu cầu hoàn tiền.'); }
     finally { setBusy(false); onBusy(false); }
   }
@@ -67,14 +67,14 @@ export function MutualRefundPanel({ contractId, escrow, client, freelancer, onRe
   if (!active || (!client && !freelancer)) return null;
   return <section className="settlement-document" aria-label="Hoàn tiền theo thỏa thuận">
     <SectionHeading title="Hoàn tiền theo thỏa thuận" />
-    <p>Hoàn toàn bộ số tiền của công việc về cho khách hàng. Hai bên cần xác nhận yêu cầu này.</p>
+    <p>Hoàn toàn bộ số tiền của công việc về cho Client. Hai bên cần xác nhận yêu cầu này.</p>
     {escrow.status === 'Submitted' && <p>Nếu đã hết hạn duyệt, khoản thanh toán có thể hoàn tất trước yêu cầu hoàn tiền.</p>}
-    <label><input type="checkbox" checked={agree} disabled={busy} onChange={event => setAgree(event.target.checked)} /> Tôi đồng ý hoàn toàn bộ số tiền cho khách hàng.</label>
+    <label><input type="checkbox" checked={agree} disabled={busy} onChange={event => setAgree(event.target.checked)} /> Tôi đồng ý hoàn toàn bộ số tiền cho Client.</label>
     <ActionGroup>
       {client && <button className="button button-secondary" disabled={busy || !agree} onClick={() => void clientPropose()}>Xác nhận hoàn tiền</button>}
       {freelancer && <button className="button button-secondary" disabled={busy || !agree || !pending?.partialTransaction} onClick={() => void freelancerFinish()}>Đồng ý hoàn tiền</button>}
     </ActionGroup>
-    {freelancer && !pending && <p>Đang chờ khách hàng gửi yêu cầu hoàn tiền.</p>}
+    {freelancer && !pending && <p>Đang chờ Client gửi yêu cầu hoàn tiền.</p>}
     {notice && <p role="status">{notice}</p>}{error && <p role="alert" className="form-error">{error}</p>}
   </section>;
 }

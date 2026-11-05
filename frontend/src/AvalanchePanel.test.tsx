@@ -147,6 +147,19 @@ describe('AvalancheEscrowPanel', () => {
     expect(record).not.toHaveBeenCalled();
   });
 
+  it('refuses an account that is not the linked wallet before anything is prepared as sent or recorded', async () => {
+    vi.spyOn(api, 'avalancheStatus').mockResolvedValue(view());
+    vi.spyOn(api, 'avalanchePrepare').mockResolvedValue({ action: 'fund', escrowId: '0x1', transactions: [{ to: '0x' + '2'.repeat(40), data: '0x00', chainId: 31337, value: '0' }] as never });
+    const record = vi.spyOn(api, 'avalancheRecordTransaction');
+    const wallet = { connect: vi.fn(async () => ({ address: '0x' + '9'.repeat(40), chainId: 31337 })), sendPrepared: vi.fn() } as unknown as EvmWallet;
+    await mount(true, false, () => wallet);
+    const button = [...host.querySelectorAll('button')].find(b => b.textContent === 'Nạp tiền ký quỹ bằng ví')!;
+    await act(async () => { button.click(); });
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain('không phải ví đã liên kết');
+    expect(wallet.sendPrepared).not.toHaveBeenCalled();
+    expect(record).not.toHaveBeenCalled();
+  });
+
   it('lets only the client enable the rail', async () => {
     vi.spyOn(api, 'avalancheStatus').mockResolvedValue(view({ networkId: null }));
     await mount(false, true);

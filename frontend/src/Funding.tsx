@@ -105,7 +105,7 @@ function UnifiedFundingPanel({ job, user, onJobUpdated, blocked = false, operati
     {loading && <p role="status">Đang cập nhật thanh toán…</p>}
     {error && <p role="alert" className="form-error">{error}</p>}
     {flow && <>
-      <p>Giá công việc: {flow.grossUsd} USD · Phí dịch vụ do người làm chịu: {flow.platformFeeUsd} USD.</p>
+      <p>Giá công việc: {flow.grossUsd} USD · Phí dịch vụ do Freelancer chịu: {flow.platformFeeUsd} USD.</p>
       {flow.payerBankCode && <p>Tài khoản Client nộp USD / nhận hoàn: {flow.payerBankCode} · {flow.payerBankMaskedAccount}.</p>}
       {flow.termsStatus === 'DRAFT' && <p role="status">Đang chuẩn bị thanh toán. Công việc bắt đầu sau khi tiền được giữ an toàn.</p>}
       <PaymentJourney flow={flow} />
@@ -199,7 +199,7 @@ function SimulatedFundingPanel({ job, user, onJobUpdated, blocked = false, opera
         if (current?.fundingStatus === 'SUCCEEDED' && job.status === 'AWAITING_PAYMENT') {
           const fresh = await api.job(job.id); if (active) onJobUpdated(fresh);
         }
-      } catch { if (active) setError('Chưa đối chiếu được funding hoặc tài khoản ngân hàng. Hãy tải lại trước khi gửi.'); }
+      } catch { if (active) setError('Chưa đối chiếu được nạp tiền hoặc tài khoản ngân hàng. Hãy tải lại trước khi gửi.'); }
       finally { if (active) setLoading(false); }
     }
     void load();
@@ -217,7 +217,7 @@ function SimulatedFundingPanel({ job, user, onJobUpdated, blocked = false, opera
         setFunding(next); setError('');
         if (next?.fundingStatus === 'SUCCEEDED' || next?.fundingStatus === 'FAILED') { clearAttempt(scope); attempt.current = null; }
         if (next?.fundingStatus === 'SUCCEEDED') { const fresh = await api.job(job.id); if (active) onJobUpdated(fresh); }
-      } catch { if (active) setError('Chưa cập nhật được funding; lần gửi vẫn đang được đối soát.'); }
+      } catch { if (active) setError('Chưa cập nhật được nạp tiền; lần gửi vẫn đang được đối soát.'); }
       if (active) setPollTick(value => value + 1);
     }, retryDelay(funding?.retryAfterSeconds));
     return () => { active = false; window.clearTimeout(timer); };
@@ -266,15 +266,15 @@ function SimulatedFundingPanel({ job, user, onJobUpdated, blocked = false, opera
   }
   if (!participant || !contract) return null;
   const eligible = owner && job.status === 'AWAITING_PAYMENT' && contract.status === 'PENDING_FUNDING' && !!contract.milestoneId && !!amount;
-  return <section className="funding-document" id="funding" tabIndex={-1} aria-label="Funding hợp đồng">
-    <SectionHeading title={owner ? 'Funding hợp đồng' : 'Funding từ Client'} aside={funding?.simulation !== false ? 'Mô phỏng' : undefined} />
+  return <section className="funding-document" id="funding" tabIndex={-1} aria-label="Nạp tiền cho hợp đồng">
+    <SectionHeading title={owner ? 'Nạp tiền cho hợp đồng' : 'Nạp tiền từ Client'} aside={funding?.simulation !== false ? 'Mô phỏng' : undefined} />
     <strong>{amount || 'Chưa xác minh số tiền'} {contract.currency}</strong>
-    <p role="status">{loading ? 'Đang đối chiếu funding…' : funding ? fundingLabel(funding.fundingStatus) : 'Chưa có lần funding được ghi nhận'}</p>
-    {funding?.fundingStatus === 'SUCCEEDED' && <p>Đã xác nhận funding. Đây chưa phải tiền đã chi trả cho Freelancer.</p>}
+    <p role="status">{loading ? 'Đang đối chiếu nạp tiền…' : funding ? fundingLabel(funding.fundingStatus) : 'Chưa có lần nạp tiền được ghi nhận'}</p>
+    {funding?.fundingStatus === 'SUCCEEDED' && <p>Đã xác nhận nạp tiền. Đây chưa phải tiền đã chi trả cho Freelancer.</p>}
     {!owner && <p>Đang chờ Client và trạng thái xác nhận từ Marketplace.</p>}
     {owner && <>
       {bank?.ready && <p>Ngân hàng: {bank.bankCode} · {bank.maskedAccountNumber}</p>}
-      {!bank?.ready && !loading && <p>Cần tài khoản ngân hàng Client trước khi funding.</p>}
+      {!bank?.ready && !loading && <p>Cần tài khoản ngân hàng Client trước khi nạp tiền.</p>}
       {eligible && !editingBank && <button className="text-button" disabled={blocked || busy || loading || fundingUnresolved(funding?.fundingStatus)} onClick={() => setEditingBank(true)}>{bank?.ready ? 'Cập nhật ngân hàng' : 'Thiết lập ngân hàng'}</button>}
       {eligible && editingBank && <form className="bank-form" onSubmit={saveBank}>
         <label>Ngân hàng<select value={bankCode} disabled={busy} onChange={e => setBankCode(e.target.value as BankCode)}>{banks.map(code => <option key={code}>{code}</option>)}</select></label>
@@ -282,16 +282,16 @@ function SimulatedFundingPanel({ job, user, onJobUpdated, blocked = false, opera
         <label>Tên chủ tài khoản<input required minLength={2} maxLength={255} autoComplete="off" value={holder} disabled={busy} onChange={e => setHolder(e.target.value)} /></label>
         <ActionGroup><button className="button" disabled={blocked || busy}>{busy ? 'Đang lưu…' : 'Lưu ngân hàng'}</button><button className="button button-secondary" type="button" disabled={busy} onClick={() => { setNumber(''); setHolder(''); setEditingBank(false); }}>Quay lại</button></ActionGroup>
       </form>}
-      {eligible && !editingBank && !confirm && <ActionGroup><button className="button" disabled={blocked || busy || loading || !initialized.current || !bank?.ready || fundingUnresolved(funding?.fundingStatus) || funding?.fundingStatus === 'SUCCEEDED'} onClick={() => setConfirm(true)}>{funding?.fundingStatus === 'FAILED' ? 'Thử funding lại' : attempt.current ? 'Tiếp tục lần funding trước' : 'Funding mô phỏng'}</button></ActionGroup>}
+      {eligible && !editingBank && !confirm && <ActionGroup><button className="button" disabled={blocked || busy || loading || !initialized.current || !bank?.ready || fundingUnresolved(funding?.fundingStatus) || funding?.fundingStatus === 'SUCCEEDED'} onClick={() => setConfirm(true)}>{funding?.fundingStatus === 'FAILED' ? 'Thử nạp tiền lại' : attempt.current ? 'Tiếp tục lần nạp tiền trước' : 'Nạp tiền mô phỏng'}</button></ActionGroup>}
       {eligible && !loading && !funding && !attempt.current && <button className="text-button" disabled={blocked || busy} onClick={onChooseEscrow}>Chọn ký quỹ Solana</button>}
       {eligible && !loading && !funding && !attempt.current && <button className="text-button" disabled={blocked || busy} onClick={onChoosePartner}>Chọn ký quỹ đối tác mock</button>}
-      {eligible && confirm && <div className="approval-confirm" role="group" aria-label="Xác nhận funding">
+      {eligible && confirm && <div className="approval-confirm" role="group" aria-label="Xác nhận nạp tiền">
         <strong>Xác nhận {amount} {contract.currency} · Mô phỏng</strong><p>Capture mô phỏng theo số tiền hợp đồng đã chốt. Không xác nhận chi trả cho Freelancer.</p>
-        <ActionGroup><button className="button" disabled={blocked || busy} onClick={() => void fund()}>Xác nhận funding</button><button className="button button-secondary" disabled={busy} onClick={() => setConfirm(false)}>Quay lại</button></ActionGroup>
+        <ActionGroup><button className="button" disabled={blocked || busy} onClick={() => void fund()}>Xác nhận nạp tiền</button><button className="button button-secondary" disabled={busy} onClick={() => setConfirm(false)}>Quay lại</button></ActionGroup>
       </div>}
     </>}
     {error && <p role="alert" className="form-error">{error}</p>}
-    <button className="text-button" disabled={busy || loading} onClick={() => { setLoading(true); setTick(value => value + 1); }}>Đối chiếu funding</button>
-    {funding && <EvidenceDisclosure summary="Tham chiếu funding"><dl className="reference-list"><div><dt>Lần funding</dt><dd><code>{funding.fundingTransactionId}</code></dd></div><div><dt>Provider</dt><dd><code>{funding.providerReference || '—'}</code></dd></div></dl></EvidenceDisclosure>}
+    <button className="text-button" disabled={busy || loading} onClick={() => { setLoading(true); setTick(value => value + 1); }}>Đối chiếu nạp tiền</button>
+    {funding && <EvidenceDisclosure summary="Tham chiếu nạp tiền"><dl className="reference-list"><div><dt>Lần nạp tiền</dt><dd><code>{funding.fundingTransactionId}</code></dd></div><div><dt>Provider</dt><dd><code>{funding.providerReference || '—'}</code></dd></div></dl></EvidenceDisclosure>}
   </section>;
 }

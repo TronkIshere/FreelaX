@@ -46,7 +46,7 @@ function ExpiredFundingCancel({ contractId, onSaved }: { contractId: string; onS
     if (busy || !confirm || note.trim().length < 10) { setError('Cần xác nhận và ghi chú ít nhất 10 ký tự.'); return; }
     setBusy(true); setError('');
     try { await api.cancelExpiredUnifiedFunding(contractId, note.trim()); onSaved(); }
-    catch { setError('Server từ chối: chỉ hủy được khi đã quá hạn ký quỹ ít nhất 15 phút, USDC đã ở ví Client và chưa có escrow on-chain.'); }
+    catch { setError('Server từ chối: chỉ hủy được khi đã quá hạn ký quỹ ít nhất 15 phút, USDC đã ở ví Client và chưa có ký quỹ trên chuỗi.'); }
     finally { setBusy(false); }
   }
   return <form className="recon-form" onSubmit={submit} aria-label={'Hủy hợp đồng quá hạn ký quỹ ' + contractId}>

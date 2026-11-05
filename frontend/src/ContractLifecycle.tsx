@@ -26,7 +26,7 @@ export function CompletedReviewCallout({ counterpart }: { counterpart: 'Client' 
     <div className="completed-review-plate" aria-hidden="true"><ClipboardCheck size={34} /><span /></div>
     <div className="completed-review-copy"><span className="completed-review-stamp">CÔNG VIỆC ĐÃ HOÀN THÀNH</span>
       <h2 id="completed-review-title">Chia sẻ đánh giá về {counterpart}.</h2>
-      <p>{counterpart === 'Freelancer' ? 'Marketplace đã xác nhận công việc và release đủ điều kiện đánh giá. Bạn có thể chia sẻ trải nghiệm làm việc để bổ sung uy tín hợp đồng.' : 'Marketplace đã mở lời mời đánh giá cho hợp đồng đã hoàn tất. Bạn có thể chia sẻ trải nghiệm làm việc với Client.'}</p>
+      <p>{counterpart === 'Freelancer' ? 'Marketplace đã xác nhận công việc và giải ngân đủ điều kiện đánh giá. Bạn có thể chia sẻ trải nghiệm làm việc để bổ sung uy tín hợp đồng.' : 'Marketplace đã mở lời mời đánh giá cho hợp đồng đã hoàn tất. Bạn có thể chia sẻ trải nghiệm làm việc với Client.'}</p>
     </div>
     <a className="button completed-review-cta" href="#contract-reviews">Đánh giá {counterpart}<ArrowRight size={20} aria-hidden="true" /></a>
   </section>;
@@ -67,7 +67,7 @@ export function ReviewTiming({ submission, contract, now }: { submission: Contra
     {submission.reviewGraceDueAt && <p>Hạn gia hạn: <time dateTime={submission.reviewGraceDueAt}>{localInstant(submission.reviewGraceDueAt)}</time></p>}
     {submission.status === 'SUBMITTED' && <>
       <p className="metadata">Cửa sổ review hợp đồng: {contract.reviewWindowHours} giờ. {contract.paymentRail === 'UNIFIED_USDC_PAYOUT'
-        ? 'Hết hạn mà Client chưa quyết định thì tự duyệt và release USDC; không gia hạn thêm.'
+        ? 'Hết hạn mà Client chưa quyết định thì tự duyệt và giải ngân USDC; không gia hạn thêm.'
         : small === null ? '' : small ? 'Đủ điều kiện tự duyệt tại hạn review.' : 'Trên 500 USD: thêm 24 giờ gia hạn theo máy chủ.'}</p>
       {Number.isFinite(due) && <p role="status">{remaining > 0 ? 'Còn ' + Math.ceil(remaining / 60000) + ' phút đến hạn review' : 'Đang chờ máy chủ xử lý'}</p>}
     </>}
@@ -153,7 +153,7 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
     try {
       const saved = readAttempt<ReviewAttempt>(escrowReviewScope);
       if (saved?.submissionId && saved.body?.decision) setReviewAttempt(saved);
-    } catch { setError('Không đọc được lần duyệt escrow trước.'); }
+    } catch { setError('Không đọc được lần duyệt ký quỹ trước.'); }
   }, [escrowRail, client, escrowReviewScope]);
   useEffect(() => {
     if (!escrowRail) return;
@@ -240,7 +240,7 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
     try {
       await signedEscrowAction('request-extension', { newDueAt: String(seconds) }, 'Funded',
         undefined, state => state.requestedDeliveryDueAt === String(seconds));
-      setNotice('Đã ghi nhận yêu cầu gia hạn; đang chờ khách hàng chấp thuận.');
+      setNotice('Đã ghi nhận yêu cầu gia hạn; đang chờ Client chấp thuận.');
     } catch (cause) { setError(cause instanceof Error ? cause.message : errorText(cause)); }
     finally { lock.current = false; setBusy(false); }
   }
@@ -314,7 +314,7 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
       if (!active) return;
       setSettlement(value); setSettlementError('');
       if (value?.moneyStatus === 'SUCCEEDED' && !completed) await synchronize();
-    }).catch(() => { if (active) setSettlementError('Chưa đối chiếu đầy đủ release/workflow; không suy ra kết quả từ funding hoặc checkout.'); })
+    }).catch(() => { if (active) setSettlementError('Chưa đối chiếu đầy đủ giải ngân/workflow; không suy ra kết quả từ nạp tiền hoặc checkout.'); })
       .finally(() => { if (active) setSettlementLoading(false); });
     return () => { active = false; };
   }, [client, freelancer, contract.id, contract.status, contract.milestoneStatus, releaseRelevant, completed, settlementAttempt, synchronize]);
@@ -329,7 +329,7 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
           if (!active) return;
           setSettlement(value); setSettlementError('');
           await synchronize();
-        } catch { if (active) setSettlementError('Chưa cập nhật được release. Giữ bằng chứng đã xác nhận và tiếp tục đối soát.'); }
+        } catch { if (active) setSettlementError('Chưa cập nhật được giải ngân. Giữ bằng chứng đã xác nhận và tiếp tục đối soát.'); }
       }
       if (active) setSettlementTick(value => value + 1);
     }, 30000);
@@ -437,12 +437,12 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
     : cancellation.busy ? 'Đang ghi nhận thao tác hủy hợp đồng'
     : cancellation.uncertain ? 'Đang đối soát ý định hủy; chưa gửi thao tác khác'
     : disputed ? 'Đang chờ Admin xử lý'
-    : releaseConfirmed ? settlement.simulation ? 'Đã xác nhận release mô phỏng' : 'Đã xác nhận release'
+    : releaseConfirmed ? settlement.simulation ? 'Đã xác nhận giải ngân mô phỏng' : 'Đã xác nhận giải ngân'
     : completed ? 'Phần việc đã hoàn tất theo Marketplace'
-    : releaseFailed ? 'Phần việc đã duyệt; release cần xử lý lỗi'
-    : releasedPending ? 'Đã duyệt; đang đối soát release'
+    : releaseFailed ? 'Phần việc đã duyệt; giải ngân cần xử lý lỗi'
+    : releasedPending ? 'Đã duyệt; đang đối soát giải ngân'
     : !cancellation.ready ? 'Đang đối soát trạng thái hợp đồng'
-    : job.status === 'AWAITING_PAYMENT' ? client ? 'Cần bạn funding hợp đồng' : 'Đang chờ Client hoàn tất funding'
+    : job.status === 'AWAITING_PAYMENT' ? client ? 'Cần bạn nạp tiền cho hợp đồng' : 'Đang chờ Client hoàn tất nạp tiền'
     : canSubmit ? job.status === 'REVISION_REQUESTED' ? 'Bạn cần chỉnh sửa theo phản hồi' : 'Đến lượt bạn bàn giao công việc'
     : canReview ? 'Cần bạn duyệt bàn giao' : contract.status === 'REVISION' ? 'Đang chờ Freelancer gửi bản sửa'
     : contract.status === 'UNDER_REVIEW' ? 'Đang chờ Client phản hồi' : 'Đang chờ Freelancer bàn giao';
@@ -470,8 +470,8 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
       onOpenOnChain={escrowRail ? openEscrowDispute : undefined} />
     {escrowRail && escrowView && <section className="settlement-document" aria-label="Trạng thái tiền công việc">
       <SectionHeading title="Tiền của công việc" />
-      <p role="status">{escrowView.status === 'Released' ? 'Đã chuyển tiền cho người làm.'
-        : escrowView.status === 'Refunded' ? 'Đã hoàn tiền cho khách hàng.'
+      <p role="status">{escrowView.status === 'Released' ? 'Đã chuyển tiền cho Freelancer.'
+        : escrowView.status === 'Refunded' ? 'Đã hoàn tiền cho Client.'
           : ['Funded', 'Submitted', 'Revision'].includes(escrowView.status) ? 'Tiền đang được giữ an toàn.' : 'Đang chờ xác nhận thanh toán.'}</p>
       <FactGrid facts={[{ label: 'Hạn bàn giao', value: escrowView.deliveryDueAt ? localInstant(new Date(Number(escrowView.deliveryDueAt) * 1000).toISOString()) : 'Đang cập nhật' },
         { label: 'Hạn duyệt', value: escrowView.reviewDueAt ? localInstant(new Date(Number(escrowView.reviewDueAt) * 1000).toISOString()) : 'Đang chờ bàn giao' }]} />
@@ -491,32 +491,32 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
       {now > Number(escrowView.deliveryDueAt) * 1000 && <p role="status">Đã quá hạn bàn giao. Hệ thống không nhận bản bàn giao đầu tiên mới; cần xử lý tranh chấp.</p>}
     </section>}
     {!escrowRail && releaseRelevant && <section className="settlement-document" aria-label="Quyết toán hợp đồng">
-      <SectionHeading title="Release hợp đồng" aside={settlement?.simulation ? 'Mô phỏng' : undefined} />
-      {settlementLoading && <p role="status">Đang đọc trạng thái release…</p>}
-      {!settlement && !settlementLoading && !settlementError && <p className="financial-status financial-status-pending" role="status">Chưa có bản ghi release để xác nhận. Đang đối soát với Marketplace.</p>}
+      <SectionHeading title="Giải ngân hợp đồng" aside={settlement?.simulation ? 'Mô phỏng' : undefined} />
+      {settlementLoading && <p role="status">Đang đọc trạng thái giải ngân…</p>}
+      {!settlement && !settlementLoading && !settlementError && <p className="financial-status financial-status-pending" role="status">Chưa có bản ghi giải ngân để xác nhận. Đang đối soát với Marketplace.</p>}
       {settlement && <>
         <p className={'financial-status financial-status-' + financialMoneyTone(settlement.moneyStatus)} role="status">{settlementMoneyLabel(settlement.moneyStatus)}</p>
-        {releaseConfirmed && <p>{settlement.simulation ? financialCopy.releaseSimulation : 'Marketplace đã xác nhận release. Chi trả ngân hàng cần bằng chứng riêng.'}</p>}
+        {releaseConfirmed && <p>{settlement.simulation ? financialCopy.releaseSimulation : 'Marketplace đã xác nhận giải ngân. Chi trả ngân hàng cần bằng chứng riêng.'}</p>}
         {!releaseConfirmed && <p>{financialCopy.fundingVsRelease}</p>}
-        <FactGrid facts={[{ label: 'Giá trị release', value: String(settlement.amount) + ' ' + settlement.currency },
+        <FactGrid facts={[{ label: 'Giá trị giải ngân', value: String(settlement.amount) + ' ' + settlement.currency },
           ...(contract.paymentRail === 'PARTNER_ESCROW_MOCK' ? [
             { label: 'Phí FreelaX khi giải ngân (3%)', value: settlement.platformFeeUsd == null ? 'Chưa ghi nhận' : String(settlement.platformFeeUsd) + ' USD' },
             { label: 'Freelancer nhận', value: settlement.freelancerUsd == null ? 'Chưa ghi nhận' : String(settlement.freelancerUsd) + ' USD' },
             { label: 'Tỷ giá USD/VND khóa', value: settlement.lockedUsdVndRate == null ? 'Chưa khóa' : String(settlement.lockedUsdVndRate) },
             { label: 'Đối tác mock chi VND', value: settlement.partnerPayoutVnd == null ? 'Chưa xác nhận' : String(settlement.partnerPayoutVnd) + ' VND' },
           ] : []),
-          { label: 'Bằng chứng on-chain', value: settlementStageLabel(settlement.onChainStatus) },
+          { label: 'Bằng chứng trên chuỗi', value: settlementStageLabel(settlement.onChainStatus) },
           { label: 'Off-ramp', value: settlementStageLabel(settlement.offRampStatus) },
           { label: 'Tạo / Khôi phục chứng từ', value: settlementStageLabel(settlement.taxStatus) }]} />
         <p className="metadata">{financialCopy.taxVsCertificate}</p>
-        {settlement.moneyStatus === 'FAILED' && <p role="alert">Release chưa thành công. Máy chủ xử lý trạng thái này; không có thao tác giải ngân thủ công trong UI.</p>}
-        <EvidenceDisclosure summary="Tham chiếu release / Lỗi từng chặng"><dl className="reference-list">
-          {([['releaseReference', 'Tham chiếu release'], ['onChainReference', 'Tham chiếu on-chain'], ['offRampReference', 'Tham chiếu chi trả VND'], ['taxReference', 'Tham chiếu chứng từ'], ['lastError', 'Lỗi release'], ['onChainError', 'Lỗi on-chain'], ['offRampError', 'Lỗi VND'], ['taxError', 'Lỗi thuế']] as const).map(([field, label]) => settlement[field] && <div key={field}><dt>{label}</dt><dd><code>{settlement[field]}</code></dd></div>)}
+        {settlement.moneyStatus === 'FAILED' && <p role="alert">Giải ngân chưa thành công. Máy chủ xử lý trạng thái này; không có thao tác giải ngân thủ công trong UI.</p>}
+        <EvidenceDisclosure summary="Tham chiếu giải ngân / Lỗi từng chặng"><dl className="reference-list">
+          {([['releaseReference', 'Tham chiếu giải ngân'], ['onChainReference', 'Tham chiếu trên chuỗi'], ['offRampReference', 'Tham chiếu chi trả VND'], ['taxReference', 'Tham chiếu chứng từ'], ['lastError', 'Lỗi giải ngân'], ['onChainError', 'Lỗi trên chuỗi'], ['offRampError', 'Lỗi VND'], ['taxError', 'Lỗi thuế']] as const).map(([field, label]) => settlement[field] && <div key={field}><dt>{label}</dt><dd><code>{settlement[field]}</code></dd></div>)}
           <div><dt>Cập nhật từ Marketplace</dt><dd>{settlement.updatedAt}</dd></div>
         </dl></EvidenceDisclosure>
       </>}
       {settlementError && <p className="form-error" role="alert">{settlementError}</p>}
-      <button className="text-button" disabled={settlementLoading || busy || cancellation.busy} onClick={() => setSettlementAttempt(value => value + 1)}>Đối chiếu release</button>
+      <button className="text-button" disabled={settlementLoading || busy || cancellation.busy} onClick={() => setSettlementAttempt(value => value + 1)}>Đối chiếu giải ngân</button>
     </section>}
     {!escrowRail && <ContractCancellation key={contract.id + ':' + user.id} job={job} user={user} submissionCount={verified ? list.length : null}
       workflowBusy={busy || fundingBusy || disputeBusy} operationLock={lock} onJobUpdated={onJobUpdated} onStateChange={setCancellation} />
@@ -529,7 +529,7 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
       </form></section>}
     {canReview && <section className="review-action" id="work-primary-action" tabIndex={-1}><SectionHeading title="Quyết định của bạn" />
       <p className="metadata">Chỉnh sửa đã dùng: {contract.revisionsUsed}/{contract.maxRevisions}</p>
-      {reviewAttempt && <p role="status">Đang đối soát quyết định escrow đã gửi. Giữ nguyên nội dung trước khi ký lại.</p>}
+      {reviewAttempt && <p role="status">Đang đối soát quyết định ký quỹ đã gửi. Giữ nguyên nội dung trước khi ký lại.</p>}
       {!decision && !reviewAttempt ? <ActionGroup><button className="button" disabled={busy} onClick={() => setDecision('APPROVE')}>Duyệt bàn giao</button><button className="button button-secondary" disabled={busy || !revisionAvailable} onClick={() => setDecision('REQUEST_REVISION')}>Yêu cầu chỉnh sửa</button><button className="text-button" disabled={busy} onClick={() => setDecision('OPEN_DISPUTE')}>Mở tranh chấp</button></ActionGroup>
         : <form className="decision-form" onSubmit={decide} aria-label="Xác nhận quyết định">
           {reviewAttempt ? <p>Tiếp tục đối soát quyết định {reviewAttempt.body.decision} cho bản #{latest.version}.</p> : <>

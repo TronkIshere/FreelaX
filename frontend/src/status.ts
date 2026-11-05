@@ -1,5 +1,5 @@
 export const jobLabels: Record<string, string> = {
-  OPEN: 'Đang tuyển', AWAITING_PAYMENT: 'Chờ funding', IN_PROGRESS: 'Đang thực hiện',
+  OPEN: 'Đang tuyển', AWAITING_PAYMENT: 'Chờ nạp tiền', IN_PROGRESS: 'Đang thực hiện',
   SUBMITTED_FOR_REVIEW: 'Chờ duyệt bàn giao', REVISION_REQUESTED: 'Cần chỉnh sửa',
   COMPLETED: 'Hoàn thành', CANCELLED: 'Đã hủy',
 };
@@ -18,14 +18,14 @@ export const submissionLabels: Record<string, string> = {
 
 export const disputeLabels: Record<string, string> = {
   OPEN: 'Tranh chấp đang mở', UNDER_REVIEW: 'Admin đang xem xét',
-  DECISION_PENDING_RELEASE: 'Đã quyết định release; đang đối soát',
+  DECISION_PENDING_RELEASE: 'Đã quyết định giải ngân; đang đối soát',
   DECISION_PENDING_REFUND: 'Đã quyết định hoàn tiền; đang đối soát',
-  RESOLVED_RELEASE: 'Tranh chấp đã giải quyết: release', RESOLVED_REFUND: 'Tranh chấp đã giải quyết: hoàn tiền',
+  RESOLVED_RELEASE: 'Tranh chấp đã giải quyết: giải ngân', RESOLVED_REFUND: 'Tranh chấp đã giải quyết: hoàn tiền',
   CANCELLED: 'Tranh chấp đã đóng',
 };
 export const disputeLabel = (status: string) => disputeLabels[status] || 'Chưa xác minh tranh chấp';
 
-export const fundingLabel = (status: string) => ({ PENDING: 'Chờ xử lý funding', PROCESSING: 'Đang xử lý funding', UNKNOWN: 'Đang đối soát funding', FAILED: 'Funding thất bại — có thể thử lại', SUCCEEDED: 'Funding đã xác nhận' }[status] || 'Chưa xác minh funding');
+export const fundingLabel = (status: string) => ({ PENDING: 'Chờ xử lý nạp tiền', PROCESSING: 'Đang xử lý nạp tiền', UNKNOWN: 'Đang đối soát nạp tiền', FAILED: 'Nạp tiền thất bại — có thể thử lại', SUCCEEDED: 'Nạp tiền đã xác nhận' }[status] || 'Chưa xác minh nạp tiền');
 
 export const cancellationLabel = (status: string) => ({
   REQUESTED: 'Đề nghị hủy đang chờ quyết định', REJECTED: 'Đề nghị hủy bị từ chối; hợp đồng tiếp tục',

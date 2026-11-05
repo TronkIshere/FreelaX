@@ -62,7 +62,7 @@ describe('P1 Step 4/5 Marketplace activity', () => {
     expect(host.querySelector('.activity-list')).toBeNull();
   });
   it.each([
-    ['RELEASE_CONFIRMED', 'Bản ghi release đã xác nhận', '/finance?jobId=job-1'],
+    ['RELEASE_CONFIRMED', 'Bản ghi giải ngân đã xác nhận', '/finance?jobId=job-1'],
     ['CANCELLATION_REQUESTED', 'Đề nghị hủy — công việc tiếp tục', '/work/job-1'],
     ['CANCELLATION_REJECTED', 'Đề nghị hủy bị từ chối — công việc tiếp tục', '/work/job-1'],
     ['REFUND_PENDING', 'Hoàn tiền đang đối soát', '/finance?jobId=job-1'],
@@ -154,7 +154,7 @@ describe('P05.5 final UI', () => {
     const logout = vi.fn();
     await render(<Account user={freelancer} onLogout={logout} loggingOut={false} />, '/account');
     expect(host.textContent).toContain('freelancer@example.test');
-    expect(host.textContent).toContain('Freelancer / Người thực hiện');
+    expect(host.textContent).toContain('Freelancer');
     expect(host.textContent).not.toContain('Đổi mật khẩu');
     await act(async () => { click('Đăng xuất').click(); });
     expect(logout).toHaveBeenCalledOnce();
@@ -247,8 +247,8 @@ describe('P06.5D editorial Marketplace notification ledger', () => {
     ['WORK_SUBMITTED', 'Có bản bàn giao', 'work', 'active'],
     ['REVISION_REQUESTED', 'Yêu cầu chỉnh sửa', 'work', 'attention'],
     ['WORK_APPROVED', 'Bàn giao được duyệt', 'work', 'success'],
-    ['FUNDING_CONFIRMED', 'Funding đã xác nhận', 'finance', 'success'],
-    ['RELEASE_CONFIRMED', 'Bản ghi release đã xác nhận', 'finance', 'success'],
+    ['FUNDING_CONFIRMED', 'Nạp tiền đã xác nhận', 'finance', 'success'],
+    ['RELEASE_CONFIRMED', 'Bản ghi giải ngân đã xác nhận', 'finance', 'success'],
     ['CANCELLATION_REQUESTED', 'Đề nghị hủy — công việc tiếp tục', 'refund', 'attention'],
     ['CANCELLATION_REJECTED', 'Đề nghị hủy bị từ chối — công việc tiếp tục', 'refund', 'neutral'],
     ['REFUND_PENDING', 'Hoàn tiền đang đối soát', 'refund', 'active'],

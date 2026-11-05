@@ -69,33 +69,33 @@ describe('P0 approval and settlement authority', () => {
   beforeEach(() => { vi.mocked(api.contractSubmissions).mockResolvedValue([approved]); });
   it('handles null settlement without treating approval/funding as release proof', async () => {
     await mount(releasing); expect(api.settlement).toHaveBeenCalledWith('contract');
-    expect(host.textContent).toContain('Chưa có bản ghi release'); expect(host.textContent).not.toContain('Đã xác nhận release mô phỏng');
+    expect(host.textContent).toContain('Chưa có bản ghi giải ngân'); expect(host.textContent).not.toContain('Đã xác nhận giải ngân mô phỏng');
     expect(button('Duyệt bàn giao')).toBeUndefined();
   });
   it('does not call a failed settlement read an empty record', async () => {
     vi.mocked(api.settlement).mockRejectedValue(new Error('Read unavailable'));
     await mount(releasing);
     const document = host.querySelector('.settlement-document')!;
-    expect(document.textContent).toContain('Chưa đối chiếu đầy đủ release/workflow');
-    expect(document.textContent).not.toContain('Chưa có bản ghi release');
+    expect(document.textContent).toContain('Chưa đối chiếu đầy đủ giải ngân/workflow');
+    expect(document.textContent).not.toContain('Chưa có bản ghi giải ngân');
     expect(document.querySelector('.financial-status-done')).toBeNull();
     expect(button('Duyệt bàn giao')).toBeUndefined();
   });
   it('keeps APPROVED submission but leaves pending ownership when server confirms release', async () => {
     vi.mocked(api.settlement).mockResolvedValue(settlement); await mount(completed);
-    expect(host.querySelector('.ownership-band')?.textContent).toContain('Đã xác nhận release mô phỏng');
-    expect(host.querySelector('.ownership-band')?.textContent).not.toContain('đang đối soát release');
+    expect(host.querySelector('.ownership-band')?.textContent).toContain('Đã xác nhận giải ngân mô phỏng');
+    expect(host.querySelector('.ownership-band')?.textContent).not.toContain('đang đối soát giải ngân');
     expect(host.textContent).toContain('Đã duyệt'); expect(host.querySelector('.work-composer')).toBeNull();
   });
   it('uses completed contract/milestone truth even if release evidence is not yet available', async () => {
     await mount(completed); expect(host.querySelector('.ownership-band')?.textContent).toContain('Phần việc đã hoàn tất');
-    expect(host.querySelector('.ownership-band')?.textContent).not.toContain('đang đối soát release');
-    expect(host.textContent).toContain('Chưa có bản ghi release');
+    expect(host.querySelector('.ownership-band')?.textContent).not.toContain('đang đối soát giải ngân');
+    expect(host.textContent).toContain('Chưa có bản ghi giải ngân');
   });
   it('refetches workflow once when the first release read is already confirmed', async () => {
     vi.mocked(api.settlement).mockResolvedValue({ ...settlement, onChainStatus: 'SUCCEEDED', offRampStatus: 'SUCCEEDED', taxStatus: 'SUCCEEDED' });
     vi.mocked(api.job).mockResolvedValue(completed); await mount(releasing);
-    expect(api.job).toHaveBeenCalled(); expect(host.querySelector('.ownership-band')?.textContent).toContain('Đã xác nhận release mô phỏng');
+    expect(api.job).toHaveBeenCalled(); expect(host.querySelector('.ownership-band')?.textContent).toContain('Đã xác nhận giải ngân mô phỏng');
     expect(host.querySelector('.review-action')).toBeNull();
   });
   it('labels ledger simulation and does not equate tax creation with ACCEPTED', async () => {
@@ -104,15 +104,15 @@ describe('P0 approval and settlement authority', () => {
     expect(host.querySelector('.settlement-document .section-heading')?.textContent).toContain('Mô phỏng');
     expect(host.textContent).toContain('không xác nhận cơ quan thuế đã ACCEPTED');
     expect(host.querySelector('.settlement-document details')?.hasAttribute('open')).toBe(false);
-    expect(host.querySelector('.settlement-document .financial-status-done')?.textContent).toContain('Release đã xác nhận');
-    expect(host.querySelector('.settlement-document details')?.textContent).toContain('Tham chiếu release');
+    expect(host.querySelector('.settlement-document .financial-status-done')?.textContent).toContain('Giải ngân đã xác nhận');
+    expect(host.querySelector('.settlement-document details')?.textContent).toContain('Tham chiếu giải ngân');
     expect(host.querySelector('.settlement-document details')?.textContent).not.toContain('releaseReference');
   });
   it('polls null settlement to confirmed release and stops after all stages become terminal', async () => {
     vi.useFakeTimers(); await mount(releasing);
     vi.mocked(api.settlement).mockResolvedValue({ ...settlement, onChainStatus: 'SUCCEEDED', offRampStatus: 'SUCCEEDED', taxStatus: 'SUCCEEDED' }); serverJob = completed;
     await act(async () => { await vi.advanceTimersByTimeAsync(30000); });
-    expect(host.querySelector('.ownership-band')?.textContent).toContain('Đã xác nhận release mô phỏng');
+    expect(host.querySelector('.ownership-band')?.textContent).toContain('Đã xác nhận giải ngân mô phỏng');
     const count = vi.mocked(api.settlement).mock.calls.length;
     await act(async () => { await vi.advanceTimersByTimeAsync(90000); }); expect(api.settlement).toHaveBeenCalledTimes(count);
   });
@@ -120,24 +120,24 @@ describe('P0 approval and settlement authority', () => {
     vi.useFakeTimers(); vi.mocked(api.settlement).mockResolvedValue({ ...settlement, onChainStatus: 'FAILED', offRampStatus: 'UNKNOWN' }); await mount(completed);
     const count = vi.mocked(api.settlement).mock.calls.length;
     await act(async () => { await vi.advanceTimersByTimeAsync(30000); }); expect(vi.mocked(api.settlement).mock.calls.length).toBeGreaterThan(count);
-    expect(host.querySelector('.ownership-band')?.textContent).toContain('Đã xác nhận release mô phỏng');
+    expect(host.querySelector('.ownership-band')?.textContent).toContain('Đã xác nhận giải ngân mô phỏng');
   });
   it('renders a terminal release failure without an endless processing heading or automatic retry', async () => {
     vi.useFakeTimers(); vi.mocked(api.settlement).mockResolvedValue({ ...settlement, moneyStatus: 'FAILED', retryable: false }); await mount(releasing);
-    expect(host.querySelector('.ownership-band')?.textContent).toContain('release cần xử lý lỗi');
+    expect(host.querySelector('.ownership-band')?.textContent).toContain('giải ngân cần xử lý lỗi');
     const count = vi.mocked(api.settlement).mock.calls.length; await act(async () => { await vi.advanceTimersByTimeAsync(90000); }); expect(api.settlement).toHaveBeenCalledTimes(count);
   });
   it('keeps polling UNKNOWN and FAILED_RETRYABLE primary money without claiming a release', async () => {
     vi.useFakeTimers(); vi.mocked(api.settlement).mockResolvedValue({ ...settlement, moneyStatus: 'UNKNOWN', retryable: true }); await mount(releasing);
     const count = vi.mocked(api.settlement).mock.calls.length; vi.mocked(api.settlement).mockResolvedValue({ ...settlement, moneyStatus: 'FAILED_RETRYABLE', retryable: true });
     await act(async () => { await vi.advanceTimersByTimeAsync(30000); }); expect(vi.mocked(api.settlement).mock.calls.length).toBeGreaterThan(count);
-    expect(host.querySelector('.ownership-band')?.textContent).not.toContain('Đã xác nhận release');
+    expect(host.querySelector('.ownership-band')?.textContent).not.toContain('Đã xác nhận giải ngân');
   });
   it('preserves confirmed release on a later read error and cleans polling on unmount', async () => {
     vi.useFakeTimers(); vi.mocked(api.settlement).mockResolvedValue(settlement); await mount(completed);
     vi.mocked(api.settlement).mockRejectedValue(new ApiError('down', 503));
     await act(async () => { await vi.advanceTimersByTimeAsync(30000); });
-    expect(host.querySelector('.ownership-band')?.textContent).toContain('Đã xác nhận release mô phỏng');
+    expect(host.querySelector('.ownership-band')?.textContent).toContain('Đã xác nhận giải ngân mô phỏng');
     await act(async () => { root.unmount(); root = createRoot(host); }); const count = vi.mocked(api.settlement).mock.calls.length;
     await act(async () => { await vi.advanceTimersByTimeAsync(90000); }); expect(api.settlement).toHaveBeenCalledTimes(count);
   });
@@ -150,20 +150,20 @@ describe('P0 contract cancellation and refund', () => {
       cancellation = { ...proposal, cancellationStatus: 'CANCELLED', allowedActions: [] };
       serverJob = { ...preFunding, status: 'CANCELLED', contract: { ...preFunding.contract!, status: 'CANCELLED', milestoneStatus: 'CANCELLED' } }; return cancellation;
     });
-    await mount(preFunding); await click('Hủy trước funding'); await reason(); await request();
+    await mount(preFunding); await click('Hủy trước nạp tiền'); await reason(); await request();
     expect(post).toHaveBeenCalledExactlyOnceWith('contract', { reasonCode: proposal.reasonCode, description: proposal.reason });
-    expect(host.textContent).toContain('Đã hủy trước funding. Không có hoàn tiền'); expect(button('Funding mô phỏng')).toBeUndefined();
+    expect(host.textContent).toContain('Đã hủy trước nạp tiền. Không có hoàn tiền'); expect(button('Nạp tiền mô phỏng')).toBeUndefined();
   });
   it.each(['FAILED', 'UNKNOWN', 'PENDING', 'PROCESSING', 'SUCCEEDED'] as const)('does not offer pre-funding cancel after a %s funding attempt', async fundingStatus => {
     vi.mocked(api.funding).mockResolvedValue({ fundingTransactionId: 'attempt', fundingStatus, simulation: true, providerReference: null, nextAction: 'WAIT', retryAfterSeconds: 30 });
-    await mount(preFunding); expect(button('Hủy trước funding')).toBeUndefined();
+    await mount(preFunding); expect(button('Hủy trước nạp tiền')).toBeUndefined();
   });
   it('blocks pre-funding cancel while a persisted funding attempt has no known outcome', async () => {
     vi.mocked(api.funding).mockResolvedValue(null); saveAttempt(attemptScope('fund', client.id, 'contract', 'milestone'), { key: 'prior', amount: '500.00', currency: 'USD' });
-    await mount(preFunding); expect(button('Hủy trước funding')).toBeUndefined();
+    await mount(preFunding); expect(button('Hủy trước nạp tiền')).toBeUndefined();
   });
   it('Freelancer cannot cancel before funding', async () => {
-    vi.mocked(api.funding).mockResolvedValue(null); await mount(preFunding, freelancer); expect(button('Hủy trước funding')).toBeUndefined(); expect(button('Funding mô phỏng')).toBeUndefined();
+    vi.mocked(api.funding).mockResolvedValue(null); await mount(preFunding, freelancer); expect(button('Hủy trước nạp tiền')).toBeUndefined(); expect(button('Nạp tiền mô phỏng')).toBeUndefined();
   });
   it('creates a funded proposal without changing the continuing-work ownership to cancelled', async () => {
     const post = vi.spyOn(api, 'requestCancellation').mockImplementation(async () => { cancellation = { ...proposal, allowedActions: [] }; return cancellation; });
@@ -173,7 +173,7 @@ describe('P0 contract cancellation and refund', () => {
     expect(host.querySelector('.ownership-band')?.textContent).not.toContain('đã hủy');
   });
   it('requires a reason and rechecks a newly created funding attempt before cancellation POST', async () => {
-    vi.mocked(api.funding).mockResolvedValue(null); const post = vi.spyOn(api, 'requestCancellation'); await mount(preFunding); await click('Hủy trước funding'); await request(); expect(post).not.toHaveBeenCalled();
+    vi.mocked(api.funding).mockResolvedValue(null); const post = vi.spyOn(api, 'requestCancellation'); await mount(preFunding); await click('Hủy trước nạp tiền'); await request(); expect(post).not.toHaveBeenCalled();
     await reason(); vi.mocked(api.funding).mockResolvedValue({ fundingTransactionId: 'new-attempt', fundingStatus: 'FAILED', simulation: true, providerReference: null, nextAction: 'RETRY', retryAfterSeconds: null });
     await request(); expect(post).not.toHaveBeenCalled(); expect(host.textContent).toContain('không còn cho phép');
   });
@@ -256,9 +256,9 @@ describe('P0 contract cancellation and refund', () => {
   });
   it('prevents double request and keeps funding disabled during an unresolved cancellation', async () => {
     vi.mocked(api.funding).mockResolvedValue(null); const post = vi.spyOn(api, 'requestCancellation').mockReturnValue(new Promise(() => {}));
-    await mount(preFunding); await click('Hủy trước funding'); await reason();
+    await mount(preFunding); await click('Hủy trước nạp tiền'); await reason();
     await act(async () => { const f = host.querySelector('.cancellation-form')!; f.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); f.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); });
-    expect(post).toHaveBeenCalledTimes(1); expect(button('Funding mô phỏng')?.disabled).toBe(true);
+    expect(post).toHaveBeenCalledTimes(1); expect(button('Nạp tiền mô phỏng')?.disabled).toBe(true);
   });
   it('prevents double counterparty decision', async () => {
     cancellation = proposal; const post = vi.spyOn(api, 'decideCancellation').mockReturnValue(new Promise(() => {})); await mount(working, freelancer); await click('Đồng ý hủy');
@@ -272,6 +272,6 @@ describe('P0 contract cancellation and refund', () => {
     cancellation = refunded; serverJob = { ...working, status: 'CANCELLED', contract: { ...working.contract!, status: 'CANCELLED', milestoneStatus: 'REFUNDED' } };
     await act(async () => root.render(<MemoryRouter initialEntries={['/work/job']}><Routes><Route path="/work/:jobId" element={<JobDetail user={client} />} /></Routes></MemoryRouter>));
     expect(host.textContent).toContain('Đã xác nhận bản ghi hoàn tiền mô phỏng'); expect(host.textContent).toContain(proposal.reason);
-    expect(host.querySelector('.work-composer')).toBeNull(); expect(button('Funding mô phỏng')).toBeUndefined();
+    expect(host.querySelector('.work-composer')).toBeNull(); expect(button('Nạp tiền mô phỏng')).toBeUndefined();
   });
 });

@@ -40,6 +40,7 @@ const WALLET_ERROR_TEXT: Record<string, string> = {
   NO_ACCOUNT: 'Ví không trả về địa chỉ hợp lệ.',
   CHAIN_UNREADABLE: 'Không đọc được mạng mà ví đang dùng. Hãy kiểm tra lại ví.',
   CHAIN_NOT_ALLOWED: 'Mạng của ví không được hỗ trợ. Chỉ môi trường mô phỏng cục bộ và mạng thử nghiệm Avalanche Fuji được dùng; không có gì được ký hoặc gửi.',
+  ACCOUNT_NOT_LINKED: 'Tài khoản đang chọn trong ví không phải ví đã liên kết với bạn. Hãy chuyển sang đúng tài khoản trong ví rồi thử lại; chưa có gì được ký hoặc gửi.',
   WRONG_CHAIN: 'Ví đang ở sai mạng. Hãy chuyển ví sang đúng mạng rồi thử lại.',
   CHAIN_MISMATCH: 'Yêu cầu nhắm tới mạng khác với môi trường hiện tại; không có gì được ký hoặc gửi.',
   TX_INVALID: 'Giao dịch được chuẩn bị không hợp lệ; không có gì được gửi.',

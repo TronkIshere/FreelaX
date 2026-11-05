@@ -194,7 +194,7 @@ describe('P06.3 operational overview', () => {
     expect(host.querySelectorAll('.overview-attention-row')).toHaveLength(0);
     expect(host.querySelector('.overview-clear .button')?.getAttribute('href')).toBe('/work');
     expect(host.textContent).toContain('Không được chọn');
-    expect(host.querySelector('.overview-recent')?.textContent).toContain('Chờ funding');
+    expect(host.querySelector('.overview-recent')?.textContent).toContain('Chờ nạp tiền');
   });
 
   it('keeps available work visible when applications fail and retries the same requests', async () => {

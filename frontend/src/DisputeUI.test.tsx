@@ -134,8 +134,8 @@ describe('Step 6 participant dispute UI', () => {
     await mount(<Workflow />);
     expect(host.querySelector('.ownership-band')?.textContent).not.toContain('Đang chờ Admin');
     expect(host.textContent).toContain('Historical disputed delivery'); expect(host.querySelector('.work-composer, .review-action')).toBeNull();
-    if (released) { expect(api.settlement).toHaveBeenCalled(); expect(host.textContent).toContain('Mô phỏng'); expect(host.textContent).toContain('sim-release'); expect(host.textContent).not.toContain('Release chưa thành công'); }
-    if (status === 'DECISION_PENDING_RELEASE') expect(host.textContent).toContain('Chưa xác nhận release thành công');
+    if (released) { expect(api.settlement).toHaveBeenCalled(); expect(host.textContent).toContain('Mô phỏng'); expect(host.textContent).toContain('sim-release'); expect(host.textContent).not.toContain('Giải ngân chưa thành công'); }
+    if (status === 'DECISION_PENDING_RELEASE') expect(host.textContent).toContain('Chưa xác nhận giải ngân thành công');
     if (status === 'DECISION_PENDING_REFUND') expect(host.textContent).toContain('Chưa xác nhận hoàn tiền hoàn tất');
     if (refunded) { expect(host.textContent).toContain('Hồ sơ đã kết thúc'); expect(api.settlement).not.toHaveBeenCalled(); }
   });
