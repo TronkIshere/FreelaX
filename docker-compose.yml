@@ -71,8 +71,6 @@ services:
         condition: service_started
       misa-backend:
         condition: service_started
-      solana-integration:
-        condition: service_started
     environment:
       SERVER_PORT: 9191
       SPRING_PROFILES_ACTIVE: ${MARKETPLACE_SPRING_PROFILE:-dev}
@@ -98,7 +96,7 @@ services:
       MISA_CERTIFICATE_AUTO_ISSUE: ${MISA_CERTIFICATE_AUTO_ISSUE:-true}
       MISA_CERTIFICATE_AUTO_SUBMIT: ${MISA_CERTIFICATE_AUTO_SUBMIT:-true}
       SOLANA_CPR_BASE_URL: http://solana-integration:9193
-      SOLANA_CPR_INTERNAL_API_KEY: ${SOLANA_INTERNAL_API_KEY:?Set SOLANA_INTERNAL_API_KEY in ignored .env}
+      SOLANA_CPR_INTERNAL_API_KEY: ${SOLANA_INTERNAL_API_KEY:-}
       SOLANA_CPR_CUSTODIAL_CLIENT_PUBLIC_KEY: ${SOLANA_CUSTODIAL_CLIENT_PUBLIC_KEY:-}
       SOLANA_CPR_ONRAMP_AUTHORITY_PUBLIC_KEY: ${SOLANA_ONRAMP_AUTHORITY_PUBLIC_KEY:-}
       SOLANA_CPR_NETWORK: ${SOLANA_NETWORK:-localnet}
@@ -148,32 +146,6 @@ services:
       SPRING_DATA_REDIS_DATABASE: 2
     ports:
       - "127.0.0.1:9192:9192"
-
-  solana-integration:
-    build:
-      context: .
-      dockerfile: Dockerfile.maven
-      args:
-        MODULE: solana-integration
-    restart: unless-stopped
-    depends_on:
-      mysql:
-        condition: service_healthy
-    environment:
-      SERVER_PORT: 9193
-      DB_URL: jdbc:mysql://mysql:3306/solana_gateway?useUnicode=true&characterEncoding=UTF-8
-      DB_USERNAME: root
-      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in ignored .env}
-      SOLANA_RPC_HTTP_URL: ${SOLANA_RPC_HTTP_URL:-http://host.docker.internal:9123}
-      SOLANA_PROGRAM_ID: ${SOLANA_PROGRAM_ID:-2Tx2faZU1siV1xvKMxbRN1VesgXftjM3Lff3Nwn69oqb}
-      SOLANA_COMMITMENT: ${SOLANA_COMMITMENT:-confirmed}
-      SOLANA_SYSTEM_FEE_PAYER: ${SOLANA_SYSTEM_FEE_PAYER:-}
-      SOLANA_INTERNAL_API_KEY: ${SOLANA_INTERNAL_API_KEY:?Set SOLANA_INTERNAL_API_KEY in ignored .env}
-      SOLANA_LOCAL_PRIVATE_KEYS: ${SOLANA_LOCAL_PRIVATE_KEYS:-}
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    ports:
-      - "127.0.0.1:9193:9193"
 
   # Avalanche development simulation gateway (LOCAL_SIMULATION / AVALANCHE_FUJI only). Opt-in: docker compose --profile avalanche up.
   # No default environment: blank values make the service refuse to start. Mainnet cannot be configured.

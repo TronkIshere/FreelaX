@@ -16,7 +16,7 @@
     <version>0.1.0</version>
     <packaging>pom</packaging>
     <name>FreelaX-parent</name>
-    <description>Parent aggregator for payment-backend, marketplace-backend, misa-backend, solana-integration</description>
+    <description>Parent aggregator for payment-backend, marketplace-backend, misa-backend</description>
 
     <properties>
         <java.version>17</java.version>
@@ -33,7 +33,6 @@
         <module>payment-backend</module>
         <module>marketplace-backend</module>
         <module>misa-backend</module>
-        <module>solana-integration</module>
     </modules>
 
     <profiles>

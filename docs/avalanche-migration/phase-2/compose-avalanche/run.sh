@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Docker Compose Avalanche run (LOCAL_SIMULATION only): the images are BUILT by compose (Dockerfile.maven, Dockerfile.avalanche, frontend/Dockerfile),
 # not started from boot jars. Stack: mysql, redis, Anvil (chain 31337, state kept in a volume), the contracts deployed with forge, the Avalanche
-# gateway, payment, MISA, the Solana gateway, the marketplace and the Caddy frontend. Secrets are random throwaway values in a temporary env file;
+# gateway, payment, MISA, the marketplace and the Caddy frontend. Secrets are random throwaway values in a temporary env file;
 # the owner's .env is never read. No Fuji, no Mainnet, no real wallet.
 #
 # Usage: bash docs/avalanche-migration/phase-2/compose-avalanche/run.sh <output-dir> [driver.mjs ...]
@@ -50,7 +50,7 @@ if [ -f "$ROOT/$MANIFEST_REL" ] && [ ! -f "$ROOT/$MANIFEST_REL.fxav-backup" ]; t
 
 node "$WINHERE/mkenv.mjs" "$ENVW"
 echo "[fxav] build the images (sequential)"
-COMPOSE_PARALLEL_LIMIT=1 dc build avalanche-integration payment-backend misa-backend solana-integration marketplace-backend frontend >"$TMPD/build.log" 2>&1 || { tail -20 "$TMPD/build.log" >&2; exit 3; }
+COMPOSE_PARALLEL_LIMIT=1 dc build avalanche-integration payment-backend misa-backend marketplace-backend frontend >"$TMPD/build.log" 2>&1 || { tail -20 "$TMPD/build.log" >&2; exit 3; }
 
 echo "[fxav] mysql, redis, anvil"
 dc up -d mysql redis anvil >/dev/null
@@ -84,8 +84,8 @@ AUTH_ROLE="$(docker exec "$P-anvil-1" cast keccak AUTH_SIGNER_ROLE)"
 cast send --unlocked --from "$ANVIL_SENDER" "$ESCROW" "grantRole(bytes32,address)" "$AUTH_ROLE" "$AUTH" >/dev/null
 cast send --unlocked --from "$ANVIL_SENDER" "$ESCROW" "setDefaultArbiter(address)" "$ARBITER" >/dev/null
 
-echo "[fxav] payment, MISA, Solana gateway, marketplace, frontend (compose-built images)"
-dc up -d payment-backend misa-backend solana-integration marketplace-backend frontend >/dev/null
+echo "[fxav] payment, MISA, marketplace, frontend (compose-built images)"
+dc up -d payment-backend misa-backend marketplace-backend frontend >/dev/null
 for _ in $(seq 1 120); do
   code="$(curl -s -m 5 -X POST -H 'Content-Type: application/json' -d '{}' -w '%{http_code}' http://127.0.0.1:9191/api/v1/auth/sign-in 2>/dev/null | tail -c 3 || true)"
   [ "$code" = 400 ] && break; sleep 3
