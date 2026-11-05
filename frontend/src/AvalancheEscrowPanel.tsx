@@ -3,7 +3,7 @@ import { api, ApiError } from './api';
 import { ActionGroup, SectionHeading } from './components';
 import { availableAvalancheActions, deliveryDateSeconds, type AvalancheActionOffer } from './avalancheActions';
 import type { AvalancheActionInput, AvalancheContractView } from './avalancheTypes';
-import { actionText, offerText, chainInstant, environmentBadge, environmentBanner, explorerTxUrl, issuerAlertText, shortHash, stateText, tokenLabel, usdcFromBaseUnits } from './avalanchePresentation';
+import { actionText, offerText, chainInstant, chainStatusText, environmentBadge, environmentBanner, explorerTxUrl, issuerAlertText, shortHash, stateText, tokenLabel, usdcFromBaseUnits } from './avalanchePresentation';
 import { EvmWallet, WalletError } from './evmWallet';
 import { AvalanchePayoutSection } from './AvalanchePayoutSection';
 import type { ContractSubmission, Dispute, User } from './types';
@@ -194,12 +194,12 @@ export function AvalancheEscrowPanel({ contractId, user, isClient, isFreelancer,
       <ul>{view.issuerAlerts.map(a => <li key={a.code + (a.address ?? '')}>{issuerAlertText(a.code, a.blocks)}</li>)}</ul>
       <small>Không có rút tiền đặc quyền, đường vòng hay chuyển hướng tiền. Ký quỹ giữ nguyên cho đến khi nhà phát hành gỡ biện pháp kiểm soát; khi đó thao tác bình thường sẽ thành công.</small>
     </div>}
-    {onAvalanche && view.chain && <p>Trạng thái trên chuỗi: <strong>{view.chain.status}</strong></p>}
+    {onAvalanche && view.chain && <p>Trạng thái trên chuỗi: <strong>{chainStatusText(view.chain.status)}</strong></p>}
     {onAvalanche && view.chain && <dl className="avalanche-chain-facts" aria-label="Dữ liệu ký quỹ đọc từ chuỗi">
       <div><dt>Số tiền ký quỹ</dt><dd>{usdcFromBaseUnits(view.chain.amountBaseUnits) ?? '—'} {tokenLabel(env?.simulated ?? true)}</dd></div>
       <div><dt>Lượt chỉnh sửa</dt><dd>{view.chain.revisionsUsed}/{view.chain.maxRevisions}</dd></div>
       <div><dt>Hạn bàn giao</dt><dd>{chainInstant(view.chain.deliveryDueAt)}</dd></div>
-      <div><dt>Hạn review</dt><dd>{chainInstant(view.chain.reviewDueAt)}</dd></div>
+      <div><dt>Hạn nghiệm thu</dt><dd>{chainInstant(view.chain.reviewDueAt)}</dd></div>
     </dl>}
     {onAvalanche && party && evmWallet === null && env && <ActionGroup label="Ví EVM">
       <span>Bạn chưa liên kết ví EVM cho ký quỹ Avalanche.</span>

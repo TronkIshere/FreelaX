@@ -51,7 +51,7 @@ export function DisputeRecord({ dispute }: { dispute: Dispute }) {
         <EvidenceDisclosure summary="Nguồn / Tham chiếu"><p>Người gửi: <code>{item.actorId}</code></p><p>ID: <code>{item.id}</code></p>{item.sha256 && <p>SHA-256: <code>{item.sha256}</code></p>}</EvidenceDisclosure>
       </article>)}
     </section>
-    <EvidenceDisclosure summary="Tham chiếu hồ sơ"><p>Dispute: <code>{dispute.disputeId}</code></p><p>Contract: <code>{dispute.contractId}</code></p>
+    <EvidenceDisclosure summary="Tham chiếu hồ sơ"><p>Tranh chấp: <code>{dispute.disputeId}</code></p><p>Hợp đồng: <code>{dispute.contractId}</code></p>
       {dispute.claimedBy && <p>Admin tiếp nhận: <code>{dispute.claimedBy}</code></p>}
       {dispute.resolvedBy && <p>Admin quyết định: <code>{dispute.resolvedBy}</code></p>}
       {dispute.refundReference && <p>Tham chiếu hoàn tiền: <code>{dispute.refundReference}</code></p>}

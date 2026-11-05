@@ -27,7 +27,7 @@ export function ReviewRecord({ review, user, mode = 'public' }: { review: Review
       {review.submittedAt && <p className="metadata">Gửi: {localInstant(review.submittedAt)}</p>}
     </>}
     <ActionGroup><Link className="text-link" to={'/profiles/' + encodeURIComponent(review.reviewerId)}>Hồ sơ người đánh giá</Link><Link className="text-link" to={'/profiles/' + encodeURIComponent(review.revieweeId)}>Hồ sơ người nhận</Link></ActionGroup>
-    <EvidenceDisclosure summary="Tham chiếu đánh giá"><p>Review: <code>{review.id}</code></p><p>Contract: <code>{review.contractId}</code></p></EvidenceDisclosure>
+    <EvidenceDisclosure summary="Tham chiếu đánh giá"><p>Đánh giá: <code>{review.id}</code></p><p>Hợp đồng: <code>{review.contractId}</code></p></EvidenceDisclosure>
   </article>;
 }
 export function ReviewReport({ review, user, onRefresh }: { review: Review; user: User; onRefresh: () => Promise<void> }) {

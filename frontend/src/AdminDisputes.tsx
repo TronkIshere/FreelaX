@@ -104,7 +104,7 @@ function AdminCase({ id, user }: { id: string; user: User }) {
   async function claim() {
     if (lock.current || !canClaim) return;
     lock.current = true; setBusy(true); setError(null); setVerified(false);
-    try { await api.claimDispute(id); await read(); if (alive.current) setNotice('Đã tiếp nhận hồ sơ. Bằng chứng participant đã khóa.'); }
+    try { await api.claimDispute(id); await read(); if (alive.current) setNotice('Đã tiếp nhận hồ sơ. Bằng chứng của các bên đã khóa.'); }
     catch (cause) { if (alive.current) setError(cause); try { await read(); } catch { /* No blind claim retry. */ } }
     finally { lock.current = false; if (alive.current) setBusy(false); }
   }
@@ -143,7 +143,7 @@ function AdminCase({ id, user }: { id: string; user: User }) {
           { label: 'Funding', value: detail.fundingStatus ? fundingLabel(detail.fundingStatus) : 'Theo luồng USDC · xem Đối soát USDC' }]} />
         <SectionHeading level={3} title="Sản phẩm bàn giao" />{detail.deliverables.map(item => <p key={item.id}>{item.title} · {item.description}{item.required && ' (bắt buộc)'}</p>)}
         <SectionHeading level={3} title="Tiêu chí nghiệm thu" />{detail.acceptanceCriteria.map(item => <p key={item.id}>{item.description}{item.required && ' (bắt buộc)'}</p>)}
-        <EvidenceDisclosure summary="Danh tính participant / Hợp đồng"><p>Client: <code>{detail.contract.clientId}</code></p><p>Freelancer: <code>{detail.contract.freelancerId}</code></p><p>Contract: <code>{detail.contract.contractId}</code></p></EvidenceDisclosure>
+        <EvidenceDisclosure summary="Danh tính các bên / Hợp đồng"><p>Client: <code>{detail.contract.clientId}</code></p><p>Freelancer: <code>{detail.contract.freelancerId}</code></p><p>Contract: <code>{detail.contract.contractId}</code></p></EvidenceDisclosure>
       </section>
       <section className="submission-ledger"><SectionHeading title="Toàn bộ lịch sử bàn giao" />
         {!detail.submissions.length && <p>Chưa có bản bàn giao.</p>}
@@ -153,14 +153,14 @@ function AdminCase({ id, user }: { id: string; user: User }) {
           </div></details>)}
       </section>
       <section className="admin-decision"><SectionHeading title="Quyết định hồ sơ" />
-        {participant && <p>Admin là participant của hợp đồng này không được tiếp nhận hoặc quyết định hồ sơ.</p>}
+        {participant && <p>Admin là một bên của hợp đồng này nên không được tiếp nhận hoặc quyết định hồ sơ.</p>}
         {canClaim && <button className="button" disabled={busy} onClick={() => void claim()}>Tiếp nhận hồ sơ</button>}
         {dispute?.status === 'UNDER_REVIEW' && !canResolve && !participant && <p>Chỉ Admin đã tiếp nhận hồ sơ mới được quyết định.</p>}
         {canResolve && <>
-          {!outcome && <ActionGroup><button className="button" disabled={busy} onClick={() => setOutcome('RELEASE_TO_FREELANCER')}>Release cho Freelancer</button>
+          {!outcome && <ActionGroup><button className="button" disabled={busy} onClick={() => setOutcome('RELEASE_TO_FREELANCER')}>Giải ngân cho Freelancer</button>
             <button className="button button-secondary" disabled={busy} onClick={() => setOutcome('REFUND_TO_CLIENT')}>Hoàn tiền cho Client</button></ActionGroup>}
           {outcome && <form className="admin-resolution-form" onSubmit={resolve}>
-            <h3>{outcome === 'RELEASE_TO_FREELANCER' ? 'Xác nhận release cho Freelancer' : 'Xác nhận hoàn tiền cho Client'}</h3>
+            <h3>{outcome === 'RELEASE_TO_FREELANCER' ? 'Xác nhận giải ngân cho Freelancer' : 'Xác nhận hoàn tiền cho Client'}</h3>
             <p>Quyết định toàn bộ giá trị hợp đồng là không thể đảo ngược trong MVP. Không có chia phần hoặc mở lại. Quyết định đã lưu không đồng nghĩa tiền đã hoàn tất.</p>
             <label>Lý do quyết định<textarea required maxLength={2000} value={attempt?.payload.reason ?? reason} disabled={busy || !!attempt} onChange={e => setReason(e.target.value)} /></label>
             <label className="selection-label"><input type="checkbox" checked={confirm} disabled={busy} onChange={e => setConfirm(e.target.checked)} />Tôi xác nhận kết quả và lý do quyết định</label>

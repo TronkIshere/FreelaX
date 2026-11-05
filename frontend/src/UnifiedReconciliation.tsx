@@ -141,7 +141,7 @@ function FlowRow({ item, onSaved }: { item: Case; onSaved: () => void }) {
           <dl className="reference-list">
             <div><dt>Flow</dt><dd><code>{item.paymentFlowId}</code></dd></div>
             <div><dt>Job</dt><dd><code>{item.jobId}</code></dd></div>
-            <div><dt>Contract</dt><dd><code>{item.contractId}</code></dd></div>
+            <div><dt>Hợp đồng</dt><dd><code>{item.contractId}</code></dd></div>
             <div><dt>Milestone</dt><dd><code>{item.milestoneId}</code></dd></div>
             <div><dt>Số tiền</dt><dd>{amount(item.grossUsd)} USD · {amount(item.escrowUsdc)} USDC</dd></div>
           </dl>

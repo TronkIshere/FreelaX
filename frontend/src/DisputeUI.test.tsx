@@ -56,7 +56,7 @@ async function input(selector: string, value: string) {
 async function submit(selector: string) { await act(async () => host.querySelector(selector)!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))); }
 async function addText(text = 'Evidence text') { await input('.dispute-form fieldset textarea', text); await click('Thêm vào lần gửi'); }
 function claimed() { detail = { ...detail, dispute: { ...original, status: 'UNDER_REVIEW', claimedBy: admin.id, claimedAt: '2026-10-06T01:00:00Z' } }; }
-async function prepareDecision(label = 'Release cho Freelancer') {
+async function prepareDecision(label = 'Giải ngân cho Freelancer') {
   await click(label); await input('.admin-resolution-form textarea', 'Evidence reviewed');
   await act(async () => (host.querySelector('.admin-resolution-form input[type=checkbox]') as HTMLInputElement).click());
 }
@@ -162,16 +162,16 @@ describe('Step 6 Admin workspace', () => {
   });
   it('Admin claims before resolution and becomes the valid resolver', async () => {
     const claim = vi.spyOn(api, 'claimDispute').mockImplementation(async () => { claimed(); return detail.dispute; });
-    await adminCase(); expect(button('Release cho Freelancer')).toBeUndefined(); await click('Tiếp nhận hồ sơ');
-    expect(claim).toHaveBeenCalledWith('case'); expect(button('Release cho Freelancer')).toBeTruthy(); expect(host.textContent).toContain('Bằng chứng participant đã khóa');
+    await adminCase(); expect(button('Giải ngân cho Freelancer')).toBeUndefined(); await click('Tiếp nhận hồ sơ');
+    expect(claim).toHaveBeenCalledWith('case'); expect(button('Giải ngân cho Freelancer')).toBeTruthy(); expect(host.textContent).toContain('Bằng chứng của các bên đã khóa');
   });
   it('other Admin and participant Admin cannot resolve or claim', async () => {
-    claimed(); detail.dispute.claimedBy = 'other-admin'; await adminCase(); expect(button('Release cho Freelancer')).toBeUndefined();
+    claimed(); detail.dispute.claimedBy = 'other-admin'; await adminCase(); expect(button('Giải ngân cho Freelancer')).toBeUndefined();
     expect(host.textContent).toContain('Chỉ Admin đã tiếp nhận');
     act(() => root.unmount()); root = createRoot(host); detail = structuredClone(originalDetail);
     await adminCase({ ...client, authorities: ['ROLE_ADMIN'] }); expect(button('Tiếp nhận hồ sơ')).toBeUndefined(); expect(host.textContent).toContain('không được tiếp nhận');
   });
-  it.each([['Release cho Freelancer', 'RELEASE_TO_FREELANCER', 'DECISION_PENDING_RELEASE'], ['Hoàn tiền cho Client', 'REFUND_TO_CLIENT', 'DECISION_PENDING_REFUND']] as const)(
+  it.each([['Giải ngân cho Freelancer', 'RELEASE_TO_FREELANCER', 'DECISION_PENDING_RELEASE'], ['Hoàn tiền cho Client', 'REFUND_TO_CLIENT', 'DECISION_PENDING_REFUND']] as const)(
     '%s requires reason and explicit confirmation; decision is not financial completion', async (label, outcome, status) => {
       claimed(); const post = vi.spyOn(api, 'resolveDispute').mockImplementation(async () => { detail = { ...detail, dispute: { ...detail.dispute, status } }; return detail.dispute; });
       await adminCase(); await click(label); expect(button('Xác nhận quyết định')?.disabled).toBe(true);

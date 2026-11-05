@@ -63,7 +63,7 @@ export function ReviewTiming({ submission, contract, now }: { submission: Contra
   const due = submission.reviewDueAt ? new Date(submission.reviewDueAt).getTime() : NaN;
   const remaining = due - now;
   return <section className="review-timing" aria-label="Thời hạn review">
-    {submission.reviewDueAt && <p>Hạn review: <time dateTime={submission.reviewDueAt}>{localInstant(submission.reviewDueAt)}</time></p>}
+    {submission.reviewDueAt && <p>Hạn nghiệm thu: <time dateTime={submission.reviewDueAt}>{localInstant(submission.reviewDueAt)}</time></p>}
     {submission.reviewGraceDueAt && <p>Hạn gia hạn: <time dateTime={submission.reviewGraceDueAt}>{localInstant(submission.reviewGraceDueAt)}</time></p>}
     {submission.status === 'SUBMITTED' && <>
       <p className="metadata">Cửa sổ review hợp đồng: {contract.reviewWindowHours} giờ. {contract.paymentRail === 'UNIFIED_USDC_PAYOUT'

@@ -14,12 +14,22 @@ export const STATE_TEXT: Record<TransactionState, { label: string; detail: strin
   REVERTED: { label: 'Bị hoàn tác', detail: 'Hợp đồng từ chối giao dịch; không có tiền nào chuyển.', tone: 'danger' },
   FAILED: { label: 'Thất bại', detail: 'Giao dịch bị từ chối trước khi vào khối; không có tiền nào chuyển.', tone: 'danger' },
   REPLACED: { label: 'Đã bị thay thế', detail: 'Một giao dịch khác cùng số thứ tự đã thay thế giao dịch này.', tone: 'warning' },
-  UNKNOWN: { label: 'Chưa xác định', detail: 'Chưa xác minh được kết quả. Hệ thống đang đối soát, hãy không gửi lại.', tone: 'warning' },
+  UNKNOWN: { label: 'Chưa xác định', detail: 'Chưa xác minh được kết quả. Hệ thống đang đối soát, vui lòng không gửi lại.', tone: 'warning' },
 };
 
 export function stateText(state: string): { label: string; detail: string; tone: string } {
   return (STATE_TEXT as Record<string, { label: string; detail: string; tone: string }>)[state]
     ?? { label: 'Chưa xác định', detail: 'Trạng thái không nhận diện được; hãy làm mới.', tone: 'warning' };
+}
+
+/** Escrow status read from the chain, in Vietnamese; an unknown value is shown as received (never hidden). */
+const CHAIN_STATUS_TEXT: Record<string, string> = {
+  NONE: 'Chưa có ký quỹ', FUNDED: 'Đã nạp tiền', SUBMITTED: 'Đã bàn giao, chờ nghiệm thu', REVISION: 'Đang chỉnh sửa',
+  DISPUTED: 'Đang tranh chấp', RELEASED: 'Đã giải ngân cho Freelancer', REFUNDED: 'Đã hoàn tiền cho Client',
+};
+
+export function chainStatusText(status: string | null | undefined): string {
+  return status ? (CHAIN_STATUS_TEXT[status] ?? status) : '—';
 }
 
 export function environmentBadge(environment: Pick<AvalancheEnvironmentInfo, 'environment' | 'simulated'>): string {

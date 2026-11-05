@@ -527,7 +527,7 @@ function EscrowFinanceEvidence({ job }: { job: Job }) {
       { label: 'Số dư vault (base units)', value: escrow.vaultBalanceBaseUnits || 'Chưa xác minh' },
       { label: 'Token mint', value: escrow.mint || 'Chưa xác minh' },
       { label: 'Số tiền token', value: escrow.amountBaseUnits ? (Number(escrow.amountBaseUnits) / 1_000_000).toFixed(6) : 'Chưa xác minh' },
-      { label: 'Hạn review on-chain', value: escrow.reviewDueAt ? new Date(Number(escrow.reviewDueAt) * 1000).toLocaleString('vi-VN') : 'Chưa có' },
+      { label: 'Hạn nghiệm thu trên chuỗi', value: escrow.reviewDueAt ? new Date(Number(escrow.reviewDueAt) * 1000).toLocaleString('vi-VN') : 'Chưa có' },
     ]} /><dl className="reference-list">{signature('Funding', escrow.fundSignature)}
       {signature('Release', escrow.releaseSignature)}{signature('Refund', escrow.refundSignature)}
       {signature('Quyết định tranh chấp', escrow.resolutionSignature)}</dl></>}
