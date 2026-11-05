@@ -15,7 +15,7 @@ R2 remainder (DB operator), R4, R6** (Phase 3 approval), the business part of R8
 |---|---|
 | R1 | **ANSWERED 2026-11-05**: the owner signs (encrypted keystore, `cast --keystore`, new testnet-only wallet), funds from the faucet and runs X2; X1 to X3 still to be executed |
 | R2 | **ANSWERED 2026-11-05**: development database only, six read-only queries; DB operator = the owner; evidence **PENDING** (X2) |
-| R3, R4, R5 | R3 and R5 **ENGINEERING DECIDED 2026-11-04** (option a each, see the note above); R4 **PENDING** (E5/E6 after E1 and evidence review) |
+| R3, R4, R5 | R3 and R5 **ENGINEERING DECIDED 2026-11-04** (option a each, see the note above); R4 **RECORDED 2026-11-05 as instructed in session: option (a) documented limitation** (local-scope completion; no Fuji re-run); **pending owner confirmation if the sender was not the owner**; not a waiver |
 | R6 | **ANSWERED 2026-11-05: APPROVED as proposed** by the owner (PROJECT_STATUS "Owner decisions (2026-11-05)"). Before: engineering execution under delegated authority, owner approval pending |
 | R12 | **ANSWERED 2026-11-05: option (1) adopt** (O-5 question 8 amended for the two-party path; new contract version under O-2). Previous text: **PENDING (owner)**: Lead target design (two-party settlement, no reassignment, no privileged withdrawal) built as an isolated LOCAL variant; adoption conflicts with O-5 question 8 and needs a new contract version (O-2) |
 | R7 | **ANSWERED**: O-2 shared immutable baseline, clone prototype LOCAL_SIMULATION only; O-6 stuck-and-reported accepted, no privileged withdrawal, bypass or automatic rerouting |

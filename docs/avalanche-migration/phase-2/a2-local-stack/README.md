@@ -40,6 +40,9 @@ random throwaway value created by `run.sh` for this run and discarded with the c
    the chain outcome is read. Negative checks: decision before the claim, a party claiming or deciding, the arbiter acting before a decision,
    a second decision with another key, a party acting as the arbiter, a second arbiter run, a mutual settlement after the resolution. This
    workflow is separate from the two-party settlement (flow 5). LOCAL-SIM only.
+7. **Browser validation** (`browser.mjs`, run with `A2_FRONTEND=1 A2_DRIVER=...`, evidence `../evidence/LOCAL_SIMULATION-b7-browser-wallet-20261105.json`, PASS):
+   a real Edge browser (Playwright) drives the real frontend (Vite, Avalanche UI on) against the stack; the wallet is an EIP-1193 **test double**
+   signing with a throwaway key, NOT MetaMask. It found that the UI could not choose the rail (fixed). See [local-runbook.md](../local-runbook.md).
 
 ## Party wallets
 The two party wallets are throwaway keys created inside the Anvil container for one run (the same pattern as the Phase 1

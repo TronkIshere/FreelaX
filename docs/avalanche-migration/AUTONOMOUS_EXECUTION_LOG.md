@@ -5,7 +5,7 @@ records *what was done, why, and on what authority*, and the resume point. One e
 new evidence changes an entry's status, edit its **Status** line and add a dated "Update" line under it; do not delete the
 original reasoning. Do not add routine progress entries.
 
-## Current state (updated 2026-11-05, after L-030)
+## Current state (updated 2026-11-05, after L-031)
 - **Branch:** `avalanche/phase1-closure-phase3-proposal`; pushed to `origin` on owner instruction 2026-11-05 (`5b75208`); later
   commits are local. Commit messages carry **no** Claude attribution trailer (owner instruction 2026-11-05).
 - **Owner decisions 2026-11-05:** R6 Phase 3 APPROVED; R12 option (1) adopted; R1/C1 and R2 remainder: the owner signs (keystore),
@@ -19,6 +19,7 @@ original reasoning. Do not add routine progress entries.
   drills, clone lab. Open: A2 harness re-run with a settlement (engineering, next), MISA record for Avalanche payouts (NOT
   IMPLEMENTED), Fuji escrow deployment (B2/X3, owner signs), CI result of the 2026-11-05 push (unknown, no `gh` here).
 - **Last measured (2026-11-05, L-030):** see PROJECT_STATUS "Validation results (final)". MySQL ITs V7 to V9 (3/3 earlier on 2026-11-05) not re-run: no schema change since.
+- **L-031 (local-first completion):** R4 option (a) recorded as instructed; E1 reviewed (24/24 checkable claims); E2 synthetic validation PASS (not the owner's X2); B7 local equivalent PASS (test-double wallet, not MetaMask); B9 local validation PASS; C10 AI-assisted review done; partner completion guard tested; compose stack and the project's partner-mock E2E scripts PASS on a throwaway env; security review written. Last measured: reactor 72 / 455 / 20 / 10, frontend 31 files / 881. Six defects found and fixed (see L-031).
 - **L-030 (final validation executed):** every suite of `validation-matrix.md` ran on `f9398d0` with no failure: Foundry 77/1, gateway 119/0/3, reactor 72 / 453 / 20 / 10, frontend 30 files / 877 (Node 24.19.0), tooling 13, A2 PASS including the administrator and arbiter flow. LOCAL-SIM only.
 - **A2 with R12:** PASS on 2026-11-05 (LOCAL-SIM, L-027); re-baselined on this machine in L-028. Open engineering gaps (not owner-gated): a unit test for the partner-escrow COMPLETION guard only.
 - **Next executable task:** owner answers R4 and X2; owner browser-wallet check (B7); Fuji escrow deployment (B2/X3, owner signs).
@@ -520,4 +521,12 @@ original reasoning. Do not add routine progress entries.
 - **Test strength:** a mutation check removed four guards one at a time; each was caught by its intended test; source restored, jar rebuilt.
 - **Environment (not defects):** none new; Node 22.10 on the host is not used for the frontend (a Node 24.19.0 image is).
 - **Classification:** LOCAL-SIM. Nothing here validates anything on Fuji; B2, B7, E2 and R4 are unchanged.
+
+### L-031: Local-first completion of the external-pending items (2026-11-05, third session)
+- **Instruction:** close the remaining items by LOCAL procedures; no Fuji or Mainnet deployment; R4 by documented limitation (recorded as stated; owner confirmation pending if the sender was not the owner).
+- **Done and executed:** partner completion guard + tests; E1 evidence review script and report; E2 synthetic validation script and output; environment validator, runbook; AI-assisted Vietnamese review; browser wallet validation (Playwright + Edge, EIP-1193 test double); compose build and start from a throwaway env with the project's partner-mock E2E and administrator E2E scripts (run from copies next to a throwaway `.env`; the repository `.env` was never read); security review (`security-review-2026-11-05.md`).
+- **Defects found and fixed (each with a test or a re-run):** the UI could not choose the Avalanche rail; wallet errors shown in English; partner completion reached the partner backend before the guard; the marketplace service did not receive the Avalanche settings in compose; the frontend image had no Avalanche flag; `.env.example` lacked the JWT secret (64+ characters) and password (72 bytes) limits.
+- **Mistakes of mine, corrected:** the first compose attempts failed because my throwaway env had too-short JWT secrets and then 74-character passwords (bcrypt limit); a killed harness run left a manifest backup file, which I restored by hand; `curl -o /dev/null` does not work with the Windows curl (use a shell redirect).
+- **Not done / outside:** MetaMask itself; disconnect and account-change events; the compose `avalanche` profile run; `partner-mock-outage-e2e.mjs`; the owner's X2 and `.env` check; native Vietnamese review; Fuji anything.
+- **Tests:** reactor 72 / 455 / 20 / 10; frontend 31 files / 881; A2 PASS; browser PASS; environment 11/11; E2 6/6.
 
