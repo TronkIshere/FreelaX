@@ -122,7 +122,9 @@ public class PartnerEscrowFundingService {
         FundingTransaction record = transactions.findById(transactionId).orElseThrow();
         if (record.getStatus() == FundingStatus.SUCCEEDED) return;
         WorkContract contract = contracts.findById(record.getContractId()).orElseThrow();
-        if (!RAIL.equals(contract.getPaymentRail())) {
+        // an order started before the client chose the Avalanche rail must not even reach the partner payment backend
+        if (!RAIL.equals(contract.getPaymentRail())
+                || com.marketplace.backend.blockchain.avalanche.AvalancheEscrowIds.isAvalancheNetwork(contract.getPaymentNetworkId())) {
             markUnknown(transactionId);
             return;
         }

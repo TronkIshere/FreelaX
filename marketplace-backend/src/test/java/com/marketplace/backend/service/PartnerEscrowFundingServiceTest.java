@@ -37,6 +37,8 @@ class PartnerEscrowFundingServiceTest {
     WorkContract contract;
     Milestone milestone;
     Job job;
+    FundingTransaction savedRecord;
+    boolean chooseAvalancheWhenTheRecordIsCreated;
 
     @BeforeEach
     void setUp() {
@@ -86,6 +88,48 @@ class PartnerEscrowFundingServiceTest {
         assertThat(contract.getPaymentRail()).isNull();
         assertThat(milestone.getStatus()).isEqualTo(MilestoneStatus.PENDING_FUNDING);
         assertThat(contract.getStatus()).isEqualTo(ContractStatus.PENDING_FUNDING);
+    }
+
+    private void clientWithBankDetails() {
+        User client = new User();
+        client.setId(contract.getClientUserId());
+        client.setBankCode(BankCode.VIETCOMBANK);
+        client.setBankAccountNumber("123456789");
+        client.setBankAccountHolderName("Client");
+        when(users.findById(contract.getClientUserId())).thenReturn(Optional.of(client));
+        when(transactions.saveAndFlush(any())).thenAnswer(invocation -> {
+            FundingTransaction created = invocation.getArgument(0);
+            created.setId(UUID.randomUUID());
+            savedRecord = created;
+            if (chooseAvalancheWhenTheRecordIsCreated) contract.setPaymentNetworkId("avalanche-local");
+            return created;
+        });
+        when(transactions.findById(any())).thenAnswer(invocation -> Optional.ofNullable(savedRecord));
+        when(transactions.findWithLockById(any())).thenAnswer(invocation -> Optional.ofNullable(savedRecord));
+    }
+
+    @Test
+    void anOrderStartedBeforeTheAvalancheRailWasChosenNeverReachesThePartnerBackendOrActivatesTheContract() {
+        clientWithBankDetails();
+        // the client chooses the Avalanche rail after the funding record exists and before the completion runs
+        chooseAvalancheWhenTheRecordIsCreated = true;
+        service.fund(contract.getClientUserId(), contract.getId(), milestone.getId(), "key-1");
+        verifyNoInteractions(payment);
+        assertThat(savedRecord.getStatus()).isEqualTo(FundingStatus.UNKNOWN);
+        assertThat(milestone.getStatus()).isEqualTo(MilestoneStatus.PENDING_FUNDING);
+        assertThat(contract.getStatus()).isEqualTo(ContractStatus.PENDING_FUNDING);
+        assertThat(job.getStatus()).isEqualTo(JobStatus.AWAITING_PAYMENT);
+    }
+
+    @Test
+    void aLegacyPartnerContractStillReachesThePartnerBackend() {
+        clientWithBankDetails();
+        when(payment.openPartnerEscrow(any(), any(), any(), any(), any(), any(), any()))
+                .thenThrow(new org.springframework.web.client.RestClientException("partner backend is a test double"));
+        service.fund(contract.getClientUserId(), contract.getId(), milestone.getId(), "key-1");
+        verify(payment).openPartnerEscrow(any(), any(), any(), any(), any(), any(), any());
+        assertThat(savedRecord.getStatus()).isEqualTo(FundingStatus.UNKNOWN);
+        assertThat(milestone.getStatus()).isEqualTo(MilestoneStatus.PENDING_FUNDING);
     }
 
     @Test
