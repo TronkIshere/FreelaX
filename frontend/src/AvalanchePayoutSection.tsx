@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, ApiError } from './api';
 import { ActionGroup } from './components';
 import type { AvalanchePayoutView } from './avalancheTypes';
-import { shortHash, tokenLabel, usdcFromBaseUnits } from './avalanchePresentation';
+import { shortHash, tokenLabel, usdcFromBaseUnits, walletErrorText } from './avalanchePresentation';
 import { EvmWallet, WalletError } from './evmWallet';
 
 /** Stable reason codes from the backend, shown in plain words. Unknown codes are shown as the code itself. */
@@ -28,7 +28,8 @@ export const PAYOUT_STATUS_TEXT: Readonly<Record<string, string>> = {
 };
 
 function message(error: unknown): string {
-  if (error instanceof WalletError || error instanceof ApiError) return error.message;
+  if (error instanceof WalletError) return walletErrorText(error);
+  if (error instanceof ApiError) return error.message;
   return 'Không thể hoàn tất thao tác. Hãy thử lại.';
 }
 

@@ -32,6 +32,35 @@ export function chainStatusText(status: string | null | undefined): string {
   return status ? (CHAIN_STATUS_TEXT[status] ?? status) : '—';
 }
 
+/** The wallet adapter reports English messages; the user sees these by error code. An unknown code gets the generic text. */
+const WALLET_ERROR_TEXT: Record<string, string> = {
+  NO_WALLET: 'Không tìm thấy ví EVM trong trình duyệt này.',
+  USER_REJECTED: 'Bạn đã từ chối yêu cầu trong ví. Chưa có gì được gửi.',
+  CONNECT_FAILED: 'Không thể kết nối ví.',
+  NO_ACCOUNT: 'Ví không trả về địa chỉ hợp lệ.',
+  CHAIN_UNREADABLE: 'Không đọc được mạng mà ví đang dùng. Hãy kiểm tra lại ví.',
+  CHAIN_NOT_ALLOWED: 'Mạng của ví không được hỗ trợ. Chỉ môi trường mô phỏng cục bộ và mạng thử nghiệm Avalanche Fuji được dùng; không có gì được ký hoặc gửi.',
+  WRONG_CHAIN: 'Ví đang ở sai mạng. Hãy chuyển ví sang đúng mạng rồi thử lại.',
+  CHAIN_MISMATCH: 'Yêu cầu nhắm tới mạng khác với môi trường hiện tại; không có gì được ký hoặc gửi.',
+  TX_INVALID: 'Giao dịch được chuẩn bị không hợp lệ; không có gì được gửi.',
+  NO_HASH: 'Ví không trả về mã giao dịch; chưa thể coi giao dịch là đã gửi.',
+  SEND_FAILED: 'Ví không gửi được giao dịch.',
+  TYPED_DATA_INVALID: 'Yêu cầu ký không hợp lệ; không có gì được ký.',
+  BAD_SIGNATURE: 'Ví trả về chữ ký không hợp lệ.',
+  SIGN_FAILED: 'Ví không ký được yêu cầu.',
+  MESSAGE_INVALID: 'Yêu cầu liên kết ví không hợp lệ; không có gì được ký.',
+};
+
+const HAS_VIETNAMESE = /[\u00C0-\u1EF9]/;
+
+/** Message for a wallet or API error: Vietnamese by code, an already Vietnamese message as is, otherwise a generic Vietnamese text. */
+export function walletErrorText(error: unknown): string {
+  const code = error && typeof error === 'object' && 'code' in error ? String((error as { code: unknown }).code) : '';
+  if (WALLET_ERROR_TEXT[code]) return WALLET_ERROR_TEXT[code];
+  const text = error instanceof Error ? error.message : '';
+  return HAS_VIETNAMESE.test(text) ? text : 'Không thể hoàn tất thao tác. Hãy thử lại.';
+}
+
 export function environmentBadge(environment: Pick<AvalancheEnvironmentInfo, 'environment' | 'simulated'>): string {
   return environment.simulated ? 'Mô phỏng' : 'Giao dịch testnet (Fuji)';
 }

@@ -3,7 +3,7 @@ import { api, ApiError } from './api';
 import { ActionGroup, SectionHeading } from './components';
 import { availableAvalancheActions, deliveryDateSeconds, type AvalancheActionOffer } from './avalancheActions';
 import type { AvalancheActionInput, AvalancheContractView } from './avalancheTypes';
-import { actionText, offerText, chainInstant, chainStatusText, environmentBadge, environmentBanner, explorerTxUrl, issuerAlertText, shortHash, stateText, tokenLabel, usdcFromBaseUnits } from './avalanchePresentation';
+import { actionText, offerText, chainInstant, chainStatusText, walletErrorText, environmentBadge, environmentBanner, explorerTxUrl, issuerAlertText, shortHash, stateText, tokenLabel, usdcFromBaseUnits } from './avalanchePresentation';
 import { EvmWallet, WalletError } from './evmWallet';
 import { AvalanchePayoutSection } from './AvalanchePayoutSection';
 import type { ContractSubmission, Dispute, User } from './types';
@@ -20,7 +20,7 @@ type Props = {
 };
 
 function message(error: unknown): string {
-  if (error instanceof WalletError) return error.message;
+  if (error instanceof WalletError) return walletErrorText(error);
   if (error instanceof ApiError) return error.message;
   return 'Không thể hoàn tất thao tác. Hãy thử lại.';
 }

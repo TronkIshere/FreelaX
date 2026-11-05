@@ -143,7 +143,7 @@ describe('AvalancheEscrowPanel', () => {
     await mount(true, false, () => wallet);
     const button = [...host.querySelectorAll('button')].find(b => b.textContent === 'Nạp tiền ký quỹ bằng ví')!;
     await act(async () => { button.click(); });
-    expect(host.querySelector('[role="alert"]')?.textContent).toContain('declined');
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain('từ chối');
     expect(record).not.toHaveBeenCalled();
   });
 
