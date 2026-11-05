@@ -5,23 +5,22 @@ records *what was done, why, and on what authority*, and the resume point. One e
 new evidence changes an entry's status, edit its **Status** line and add a dated "Update" line under it; do not delete the
 original reasoning. Do not add routine progress entries.
 
-## Current state (updated 2026-11-04, after L-020)
-- **Branch:** `avalanche/phase1-closure-phase3-proposal`; everything after `origin/master` (`1ef0af7`) is local and unpushed.
-- **Decision regime:** Lead delegation of engineering decisions (2026-11-04) and the Lead instruction "R6, R12 and Avalanche
-  payout" (2026-11-04). R6 = ENGINEERING EXECUTION AUTHORIZED UNDER DELEGATED AUTHORITY — OWNER APPROVAL PENDING; **not owner
-  approved**.
-- **Phase 1:** PARTIAL. E1 BLOCKED (R1, X1), E2 BLOCKED (DB operator, X2), E3 DEFERRED (owner), E4 DOCUMENTED LIMITATION,
-  E5/E6 INCONCLUSIVE (need E1), E7 PARTIAL (explorer verification NOT APPLICABLE until B2). Tooling for E1/E2 is complete.
-- **Phase 2:** all engineering residuals done (A1, A2, A3, A6, A7, A8, F12, F13); A5 closed; B7 external.
-- **Phase 3 (delegated, reversible):** notifications (off by default), primary rail (default SOLANA), P3-C4 stuck-escrow
-  reporting, A6 scanner health, CI workflow (not executed), drills, P3-C6 clone measurement, **R12 mutual-settlement variant
-  (LOCAL lab, not adopted; conflicts with O-5 question 8)**, **non-custodial payout adapter (default off; LOCAL mock partner
-  only)**. Owner/external: R12 adoption, real payout partner, fee and tax treatment, Fuji demonstration (C1).
-- **Last measured:** JDK 17 reactor 72/433/20/10; gateway 119/0/3; frontend 30 files / 873; Foundry baseline 55/1 (not re-run,
-  unchanged); R12 lab 72/0/0; V7+V8 MySQL ITs 3/3; A2 with payout PASS.
-- **How to run heavy suites here:** one at a time, detached and memory-capped (CLAUDE.md section 7).
-- **Next executable task:** none left that is independently implementable; everything open needs an owner decision or an
-  external person or partner.
+## Current state (updated 2026-11-05, after L-026)
+- **Branch:** `avalanche/phase1-closure-phase3-proposal`; pushed to `origin` on owner instruction 2026-11-05 (`5b75208`); later
+  commits are local. Commit messages carry **no** Claude attribution trailer (owner instruction 2026-11-05).
+- **Owner decisions 2026-11-05:** R6 Phase 3 APPROVED; R12 option (1) adopted; R1/C1 and R2 remainder: the owner signs (keystore),
+  funds and is the DB operator; payout: mock partner only, fee and tax by the Solana-rail rules (simulated).
+- **Phase 1:** PARTIAL. E1 FUJI EVIDENCE OBTAINED, PENDING OWNER REVIEW (owner-run, 2026-11-05). E2 BLOCKED until the owner runs
+  X2 (which database is "development" still to be confirmed; compose MySQL was not running). E3 DEFERRED. E4 DOCUMENTED
+  LIMITATION. E5/E6 partly observed, rest INCONCLUSIVE: **R4 asked** (options a limitation, recommended; b waiver; c targeted
+  Fuji re-run). E7 PARTIAL.
+- **Phase 2:** engineering complete; B7 (real browser wallet) external; the owner has MetaMask with the testnet wallet.
+- **Phase 3:** approved. Done: R12 settlement, payout fee/tax (V9), notifications, stuck-escrow reporting, scanner health,
+  drills, clone lab. Open: A2 harness re-run with a settlement (engineering, next), MISA record for Avalanche payouts (NOT
+  IMPLEMENTED), Fuji escrow deployment (B2/X3, owner signs), CI result of the 2026-11-05 push (unknown, no `gh` here).
+- **Last measured (2026-11-05):** JDK 17 reactor 72 / 439 / 20 / 10; gateway 119/0/3; Foundry 77 pass, 1 skipped; frontend 30
+  files / 877; human-signed tooling 13; MySQL ITs V7+V8 with V9 3/3.
+- **Next executable task:** A2 re-run with the settlement flow; then owner answers R4 and X2.
 
 ## Entries
 
