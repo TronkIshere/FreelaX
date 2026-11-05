@@ -17,7 +17,7 @@ R2 remainder (DB operator), R4, R6** (Phase 3 approval), the business part of R8
 | R2 | **ANSWERED IN PART**: development database only, six read-only queries; DB operator identity and evidence **PENDING** |
 | R3, R4, R5 | **PENDING** (E4 limitation or waiver; E5/E6 after E1 and evidence review; E7 optional/pending) |
 | R6 | **ANSWERED 2026-11-05: APPROVED as proposed** by the owner (PROJECT_STATUS "Owner decisions (2026-11-05)"). Before: engineering execution under delegated authority, owner approval pending |
-| R12 | **PENDING (owner)**: Lead target design (two-party settlement, no reassignment, no privileged withdrawal) built as an isolated LOCAL variant; adoption conflicts with O-5 question 8 and needs a new contract version (O-2) |
+| R12 | **ANSWERED 2026-11-05: option (1) adopt** (O-5 question 8 amended for the two-party path; new contract version under O-2). Previous text: **PENDING (owner)**: Lead target design (two-party settlement, no reassignment, no privileged withdrawal) built as an isolated LOCAL variant; adoption conflicts with O-5 question 8 and needs a new contract version (O-2) |
 | R7 | **ANSWERED**: O-2 shared immutable baseline, clone prototype LOCAL_SIMULATION only; O-6 stuck-and-reported accepted, no privileged withdrawal, bypass or automatic rerouting |
 | R8 | **ANSWERED IN PART**: fee, tax/MISA, payout and notification work (A4) moves to Phase 3. Still open: the C3 treatment option; C4 and the placement of A5 |
 | R9, R10 | **PENDING** |

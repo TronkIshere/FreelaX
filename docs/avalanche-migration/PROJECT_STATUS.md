@@ -116,7 +116,9 @@ Given by the owner in the session of 2026-11-05 by answering the recommendation 
 | R6 / C9 | **Phase 3 proposal APPROVED as proposed** ([phase-3/00-phase-3-proposal.md](phase-3/00-phase-3-proposal.md)) | C9 DECIDED. Phase 3 is owner approved. CLAUDE.md section 6 hard stops (Fuji signing, Mainnet, contract changes in `avalanche-contracts/src` without their own decision, real funds) are **unchanged**; R12 is a separate decision |
 | Payout (A4, C3 fee and tax) | **Mock partner only; fee and tax follow the existing Solana-rail rules, labelled simulated.** No real payout partner (out of scope under [SIMULATION_SCOPE](../SIMULATION_SCOPE.md)) | Real partner: OUT OF SCOPE (was OPEN). Fee and tax for an Avalanche release: DECIDED (reuse the existing Solana-rail rules unchanged, no new formula, records labelled simulated, behind the existing default-off flag). Wiring: NOT STARTED (engineering task) |
 
-Still open after this update: R12 (owner asked for more explanation), R1/C1 and the DB operator (owner asked for a more detailed
+| R12 / F14 (answered later the same session) | **Option (1): adopt the two-party mutual-settlement variant.** O-5 question 8 is **amended** for this path only: from `Disputed`, the escrow may be settled by a settlement signed by **both** the client and the freelancer (full amount to one side, no partial split); `mutualRefund` itself stays unavailable while Disputed. A **new contract version** replaces the baseline in `avalanche-contracts/src` under O-2 (still one shared immutable contract; no Fuji deployment exists yet, so no migration). O-3 (no arbiter reassignment) and O-6 (no privileged withdrawal) unchanged | F14: adoption DECIDED; implementation NOT STARTED (contract, deploy test, gateway ABI, scanner event, `EscrowDigests`, frontend) |
+
+Still open after this update: R1/C1 and the DB operator (owner asked for a more detailed
 proposal), R4 (after E1), X1 to X3.
 
 ### Delegated decision classification (2026-11-04, Lead instruction "autonomous engineering decisions")

@@ -407,4 +407,5 @@ original reasoning. Do not add routine progress entries.
   section 5 and 10. Documentation only; no code, contract or configuration change.
 - **Next:** fee/tax wiring for an Avalanche release reusing the Solana-rail rules (default off), after the Solana coupling of
   `SettlementDownstreamService` is analysed.
-
+- **Addendum (same session):** owner chose **R12 option (1)**: adopt the mutual-settlement variant; O-5 question 8 amended for
+  the two-party path; new contract version under O-2. Implementation not started.
