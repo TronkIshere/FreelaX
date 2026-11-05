@@ -30,7 +30,7 @@ DB_PW="a2db-$(rnd 12)"; JWT="$(rnd 48)"; GW_KEY="a2gw-$(rnd 24)"; MISA_PW="A2mis
 DEMO_C="A2client-$(rnd 8)!Aa1"; DEMO_F="A2freelancer-$(rnd 8)!Aa1"; DEMO_A="A2admin-$(rnd 12)!Aa1-throwaway"
 
 down() {
-  for c in marketplace gateway anvil redis mysql; do docker rm -f "$P-$c" >/dev/null 2>&1 || true; done
+  for c in frontend marketplace gateway anvil redis mysql; do docker rm -f "$P-$c" >/dev/null 2>&1 || true; done
   docker network rm "$NET" >/dev/null 2>&1 || true
 }
 restore_manifest() {
@@ -90,9 +90,11 @@ cast send --unlocked --from "$ANVIL_SENDER" "$ESCROW" "setDefaultArbiter(address
 echo "[a2] roles handed to the ephemeral signers (F3)"
 
 echo "[a2] marketplace (Avalanche rail enabled, settlement notifications on, payout adapter with the LOCAL mock partner)"
-docker run -d --name "$P-marketplace" --network "$NET" --memory 1200m -p 127.0.0.1:19191:9191 \
+FE_PORT_ARGS=""; FE_CORS=""
+if [ "${A2_FRONTEND:-0}" = 1 ]; then FE_PORT_ARGS="-p 127.0.0.1:13000:3000"; FE_CORS="http://127.0.0.1:13000"; fi
+docker run -d --name "$P-marketplace" --network "$NET" --memory 1200m -p 127.0.0.1:19191:9191 $FE_PORT_ARGS \
   -v "$WINROOT/marketplace-backend/target:/app:ro" \
-  -e SPRING_PROFILES_ACTIVE=dev -e DB_URL="jdbc:mysql://$P-mysql:3306/marketplace?useUnicode=true&characterEncoding=UTF-8" \
+  -e SPRING_PROFILES_ACTIVE=dev ${FE_CORS:+-e CORS_ALLOWED_ORIGINS=$FE_CORS} -e DB_URL="jdbc:mysql://$P-mysql:3306/marketplace?useUnicode=true&characterEncoding=UTF-8" \
   -e DB_USERNAME=root -e DB_PASSWORD="$DB_PW" -e REDIS_HOST="$P-redis" -e REDIS_PORT=6379 -e JWT_SECRET="$JWT" \
   -e MISA_PLATFORM_ACCOUNT_PASSWORD="$MISA_PW" -e DEMO_CLIENT_PASSWORD="$DEMO_C" -e DEMO_FREELANCER_PASSWORD="$DEMO_F" -e DEMO_ADMIN_PASSWORD="$DEMO_A" \
   -e AVALANCHE_GATEWAY_ENABLED=true -e AVALANCHE_GATEWAY_BASE_URL="http://$P-gateway:9194" \
@@ -107,8 +109,19 @@ for _ in $(seq 1 150); do
 done
 docker logs "$P-marketplace" 2>&1 | grep -q "Started .*Application" || { echo "marketplace did not start" >&2; exit 5; }
 
+if [ "${A2_FRONTEND:-0}" = 1 ]; then
+  # Optional (browser validation): the Vite dev server shares the marketplace network namespace, so its /api/v1 proxy to
+  # localhost:9191 stays same-origin and needs no CORS setting. Node 24.19.0 image, node_modules in a named volume.
+  echo "[a2] frontend (Vite dev server, Avalanche UI enabled, same network namespace as the marketplace)"
+  docker run -d --name "$P-frontend" --network "container:$P-marketplace" --memory 1500m -v "$WINROOT/frontend:/src" -v fx_frontend_nm:/src/node_modules \
+    -w /src -e VITE_AVALANCHE_ENABLED=true node:24.19.0 sh -c "[ -x node_modules/.bin/vite ] || npm ci --no-audit --no-fund >/dev/null 2>&1; npx vite --host 0.0.0.0 --port 3000 --strictPort" >/dev/null
+  for _ in $(seq 1 90); do curl -fsS -m 3 http://127.0.0.1:13000/ >/dev/null 2>&1 && break; sleep 2; done
+  curl -fsS -m 3 http://127.0.0.1:13000/ >/dev/null || { echo "frontend did not start" >&2; docker logs --tail 20 "$P-frontend" >&2 2>&1 || true; exit 6; }
+  export FRONTEND=http://127.0.0.1:13000
+fi
+
 echo "[a2] drive the Avalanche rail end to end"
 MARKET=http://127.0.0.1:19191 GATEWAY=http://127.0.0.1:19194 GATEWAY_KEY="$GW_KEY" ANVIL="$P-anvil" OUT="$OUT" \
   ADMIN_EMAIL=admin.e2e@example.test ADMIN_PASSWORD="$DEMO_A" \
-  node "$WINHERE/drive.mjs"
+  node "${A2_DRIVER:-$WINHERE/drive.mjs}"
 echo "[a2] evidence: $OUT"

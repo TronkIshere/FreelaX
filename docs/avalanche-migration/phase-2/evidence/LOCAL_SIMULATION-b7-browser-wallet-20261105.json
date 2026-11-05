@@ -1,0 +1,103 @@
+{
+  "label": "LOCAL_SIMULATION",
+  "kind": "browser wallet validation with an EIP-1193 test double (NOT MetaMask, NOT Fuji)",
+  "tool": "phase-2/a2-local-stack/browser.mjs",
+  "startedAt": "2026-11-05T11:23:56.263Z",
+  "steps": [
+    {
+      "step": "stack",
+      "at": "2026-11-05T11:23:56.610Z",
+      "environment": "LOCAL_SIMULATION",
+      "chainId": 31337,
+      "frontend": "http://127.0.0.1:13000"
+    },
+    {
+      "step": "users, throwaway wallet and two contracts created through the API",
+      "at": "2026-11-05T11:23:59.703Z",
+      "contractA": "ac135687-ac0b-418c-9fb2-2cc041460387",
+      "contractB": "24982487-70dc-459c-a850-1ae06cdb70a6"
+    },
+    {
+      "step": "S0 login through the UI form",
+      "at": "2026-11-05T11:24:01.218Z",
+      "ok": true
+    },
+    {
+      "step": "S1 Avalanche rail chosen in the UI; banner visible",
+      "at": "2026-11-05T11:24:02.621Z",
+      "banner": true
+    },
+    {
+      "step": "S2 unsupported chain refused, nothing signed, no wallet linked",
+      "at": "2026-11-05T11:24:02.695Z",
+      "uiMessage": "Mạng của ví không được hỗ trợ. Chỉ môi trường mô phỏng cục bộ và mạng thử nghiệm Avalanche Fuji được dùng; không có gì được ký hoặc gửi.",
+      "walletCalls": [
+        "eth_requestAccounts",
+        "eth_chainId"
+      ]
+    },
+    {
+      "step": "S3 wrong network and refused switch: blocked, nothing signed",
+      "at": "2026-11-05T11:24:02.767Z",
+      "uiMessage": "Ví đang ở sai mạng. Hãy chuyển ví sang đúng mạng rồi thử lại.",
+      "walletCalls": [
+        "eth_requestAccounts",
+        "eth_chainId",
+        "wallet_switchEthereumChain"
+      ]
+    },
+    {
+      "step": "S4 rejected signature: UI says so, no wallet linked",
+      "at": "2026-11-05T11:24:02.870Z",
+      "uiMessage": "Bạn đã từ chối yêu cầu trong ví. Chưa có gì được gửi."
+    },
+    {
+      "step": "S5 wallet linked through the UI (EIP-191 challenge signed, verified by the gateway)",
+      "at": "2026-11-05T11:24:03.204Z",
+      "linked": true
+    },
+    {
+      "step": "S6 funding without USDC fails visibly and applies nothing",
+      "at": "2026-11-05T11:24:05.272Z",
+      "uiMessage": "Ví không gửi được giao dịch.",
+      "contractStatus": "PENDING_FUNDING"
+    },
+    {
+      "step": "S7 transaction rejected in the wallet: UI says so, nothing applied",
+      "at": "2026-11-05T11:24:05.523Z",
+      "uiMessage": "Bạn đã từ chối yêu cầu trong ví. Chưa có gì được gửi."
+    },
+    {
+      "step": "S8 invented transaction hash: not applied, contract stays PENDING_FUNDING, UI shows no funded state",
+      "at": "2026-11-05T11:24:14.086Z",
+      "rows": [
+        {
+          "action": "fund",
+          "status": "UNKNOWN",
+          "businessApplied": false
+        }
+      ],
+      "contractStatus": "PENDING_FUNDING"
+    },
+    {
+      "step": "S9 funding through the UI: FINALIZED, chain FUNDED, contract ACTIVE, UI and backend agree",
+      "at": "2026-11-05T11:24:21.554Z",
+      "txStatus": "FINALIZED",
+      "chainStatus": "FUNDED",
+      "contract": "ACTIVE",
+      "milestone": "FUNDED",
+      "walletCalls": [
+        "eth_requestAccounts",
+        "eth_chainId",
+        "eth_sendTransaction"
+      ]
+    },
+    {
+      "step": "S10 no raw status enum or English wallet error on the screen",
+      "at": "2026-11-05T11:24:21.556Z",
+      "pageErrors": 0
+    }
+  ],
+  "result": "PASS",
+  "finishedAt": "2026-11-05T11:24:21.862Z"
+}
