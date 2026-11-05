@@ -409,3 +409,5 @@ original reasoning. Do not add routine progress entries.
   `SettlementDownstreamService` is analysed.
 - **Addendum (same session):** owner chose **R12 option (1)**: adopt the mutual-settlement variant; O-5 question 8 amended for
   the two-party path; new contract version under O-2. Implementation not started.
+- **Addendum 2:** owner answered R1/C1 and the R2 remainder: the owner is signer, funding owner and DB operator; device =
+  encrypted keystore via `cast --keystore` on the owner's machine, new testnet-only wallet. E1/E2 stay BLOCKED until X1/X2 run.

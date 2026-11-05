@@ -118,6 +118,8 @@ Given by the owner in the session of 2026-11-05 by answering the recommendation 
 
 | R12 / F14 (answered later the same session) | **Option (1): adopt the two-party mutual-settlement variant.** O-5 question 8 is **amended** for this path only: from `Disputed`, the escrow may be settled by a settlement signed by **both** the client and the freelancer (full amount to one side, no partial split); `mutualRefund` itself stays unavailable while Disputed. A **new contract version** replaces the baseline in `avalanche-contracts/src` under O-2 (still one shared immutable contract; no Fuji deployment exists yet, so no migration). O-3 (no arbiter reassignment) and O-6 (no privileged withdrawal) unchanged | F14: adoption DECIDED; implementation NOT STARTED (contract, deploy test, gateway ABI, scanner event, `EscrowDigests`, frontend) |
 
+| R1 / C1, R2 remainder (answered later the same session) | **The owner is the human signer (X1), the funding owner (X3) and the DB operator (X2).** Signing device: an **encrypted keystore** used with `cast --keystore` on the owner's own machine (option b), a **new testnet-only wallet**; never a wallet holding real assets. Funding: testnet AVAX from the Fuji faucet. X2: the six read-only queries on the development database only, run by the owner | B1/C1 DECIDED; B6 DB operator named. E1 and E2 stay **BLOCKED** until the owner runs X1/X2 (no evidence exists yet). The wallet address is not yet known; the key, password and keystore file are never shared with engineering |
+
 Still open after this update: R1/C1 and the DB operator (owner asked for a more detailed
 proposal), R4 (after E1), X1 to X3.
 

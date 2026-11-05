@@ -13,8 +13,8 @@ R2 remainder (DB operator), R4, R6** (Phase 3 approval), the business part of R8
 
 | Request | Status |
 |---|---|
-| R1 | **PENDING** (Fuji signer and funding owner; with X3) |
-| R2 | **ANSWERED IN PART**: development database only, six read-only queries; DB operator identity and evidence **PENDING** |
+| R1 | **ANSWERED 2026-11-05**: the owner signs (encrypted keystore, `cast --keystore`, new testnet-only wallet), funds from the faucet and runs X2; X1 to X3 still to be executed |
+| R2 | **ANSWERED 2026-11-05**: development database only, six read-only queries; DB operator = the owner; evidence **PENDING** (X2) |
 | R3, R4, R5 | **PENDING** (E4 limitation or waiver; E5/E6 after E1 and evidence review; E7 optional/pending) |
 | R6 | **ANSWERED 2026-11-05: APPROVED as proposed** by the owner (PROJECT_STATUS "Owner decisions (2026-11-05)"). Before: engineering execution under delegated authority, owner approval pending |
 | R12 | **ANSWERED 2026-11-05: option (1) adopt** (O-5 question 8 amended for the two-party path; new contract version under O-2). Previous text: **PENDING (owner)**: Lead target design (two-party settlement, no reassignment, no privileged withdrawal) built as an isolated LOCAL variant; adoption conflicts with O-5 question 8 and needs a new contract version (O-2) |
