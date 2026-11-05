@@ -5,7 +5,7 @@ records *what was done, why, and on what authority*, and the resume point. One e
 new evidence changes an entry's status, edit its **Status** line and add a dated "Update" line under it; do not delete the
 original reasoning. Do not add routine progress entries.
 
-## Current state (updated 2026-11-05, after L-026)
+## Current state (updated 2026-11-05, after L-027)
 - **Branch:** `avalanche/phase1-closure-phase3-proposal`; pushed to `origin` on owner instruction 2026-11-05 (`5b75208`); later
   commits are local. Commit messages carry **no** Claude attribution trailer (owner instruction 2026-11-05).
 - **Owner decisions 2026-11-05:** R6 Phase 3 APPROVED; R12 option (1) adopted; R1/C1 and R2 remainder: the owner signs (keystore),
@@ -18,9 +18,10 @@ original reasoning. Do not add routine progress entries.
 - **Phase 3:** approved. Done: R12 settlement, payout fee/tax (V9), notifications, stuck-escrow reporting, scanner health,
   drills, clone lab. Open: A2 harness re-run with a settlement (engineering, next), MISA record for Avalanche payouts (NOT
   IMPLEMENTED), Fuji escrow deployment (B2/X3, owner signs), CI result of the 2026-11-05 push (unknown, no `gh` here).
-- **Last measured (2026-11-05):** JDK 17 reactor 72 / 439 / 20 / 10; gateway 119/0/3; Foundry 77 pass, 1 skipped; frontend 30
+- **Last measured (2026-11-05):** JDK 17 reactor 72 / 442 / 20 / 10 (L-027); gateway 119/0/3; Foundry 77 pass, 1 skipped; frontend 30
   files / 877; human-signed tooling 13; MySQL ITs V7+V8 with V9 3/3.
-- **Next executable task:** A2 re-run with the settlement flow; then owner answers R4 and X2.
+- **A2 with R12:** PASS on 2026-11-05 (LOCAL-SIM, L-027); no engineering item that needs no owner input is left except re-baselining gateway/Foundry/frontend on this machine (Node 24.19.0 needed).
+- **Next executable task:** owner answers R4 and X2; owner browser-wallet check (B7); Fuji escrow deployment (B2/X3, owner signs).
 
 ## Entries
 
@@ -466,3 +467,19 @@ original reasoning. Do not add routine progress entries.
 - **Result:** see the FUJI-OBS report; E1 PENDING OWNER REVIEW; E5/E6 partly observed, rest INCONCLUSIVE (R4).
 - **Next:** owner reviews E1 and decides R4; X2 (six read-only queries on the development DB) is the remaining Phase 1 blocker.
 
+### L-027: A2 harness covers the R12 two-party settlement; dispute recording fixed for the Avalanche rail (2026-11-05)
+- **Authority:** the owner-approved next task (R12 adopted 2026-11-05; A2 re-run); the fix is additive in `marketplace-backend` (R11).
+- **Action:** `drive.mjs` flows 3 and 4 (RELEASE, REFUND): fund, submit, marketplace dispute record, wallet `dispute` action, negative
+  checks, both parties' wallet signatures, settlement, outcome and balances. LOCAL_SIMULATION only (Anvil 31337, MockUSDC); no Fuji, no
+  key beyond throwaway Anvil keys.
+- **Finding and fix:** the first run failed with `DISPUTE_INELIGIBLE`: `ContractDisputeService.open` had no Avalanche path (fiat funding
+  proof or Solana escrow only), so a dispute could not be recorded on the Avalanche rail outside unit tests. Fixed by skipping the fiat
+  funding proof for `paymentNetworkId` starting with `avalanche` (milestone state is the proof); state checks unchanged; legacy rails
+  unchanged; +3 tests (`ContractDisputeServiceTest` 17/17).
+- **Environment (not defects):** stale `MockOnRampProvider.class` in ignored `target/` made the marketplace jar fail to start (`clean
+  package` fixed it); stale gateway jar rebuilt; evidence path must be `D:/...` for Node on Windows; Node here is 22.10.
+- **Tests / evidence:** harness PASS (rc 0), `phase-2/evidence/LOCAL_SIMULATION-a2-local-stack-r12-20261105.json`; legacy reactor 72 / 442
+  / 20 / 10 BUILD SUCCESS; human-signed tooling 13/13. Not re-run (no change): gateway, Foundry, frontend.
+- **Limits:** the "mutual refund while Disputed" check shows only that nothing can be prepared without signatures (contract refusal is a
+  Foundry test); the forged-signature rejection is seen as a refused send at gas estimation (no revert reason recorded). LOCAL-SIM is not
+  Fuji evidence.

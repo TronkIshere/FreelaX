@@ -122,6 +122,26 @@ class ContractDisputeServiceTest {
         assertThatThrownBy(() -> service.open(client(), contract.getId(), reason)).isInstanceOf(ApplicationException.class);
         assertThat(contracts.findById(contract.getId()).orElseThrow().getStatus()).isEqualTo(ContractStatus.DISPUTED);
     }
+    @Test void avalancheRailOpensWithoutFiatFundingRecordButStillNeedsAReviewableState() {
+        tx.executeWithoutResult(s -> { funding.deleteAll(); contract = contracts.findById(contract.getId()).orElseThrow();
+            contract.setPaymentNetworkId("avalanche-local"); contracts.saveAndFlush(contract); });
+        reviewState();
+        UUID id = service.open(client(), contract.getId(), reason).disputeId();
+        assertThat(disputes.findById(id).orElseThrow().getStatus()).isEqualTo(DisputeStatus.OPEN);
+        assertThat(contracts.findById(contract.getId()).orElseThrow().getStatus()).isEqualTo(ContractStatus.DISPUTED);
+        assertThat(milestones.findById(milestone.getId()).orElseThrow().getStatus()).isEqualTo(MilestoneStatus.DISPUTED);
+    }
+    @Test void avalancheRailStillRefusesAnUnfundedMilestone() {
+        tx.executeWithoutResult(s -> { funding.deleteAll(); contract = contracts.findById(contract.getId()).orElseThrow();
+            contract.setPaymentNetworkId("avalanche-local"); contracts.saveAndFlush(contract);
+            milestone = milestones.findById(milestone.getId()).orElseThrow();
+            milestone.setStatus(MilestoneStatus.DISPUTED); milestones.saveAndFlush(milestone); });
+        assertThatThrownBy(() -> service.open(client(), contract.getId(), reason)).isInstanceOf(ApplicationException.class);
+    }
+    @Test void otherRailsStillNeedTheFiatFundingRecord() {
+        tx.executeWithoutResult(s -> funding.deleteAll());
+        assertThatThrownBy(() -> service.open(client(), contract.getId(), reason)).isInstanceOf(ApplicationException.class);
+    }
     @Test void twoThousandCharacterDescriptionPersistsDisputeAndOpeningAudit() {
         String description = "d".repeat(2000);
         var result = service.open(freelancer(), contract.getId(),

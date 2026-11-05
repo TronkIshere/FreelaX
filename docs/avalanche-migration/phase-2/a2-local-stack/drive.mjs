@@ -4,7 +4,9 @@
 // pattern as the Phase 1 human-signed LOCAL validation). They are held in this process's memory, passed to `cast` in the
 // Anvil container, never written to disk, never logged and never placed in the evidence file. Fuji and Mainnet are refused.
 // Flows: (1) wallet link (A8) for both parties; (2) fund -> release with the users' own wallets, FINALIZED-only business
-// effects and settlement notifications; (3) a second contract funded and closed by a two-party wallet mutual refund (F13).
+// effects and settlement notifications; (3) a second contract funded and closed by a two-party wallet mutual refund (F13);
+// (4) R12: two more contracts, disputed on chain and settled by both parties' own signatures (RELEASE, then REFUND), with the
+// negative checks (no signature, one signature, non-party, wrong digest, forged signature, mutual refund while Disputed).
 import { execFileSync } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
@@ -255,7 +257,99 @@ async function main() {
   if (refundPayout !== 'REFUSED') throw new Error('a payout was accepted for a refunded escrow');
   record('no payout for a refunded escrow', { request: refundPayout });
 
+  // ---- flow 3 and 4: fund -> submit -> dispute -> two-party settlement of the Disputed escrow (R12, F14) --------------------
+  // Contract 3 settles RELEASE (negative checks first); contract 4 settles REFUND. The settlement needs BOTH parties' own wallet
+  // signatures over the same typed data; the arbiter (the gateway's ephemeral signer) takes no part.
+  const thirdParty = newWallet(); // throwaway key that is neither party (forged-signature check)
+  await settleDisputedEscrow(client, freelancer, clientWallet, freelancerWallet, thirdParty, config, true);
+  await settleDisputedEscrow(client, freelancer, clientWallet, freelancerWallet, thirdParty, config, false);
+
   evidence.result = 'PASS';
+}
+
+const refused = promise => promise.then(() => 'ACCEPTED', e => 'REFUSED: ' + String(e.message).slice(0, 160));
+
+async function settleDisputedEscrow(client, freelancer, clientWallet, freelancerWallet, thirdParty, config, release) {
+  const tag = release ? 'RELEASE' : 'REFUND';
+  const c = await newContract(client, freelancer, `A2 mutual settlement ${tag}`);
+  record(`R12 ${tag}: contract on the Avalanche rail`, c);
+  await call(GATEWAY, '/api/v1/avalanche/assets/faucet', { method: 'POST', internal: true, body: { address: clientWallet.address, amount: '5000000' } });
+  await walletAction(client, clientWallet, c.contractId, 'fund');
+  await awaitApplied(client, c.contractId, 'fund');
+  const job = await market(`/marketplace/jobs/${c.jobId}`, { token: freelancer.token });
+  const requirement = job.contract?.deliverables?.[0]?.id;
+  const submission = await market(`/contracts/${c.contractId}/submissions`, { method: 'POST', token: freelancer.token,
+    headers: { 'Idempotency-Key': 'a2-submit-' + randomUUID() },
+    body: { summary: 'A2 delivery (local simulation).', deliverables: [{ requirementId: requirement, url: 'https://example.test/a2-delivery', description: 'A2 artefact' }] } });
+  await walletAction(freelancer, freelancerWallet, c.contractId, 'submit', { submissionId: submission.id });
+  await awaitApplied(freelancer, c.contractId, 'submit');
+  record(`R12 ${tag}: funded and submitted on chain`, {});
+
+  const dispute = await market(`/contracts/${c.contractId}/disputes`, { method: 'POST', token: client.token,
+    body: { reasonCode: 'QUALITY', description: 'A2 LOCAL_SIMULATION dispute (no real funds).' } });
+  await walletAction(client, clientWallet, c.contractId, 'dispute', { disputeId: dispute.disputeId });
+  const disputed = await awaitApplied(client, c.contractId, 'dispute');
+  if (disputed.chainStatus !== 'DISPUTED') throw new Error('the escrow is not Disputed on chain: ' + disputed.chainStatus);
+  record(`R12 ${tag}: escrow Disputed on chain`, { disputeId: dispute.disputeId, chainStatus: disputed.chainStatus });
+
+  const settleInput = { disputeId: dispute.disputeId, releaseToFreelancer: release };
+  const prepare = (party, extra = {}) => market(`/contracts/${c.contractId}/avalanche/actions/mutual-settle/prepare`,
+    { method: 'POST', token: party.token, body: { idempotencyKey: randomUUID(), ...settleInput, ...extra } });
+  const sign = (wallet, prepared) => market(`/contracts/${c.contractId}/avalanche/mutual-settle/signatures`, { method: 'POST',
+    token: wallet === clientWallet ? client.token : freelancer.token,
+    body: { ...settleInput, authorizationDeadline: prepared.authorizationDeadline, typedDataDigest: prepared.typedDataDigest,
+      signature: cast(['wallet', 'sign', '--private-key', wallet.key, '--data', prepared.typedData]) } });
+
+  const negatives = {};
+  const first = await prepare(client);
+  if (first.transactions.length !== 0) throw new Error('a settlement transaction was prepared without any signature');
+  negatives.noSignatureNoTransaction = 'no transaction prepared';
+  negatives.nonParty = await refused(market(`/contracts/${c.contractId}/avalanche/mutual-settle/signatures`, { method: 'POST', token: (await user('CLIENT')).token,
+    body: { ...settleInput, authorizationDeadline: first.authorizationDeadline, typedDataDigest: first.typedDataDigest, signature: '0x' + '11'.repeat(65) } }));
+  if (!negatives.nonParty.startsWith('REFUSED')) throw new Error('a non-party stored a settlement signature');
+  negatives.wrongDigest = await refused(market(`/contracts/${c.contractId}/avalanche/mutual-settle/signatures`, { method: 'POST', token: client.token,
+    body: { ...settleInput, authorizationDeadline: first.authorizationDeadline, typedDataDigest: '0x' + '22'.repeat(32), signature: '0x' + '11'.repeat(65) } }));
+  if (!negatives.wrongDigest.startsWith('REFUSED')) throw new Error('a signature over other data was held');
+
+  await sign(clientWallet, first);
+  const oneSigned = await prepare(freelancer, { authorizationDeadline: first.authorizationDeadline });
+  if (oneSigned.transactions.length !== 0) throw new Error('a settlement was prepared with only one party signature');
+  negatives.oneSignatureOnly = 'no transaction prepared';
+  const mutualRefundWhileDisputed = await refused(walletAction(client, clientWallet, c.contractId, 'mutual-refund'));
+  negatives.mutualRefundWhileDisputed = mutualRefundWhileDisputed;
+  if (!mutualRefundWhileDisputed.startsWith('REFUSED')) throw new Error('mutual refund was possible while Disputed');
+
+  // a signature of a non-party, held as the freelancer's: the escrow contract must reject it
+  const forged = cast(['wallet', 'sign', '--private-key', thirdParty.key, '--data', first.typedData]);
+  await market(`/contracts/${c.contractId}/avalanche/mutual-settle/signatures`, { method: 'POST', token: freelancer.token,
+    body: { ...settleInput, authorizationDeadline: first.authorizationDeadline, typedDataDigest: first.typedDataDigest, signature: forged } });
+  negatives.forgedPartySignature = await refused(walletAction(freelancer, freelancerWallet, c.contractId, 'mutual-settle', settleInput));
+  if (!negatives.forgedPartySignature.startsWith('REFUSED')) throw new Error('the escrow accepted a settlement signed by a non-party');
+  const stillDisputed = await market(`/contracts/${c.contractId}/avalanche`, { token: client.token });
+  if (stillDisputed.chain?.status !== 'DISPUTED') throw new Error('the escrow left Disputed without a valid settlement: ' + stillDisputed.chain?.status);
+  record(`R12 ${tag}: negative checks before the settlement`, { negatives, chainStatusAfter: stillDisputed.chain.status });
+
+  // both parties sign the same typed data with their own wallets; the freelancer's genuine signature replaces the forged one
+  const genuine = await prepare(freelancer, { authorizationDeadline: first.authorizationDeadline });
+  if (genuine.typedDataDigest !== first.typedDataDigest) throw new Error('the second signer was shown different typed data');
+  const view = await sign(freelancerWallet, genuine);
+  record(`R12 ${tag}: both parties signed`, { mutualSettlements: view.mutualSettlements });
+  const txHash = await walletAction(freelancer, freelancerWallet, c.contractId, 'mutual-settle', settleInput);
+  const applied = await awaitApplied(freelancer, c.contractId, 'mutual-settle');
+  const after = await contractState(client, c.jobId);
+  const expected = release ? { contract: 'COMPLETED', milestone: 'RELEASED', chain: 'RELEASED' } : { contract: 'CANCELLED', milestone: 'REFUNDED', chain: 'REFUNDED' };
+  if (after.contract !== expected.contract || after.milestone !== expected.milestone || applied.chainStatus !== expected.chain) {
+    throw new Error(`R12 ${tag}: unexpected outcome ${JSON.stringify({ after, chain: applied.chainStatus })}`);
+  }
+  const resolved = await market(`/contracts/${c.contractId}/disputes`, { token: client.token });
+  const settledAgain = await refused(prepare(client, { authorizationDeadline: first.authorizationDeadline }));
+  const spent = await market(`/contracts/${c.contractId}/avalanche`, { token: client.token });
+  const clientBalance = await call(GATEWAY, `/api/v1/avalanche/assets/balance?address=${clientWallet.address}`);
+  const freelancerBalance = await call(GATEWAY, `/api/v1/avalanche/assets/balance?address=${freelancerWallet.address}`);
+  record(`R12 ${tag}: settlement finalized`, { txHash, states: applied.states, chainStatus: applied.chainStatus, ...after,
+    disputeStatus: resolved?.status ?? null, settleAgainWhenNotDisputed: settledAgain, heldSignaturesSpent: spent.mutualSettlements ?? null,
+    clientBalanceBaseUnits: clientBalance.balanceBaseUnits, freelancerBalanceBaseUnits: freelancerBalance.balanceBaseUnits });
+  if (!settledAgain.startsWith('REFUSED')) throw new Error('a second settlement could be prepared for a settled escrow');
 }
 
 main().catch(error => { evidence.result = 'FAIL'; evidence.error = redact(String(error.message ?? error)).slice(0, 800); process.exitCode = 1; })

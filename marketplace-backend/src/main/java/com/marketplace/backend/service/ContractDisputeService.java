@@ -74,17 +74,24 @@ public class ContractDisputeService {
         if (escrowContracts.existsByContractId(contractId)) {
             return openEscrow(actor, c, m, j, request, items);
         }
-        FundingTransaction f = funding.findFirstByMilestoneIdOrderByCreatedAtDesc(m.getId()).orElseThrow(this::ineligible);
-        if (f.getStatus() != FundingStatus.SUCCEEDED || f.getCheckoutOrderId() == null
-                || !Objects.equals(f.getContractId(), contractId) || !Objects.equals(f.getMilestoneId(), m.getId())
-                || !Objects.equals(f.getClientUserId(), c.getClientUserId())
-                || !Objects.equals(c.getClientUserId(), j.getClientUserId())
-                || !Objects.equals(c.getFreelancerId(), j.getFreelancerId())
-                || Objects.equals(c.getClientUserId(), c.getFreelancerId())
-                || !Objects.equals(f.getCheckoutOrderId(), j.getCheckoutOrderId())
-                || !same(f.getAmount(), m.getAmount()) || !same(c.getBudgetUsd(), m.getAmount())
-                || !same(j.getBudgetUsd(), m.getAmount()) || !Objects.equals(f.getCurrency(), m.getCurrency())
-                || !"USD".equals(m.getCurrency())) throw ineligible();
+        // Avalanche rail (A2 finding, 2026-11-05): funding is proven by the milestone itself, which AvalancheEscrowService moves
+        // to FUNDED only after a FINALIZED transaction and an agreeing chain read; there is no fiat FundingTransaction. The state
+        // checks below still apply. Legacy rails unchanged.
+        boolean avalancheRail = c.getPaymentNetworkId() != null
+                && c.getPaymentNetworkId().toLowerCase(Locale.ROOT).startsWith("avalanche");
+        if (!avalancheRail) {
+            FundingTransaction f = funding.findFirstByMilestoneIdOrderByCreatedAtDesc(m.getId()).orElseThrow(this::ineligible);
+            if (f.getStatus() != FundingStatus.SUCCEEDED || f.getCheckoutOrderId() == null
+                    || !Objects.equals(f.getContractId(), contractId) || !Objects.equals(f.getMilestoneId(), m.getId())
+                    || !Objects.equals(f.getClientUserId(), c.getClientUserId())
+                    || !Objects.equals(c.getClientUserId(), j.getClientUserId())
+                    || !Objects.equals(c.getFreelancerId(), j.getFreelancerId())
+                    || Objects.equals(c.getClientUserId(), c.getFreelancerId())
+                    || !Objects.equals(f.getCheckoutOrderId(), j.getCheckoutOrderId())
+                    || !same(f.getAmount(), m.getAmount()) || !same(c.getBudgetUsd(), m.getAmount())
+                    || !same(j.getBudgetUsd(), m.getAmount()) || !Objects.equals(f.getCurrency(), m.getCurrency())
+                    || !"USD".equals(m.getCurrency())) throw ineligible();
+        }
         JobSubmission latest = submissions.findFirstByContractIdOrderByVersionDesc(contractId).orElse(null);
         boolean beforeSubmission = c.getStatus() == ContractStatus.ACTIVE
                 && (m.getStatus() == MilestoneStatus.FUNDED || m.getStatus() == MilestoneStatus.IN_PROGRESS)

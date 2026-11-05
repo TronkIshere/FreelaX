@@ -21,6 +21,17 @@ random throwaway value created by `run.sh` for this run and discarded with the c
    the refunded contract 2); the freelancer's own wallet sends the released amount to the mock deposit address; the gateway
    proves the transfer (FINALIZED, exactly one matching `Transfer`); only then the mock reports a simulated fiat payout. The
    transfer hash cannot be reused. No custody: FreelaX never holds or sends the funds. See `phase-3/03-avalanche-payout-adapter.md`.
+5. **R12 two-party settlement of a Disputed escrow** (added 2026-11-05; evidence
+   `../evidence/LOCAL_SIMULATION-a2-local-stack-r12-20261105.json`, PASS, LOCAL-SIM only): two more contracts are funded, submitted
+   and disputed on chain (marketplace dispute record, then the party's own wallet `dispute` action; chain status DISPUTED). One is
+   settled RELEASE, the other REFUND, each with the two parties' own wallet signatures over the same typed data and no arbiter
+   involvement; business effect only after FINALIZED and an agreeing chain read (COMPLETED/RELEASED or CANCELLED/REFUNDED, dispute
+   RESOLVED_RELEASE or RESOLVED_REFUND, held signatures spent, a second settlement refused). Negative checks before the settlement,
+   each leaving the escrow Disputed: no signature gives no transaction; one signature gives no transaction; a non-party and a
+   digest that does not match are refused by the marketplace; a signature of a third key held as the freelancer's is rejected by the
+   escrow contract (the send is refused at gas estimation, so the revert reason is not in the evidence). The "mutual refund while
+   Disputed" check only shows that no transaction can be prepared without signatures; the contract-level refusal is covered by the
+   Foundry suite, not by this harness.
 
 ## Party wallets
 The two party wallets are throwaway keys created inside the Anvil container for one run (the same pattern as the Phase 1
@@ -43,7 +54,7 @@ docker run --rm --memory=2g -e MAVEN_OPTS=-Xmx768m -v "$PWD:/src" -v "$HOME/.m2:
 # 2. stack + drive + teardown (about 3 minutes; about 2.5 GB of memory)
 bash docs/avalanche-migration/phase-2/a2-local-stack/run.sh [evidence.json]
 ```
-`run.sh` always tears the stack down and restores a pre-existing `deployments/LOCAL_SIMULATION.json`.
+On Windows pass the evidence path as `D:/...`. `run.sh` always tears the stack down and restores a pre-existing `deployments/LOCAL_SIMULATION.json`.
 
 ## Findings of the first runs (2026-11-04)
 | Finding | Fix |
@@ -53,3 +64,11 @@ bash docs/avalanche-migration/phase-2/a2-local-stack/run.sh [evidence.json]
 | Freelancer registration requires tax and bank details | obviously fake demonstration values in the driver |
 | A failed `cast` command echoed its arguments, including a throwaway key, into the log | every error is redacted; the evidence guard checks the actual generated keys |
 | Harness path issues on Windows (Git Bash paths for Node) and manifest load order | fixed in `run.sh` |
+
+## Findings of the R12 run (2026-11-05, this machine)
+| Finding | Fix / classification |
+|---|---|
+| A dispute could not be recorded for an Avalanche-rail contract (`DISPUTE_INELIGIBLE`): `ContractDisputeService.open` required a fiat `FundingTransaction` or a Solana escrow record, so the wallet `dispute` action and therefore `mutual-settle` had no live path (unit tests had seeded the dispute) | **Code defect, fixed (additive, R11):** for a contract whose `paymentNetworkId` starts with `avalanche`, the fiat funding proof is skipped; funding is proven by the milestone state (set only after FINALIZED and an agreeing chain read) and the existing state checks still apply. Legacy rails unchanged. +3 unit tests |
+| The marketplace failed to start (`PayoutServiceImpl` found two `OnRampProvider` beans) | **Environment, not a defect:** a stale `MockOnRampProvider.class` (no source) remained in the ignored `marketplace-backend/target/classes`; a `clean package` removed it |
+| Stale gateway jar (1 Nov, before R12) | environment: rebuilt with `maven:3.9-eclipse-temurin-21` |
+| The evidence path must be given as `D:/...` (Git Bash `/d/...` is rewritten by Node on Windows) | usage note |
