@@ -382,6 +382,34 @@ counting artifact (Foundry reports the invariant contract as one test). No owner
 ## Change note (2026-11-02 documentation reconciliation)
 Updated: this file; `README.md`; `04-migration-roadmap.md`; `05-risk-register.md`; `06-implementation-backlog.md`; `phase-1/README.md`; `phase-2/README.md`, `01`, `02`, `03`, `05`, `06`, `08`, `09`. No source, configuration or migration file was modified; no owner decision was changed.
 
+## Final local completion (2026-11-05, fourth session): compose Avalanche, browser, outage, MySQL, LOW findings, Vietnamese vocabulary
+Instruction: reach the highest LOCAL end-to-end completion; no Fuji, no Mainnet, no push, no owner wallet or secrets. Everything below is **LOCAL-SIM**; nothing is Fuji evidence.
+
+### What was validated, and how (unit, integration, browser, full stack are kept apart)
+| Level | Result |
+|---|---|
+| **Full stack, Docker Compose images** ([evidence](phase-2/evidence/compose-avalanche-20261105/), [README](phase-2/evidence/compose-avalanche-README.md)) | One run on the final code, images built by compose, MySQL, Redis, Anvil, forge deployment, gateway, payment, MISA, Solana gateway, marketplace, Caddy frontend: `drive.json` PASS (45 steps), `browser.json` PASS (15 steps), `outage.json` PASS (O1 to O7b) |
+| Workflows validated end to end on that stack | registration and authentication; job and contract creation; wallet link; escrow funding; work submission; release; payout (local mock partner); refund through the mutual refund (F13); dispute opening; administrator decision; arbiter execution; R12 mutual settlement; notifications (settlement events inside the run); transaction list in the UI; failure and recovery cases. **Not covered:** a native Vietnamese review, MetaMask, Fuji |
+| Browser | Edge against the compose frontend image; wallet is a test double (no MetaMask): connect, unsupported chain, wrong network and recovery through the wallet switch, rejected signature and transaction, failed funding, invented hash, switched account (refused), locked wallet, funding to FINALIZED. The UI does not subscribe to wallet events; it re-queries the wallet at each action (verified, finding 17) |
+| Outage and recovery | O1 gateway stopped, O2 RPC paused, O3 Anvil restarted (state in a volume), O4 marketplace restarted, O5 MySQL stopped, O6 pending transaction, O7 reverted transaction and a successful retry. In every case nothing was applied early or twice and the system converged. How the API answers during an outage is HTTP 500 or a timeout (observed, not designed) |
+| MySQL integration tests | 6 run, 0 failed, 0 skipped on a throwaway MySQL 8.4 (V1 to V9 validated by Hibernate, uniqueness and concurrency rules). They do not drive escrow or dispute business flows; those ran on MySQL inside the compose and A2 runs |
+| Unit | reactor payment 72, **marketplace 456**, misa 20, solana-integration 10; gateway **122** run, 3 skipped; frontend **32 files, 883 tests**; Foundry 77 passed, 1 skipped (not re-run: no contract change) |
+
+### Defects found by this session and fixed
+1. **Gateway answered every request with HTTP 500 after an address lost its contract code** (empty `eth_call` result parsed as a number). Now `CHAIN_STATE_UNREADABLE` (502).
+2. **Compose Anvil could not persist its state** (unprivileged user, fresh volume), so a restart reset the chain. Runs as root now (local-only override file).
+3. **The wallet panel accepted any account** and sent a transaction the escrow would reject. Refused before anything is signed (`ACCOUNT_NOT_LINKED`).
+4. A party without an EVM wallet got a generic error: now `AVALANCHE_WALLET_NOT_LINKED` (security review finding 7). Keyless `execute` calls no longer share a count-based key (finding 8).
+5. Compose lacked `AVALANCHE_RPC_MIN_GAP_MS` and `AVALANCHE_RPC_TIMEOUT_MS` for the gateway (the 1 s default pacing slowed every local run); now passed, defaults unchanged.
+6. Vietnamese: **Client / Freelancer** replace "khách", "khách hàng", "người làm"; funding, release, refund, escrow and on-chain are written nạp tiền, giải ngân, hoàn tiền, ký quỹ, trên chuỗi in Vietnamese text, in the frontend and in the Java messages of marketplace, payment and MISA ([glossary](vi-glossary.md)).
+
+### Security findings status ([review](security-review-2026-11-05.md))
+Findings 7, 8, 14, 15, 16 fixed; finding 9 (gateway reads without a key) analysed and **deliberately not changed** (an authentication policy change; compensating control: all compose ports bind to 127.0.0.1, now checked); 10, 11, 12, 13, 17 informational. No CRITICAL finding. Not an audit.
+
+### What stays with the owner or a third party (not simulated)
+X2 on the owner's development database (and therefore C8); the owner's review and acceptance of E1 and confirmation of R4; `docker compose config` against the owner's own `.env`; MetaMask; a native Vietnamese review of the glossary and the changed screens;
+the Fuji escrow deployment and every Fuji validation (B2, B3, B4, X3: NOT APPLICABLE TO LOCAL-SIMULATION SCOPE and not validated); any real payout partner or MISA record for Avalanche payouts (out of scope); external audit and key ceremony (O-13, deferred).
+
 ## Local-first completion (2026-11-05, third session): closure of the external-pending items by LOCAL procedures
 **Instruction recorded as stated (the project lead, in session; whether the sender is the owner is not verified here, so R4 is also listed as pending owner confirmation in the requests page).**
 The remaining `EXTERNAL VALIDATION PENDING` items are to be closed through LOCAL_SIMULATION procedures; **no Fuji or Mainnet deployment is required for this completion milestone**; R4 is resolved
