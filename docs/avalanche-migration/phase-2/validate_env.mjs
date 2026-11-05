@@ -50,6 +50,11 @@ check('Avalanche defaults keep the rail off and Solana primary', exampleVars.get
   && exampleVars.get('MARKETPLACE_PRIMARY_RAIL') === 'SOLANA' && exampleVars.get('AVALANCHE_PAYOUT_PARTNER') === 'none' && exampleVars.get('AVALANCHE_SIGNERS_ENABLED') === 'false' && exampleVars.get('AVALANCHE_TX_ENABLED') === 'false');
 check('AVALANCHE_ENVIRONMENT has no default (the gateway refuses to start without an explicit value)', exampleVars.get('AVALANCHE_ENVIRONMENT') === '');
 
+// ---- published ports: every one must bind to the loopback interface (the gateway read endpoints need no key, security review finding 9)
+const portLines = [...compose.matchAll(/^\s+-\s+"([^"]+:\d+(?::\d+)?)"\s*$/gm)].map(m => m[1]);
+const nonLoopback = portLines.filter(l => !/^(127\.0\.0\.1:|\$\{[A-Z_]+:-127\.0\.0\.1:)/.test(l));
+check('every published compose port binds to 127.0.0.1 (or defaults to it)', portLines.length > 0 && nonLoopback.length === 0, nonLoopback.join(', ') || `${portLines.length} ports`);
+
 // ---- tracked example values: no secret, no Mainnet
 const suspicious = [];
 for (const [k, v] of exampleVars) {
