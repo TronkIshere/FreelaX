@@ -447,3 +447,14 @@ original reasoning. Do not add routine progress entries.
   run failed on a test bug (dispute opened before a submission; the contract refuses that), fixed in the test.
 - **Not done:** A2 single-stack harness not re-run with a settlement; no Fuji deployment (B2 blocked).
 
+### L-025: Avalanche payout fee and taxable income with the Solana-rail rules (2026-11-05)
+- **Authority:** owner decision 2026-11-05 (payout: mock partner only; fee and tax as on the Solana rail, labelled simulated).
+- **Action:** V9 (additive, nullable columns); `SolanaRailFeeTaxRules` restates the existing formulas with their sources;
+  `AvalanchePayoutService.request` records fee, rate, source, observation time, taxable income and the treatment label;
+  `PayoutView` exposes them (old rows: `NOT_DEFINED`); frontend payout section shows them as simulated figures.
+- **Engineering choices (reversible):** the contract budget (the escrowed amount) is the base for both figures (the Solana
+  rail uses the contract budget for the fee and the job budget for the taxable income; on the Avalanche rail both equal the
+  escrowed amount, checked at funding); no MISA submission for this rail (the Solana tax stage is coupled to
+  `ContractSettlement` and the off-ramp; wiring it would need a new stage, left NOT IMPLEMENTED).
+- **Tests:** payout unit tests +3; MySQL ITs V7+V8 with V9 **3/3**; legacy JDK 17 reactor **72 / 439 / 20 / 10, BUILD SUCCESS** (marketplace +3; a first run failed on a test fixture without a contract budget, fixed in the test); frontend 877 (+1).
+- **Status:** DONE locally. Not pushed.

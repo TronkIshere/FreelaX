@@ -109,13 +109,19 @@ export function AvalanchePayoutSection({ contractId, expectedChainId, simulated,
         <div><dt>Số tiền</dt><dd>{usdcFromBaseUnits(payout.amountBaseUnits) ?? '—'} {token}</dd></div>
         <div><dt>Địa chỉ nhận của đối tác</dt><dd><code>{shortHash(payout.depositAddress)}</code></dd></div>
         <div><dt>Phí do đối tác báo</dt><dd>{payout.partnerReportedFee ?? 'không có'}</dd></div>
+        {payout.platformFeeUsd != null && <div><dt>Phí nền tảng (mô phỏng, quy tắc rail Solana)</dt>
+          <dd data-testid="platform-fee">{payout.platformFeeUsd} USD</dd></div>}
+        {payout.taxableAmountVnd != null && <div><dt>Thu nhập chịu thuế (mô phỏng, quy tắc rail Solana)</dt>
+          <dd data-testid="taxable-vnd">{payout.taxableAmountVnd.toLocaleString('vi-VN')} VND (tỷ giá {payout.taxUsdToVndRate ?? '—'})</dd></div>}
         <div><dt>Xác nhận chuyển trên chuỗi</dt><dd data-testid="onchain-confirmed">{payout.onChainTransferConfirmed ? 'Đã xác nhận' : 'Chưa'}</dd></div>
         <div><dt>Xác nhận chi trả của đối tác</dt><dd data-testid="fiat-confirmed">{payout.fiatPayoutConfirmed ? 'Đã xác nhận' : 'Chưa'}</dd></div>
         {payout.transferTxHash && <div><dt>Giao dịch chuyển</dt><dd><code>{shortHash(payout.transferTxHash)}</code></dd></div>}
         {payout.failureReason && <div><dt>Mã lỗi</dt><dd>{payout.failureReason}</dd></div>}
       </dl>
       <small>{payout.partnerSimulated ? 'Đối tác mô phỏng: không có tiền thật được chi trả. ' : ''}
-        Xác nhận chuyển trên chuỗi không có nghĩa là đã chi trả. Thuế cho chi trả Avalanche chưa được xác định.</small>
+        Xác nhận chuyển trên chuỗi không có nghĩa là đã chi trả. {payout.taxTreatment === 'SOLANA_RAIL_RULES_SIMULATED'
+          ? 'Phí và thuế là số liệu mô phỏng theo quy tắc của rail Solana; chúng không trừ vào số tiền ví của bạn chuyển.'
+          : 'Thuế cho chi trả Avalanche chưa được xác định.'}</small>
       <ActionGroup>
         {payout.preparedTransfer && <button className="button" disabled={busy} onClick={() => void transfer()}>Chuyển {token} bằng ví</button>}
         {!payout.preparedTransfer && payout.status !== 'FIAT_PAYOUT_CONFIRMED' && payout.status !== 'FIAT_PAYOUT_FAILED'

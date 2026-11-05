@@ -81,3 +81,8 @@ gets `UNSUPPORTED_RAIL` / `CONTRACT_NOT_ON_AVALANCHE_RAIL` and the gateway is no
   from the released wallet only; shows both confirmations separately. Tests: `AvalanchePayoutSection.test.tsx`.
 - Live LOCAL run: A2 harness flow 1b (`phase-2/a2-local-stack`).
 Counts are recorded in the execution log (L-020).
+
+> **Dated note (2026-11-05):** the "Tax / MISA" line above is superseded for new payouts: by owner decision the adapter records
+> the platform fee and the taxable income with the existing Solana-rail rules, labelled `SOLANA_RAIL_RULES_SIMULATED` (V9,
+> `SolanaRailFeeTaxRules`). No withheld tax is computed and no MISA record is created for this rail. Payouts created before V9
+> keep `NOT_DEFINED`. A real partner is out of scope (simulation only).

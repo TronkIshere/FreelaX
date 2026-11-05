@@ -29,7 +29,10 @@ import java.util.regex.Pattern;
  * After an Avalanche escrow released to the freelancer, the USDC sits in the freelancer's OWN wallet. A payout is: the
  * partner (if it explicitly supports this chain and token) issues a deposit address; the freelancer's own wallet sends the
  * released amount there; the gateway proves the transfer from the receipt; then the partner reports the fiat payout.
- * FreelaX never holds funds, never signs for the user, computes no fee and no tax, and never routes to another chain.
+ * FreelaX never holds funds, never signs for the user and never routes to another chain. Fee and tax (owner decision
+ * 2026-11-05): the existing Solana-rail rules are applied unchanged as SIMULATED accounting figures ({@link SolanaRailFeeTaxRules});
+ * they never change the amount the freelancer's wallet transfers, and no withheld tax is computed (MISA reports it on the Solana
+ * rail; no MISA record is created for this rail).
  * The Solana settlement pipeline ({@code SettlementDownstreamService}) is not used or touched.
  */
 @Service
@@ -39,7 +42,7 @@ public class AvalanchePayoutService {
 
     static final String NOTICE = "Demonstration only: Testnet/simulated USDC with no real-world value. The on-chain transfer"
             + " confirmation and the partner's fiat payout confirmation are separate; neither implies the other.";
-    /** No tax rule exists for the Avalanche rail; none is invented here (D-B: tax for Avalanche needs an owner decision). */
+    /** Reported for payout rows created before V9, which carry no fee or tax figures. */
     static final String TAX_TREATMENT = "NOT_DEFINED";
     private static final Pattern TX_HASH = Pattern.compile("0x[0-9a-fA-F]{64}");
     private static final Pattern ADDRESS = Pattern.compile("0x[0-9a-fA-F]{40}");
@@ -53,6 +56,8 @@ public class AvalanchePayoutService {
     private final AvalancheGatewayProperties gatewayProperties;
     private final AvalanchePayoutProperties properties;
     private final AvalanchePayoutPartner partner;
+    /** Same provider the Solana rail uses for its tax rate (PayoutServiceImpl.createRecord). */
+    private final com.marketplace.backend.provider.currency.ExchangeRateProvider exchangeRates;
 
     public enum Outcome { CREATED, EXISTING, UNSUPPORTED_RAIL }
 
@@ -62,14 +67,17 @@ public class AvalanchePayoutService {
                              String transferTxHash, String transferChainState, String transferMatch,
                              boolean onChainTransferConfirmed, Instant transferConfirmedAt,
                              boolean fiatPayoutConfirmed, String fiatReference, Instant fiatConfirmedAt,
-                             String failureReason, String taxTreatment, String notice, PreparedTransfer preparedTransfer) {
+                             String failureReason, String taxTreatment, String notice, PreparedTransfer preparedTransfer,
+                             java.math.BigDecimal platformFeeUsd, java.math.BigDecimal taxUsdToVndRate,
+                             com.marketplace.backend.entity.ExchangeRateSource taxRateSource, java.math.BigDecimal taxableAmountVnd) {
         static PayoutView of(AvalanchePayoutRequest p) {
             return new PayoutView(p.getId(), p.getContractId(), p.getNetworkId(), p.getEnvironment(), p.getChainId(), p.getTokenAddress(),
                     p.getAmountBaseUnits(), p.getFromAddress(), p.getDepositAddress(), p.getPartnerId(), p.isPartnerSimulated(),
                     p.getPartnerReportedFee(), p.getPartnerReportedRate(), p.getStatus(), p.getTransferTxHash(),
                     p.getTransferChainState(), p.getTransferMatch(), p.getStatus().onChainTransferConfirmed(), p.getTransferConfirmedAt(),
                     p.getStatus() == AvalanchePayoutStatus.FIAT_PAYOUT_CONFIRMED, p.getFiatReference(), p.getFiatConfirmedAt(),
-                    p.getFailureReason(), TAX_TREATMENT, NOTICE, PreparedTransfer.of(p));
+                    p.getFailureReason(), p.getTaxTreatment() == null ? TAX_TREATMENT : p.getTaxTreatment(), NOTICE, PreparedTransfer.of(p),
+                    p.getPlatformFeeUsd(), p.getTaxUsdToVndRate(), p.getTaxRateSource(), p.getTaxableAmountVnd());
         }
     }
 
@@ -170,11 +178,30 @@ public class AvalanchePayoutService {
         p.setPartnerSimulated(partner.simulated());
         p.setPartnerReportedFee(order.partnerReportedFee());
         p.setPartnerReportedRate(order.partnerReportedRate());
+        applySolanaRailFeeAndTax(p, c);
         p.moveTo(AvalanchePayoutStatus.AWAITING_USER_TRANSFER);
         p.setCreatedAt(now);
         p.setUpdatedAt(now);
         payouts.save(p);
         return new RequestResult(Outcome.CREATED, null, PayoutView.of(p));
+    }
+
+    /**
+     * Owner decision 2026-11-05: the platform fee and the taxable income follow the existing Solana-rail rules, from the recorded
+     * contract budget (the escrowed amount) and the same USD/VND rate provider; labelled simulated. Nothing here moves funds.
+     */
+    private void applySolanaRailFeeAndTax(AvalanchePayoutRequest p, WorkContract c) {
+        if (c.getBudgetUsd() == null) {
+            throw new ApplicationException(ErrorCode.INVALID_DATA, "the contract has no recorded budget");
+        }
+        com.marketplace.backend.provider.currency.ExchangeRateResult rate = exchangeRates.getUsdToVndRate();
+        java.math.BigDecimal stored = SolanaRailFeeTaxRules.storedTaxRate(rate.rate());
+        p.setPlatformFeeUsd(SolanaRailFeeTaxRules.platformFeeUsd(c.getBudgetUsd()));
+        p.setTaxUsdToVndRate(stored);
+        p.setTaxRateSource(rate.source());
+        p.setTaxRateObservedAt(rate.fetchedAt());
+        p.setTaxableAmountVnd(SolanaRailFeeTaxRules.taxableAmountVnd(c.getBudgetUsd(), stored));
+        p.setTaxTreatment(SolanaRailFeeTaxRules.TREATMENT);
     }
 
     /** The freelancer reports the hash of the transfer their own wallet sent. Only recorded here; verified on refresh. */

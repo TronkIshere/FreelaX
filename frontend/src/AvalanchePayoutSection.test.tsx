@@ -100,6 +100,20 @@ describe('panel placement', () => {
   });
   const user = { id: 'u', displayName: 'U', email: 'u@example.test', userType: 'FREELANCER' as const };
 
+  it('shows the simulated Solana-rail fee and taxable income, and the old wording when none exists', async () => {
+    vi.spyOn(api, 'avalanchePayout').mockResolvedValue(payout({ taxTreatment: 'SOLANA_RAIL_RULES_SIMULATED',
+      platformFeeUsd: 0.15, taxUsdToVndRate: 25432.46, taxRateSource: 'LIVE_OPEN_ER_API', taxableAmountVnd: 127162 }));
+    await mount();
+    expect(host.querySelector('[data-testid="platform-fee"]')?.textContent).toBe('0.15 USD');
+    expect(host.querySelector('[data-testid="taxable-vnd"]')?.textContent).toContain('VND');
+    expect(host.textContent).toContain('không trừ vào số tiền ví của bạn chuyển');
+    act(() => root.unmount()); root = createRoot(host);
+    vi.spyOn(api, 'avalanchePayout').mockResolvedValue(payout());
+    await mount();
+    expect(host.querySelector('[data-testid="platform-fee"]')).toBeNull();
+    expect(host.textContent).toContain('Thuế cho chi trả Avalanche chưa được xác định');
+  });
+
   it('appears only for the freelancer of a released escrow', async () => {
     vi.spyOn(api, 'evmWalletCurrent').mockResolvedValue({ walletAddress: FROM });
     vi.spyOn(api, 'avalanchePayout').mockResolvedValue(null);

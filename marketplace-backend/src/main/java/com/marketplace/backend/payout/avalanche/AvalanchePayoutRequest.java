@@ -52,6 +52,20 @@ public class AvalanchePayoutRequest {
     private String partnerReportedFee;
     @Column(name = "partner_reported_rate", length = 40)
     private String partnerReportedRate;
+    /** V9 (owner decision 2026-11-05): simulated figures from the existing Solana-rail rules; null on rows created before V9. */
+    @Column(name = "platform_fee_usd", precision = 19, scale = 2)
+    private java.math.BigDecimal platformFeeUsd;
+    @Column(name = "tax_usd_to_vnd_rate", precision = 20, scale = 2)
+    private java.math.BigDecimal taxUsdToVndRate;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tax_rate_source", length = 32)
+    private com.marketplace.backend.entity.ExchangeRateSource taxRateSource;
+    @Column(name = "tax_rate_observed_at")
+    private Instant taxRateObservedAt;
+    @Column(name = "taxable_amount_vnd", precision = 20, scale = 0)
+    private java.math.BigDecimal taxableAmountVnd;
+    @Column(name = "tax_treatment", length = 40)
+    private String taxTreatment;
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 32)
     private AvalanchePayoutStatus status;

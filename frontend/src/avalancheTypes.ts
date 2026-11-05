@@ -93,6 +93,8 @@ export type AvalanchePayoutView = {
   onChainTransferConfirmed: boolean; transferConfirmedAt: string | null;
   fiatPayoutConfirmed: boolean; fiatReference: string | null; fiatConfirmedAt: string | null;
   failureReason: string | null; taxTreatment: string; notice: string;
+  /** Owner decision 2026-11-05: simulated figures from the existing Solana-rail rules (null on payouts created before V9). */
+  platformFeeUsd?: number | null; taxUsdToVndRate?: number | null; taxRateSource?: string | null; taxableAmountVnd?: number | null;
   /** Built by the backend; present only while a transfer is awaited. The UI sends it unchanged from the user's wallet. */
   preparedTransfer: { chainId: number; to: string; data: string; value: string } | null;
 };

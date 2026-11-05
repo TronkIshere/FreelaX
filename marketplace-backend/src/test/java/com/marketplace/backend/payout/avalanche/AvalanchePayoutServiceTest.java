@@ -60,6 +60,8 @@ class AvalanchePayoutServiceTest {
     private final EvmWalletRepository evmWallets = mock(EvmWalletRepository.class);
     private final AvalanchePayoutRequestRepository payouts = mock(AvalanchePayoutRequestRepository.class);
     private final AvalancheClient gateway = mock(AvalancheClient.class);
+    private final com.marketplace.backend.provider.currency.ExchangeRateProvider exchangeRates =
+            mock(com.marketplace.backend.provider.currency.ExchangeRateProvider.class);
     private final Map<UUID, AvalanchePayoutRequest> rows = new HashMap<>();
     private AvalancheGatewayProperties gatewayProperties;
     private AvalanchePayoutProperties properties;
@@ -81,6 +83,10 @@ class AvalanchePayoutServiceTest {
         contract.setClientUserId(UUID.randomUUID());
         contract.setFreelancerId(freelancer);
         contract.setPaymentNetworkId(NETWORK);
+        contract.setBudgetUsd(new java.math.BigDecimal("5.00"));
+        when(exchangeRates.getUsdToVndRate()).thenReturn(new com.marketplace.backend.provider.currency.ExchangeRateResult(
+                new java.math.BigDecimal("25432.456"), com.marketplace.backend.entity.ExchangeRateSource.LIVE_OPEN_ER_API,
+                Instant.parse("2026-11-05T00:00:00Z")));
         milestone = new Milestone();
         milestone.setId(UUID.randomUUID());
         milestone.setContractId(contract.getId());
@@ -106,7 +112,7 @@ class AvalanchePayoutServiceTest {
     }
 
     private AvalanchePayoutService service() {
-        return new AvalanchePayoutService(contracts, milestones, evmWallets, payouts, gateway, gatewayProperties, properties, partner);
+        return new AvalanchePayoutService(contracts, milestones, evmWallets, payouts, gateway, gatewayProperties, properties, partner, exchangeRates);
     }
 
     private static AvalancheResults.Config config(String environment, long chainId) {
@@ -205,6 +211,48 @@ class AvalanchePayoutServiceTest {
         verify(payouts, never()).save(any());
     }
 
+    // ---- fee and tax (owner decision 2026-11-05: existing Solana-rail rules, labelled simulated) ----------------------
+
+    @Test
+    void feeAndTaxFollowTheSolanaRailRulesAndNeverChangeTheTransferredAmount() {
+        AvalanchePayoutService.PayoutView v = service().request(freelancer, contract.getId()).payout();
+        assertEquals(new java.math.BigDecimal("0.15"), v.platformFeeUsd(), "3 % of the 5.00 budget, 2 decimals HALF_UP (PaymentFlowService)");
+        assertEquals(new java.math.BigDecimal("25432.46"), v.taxUsdToVndRate(), "rate stored with 2 decimals HALF_UP (PayoutServiceImpl)");
+        assertEquals(new java.math.BigDecimal("127162"), v.taxableAmountVnd(), "5.00 x 25432.46 = 127162.30, 0 decimals HALF_UP");
+        assertEquals(com.marketplace.backend.entity.ExchangeRateSource.LIVE_OPEN_ER_API, v.taxRateSource());
+        assertEquals("SOLANA_RAIL_RULES_SIMULATED", v.taxTreatment());
+        assertEquals(AMOUNT, v.amountBaseUnits(), "the fee is an accounting figure: the full released amount is transferred");
+        assertTrue(v.preparedTransfer().data().endsWith("4c4b40"), "transfer(deposit, 5000000)");
+    }
+
+    @Test
+    void theRulesMatchTheSolanaRailFormulasIncludingRounding() {
+        assertEquals(new java.math.BigDecimal("0.02"), SolanaRailFeeTaxRules.platformFeeUsd(new java.math.BigDecimal("0.50")), "0.015 rounds up");
+        assertEquals(new java.math.BigDecimal("30.00"), SolanaRailFeeTaxRules.platformFeeUsd(new java.math.BigDecimal("1000.00")));
+        assertEquals(new java.math.BigDecimal("25000.01"), SolanaRailFeeTaxRules.storedTaxRate(new java.math.BigDecimal("25000.005")));
+        assertEquals(new java.math.BigDecimal("12500"), SolanaRailFeeTaxRules.taxableAmountVnd(new java.math.BigDecimal("0.50"), new java.math.BigDecimal("25000.00")));
+        assertEquals(new java.math.BigDecimal("13"), SolanaRailFeeTaxRules.taxableAmountVnd(new java.math.BigDecimal("0.01"), new java.math.BigDecimal("1250.00")), "12.5 rounds up");
+    }
+
+    @Test
+    void aRowCreatedBeforeV9IsReportedWithoutFiguresAsNotDefined() {
+        AvalanchePayoutRequest old = new AvalanchePayoutRequest();
+        old.setId(UUID.randomUUID());
+        old.setContractId(contract.getId());
+        old.setNetworkId(NETWORK);
+        old.setEnvironment("LOCAL_SIMULATION");
+        old.setChainId(31337);
+        old.setTokenAddress(TOKEN);
+        old.setAmountBaseUnits(AMOUNT);
+        old.setFromAddress(WALLET);
+        old.setDepositAddress(DEPOSIT);
+        old.setStatus(AvalanchePayoutStatus.FIAT_PAYOUT_CONFIRMED);
+        AvalanchePayoutService.PayoutView v = AvalanchePayoutService.PayoutView.of(old);
+        assertEquals("NOT_DEFINED", v.taxTreatment());
+        assertNull(v.platformFeeUsd());
+        assertNull(v.taxableAmountVnd());
+    }
+
     // ---- the full flow and the two confirmations -------------------------------------------------------------------
 
     @Test
@@ -219,7 +267,7 @@ class AvalanchePayoutServiceTest {
         assertEquals(WALLET, v.fromAddress());
         assertTrue(v.partnerSimulated());
         assertNull(v.partnerReportedFee());
-        assertEquals("NOT_DEFINED", v.taxTreatment());
+        assertEquals("SOLANA_RAIL_RULES_SIMULATED", v.taxTreatment());
         assertTrue(v.notice().startsWith("Demonstration only"));
         assertEquals(EXISTING, svc.request(freelancer, contract.getId()).outcome(), "one payout per milestone");
         // the backend builds the exact transfer the freelancer's wallet sends: transfer(DEPOSIT, 5000000) on the token
@@ -299,6 +347,7 @@ class AvalanchePayoutServiceTest {
         other.setId(UUID.randomUUID());
         other.setFreelancerId(freelancer);
         other.setPaymentNetworkId(NETWORK);
+        other.setBudgetUsd(new java.math.BigDecimal("5.00"));
         Milestone m2 = new Milestone();
         m2.setId(UUID.randomUUID());
         when(contracts.findById(other.getId())).thenReturn(Optional.of(other));
