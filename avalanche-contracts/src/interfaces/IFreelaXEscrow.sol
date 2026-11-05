@@ -66,6 +66,9 @@ interface IFreelaXEscrow {
     event RevisionRequested(bytes32 indexed escrowId, bytes32 feedbackHash, uint8 revisionsUsed);
     event DisputeOpened(bytes32 indexed escrowId, address indexed by, bytes32 reasonHash);
     event DisputeResolved(bytes32 indexed escrowId, bool releasedToFreelancer, bytes32 resolutionHash);
+    /// Owner decision R12: emitted before the Released / Refunded event of a settlement signed by both parties. Distinct from
+    /// DisputeResolved so an indexer never mistakes a parties' settlement for an arbiter decision.
+    event DisputeSettledByParties(bytes32 indexed escrowId, bool releasedToFreelancer, bytes32 settlementHash);
     event Released(bytes32 indexed escrowId, address indexed to, uint256 amount, address indexed by);
     event Refunded(bytes32 indexed escrowId, address indexed to, uint256 amount, bool mutual);
     event DefaultArbiterChanged(address indexed previousArbiter, address indexed newArbiter);
@@ -98,5 +101,13 @@ interface IFreelaXEscrow {
     function release(bytes32 escrowId) external;
     function resolveDispute(bytes32 escrowId, bool releaseToFreelancer, bytes32 resolutionHash) external;
     function mutualRefund(bytes32 escrowId, uint64 deadline, bytes calldata clientSignature, bytes calldata freelancerSignature) external;
+    function mutualSettleDispute(
+        bytes32 escrowId,
+        bool releaseToFreelancer,
+        bytes32 settlementHash,
+        uint64 deadline,
+        bytes calldata clientSignature,
+        bytes calldata freelancerSignature
+    ) external;
     function getEscrow(bytes32 escrowId) external view returns (Escrow memory);
 }

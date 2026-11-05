@@ -88,8 +88,8 @@ Execution history and the resume point: [AUTONOMOUS_EXECUTION_LOG.md](AUTONOMOUS
   notifications (flag, default off), primary-rail policy for new contracts (default SOLANA), stuck-escrow reporting (P3-C4),
   scanner health (A6), CI workflow (not executed), drills. Payout: a non-custodial adapter is built (default off, LOCAL mock
   partner only); a real partner, platform fee and tax treatment stay owner/external; never add custody or a chain fallback.
-  F14/R12: the two-party settlement exists only as an isolated LOCAL variant (`phase-3/prototypes/escrow-mutual-settlement`);
-  adopting it conflicts with O-5 question 8 and needs an owner decision; the baseline contract stays unchanged. Not covered by the delegation:
+  F14/R12: **adopted 2026-11-05** (owner decision R12 option 1, O-5 question 8 amended for the two-party path): the escrow
+  in `avalanche-contracts/src` has `mutualSettleDispute`; any further contract change still needs its own owner decision. Not covered by the delegation:
   anything irreversible, custody-changing, Fuji signing, real financial settlement.
 - Naming trap: "Phase 3" in older documents (README D2, `04`, `07`, Phase 1 reports) means the Phase 0 roadmap's Solidity
   phase, executed inside P2-M5 to M7. The repository milestone names in [phase-2/README.md](phase-2/README.md) win over any
@@ -117,8 +117,8 @@ network, Mainnet endpoint or production-looking credential.
 - Every code change: run the affected module's suite and record counts (run / pass / skipped) in the log and in the
   relevant report. Report environment incompatibilities separately from code failures.
 - Baselines to keep green (2026-11-04, last measured): legacy JDK 17 reactor payment 72, marketplace 433, misa 20,
-  solana-integration 10; avalanche-integration 119 (3 optional skipped); Foundry 55 pass, 1 skipped; R12 lab 72; frontend 30
-  files, 873 tests; human-signed tooling 11; A2 harness PASS (with the payout flow). A drop is a regression unless
+  solana-integration 10; avalanche-integration 119 (3 optional skipped); Foundry 77 pass, 1 skipped (R12 adopted 2026-11-05); R12 lab 72; frontend 30
+  files, 876 tests; human-signed tooling 11; A2 harness PASS (with the payout flow). A drop is a regression unless
   explained. The opt-in MySQL ITs (`*MySqlIT`, `-Dfreelax.mysql.url`) run against a throwaway local MySQL only.
 - This machine (B10): JDK 25 only; Maven 3.10.0 in `~/.m2/wrapper/dists/apache-maven-3.10.0/*/bin` (not on `PATH`); JDK 23+
   needs `-Dmaven.compiler.proc=full` for `payment-backend`. Use pinned images for real runtimes: `maven:3.9-eclipse-temurin-17`
@@ -164,7 +164,7 @@ silently "fix" plan text that is historical: add a dated note instead.
 Owner: **R1/C1** Fuji human signing procedure and funding owner; **R2 remainder** DB operator identity; **R3** E4;
 **R4** E5/E6; **R5** E7; **R8 remainder** C3 treatment, C4, A5 placement;
 **R9** EVM wallet linking design (A8, A2); **R10** CI proposal (D1); C6/O-8, C7/O-13 DEFERRED; C8, C10, C11 OPEN;
-**R12** adoption of the mutual-settlement variant (O-5 question 8 conflict); payout fee/tax **decided 2026-11-05** (wiring not started).
+R12 **decided and implemented 2026-11-05**; payout fee/tax **decided 2026-11-05** (wiring not started).
 Operators / external: **X1** human-signed Fuji run (after R1); **X2** DB evidence, development database only (after the
 operator is named); **X3** funding and later human-signed escrow deployment; B7 browser wallet extension; B9 owner `.env`
 for `docker compose config`.

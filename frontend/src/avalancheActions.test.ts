@@ -58,7 +58,23 @@ describe('availableAvalancheActions (mirrors marketplace AvalancheEscrowService.
     const all = availableAvalancheActions({ ...base, isClient: true, isFreelancer: true, isArbiter: true,
       submissions: [{ id: 's', version: 1, status: 'SUBMITTED' }], dispute: { disputeId: 'd', status: 'OPEN', openedBy: 'u' } });
     for (const a of all) {
-      expect(Object.keys(a.input).every(k => k === 'submissionId' || k === 'disputeId')).toBe(true);
+      // releaseToFreelancer is the proposed outcome of a mutual settlement (R12), never an amount, party or signature
+      expect(Object.keys(a.input).every(k => k === 'submissionId' || k === 'disputeId' || k === 'releaseToFreelancer')).toBe(true);
+    }
+  });
+
+  it('R12: offers both settlement outcomes to each party while a recorded dispute is unresolved, never to others', () => {
+    const dispute = { disputeId: 'd', status: 'UNDER_REVIEW' as const, openedBy: 'x' };
+    for (const role of [{ isClient: true }, { isFreelancer: true }]) {
+      const settle = availableAvalancheActions({ ...base, ...role, dispute }).filter(a => a.action === 'mutual-settle');
+      expect(settle.map(a => [a.variant, a.input])).toEqual([
+        ['release', { disputeId: 'd', releaseToFreelancer: true }], ['refund', { disputeId: 'd', releaseToFreelancer: false }]]);
+      expect(settle.every(a => a.wallet)).toBe(true);
+    }
+    expect(offer({ isArbiter: true, dispute: { ...dispute, status: 'DECISION_PENDING_RELEASE' } }, 'mutual-settle')).toBeUndefined();
+    expect(offer({ isClient: true }, 'mutual-settle')).toBeUndefined();
+    for (const status of ['RESOLVED_RELEASE', 'RESOLVED_REFUND', 'CANCELLED'] as const) {
+      expect(offer({ isClient: true, dispute: { ...dispute, status } }, 'mutual-settle')).toBeUndefined();
     }
   });
 });

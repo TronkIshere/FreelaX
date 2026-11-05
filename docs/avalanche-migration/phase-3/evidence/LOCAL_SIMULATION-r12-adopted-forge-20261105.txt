@@ -1,0 +1,41 @@
+# LOCAL_SIMULATION: avalanche-contracts forge test after R12 adoption (Foundry 1.8.7 pinned image), 2026-11-05. Tail of the run.
+| EscrowHandler | warpPastDelivery | 338   | 0       | 0        |
+|---------------+------------------+-------+---------+----------|
+| EscrowHandler | warpPastReview   | 346   | 0       | 0        |
+╰---------------+------------------+-------+---------+----------╯
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 2.01s (2.00s CPU time)
+
+Ran 1 test for test/MutualSettlement.t.sol:MutualSettlementInvariantTest
+[PASS]
+MutualSettlementInvariantTest invariants:
+[PASS] invariant_accountingMatchesBalance
+[PASS] invariant_terminalStatesFinal
+[PASS] invariant_valueConserved
+ MutualSettlementInvariantTest invariants (runs: 64, calls: 4096, reverts: 0)
+
+╭-------------------+-------------------+-------+---------+----------╮
+| Contract          | Selector          | Calls | Reverts | Discards |
++====================================================================+
+| SettlementHandler | dispute           | 417   | 0       | 0        |
+|-------------------+-------------------+-------+---------+----------|
+| SettlementHandler | fund              | 474   | 0       | 0        |
+|-------------------+-------------------+-------+---------+----------|
+| SettlementHandler | fundSubmitDispute | 444   | 0       | 0        |
+|-------------------+-------------------+-------+---------+----------|
+| SettlementHandler | mutualRefund      | 462   | 0       | 0        |
+|-------------------+-------------------+-------+---------+----------|
+| SettlementHandler | release           | 457   | 0       | 0        |
+|-------------------+-------------------+-------+---------+----------|
+| SettlementHandler | resolve           | 461   | 0       | 0        |
+|-------------------+-------------------+-------+---------+----------|
+| SettlementHandler | settle            | 438   | 0       | 0        |
+|-------------------+-------------------+-------+---------+----------|
+| SettlementHandler | submit            | 465   | 0       | 0        |
+|-------------------+-------------------+-------+---------+----------|
+| SettlementHandler | warp              | 478   | 0       | 0        |
+╰-------------------+-------------------+-------+---------+----------╯
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 2.50s (2.50s CPU time)
+
+Ran 8 test suites in 2.52s (5.59s CPU time): 77 tests passed, 0 failed, 1 skipped (78 total tests)

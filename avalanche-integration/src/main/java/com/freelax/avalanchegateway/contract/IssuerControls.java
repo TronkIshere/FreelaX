@@ -69,16 +69,16 @@ public final class IssuerControls {
             return alerts;
         }
         if (paused.getAsBoolean()) {
-            alerts.add(new Alert("TOKEN_PAUSED", null, List.of("release", "resolve", "mutual-refund")));
+            alerts.add(new Alert("TOKEN_PAUSED", null, List.of("release", "resolve", "mutual-refund", "mutual-settle")));
         }
         if (blacklisted.test(escrowContract)) {
-            alerts.add(new Alert("ESCROW_BLACKLISTED", escrowContract.toLowerCase(), List.of("release", "resolve", "mutual-refund")));
+            alerts.add(new Alert("ESCROW_BLACKLISTED", escrowContract.toLowerCase(), List.of("release", "resolve", "mutual-refund", "mutual-settle")));
         }
         if (blacklisted.test(escrow.freelancer())) {
-            alerts.add(new Alert("FREELANCER_BLACKLISTED", escrow.freelancer().toLowerCase(), List.of("release", "resolve:release")));
+            alerts.add(new Alert("FREELANCER_BLACKLISTED", escrow.freelancer().toLowerCase(), List.of("release", "resolve:release", "mutual-settle:release")));
         }
         if (blacklisted.test(escrow.client())) {
-            alerts.add(new Alert("CLIENT_BLACKLISTED", escrow.client().toLowerCase(), List.of("mutual-refund", "resolve:refund")));
+            alerts.add(new Alert("CLIENT_BLACKLISTED", escrow.client().toLowerCase(), List.of("mutual-refund", "resolve:refund", "mutual-settle:refund")));
         }
         return alerts;
     }

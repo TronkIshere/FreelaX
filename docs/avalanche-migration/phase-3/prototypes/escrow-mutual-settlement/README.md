@@ -1,6 +1,9 @@
 # R12 / F14: mutual settlement of a Disputed escrow (LOCAL_SIMULATION-only contract variant)
 
-**Status: IMPLEMENTED AND TESTED AS AN ISOLATED VARIANT. NOT ADOPTED. The baseline escrow is unchanged.**
+**Status (2026-11-05): ADOPTED.** Owner decision R12 option (1): the addition below now lives in
+`avalanche-contracts/src/FreelaXEscrow.sol` and its tests in `avalanche-contracts/test/MutualSettlement.t.sol`. This folder is
+kept as the historical lab record. Original status: IMPLEMENTED AND TESTED AS AN ISOLATED VARIANT. NOT ADOPTED. The baseline
+escrow is unchanged.
 Engineering execution under the Lead's delegated authority (2026-11-04). No owner decision approves a contract change; R12 stays
 open for the owner. No script, no manifest, no Fuji profile: this folder cannot deploy anything.
 

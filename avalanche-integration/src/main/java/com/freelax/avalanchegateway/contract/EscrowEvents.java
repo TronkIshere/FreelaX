@@ -21,6 +21,7 @@ public final class EscrowEvents {
             "RevisionRequested(bytes32,bytes32,uint8)",
             "DisputeOpened(bytes32,address,bytes32)",
             "DisputeResolved(bytes32,bool,bytes32)",
+            "DisputeSettledByParties(bytes32,bool,bytes32)",
             "Released(bytes32,address,uint256,address)",
             "Refunded(bytes32,address,uint256,bool)");
 
@@ -79,6 +80,10 @@ public final class EscrowEvents {
             case "DisputeResolved" -> {
                 f.put("releasedToFreelancer", number(data, 0).signum() != 0);
                 f.put("resolutionHash", "0x" + word(data, 1));
+            }
+            case "DisputeSettledByParties" -> { // R12: both parties settled a Disputed escrow (never an arbiter decision)
+                f.put("releasedToFreelancer", number(data, 0).signum() != 0);
+                f.put("settlementHash", "0x" + word(data, 1));
             }
             case "Released" -> {
                 f.put("to", address(topics.get(2)));

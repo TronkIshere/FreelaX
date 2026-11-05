@@ -244,6 +244,25 @@ public class EscrowActionService {
                 return response(action, id, List.of(tx("mutualRefund", escrow, EscrowCalls.mutualRefund(id, deadline,
                         Numeric.hexStringToByteArray(r.clientSignature()), Numeric.hexStringToByteArray(r.freelancerSignature())))), deadline, typed, digest);
             }
+            case "mutual-settle" -> {
+                // R12 (owner decision 2026-11-05): both parties settle a Disputed escrow. Same two-signature flow as F13: the
+                // first prepare chooses the deadline, later calls pass it back. resolutionHash carries the settlement record hash.
+                boolean toFreelancer = required(r.releaseToFreelancer(), "releaseToFreelancer");
+                String settlement = hash(r.resolutionHash(), "resolutionHash");
+                EscrowState s = reader().read(id);
+                requireExists(s);
+                if (s.status() != 4) {
+                    throw new ApiException(409, "ESCROW_NOT_DISPUTED", "a mutual settlement needs a Disputed escrow; it is " + s.statusName());
+                }
+                long deadline = mutualRefundDeadline(r);
+                String typed = authorizations().mutualSettlementTypedData(id, toFreelancer, s.amount(), settlement, s.disputedAt(), s.authNonce(), deadline);
+                String digest = Numeric.toHexString(EscrowAuthorizations.digest(typed));
+                if (r.clientSignature() == null || r.freelancerSignature() == null) {
+                    return response(action, id, List.of(), deadline, typed, digest);
+                }
+                return response(action, id, List.of(tx("mutualSettleDispute", escrow, EscrowCalls.mutualSettleDispute(id, toFreelancer, settlement, deadline,
+                        Numeric.hexStringToByteArray(r.clientSignature()), Numeric.hexStringToByteArray(r.freelancerSignature())))), deadline, typed, digest);
+            }
             default -> throw new ApiException(400, "UNKNOWN_ACTION", "unknown action " + action);
         }
     }
@@ -285,6 +304,14 @@ public class EscrowActionService {
             String data = EscrowCalls.mutualRefund(id, deadline, Numeric.hexStringToByteArray(buyer.toHex()), Numeric.hexStringToByteArray(freelancer.toHex()));
             return submission.submit(new SubmitRequest(operationKey, SignerRole.RELAYER, escrow, data, 500_000));
         }
+        if (action.equals("mutual-settle") && (r.clientSignature() == null || r.freelancerSignature() == null)) {
+            PreparedActionResponse unsigned = prepare(id, action, r);
+            Signature buyer = EscrowAuthorizations.sign(registry.get(SignerRole.TEST_BUYER), unsigned.typedData());
+            Signature freelancer = EscrowAuthorizations.sign(registry.get(SignerRole.TEST_FREELANCER), unsigned.typedData());
+            String data = EscrowCalls.mutualSettleDispute(id, r.releaseToFreelancer(), r.resolutionHash().toLowerCase(Locale.ROOT), unsigned.authorizationDeadline(),
+                    Numeric.hexStringToByteArray(buyer.toHex()), Numeric.hexStringToByteArray(freelancer.toHex()));
+            return submission.submit(new SubmitRequest(operationKey, SignerRole.RELAYER, escrow, data, 500_000));
+        }
         PreparedActionResponse prepared = prepare(id, action, r);
         SignerRole role = roleFor(action, r.by());
         if (action.equals("fund")) {
@@ -304,7 +331,7 @@ public class EscrowActionService {
             case "dispute" -> freelancer ? SignerRole.TEST_FREELANCER : SignerRole.TEST_BUYER;
             case "release" -> client ? SignerRole.TEST_BUYER : SignerRole.RELAYER;
             case "resolve" -> SignerRole.ARBITER;
-            case "mutual-refund" -> SignerRole.RELAYER;
+            case "mutual-refund", "mutual-settle" -> SignerRole.RELAYER;
             default -> throw new ApiException(400, "UNKNOWN_ACTION", "unknown action " + action);
         };
     }

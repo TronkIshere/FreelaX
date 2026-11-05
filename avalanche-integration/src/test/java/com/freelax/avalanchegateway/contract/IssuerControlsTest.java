@@ -34,8 +34,8 @@ class IssuerControlsTest {
         Set<String> listed = Set.of(ESCROW, FREELANCER, CLIENT);
         List<IssuerControls.Alert> all = IssuerControls.assess(escrow(2), ESCROW, listed::contains, () -> true);
         assertEquals(List.of("TOKEN_PAUSED", "ESCROW_BLACKLISTED", "FREELANCER_BLACKLISTED", "CLIENT_BLACKLISTED"), codes(all));
-        assertEquals(List.of("release", "resolve:release"), all.get(2).blocks(), "a blacklisted freelancer blocks the payout only");
-        assertEquals(List.of("mutual-refund", "resolve:refund"), all.get(3).blocks(), "a blacklisted client blocks the refund only");
+        assertEquals(List.of("release", "resolve:release", "mutual-settle:release"), all.get(2).blocks(), "a blacklisted freelancer blocks the payout only");
+        assertEquals(List.of("mutual-refund", "resolve:refund", "mutual-settle:refund"), all.get(3).blocks(), "a blacklisted client blocks the refund only");
         assertEquals(FREELANCER, all.get(2).address());
     }
 

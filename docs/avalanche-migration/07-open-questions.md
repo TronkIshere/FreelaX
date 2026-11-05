@@ -105,3 +105,8 @@ Still **UNRESOLVED (technical, blocked)**: own-transaction timings on Fuji, repl
 - **OWNER-DECIDED:** Java 21 baseline for the Avalanche integration; web3j 6.1.0; production KMS integration deferred, ephemeral development signers (isolated by role and environment) for LOCAL_SIMULATION and AVALANCHE_FUJI. These close the earlier open items "Java 17 vs 21", "web3j version" and "KMS vendor / deferral".
 - Not authorization to change production dependencies: the Jackson override (`jackson-annotations:2.22`, or BOM 2.22.4) is validated in a prototype only and must be re-validated in the actual FreelaX context.
 - **Still OPEN:** final Fuji RPC provider; external audit and key ceremony scope; meaning of "primary chain"; escrow questions 1-18; whether and how legacy payment rails retire (needs DB evidence). **Still BLOCKED:** funded Fuji wallet experiments; database evidence.
+
+> **Dated note (2026-11-05):** question 8 is **amended** by owner decision R12 (option 1): `mutualRefund` stays unavailable
+> once Disputed, but a Disputed escrow may now be settled by a settlement signed by **both** the client and the freelancer
+> (`mutualSettleDispute`, full amount to one side). See PROJECT_STATUS "Owner decisions (2026-11-05)". The question text above
+> is historical.

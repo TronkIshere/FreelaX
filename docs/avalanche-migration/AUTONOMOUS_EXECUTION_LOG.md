@@ -423,3 +423,27 @@ original reasoning. Do not add routine progress entries.
   (`phase-1/evidence/live/LOCAL_SIMULATION-human-signed-chain31337-20261105T035109Z.json`); E2 dry run on marketplace V1 to V8
   and payment migrations: six queries ran, writes refused (`phase-1/evidence/db-validation/...-20261105.txt`; not evidence).
 - **Status:** DONE locally. E1/E2 stay BLOCKED on X1/X2 (owner). No Fuji request was made.
+
+### L-024: R12 adopted: two-party settlement of a Disputed escrow in the baseline contract (2026-11-05)
+- **Authority:** owner decision R12 option (1), 2026-11-05 (O-5 question 8 amended for this path; new contract version under
+  O-2; no deployment of the previous version exists). Owner said "làm thôi nào".
+- **Contract:** `mutualSettleDispute`, `mutualSettlementDigest`, `MUTUAL_SETTLEMENT_TYPEHASH` copied from the lab into
+  `avalanche-contracts/src/FreelaXEscrow.sol`; `DisputeSettledByParties` and the function added to `IFreelaXEscrow`; EIP-712
+  domain unchanged (`FreelaXEscrow` / `1`); lab tests moved to `avalanche-contracts/test/MutualSettlement.t.sol`; ABI and test
+  bytecode re-exported with `scripts/export-artifacts.sh` (MockUSDC metadata-only churn reverted).
+- **Gateway (Java 21):** event signature and decoding, calldata, typed data, `mutual-settle` action (prepare: two-signature
+  flow as F13, 409 `ESCROW_NOT_DISPUTED`; LOCAL execute signs with the development buyer and freelancer wallets),
+  issuer-control alerts list `mutual-settle`.
+- **Marketplace (Java 17, additive):** `mutual-settle` action; engineering decisions (reversible): settlement hash derived as
+  `sha256("avalanche-settlement:" + disputeId + ":" + RELEASE|REFUND)`; requires a recorded dispute in OPEN, UNDER_REVIEW or
+  DECISION_PENDING_*; proposals held per outcome in the V7 table under `mutual-settle:release` / `mutual-settle:refund` (no
+  schema change); `POST /contracts/{id}/avalanche/mutual-settle/signatures`; FINALIZED effect follows the chain outcome and
+  marks the dispute RESOLVED_RELEASE / RESOLVED_REFUND. `ContractView.mutualSettlements` added (old constructors kept).
+- **Frontend:** both outcomes offered to each party while the chain status is DISPUTED; wallet two-signature flow; simulated
+  accounts in LOCAL only.
+- **Tests:** Foundry **77 pass, 1 skipped** (was 55/1); gateway JDK 21 **119 run, 0 failed, 3 skipped** (new assertions inside
+  existing tests: digest parity, Anvil settlement with swapped-signature revert, scanned event, API flow); legacy JDK 17 reactor
+  **72 / 436 / 20 / 10, BUILD SUCCESS** (marketplace +3); frontend **30 files, 876 tests** (+3); `tsc -b` clean. First gateway
+  run failed on a test bug (dispute opened before a submission; the contract refuses that), fixed in the test.
+- **Not done:** A2 single-stack harness not re-run with a settlement; no Fuji deployment (B2 blocked).
+

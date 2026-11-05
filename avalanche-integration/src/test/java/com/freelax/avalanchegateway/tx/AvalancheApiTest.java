@@ -309,6 +309,20 @@ class AvalancheApiTest {
         execute(four, "mutual-refund", both + ",\"authorizationDeadline\":" + deadline);
         assertEquals("REFUNDED", status(four));
 
+        // 4b-2. R12 mutual settlement of a Disputed escrow: refused before the dispute, then both development wallets sign
+        String settled = newEscrowId();
+        execute(settled, "fund", fundFields(15_000_000L));
+        String settleFields = "\"releaseToFreelancer\":true,\"resolutionHash\":\"" + Hash.sha3String("settled") + "\"";
+        String prepareSettled = "/api/v1/avalanche/escrows/" + settled + "/actions/mutual-settle/prepare";
+        assertEquals("ESCROW_NOT_DISPUTED", exchange(rest, HttpMethod.POST, prepareSettled, KEY, "{" + settleFields + "}", 409).get("code"));
+        execute(settled, "submit", ",\"evidenceHash\":\"" + Hash.sha3String("w-settle") + "\"");
+        execute(settled, "dispute", ",\"by\":\"client\",\"reasonHash\":\"" + Hash.sha3String("late") + "\"");
+        Map<String, Object> settle = post(prepareSettled, "{" + settleFields + "}");
+        assertTrue(((String) settle.get("typedData")).contains("\"primaryType\":\"MutualSettlement\""));
+        assertTrue(((List<?>) settle.get("transactions")).isEmpty(), "no calldata until both signatures exist");
+        execute(settled, "mutual-settle", "," + settleFields);
+        assertEquals("RELEASED", status(settled));
+
         // 4c. wallet linking (A8): EIP-191 personal_sign verification endpoint
         org.web3j.crypto.ECKeyPair linkKey = org.web3j.crypto.Keys.createEcKeyPair();
         String linkAddress = "0x" + org.web3j.crypto.Keys.getAddress(linkKey);

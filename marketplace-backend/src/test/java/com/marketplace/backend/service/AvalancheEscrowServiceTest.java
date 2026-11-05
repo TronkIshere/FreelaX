@@ -816,4 +816,90 @@ class AvalancheEscrowServiceTest {
         contract.setPaymentNetworkId(null);
         assertFalse(service.status(clientId, false, contract.getId()).avalancheEnabled());
     }
+
+    // ---- R12 mutual settlement of a Disputed escrow (owner decision 2026-11-05) ---------------------------------------
+
+    private AvalancheEscrowService.Input settle(UUID disputeId, Boolean release, Long deadline) {
+        return new AvalancheEscrowService.Input(null, null, disputeId, null, null, null, null, deadline, release);
+    }
+
+    @Test
+    void mutualSettleNeedsAPartyARecordedUnresolvedDisputeAndAnOutcome() throws Exception {
+        ContractDispute d = dispute(clientId, DisputeStatus.UNDER_REVIEW);
+        Map<String, Object> p = service.authorize(freelancerId, false, contract, "mutual-settle", settle(d.getId(), true, null));
+        assertEquals(true, p.get("releaseToFreelancer"));
+        assertEquals(sha("avalanche-settlement:" + d.getId() + ":RELEASE"), p.get("resolutionHash"), "the settlement record is derived, never supplied");
+        assertEquals(sha("avalanche-settlement:" + d.getId() + ":REFUND"),
+                service.authorize(clientId, false, contract, "mutual-settle", settle(d.getId(), false, null)).get("resolutionHash"));
+        assertRefused(() -> service.authorize(strangerId, false, contract, "mutual-settle", settle(d.getId(), true, null)));
+        assertRefused(() -> service.authorize(strangerId, true, contract, "mutual-settle", settle(d.getId(), true, null)));
+        assertRefused(() -> service.authorize(clientId, false, contract, "mutual-settle", settle(d.getId(), null, null)));
+        assertRefused(() -> service.authorize(clientId, false, contract, "mutual-settle", settle(null, true, null)));
+        for (DisputeStatus closed : List.of(DisputeStatus.RESOLVED_RELEASE, DisputeStatus.RESOLVED_REFUND, DisputeStatus.CANCELLED)) {
+            d.setStatus(closed);
+            assertRefused(() -> service.authorize(clientId, false, contract, "mutual-settle", settle(d.getId(), true, null)));
+        }
+    }
+
+    @Test
+    void settlementSignaturesArePairedPerOutcomeAndOnlyACompletePairIsSent() {
+        ContractDispute d = dispute(clientId, DisputeStatus.OPEN);
+        long deadline = Instant.now().getEpochSecond() + 300;
+        gatewayExpects(DIGEST);
+        when(gateway.escrowSnapshot(any())).thenReturn(null);
+        AvalancheEscrowService.ContractView v = service.submitMutualSettlementSignature(clientId, contract.getId(), d.getId(), true, deadline, DIGEST, CLIENT_SIG);
+        assertEquals(1, v.mutualSettlements().size());
+        assertTrue(v.mutualSettlements().get(0).releaseToFreelancer());
+        assertTrue(v.mutualSettlements().get(0).clientSigned());
+        assertFalse(v.mutualSettlements().get(0).freelancerSigned());
+        assertNull(v.mutualRefund(), "a settlement proposal is not a mutual refund");
+        assertFalse(service.authorize(clientId, false, contract, "mutual-settle", settle(d.getId(), true, null)).containsKey("clientSignature"),
+                "one signature is never sent");
+
+        String refundDigest = "0x" + "d3".repeat(32);
+        gatewayExpects(refundDigest);
+        v = service.submitMutualSettlementSignature(freelancerId, contract.getId(), d.getId(), false, deadline, refundDigest, FREELANCER_SIG);
+        assertEquals(2, v.mutualSettlements().size(), "a different outcome is a separate proposal, never combined");
+
+        gatewayExpects(DIGEST);
+        service.submitMutualSettlementSignature(freelancerId, contract.getId(), d.getId(), true, deadline, DIGEST, FREELANCER_SIG);
+        Map<String, Object> both = service.authorize(clientId, false, contract, "mutual-settle", settle(d.getId(), true, null));
+        assertEquals(CLIENT_SIG, both.get("clientSignature"));
+        assertEquals(FREELANCER_SIG, both.get("freelancerSignature"));
+        assertEquals(deadline, both.get("authorizationDeadline"));
+        assertFalse(service.authorize(clientId, false, contract, "mutual-settle", settle(d.getId(), false, null)).containsKey("clientSignature"),
+                "the refund proposal has only the freelancer's signature");
+
+        assertRefused(() -> service.submitMutualSettlementSignature(strangerId, contract.getId(), d.getId(), true, deadline, DIGEST, CLIENT_SIG));
+        assertRefused(() -> service.submitMutualSettlementSignature(clientId, contract.getId(), d.getId(), true, deadline, "0x" + "ee".repeat(32), CLIENT_SIG));
+    }
+
+    @Test
+    void aFinalizedSettlementFollowsTheChainResolvesTheDisputeAndSpendsTheProposals() {
+        ContractDispute d = dispute(clientId, DisputeStatus.UNDER_REVIEW);
+        when(disputes.findFirstByContractIdAndStatusInOrderByCreatedAtDesc(any(), any())).thenReturn(Optional.of(d));
+        for (String key : List.of("mutual-settle:release", "mutual-settle:refund")) {
+            com.marketplace.backend.entity.AvalanchePendingAuthorization a = new com.marketplace.backend.entity.AvalanchePendingAuthorization();
+            a.setContractId(contract.getId());
+            a.setAction(key);
+            a.setAuthorizationDeadline(Instant.now().getEpochSecond() + 300);
+            a.setTypedDataDigest(DIGEST);
+            pendingRows.add(a);
+        }
+        contract.setStatus(ContractStatus.ACTIVE);
+        milestone.setStatus(MilestoneStatus.SUBMITTED);
+        AvalancheChainTransaction r = row("mutual-settle", TransactionStatus.FINALIZED);
+        when(gateway.escrowSnapshot(any())).thenReturn(snapshot(NeutralEscrowStatus.DISPUTED, "5000000", CLIENT_WALLET));
+        service.refresh(clientId, false, contract.getId());
+        assertEquals("CHAIN_MISMATCH", r.getErrorClass(), "nothing is applied while the chain still shows Disputed");
+        assertEquals(DisputeStatus.UNDER_REVIEW, d.getStatus());
+
+        when(gateway.escrowSnapshot(any())).thenReturn(snapshot(NeutralEscrowStatus.RELEASED, "5000000", CLIENT_WALLET));
+        AvalancheEscrowService.ContractView v = service.refresh(clientId, false, contract.getId());
+        assertEquals(MilestoneStatus.RELEASED, milestone.getStatus());
+        assertEquals(ContractStatus.COMPLETED, contract.getStatus());
+        assertEquals(DisputeStatus.RESOLVED_RELEASE, d.getStatus());
+        assertTrue(pendingRows.isEmpty());
+        assertTrue(v.mutualSettlements().isEmpty());
+    }
 }

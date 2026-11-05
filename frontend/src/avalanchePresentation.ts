@@ -95,7 +95,14 @@ export const ACTION_TEXT: Record<string, string> = {
   fund: 'Nạp tiền ký quỹ', submit: 'Ghi nhận bàn giao', revise: 'Yêu cầu chỉnh sửa',
   'extension-request': 'Xin gia hạn', 'extension-approve': 'Chấp thuận gia hạn', dispute: 'Mở tranh chấp',
   release: 'Giải ngân', resolve: 'Thực thi quyết định tranh chấp', 'mutual-refund': 'Hoàn tiền thỏa thuận',
+  'mutual-settle': 'Tất toán tranh chấp theo thỏa thuận',
 };
+
+/** Label of an offer, including the outcome of a mutual settlement. */
+export function offerText(action: string, variant?: string): string {
+  if (action === 'mutual-settle') return actionText(action) + (variant === 'refund' ? ' (hoàn cho Client)' : ' (giải ngân cho Freelancer)');
+  return actionText(action);
+}
 
 export function actionText(action: string): string {
   return ACTION_TEXT[action] ?? action;

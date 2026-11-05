@@ -51,7 +51,11 @@ export type AvalancheContractView = {
   mutualRefund?: AvalancheMutualRefundState | null;
   /** P3-C4: token issuer controls (blacklist, pause) blocking this escrow; stuck and reported, never bypassed (O-6). */
   issuerAlerts?: AvalancheIssuerAlert[] | null;
+  /** R12: mutual-settlement proposals for a Disputed escrow, one per outcome, with which party has signed. */
+  mutualSettlements?: AvalancheMutualSettlementState[] | null;
 };
+
+export type AvalancheMutualSettlementState = AvalancheMutualRefundState & { releaseToFreelancer: boolean };
 
 export type AvalancheIssuerAlert = { code: string; address: string | null; blocks: string[] };
 
@@ -73,6 +77,8 @@ export type AvalancheActionInput = {
   clientSignature?: string;
   freelancerSignature?: string;
   authorizationDeadline?: number;
+  /** R12 mutual settlement: the outcome both parties sign (true = release to the freelancer, false = refund to the client). */
+  releaseToFreelancer?: boolean;
 };
 
 /** Phase 3 non-custodial payout (Avalanche rail). On-chain transfer and fiat payout confirmations are separate fields. */

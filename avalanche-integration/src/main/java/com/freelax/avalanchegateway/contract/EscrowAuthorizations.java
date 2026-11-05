@@ -60,6 +60,21 @@ public final class EscrowAuthorizations {
         return typedData("MutualRefund", type, message);
     }
 
+    /**
+     * R12: typed data both parties sign to settle a Disputed escrow. It binds the outcome, the full amount, the settlement
+     * record hash and the dispute being settled ({@code disputedAt}), so a pair signed for another dispute or amount is invalid.
+     */
+    public String mutualSettlementTypedData(String escrowId, boolean releaseToFreelancer, java.math.BigInteger amount, String settlementHash,
+                                            long disputedAt, long nonce, long deadline) {
+        String type = "\"MutualSettlement\":[{\"name\":\"escrowId\",\"type\":\"bytes32\"},{\"name\":\"releaseToFreelancer\",\"type\":\"bool\"},"
+                + "{\"name\":\"amount\",\"type\":\"uint256\"},{\"name\":\"settlementHash\",\"type\":\"bytes32\"},"
+                + "{\"name\":\"disputedAt\",\"type\":\"uint64\"},{\"name\":\"nonce\",\"type\":\"uint64\"},{\"name\":\"deadline\",\"type\":\"uint64\"}]";
+        String message = "{\"escrowId\":\"" + escrowId + "\",\"releaseToFreelancer\":" + releaseToFreelancer + ",\"amount\":\"" + amount
+                + "\",\"settlementHash\":\"" + settlementHash + "\",\"disputedAt\":" + disputedAt + ",\"nonce\":" + nonce
+                + ",\"deadline\":" + deadline + "}";
+        return typedData("MutualSettlement", type, message);
+    }
+
     public static byte[] digest(String typedDataJson) {
         return Eip712Digest.hash(typedDataJson);
     }

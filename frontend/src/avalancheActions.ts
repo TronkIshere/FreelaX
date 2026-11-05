@@ -26,6 +26,8 @@ export type AvalancheActionOffer = {
   needsDate?: boolean;
   /** Shown instead of a wallet button when the wallet path is not available. */
   walletUnavailableReason?: string;
+  /** Distinguishes two offers of the same action (the two outcomes of a mutual settlement). */
+  variant?: string;
 };
 
 const OPEN_DISPUTE: ReadonlySet<string> = new Set(['OPEN', 'UNDER_REVIEW', 'DECISION_PENDING_RELEASE', 'DECISION_PENDING_REFUND']);
@@ -56,6 +58,12 @@ export function availableAvalancheActions(ctx: AvalancheActionContext): Avalanch
   }
   // F13 resolved 2026-11-04: each party signs the same typed data with its own wallet; the marketplace holds the first signature.
   if (party) offers.push({ action: 'mutual-refund', input: {}, wallet: true });
+  // R12 (owner decision 2026-11-05): while a recorded dispute is unresolved, both parties may settle it together, one of the
+  // two outcomes the arbiter could choose (no partial split). Each party signs with its own wallet; the contract checks both.
+  if (party && d && OPEN_DISPUTE.has(d.status)) {
+    offers.push({ action: 'mutual-settle', input: { disputeId: d.disputeId, releaseToFreelancer: true }, wallet: true, variant: 'release' });
+    offers.push({ action: 'mutual-settle', input: { disputeId: d.disputeId, releaseToFreelancer: false }, wallet: true, variant: 'refund' });
+  }
   return offers;
 }
 

@@ -37,6 +37,12 @@ contract FreelaXEscrow is IFreelaXEscrow, AccessControl, Pausable, ReentrancyGua
         "RevisionAuthorization(bytes32 escrowId,bytes32 feedbackHash,uint8 revisionsUsed,uint64 nonce,uint64 deadline)"
     );
     bytes32 public constant MUTUAL_REFUND_TYPEHASH = keccak256("MutualRefund(bytes32 escrowId,uint64 nonce,uint64 deadline)");
+    // Owner decision R12 (2026-11-05). Binds the escrow, the binary outcome, the full amount, a settlement record hash, the
+    // dispute being settled (disputedAt), the per-escrow nonce and a deadline. Chain id and this contract come from the
+    // EIP-712 domain. A distinct type hash, so a MutualRefund signature pair is never a settlement pair.
+    bytes32 public constant MUTUAL_SETTLEMENT_TYPEHASH = keccak256(
+        "MutualSettlement(bytes32 escrowId,bool releaseToFreelancer,uint256 amount,bytes32 settlementHash,uint64 disputedAt,uint64 nonce,uint64 deadline)"
+    );
 
     IERC20 public immutable token;
     address public defaultArbiter;
@@ -237,7 +243,8 @@ contract FreelaXEscrow is IFreelaXEscrow, AccessControl, Pausable, ReentrancyGua
     }
 
     // ---------------------------------------------------------------------------------------------------------------
-    // Mutual refund: both parties sign the same EIP-712 message; anyone may submit it. Not available once Disputed.
+    // Mutual refund: both parties sign the same EIP-712 message; anyone may submit it. Not available once Disputed (a
+    // Disputed escrow is settled by the arbiter or by mutualSettleDispute below, owner decision R12).
     // The two-signature mechanism preserves the Solana rule that both parties must agree (owner decision on question 10).
     // ---------------------------------------------------------------------------------------------------------------
 
@@ -260,6 +267,47 @@ contract FreelaXEscrow is IFreelaXEscrow, AccessControl, Pausable, ReentrancyGua
         totalOpenAmount -= amount;
         emit Refunded(escrowId, e.client, amount, true);
         token.safeTransfer(e.client, amount);
+    }
+
+    // ---------------------------------------------------------------------------------------------------------------
+    // Mutual settlement of a Disputed escrow (owner decision R12, 2026-11-05; amends O-5 question 8 for this path only): the client AND the freelancer sign one EIP-712
+    // MutualSettlement message choosing the same binary outcome (the arbiter's outcome space, O-5 question 6: no partial
+    // split). Anyone may submit it. The arbiter keeps full authority while the escrow is Disputed: whichever valid action
+    // lands first settles it, the other then reverts on the terminal state. No role (admin, pauser, backend signer,
+    // arbiter) can use it: only the two snapshotted parties' signatures count. Pause does not block it (as release/refund).
+    // ---------------------------------------------------------------------------------------------------------------
+
+    function mutualSettleDispute(
+        bytes32 escrowId,
+        bool releaseToFreelancer,
+        bytes32 settlementHash,
+        uint64 deadline,
+        bytes calldata clientSignature,
+        bytes calldata freelancerSignature
+    ) external nonReentrant {
+        Escrow storage e = _existing(escrowId);
+        if (e.status != Status.Disputed) revert InvalidState(e.status);
+        if (settlementHash == bytes32(0)) revert ZeroHash();
+        if (block.timestamp > deadline) revert AuthorizationExpired();
+        bytes32 digest =
+            mutualSettlementDigest(escrowId, releaseToFreelancer, e.amount, settlementHash, e.disputedAt, e.authNonce, deadline);
+        _requireSignedBy(digest, clientSignature, e.client);
+        _requireSignedBy(digest, freelancerSignature, e.freelancer);
+
+        uint256 amount = e.amount;
+        e.authNonce += 1;
+        e.resolutionHash = settlementHash;
+        totalOpenAmount -= amount;
+        emit DisputeSettledByParties(escrowId, releaseToFreelancer, settlementHash);
+        if (releaseToFreelancer) {
+            e.status = Status.Released;
+            emit Released(escrowId, e.freelancer, amount, msg.sender);
+            token.safeTransfer(e.freelancer, amount);
+        } else {
+            e.status = Status.Refunded;
+            emit Refunded(escrowId, e.client, amount, true);
+            token.safeTransfer(e.client, amount);
+        }
     }
 
     // ---------------------------------------------------------------------------------------------------------------
@@ -318,6 +366,24 @@ contract FreelaXEscrow is IFreelaXEscrow, AccessControl, Pausable, ReentrancyGua
 
     function mutualRefundDigest(bytes32 escrowId, uint64 nonce, uint64 deadline) public view returns (bytes32) {
         return _hashTypedDataV4(keccak256(abi.encode(MUTUAL_REFUND_TYPEHASH, escrowId, nonce, deadline)));
+    }
+
+    function mutualSettlementDigest(
+        bytes32 escrowId,
+        bool releaseToFreelancer,
+        uint256 amount,
+        bytes32 settlementHash,
+        uint64 disputedAt,
+        uint64 nonce,
+        uint64 deadline
+    ) public view returns (bytes32) {
+        return _hashTypedDataV4(
+            keccak256(
+                abi.encode(
+                    MUTUAL_SETTLEMENT_TYPEHASH, escrowId, releaseToFreelancer, amount, settlementHash, disputedAt, nonce, deadline
+                )
+            )
+        );
     }
 
     // ---------------------------------------------------------------------------------------------------------------

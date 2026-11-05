@@ -292,6 +292,57 @@ describe('AvalancheEscrowPanel', () => {
     expect(record).toHaveBeenCalledWith('c', 'mutual-refund', HASH, expect.objectContaining({ idempotencyKey: expect.any(String) }));
   });
 
+  const disputeOpen = { disputeId: 'd1', status: 'UNDER_REVIEW' as const, openedBy: 'other' };
+  const disputedChain = { status: 'DISPUTED', client: '0x' + 'c'.repeat(40), freelancer: '0x' + 'f'.repeat(40), amountBaseUnits: '5000000',
+    maxRevisions: 2, revisionsUsed: 0, deliveryDueAt: 0, reviewDueAt: 0 };
+
+  it('R12: settlement is offered only while the escrow is Disputed on chain, for both outcomes', async () => {
+    vi.spyOn(api, 'avalancheStatus').mockResolvedValue(view({ chain: { ...disputedChain, status: 'FUNDED' } }));
+    await act(async () => root.render(<AvalancheEscrowPanel contractId="c" user={user} isClient isFreelancer={false} dispute={disputeOpen} />));
+    expect(host.textContent).not.toContain('Tất toán tranh chấp');
+    vi.spyOn(api, 'avalancheStatus').mockResolvedValue(view({ chain: disputedChain }));
+    act(() => root.unmount()); root = createRoot(host);
+    await act(async () => root.render(<AvalancheEscrowPanel contractId="c" user={user} isClient isFreelancer={false} dispute={disputeOpen} />));
+    expect(button('Tất toán tranh chấp theo thỏa thuận (giải ngân cho Freelancer) bằng ví')).toBeDefined();
+    expect(button('Tất toán tranh chấp theo thỏa thuận (hoàn cho Client) bằng ví')).toBeDefined();
+    expect(button('Tất toán tranh chấp theo thỏa thuận (hoàn cho Client) bằng tài khoản mô phỏng')).toBeDefined();
+  });
+
+  it('R12: the first signer stores a signature for the chosen outcome and sends nothing; the second sends the settlement', async () => {
+    const digest = '0x' + 'e'.repeat(64);
+    const settleTyped = JSON.stringify({ domain: { chainId: 31337 }, primaryType: 'MutualSettlement' });
+    vi.spyOn(api, 'avalancheStatus').mockResolvedValue(view({ chain: disputedChain }));
+    vi.spyOn(api, 'avalancheRefresh').mockResolvedValue(view({ chain: disputedChain }));
+    const prepare = vi.spyOn(api, 'avalanchePrepare').mockResolvedValue({ action: 'mutual-settle', escrowId: '0x1', transactions: [],
+      typedData: settleTyped, typedDataDigest: digest, authorizationDeadline: 1_900_000_000 });
+    const pending = { releaseToFreelancer: false, authorizationDeadline: 1_900_000_000, typedDataDigest: digest, clientSigned: true, freelancerSigned: false };
+    const store = vi.spyOn(api, 'avalancheMutualSettlementSignature').mockResolvedValue(view({ chain: disputedChain, mutualSettlements: [pending] }));
+    const wallet = { ...fakeWallet(), signTypedData: vi.fn(async () => SIG) } as unknown as EvmWallet;
+    await act(async () => root.render(<AvalancheEscrowPanel contractId="c" user={user} isClient isFreelancer={false} dispute={disputeOpen} walletFactory={() => wallet} />));
+    await act(async () => { button('Tất toán tranh chấp theo thỏa thuận (hoàn cho Client) bằng ví')!.click(); });
+    expect(prepare.mock.calls[0][1]).toBe('mutual-settle');
+    expect(prepare.mock.calls[0][2]).toEqual({ disputeId: 'd1', releaseToFreelancer: false });
+    expect(store).toHaveBeenCalledWith('c', { disputeId: 'd1', releaseToFreelancer: false, authorizationDeadline: 1_900_000_000,
+      typedDataDigest: digest, signature: SIG });
+    expect(wallet.sendPrepared).not.toHaveBeenCalled();
+
+    // the freelancer completes the same proposal (same outcome and deadline) and sends the settlement
+    act(() => root.unmount()); root = createRoot(host);
+    prepare.mockReset();
+    prepare.mockResolvedValueOnce({ action: 'mutual-settle', escrowId: '0x1', transactions: [], typedData: settleTyped,
+      typedDataDigest: digest, authorizationDeadline: 1_900_000_000 })
+      .mockResolvedValueOnce({ action: 'mutual-settle', escrowId: '0x1', transactions: [{ to: '0x' + '2'.repeat(40), data: '0xab', value: '0', chainId: 31337 }] });
+    vi.spyOn(api, 'avalancheStatus').mockResolvedValue(view({ chain: disputedChain, mutualSettlements: [pending] }));
+    store.mockResolvedValue(view({ chain: disputedChain, mutualSettlements: [{ ...pending, freelancerSigned: true }] }));
+    const record = vi.spyOn(api, 'avalancheRecordTransaction').mockResolvedValue(tx({ action: 'mutual-settle' }));
+    await act(async () => root.render(<AvalancheEscrowPanel contractId="c" user={user} isClient={false} isFreelancer dispute={disputeOpen} walletFactory={() => wallet} />));
+    expect(host.querySelector('[data-testid="mutual-settlement-state"]')?.textContent).toContain('Client đã ký');
+    await act(async () => { button('Tất toán tranh chấp theo thỏa thuận (hoàn cho Client) bằng ví')!.click(); });
+    expect(prepare.mock.calls[0][2]).toEqual({ disputeId: 'd1', releaseToFreelancer: false, authorizationDeadline: 1_900_000_000 });
+    expect(wallet.sendPrepared).toHaveBeenCalledTimes(1);
+    expect(record).toHaveBeenCalledWith('c', 'mutual-settle', HASH, expect.objectContaining({ disputeId: 'd1', releaseToFreelancer: false }));
+  });
+
   it('links an EVM wallet with a personal_sign challenge when none is linked', async () => {
     vi.spyOn(api, 'evmWalletCurrent').mockResolvedValue(null);
     vi.spyOn(api, 'avalancheStatus').mockResolvedValue(view());

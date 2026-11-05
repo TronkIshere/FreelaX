@@ -49,6 +49,19 @@ public class AvalancheEscrowController {
                         request.typedDataDigest(), request.signature())).build();
     }
 
+    public record MutualSettlementSignatureRequest(UUID disputeId, Boolean releaseToFreelancer, Long authorizationDeadline,
+                                                   String typedDataDigest, String signature) {
+    }
+
+    /** R12: each party submits its own wallet signature of the shared mutual-settlement typed data for a Disputed escrow. */
+    @PostMapping("/mutual-settle/signatures")
+    public ResponseAPI<AvalancheEscrowService.ContractView> mutualSettlementSignature(@AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable UUID contractId, @RequestBody MutualSettlementSignatureRequest request) {
+        return ResponseAPI.<AvalancheEscrowService.ContractView>builder().code(200)
+                .data(service.submitMutualSettlementSignature(principal.getId(), contractId, request.disputeId(), request.releaseToFreelancer(),
+                        request.authorizationDeadline(), request.typedDataDigest(), request.signature())).build();
+    }
+
     @PostMapping("/enable")
     public ResponseAPI<AvalancheEscrowService.ContractView> enable(@AuthenticationPrincipal UserPrincipal principal, @PathVariable UUID contractId) {
         return ResponseAPI.<AvalancheEscrowService.ContractView>builder().code(200).data(service.enable(principal.getId(), contractId)).build();

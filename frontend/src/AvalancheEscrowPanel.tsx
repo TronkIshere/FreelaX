@@ -3,7 +3,7 @@ import { api, ApiError } from './api';
 import { ActionGroup, SectionHeading } from './components';
 import { availableAvalancheActions, deliveryDateSeconds, type AvalancheActionOffer } from './avalancheActions';
 import type { AvalancheActionInput, AvalancheContractView } from './avalancheTypes';
-import { actionText, chainInstant, environmentBadge, environmentBanner, explorerTxUrl, issuerAlertText, shortHash, stateText, tokenLabel, usdcFromBaseUnits } from './avalanchePresentation';
+import { actionText, offerText, chainInstant, environmentBadge, environmentBanner, explorerTxUrl, issuerAlertText, shortHash, stateText, tokenLabel, usdcFromBaseUnits } from './avalanchePresentation';
 import { EvmWallet, WalletError } from './evmWallet';
 import { AvalanchePayoutSection } from './AvalanchePayoutSection';
 import type { ContractSubmission, Dispute, User } from './types';
@@ -112,9 +112,43 @@ export function AvalancheEscrowPanel({ contractId, user, isClient, isFreelancer,
     if (last) await api.avalancheRecordTransaction(contractId, 'mutual-refund', last, input);
   }
 
+  /** R12: both parties sign the SAME settlement typed data (same outcome and deadline); the second signer sends it. */
+  async function mutualSettleWithWallet(offer: AvalancheActionOffer, wallet: EvmWallet, address: string, chainId: number) {
+    const release = offer.input.releaseToFreelancer === true;
+    const disputeId = offer.input.disputeId;
+    if (!disputeId) throw new WalletError('Không tìm thấy tranh chấp đã ghi nhận.', 'NO_DISPUTE');
+    const pending = view?.mutualSettlements?.find(s => s.releaseToFreelancer === release) ?? null;
+    let state: { clientSigned: boolean; freelancerSigned: boolean } | null = pending;
+    const mine = isClient ? pending?.clientSigned : pending?.freelancerSigned;
+    if (!mine) {
+      const prepared = await api.avalanchePrepare(contractId, 'mutual-settle',
+        { disputeId, releaseToFreelancer: release, ...(pending ? { authorizationDeadline: pending.authorizationDeadline } : {}) });
+      if (!prepared.typedData || !prepared.typedDataDigest || prepared.authorizationDeadline == null) {
+        throw new WalletError('Yêu cầu ký không hợp lệ.', 'TYPED_DATA_INVALID');
+      }
+      const signature = await wallet.signTypedData(prepared.typedData, address, chainId);
+      const next = await api.avalancheMutualSettlementSignature(contractId, { disputeId, releaseToFreelancer: release,
+        authorizationDeadline: prepared.authorizationDeadline, typedDataDigest: prepared.typedDataDigest, signature });
+      if (alive.current) setView(next);
+      state = next.mutualSettlements?.find(s => s.releaseToFreelancer === release) ?? null;
+    }
+    if (!(state?.clientSigned && state?.freelancerSigned)) return; // waiting for the other party
+    const input = { idempotencyKey: crypto.randomUUID(), disputeId, releaseToFreelancer: release };
+    const final = await api.avalanchePrepare(contractId, 'mutual-settle', input);
+    let last: string | null = null;
+    for (const tx of final.transactions) last = await wallet.sendPrepared(tx, address, chainId);
+    if (last) await api.avalancheRecordTransaction(contractId, 'mutual-settle', last, input);
+  }
+
   const withWallet = (offer: AvalancheActionOffer) => run(async () => {
     const env = view?.environment;
     if (!env) throw new WalletError('Chưa biết môi trường mạng.', 'NO_ENV');
+    if (offer.action === 'mutual-settle') {
+      const wallet = (walletFactory ?? (() => new EvmWallet()))();
+      const { address } = await wallet.connect(env.chainId);
+      await mutualSettleWithWallet(offer, wallet, address, env.chainId);
+      return;
+    }
     if (offer.action === 'mutual-refund') {
       const wallet = (walletFactory ?? (() => new EvmWallet()))();
       const { address } = await wallet.connect(env.chainId);
@@ -142,7 +176,8 @@ export function AvalancheEscrowPanel({ contractId, user, isClient, isFreelancer,
   const onAvalanche = view.networkId !== null;
   const simulatedAccounts = !!env && env.backendSignersAvailable && env.simulated;
   const allowed = availableAvalancheActions({ userId: user.id, isClient, isFreelancer, isArbiter, submissions, dispute })
-    .filter(a => a.wallet || simulatedAccounts);
+    .filter(a => a.wallet || simulatedAccounts)
+    .filter(a => a.action !== 'mutual-settle' || view.chain?.status === 'DISPUTED'); // R12: only a Disputed escrow
   return <section className="review-action avalanche-panel" aria-label="Ký quỹ Avalanche">
     <SectionHeading title="Ký quỹ Avalanche" />
     {env && <p className={'avalanche-banner' + (env.simulated ? ' simulated' : ' testnet')} role="note">
@@ -175,13 +210,17 @@ export function AvalancheEscrowPanel({ contractId, user, isClient, isFreelancer,
       Hoàn tiền thỏa thuận: Client {view.mutualRefund.clientSigned ? 'đã ký' : 'chưa ký'}, Freelancer {view.mutualRefund.freelancerSigned ? 'đã ký' : 'chưa ký'};
       chữ ký hết hạn lúc {chainInstant(view.mutualRefund.authorizationDeadline)}.
     </p>}
+    {onAvalanche && view.mutualSettlements?.map(s => <p role="status" key={String(s.releaseToFreelancer)} data-testid="mutual-settlement-state">
+      {offerText('mutual-settle', s.releaseToFreelancer ? 'release' : 'refund')}: Client {s.clientSigned ? 'đã ký' : 'chưa ký'},
+      Freelancer {s.freelancerSigned ? 'đã ký' : 'chưa ký'}; chữ ký hết hạn lúc {chainInstant(s.authorizationDeadline)}.
+    </p>)}
     {onAvalanche && env && <ActionGroup label="Thao tác ký quỹ">
-      {allowed.map(a => <span key={a.action} data-action={a.action}>
+      {allowed.map(a => <span key={a.action + (a.variant ?? '')} data-action={a.action} data-variant={a.variant}>
         {a.needsDate && <label>Hạn bàn giao mới<input type="datetime-local" value={extensionDate} disabled={busy}
           onChange={event => setExtensionDate(event.target.value)} /></label>}
-        {a.wallet && <button className="button" disabled={busy || (a.needsDate && !extensionDate)} onClick={() => void withWallet(a)}>{actionText(a.action)} bằng ví</button>}
+        {a.wallet && <button className="button" disabled={busy || (a.needsDate && !extensionDate)} onClick={() => void withWallet(a)}>{offerText(a.action, a.variant)} bằng ví</button>}
         {simulatedAccounts && <button className="button button-secondary" disabled={busy || (a.needsDate && !extensionDate)}
-          onClick={() => void withSimulatedAccount(a)}>{actionText(a.action)} bằng tài khoản mô phỏng</button>}
+          onClick={() => void withSimulatedAccount(a)}>{offerText(a.action, a.variant)} bằng tài khoản mô phỏng</button>}
         {!a.wallet && a.walletUnavailableReason && <small> {a.walletUnavailableReason}</small>}
       </span>)}
     </ActionGroup>}

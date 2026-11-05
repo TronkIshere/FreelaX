@@ -225,6 +225,12 @@ class EscrowContractTest {
                 Numeric.toHexString(EscrowAuthorizations.digest(auth().revisionTypedData(escrowId, feedback, 1, 9, deadline))));
         assertEquals(callDigest(EscrowCalls.mutualRefundDigest(escrowId, 4, deadline)),
                 Numeric.toHexString(EscrowAuthorizations.digest(auth().mutualRefundTypedData(escrowId, 4, deadline))));
+        String settlement = Hash.sha3String("settlement");
+        for (boolean toFreelancer : new boolean[]{true, false}) {
+            assertEquals(callDigest(EscrowCalls.mutualSettlementDigest(escrowId, toFreelancer, BigInteger.valueOf(12_345_678), settlement, 1_700_000_123L, 5, deadline)),
+                    Numeric.toHexString(EscrowAuthorizations.digest(auth().mutualSettlementTypedData(escrowId, toFreelancer, BigInteger.valueOf(12_345_678),
+                            settlement, 1_700_000_123L, 5, deadline))), "R12 settlement digest parity, releaseToFreelancer=" + toFreelancer);
+        }
     }
 
     @Test
@@ -337,6 +343,24 @@ class EscrowContractTest {
                 EscrowCalls.mutualRefund(three, refundDeadline, bytes(buyerSig), bytes(freelancerSig)), 300_000).state());
         assertEquals("Refunded", state(three).statusName());
 
+        // 3b. R12 mutual settlement of a Disputed escrow: both parties sign, a relayer submits, the arbiter is not involved
+        String settled = fundEscrow(id("settle"), 25_000_000);
+        submitWork(settled, Hash.sha3String("work"));
+        assertEquals(TxState.CONFIRMED, send(SignerRole.TEST_BUYER, escrowAddress, EscrowCalls.openDispute(settled, Hash.sha3String("late")), 300_000).state());
+        EscrowState disputed = state(settled);
+        long settleDeadline = now() + 3600;
+        String settlementHash = Hash.sha3String("settlement-record");
+        String settleTyped = auth().mutualSettlementTypedData(settled, true, disputed.amount(), settlementHash, disputed.disputedAt(), disputed.authNonce(), settleDeadline);
+        Signature clientSettle = EscrowAuthorizations.sign(registry.get(SignerRole.TEST_BUYER), settleTyped);
+        Signature freelancerSettle = EscrowAuthorizations.sign(registry.get(SignerRole.TEST_FREELANCER), settleTyped);
+        TxRecord swapped = send(SignerRole.RELAYER, escrowAddress,
+                EscrowCalls.mutualSettleDispute(settled, true, settlementHash, settleDeadline, bytes(freelancerSettle), bytes(clientSettle)), 300_000);
+        assertEquals(TxState.REVERTED, swapped.state(), "signatures in swapped positions are refused");
+        assertEquals(TxState.CONFIRMED, send(SignerRole.RELAYER, escrowAddress,
+                EscrowCalls.mutualSettleDispute(settled, true, settlementHash, settleDeadline, bytes(clientSettle), bytes(freelancerSettle)), 300_000).state());
+        assertEquals("Released", state(settled).statusName());
+        assertEquals(settlementHash, state(settled).resolutionHash().toLowerCase());
+
         // 4. scan the events and decode them
         AnvilRpc.mine(url);
         AnvilRpc.mine(url);
@@ -350,7 +374,12 @@ class EscrowContractTest {
             scanner.scanOnce();
             List<ScannedEvent> events = repo.events("LOCAL_SIMULATION", 31337, escrowAddress);
             List<String> names = events.stream().map(ScannedEvent::eventName).toList();
-            assertTrue(names.containsAll(List.of("Funded", "WorkSubmitted", "RevisionRequested", "DisputeOpened", "DisputeResolved", "Released", "Refunded")), names.toString());
+            assertTrue(names.containsAll(List.of("Funded", "WorkSubmitted", "RevisionRequested", "DisputeOpened", "DisputeResolved", "DisputeSettledByParties", "Released", "Refunded")), names.toString());
+            EscrowEvents.DecodedEvent settledEvent = events.stream().filter(e -> e.eventName().equals("DisputeSettledByParties"))
+                    .map(EscrowEvents::decode).findFirst().orElseThrow();
+            assertEquals(settled.toLowerCase(), settledEvent.escrowId());
+            assertEquals(true, settledEvent.fields().get("releasedToFreelancer"));
+            assertEquals(settlementHash, settledEvent.fields().get("settlementHash"));
             EscrowEvents.DecodedEvent releasedEvent = events.stream().filter(e -> e.eventName().equals("Released") && e.topics().get(1).equalsIgnoreCase(one))
                     .map(EscrowEvents::decode).findFirst().orElseThrow();
             assertEquals(BigInteger.valueOf(100_000_000), releasedEvent.fields().get("amount"));
@@ -362,7 +391,7 @@ class EscrowContractTest {
 
             // 5. reconcile: the scanned events imply the same status as the contract; tampering is detected
             EscrowReconciler reconciler = new EscrowReconciler(new EscrowReader(scanClient, escrowAddress), repo, Harness.LOCAL, escrowAddress);
-            for (String escrow : List.of(one, two, three)) {
+            for (String escrow : List.of(one, two, three, settled)) {
                 EscrowReconciler.Result r = reconciler.reconcile(escrow);
                 assertTrue(r.match(), "events and contract agree for " + escrow + ": " + r);
             }

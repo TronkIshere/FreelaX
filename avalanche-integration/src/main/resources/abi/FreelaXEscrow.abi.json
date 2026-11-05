@@ -152,6 +152,19 @@
   },
   {
     "type": "function",
+    "name": "MUTUAL_SETTLEMENT_TYPEHASH",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "PAUSER_ROLE",
     "inputs": [],
     "outputs": [
@@ -673,6 +686,93 @@
   },
   {
     "type": "function",
+    "name": "mutualSettleDispute",
+    "inputs": [
+      {
+        "name": "escrowId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "releaseToFreelancer",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "settlementHash",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "deadline",
+        "type": "uint64",
+        "internalType": "uint64"
+      },
+      {
+        "name": "clientSignature",
+        "type": "bytes",
+        "internalType": "bytes"
+      },
+      {
+        "name": "freelancerSignature",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "mutualSettlementDigest",
+    "inputs": [
+      {
+        "name": "escrowId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "releaseToFreelancer",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "settlementHash",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "disputedAt",
+        "type": "uint64",
+        "internalType": "uint64"
+      },
+      {
+        "name": "nonce",
+        "type": "uint64",
+        "internalType": "uint64"
+      },
+      {
+        "name": "deadline",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "openDispute",
     "inputs": [
       {
@@ -1060,6 +1160,31 @@
       },
       {
         "name": "resolutionHash",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "DisputeSettledByParties",
+    "inputs": [
+      {
+        "name": "escrowId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "releasedToFreelancer",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
+      },
+      {
+        "name": "settlementHash",
         "type": "bytes32",
         "indexed": false,
         "internalType": "bytes32"

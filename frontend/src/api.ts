@@ -374,6 +374,12 @@ export class MarketplaceApi {
     return this.authorized('/contracts/' + encodeURIComponent(contractId) + '/avalanche/mutual-refund/signatures',
       { method: 'POST', body: JSON.stringify(body) });
   }
+  /** R12: one party's own wallet signature of the shared mutual-settlement typed data for a Disputed escrow. */
+  async avalancheMutualSettlementSignature(contractId: string, body: { disputeId: string; releaseToFreelancer: boolean;
+    authorizationDeadline: number; typedDataDigest: string; signature: string }): Promise<AvalancheContractView> {
+    return this.authorized('/contracts/' + encodeURIComponent(contractId) + '/avalanche/mutual-settle/signatures',
+      { method: 'POST', body: JSON.stringify(body) });
+  }
   async evmWalletCurrent(): Promise<{ walletAddress: string } | null> {
     return this.authorized('/avalanche/wallet-link');
   }

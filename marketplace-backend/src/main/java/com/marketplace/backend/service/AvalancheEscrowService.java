@@ -65,7 +65,7 @@ public class AvalancheEscrowService {
 
     private static final Duration FUNDING_WINDOW = Duration.ofHours(48);
     private static final Set<String> ACTIONS = Set.of("fund", "submit", "revise", "extension-request", "extension-approve", "dispute", "release",
-            "resolve", "mutual-refund");
+            "resolve", "mutual-refund", "mutual-settle");
 
     private final WorkContractRepository contracts;
     private final MilestoneRepository milestones;
@@ -86,18 +86,29 @@ public class AvalancheEscrowService {
     private final com.marketplace.backend.repository.JobRepository jobs;
 
     static final String MUTUAL_REFUND = "mutual-refund";
+    /** R12 (owner decision 2026-11-05): both parties settle a Disputed escrow. Pending pairs are keyed per proposed outcome. */
+    static final String MUTUAL_SETTLE = "mutual-settle";
+
+    static String settlementKey(boolean releaseToFreelancer) {
+        return MUTUAL_SETTLE + (releaseToFreelancer ? ":release" : ":refund");
+    }
     private static final java.util.regex.Pattern SIGNATURE_HEX = java.util.regex.Pattern.compile("0x[0-9a-fA-F]{130}");
     private static final java.util.regex.Pattern DIGEST_HEX = java.util.regex.Pattern.compile("0x[0-9a-fA-F]{64}");
 
     public record Input(String idempotencyKey, UUID submissionId, UUID disputeId, Long newDeliveryDueAt, String by,
-                        String clientSignature, String freelancerSignature, Long authorizationDeadline) {
+                        String clientSignature, String freelancerSignature, Long authorizationDeadline, Boolean releaseToFreelancer) {
         public Input(String idempotencyKey, UUID submissionId, UUID disputeId, Long newDeliveryDueAt, String by,
                      String clientSignature, String freelancerSignature) {
-            this(idempotencyKey, submissionId, disputeId, newDeliveryDueAt, by, clientSignature, freelancerSignature, null);
+            this(idempotencyKey, submissionId, disputeId, newDeliveryDueAt, by, clientSignature, freelancerSignature, null, null);
+        }
+
+        public Input(String idempotencyKey, UUID submissionId, UUID disputeId, Long newDeliveryDueAt, String by,
+                     String clientSignature, String freelancerSignature, Long authorizationDeadline) {
+            this(idempotencyKey, submissionId, disputeId, newDeliveryDueAt, by, clientSignature, freelancerSignature, authorizationDeadline, null);
         }
 
         public static Input empty() {
-            return new Input(null, null, null, null, null, null, null, null);
+            return new Input(null, null, null, null, null, null, null, null, null);
         }
     }
 
@@ -105,17 +116,28 @@ public class AvalancheEscrowService {
     public record MutualRefundState(long authorizationDeadline, String typedDataDigest, boolean clientSigned, boolean freelancerSigned) {
     }
 
+    /** R12: a mutual settlement proposal (one per outcome) signed by the parties' own wallets over one deadline and digest. */
+    public record MutualSettlementState(boolean releaseToFreelancer, long authorizationDeadline, String typedDataDigest,
+                                        boolean clientSigned, boolean freelancerSigned) {
+    }
+
     public record ContractView(String networkId, boolean avalancheEnabled, EnvironmentInfo environment, String escrowId, EscrowSnapshot chain,
                                List<AvalancheChainTransaction> transactions, String notice, MutualRefundState mutualRefund,
-                               List<com.marketplace.backend.blockchain.IssuerAlert> issuerAlerts) {
+                               List<com.marketplace.backend.blockchain.IssuerAlert> issuerAlerts, List<MutualSettlementState> mutualSettlements) {
+        public ContractView(String networkId, boolean avalancheEnabled, EnvironmentInfo environment, String escrowId, EscrowSnapshot chain,
+                            List<AvalancheChainTransaction> transactions, String notice, MutualRefundState mutualRefund,
+                            List<com.marketplace.backend.blockchain.IssuerAlert> issuerAlerts) {
+            this(networkId, avalancheEnabled, environment, escrowId, chain, transactions, notice, mutualRefund, issuerAlerts, List.of());
+        }
+
         public ContractView(String networkId, boolean avalancheEnabled, EnvironmentInfo environment, String escrowId, EscrowSnapshot chain,
                             List<AvalancheChainTransaction> transactions, String notice) {
-            this(networkId, avalancheEnabled, environment, escrowId, chain, transactions, notice, null, null);
+            this(networkId, avalancheEnabled, environment, escrowId, chain, transactions, notice, null, null, List.of());
         }
 
         public ContractView(String networkId, boolean avalancheEnabled, EnvironmentInfo environment, String escrowId, EscrowSnapshot chain,
                             List<AvalancheChainTransaction> transactions, String notice, MutualRefundState mutualRefund) {
-            this(networkId, avalancheEnabled, environment, escrowId, chain, transactions, notice, mutualRefund, null);
+            this(networkId, avalancheEnabled, environment, escrowId, chain, transactions, notice, mutualRefund, null, List.of());
         }
     }
 
@@ -182,7 +204,7 @@ public class AvalancheEscrowService {
         return new ContractView(c.getPaymentNetworkId(), true, environment, escrowId, snapshot,
                 chainTransactions.findByContractIdOrderByIdAsc(c.getId()),
                 "Demonstration only: " + environment.environment() + " simulated escrow, testnet USDC with no real-world value.",
-                mutualRefundState(c.getId()), snapshot == null ? List.of() : issuerAlerts(escrowId));
+                mutualRefundState(c.getId()), snapshot == null ? List.of() : issuerAlerts(escrowId), mutualSettlementStates(c.getId()));
     }
 
     private Milestone milestone(UUID contractId) {
@@ -315,9 +337,46 @@ public class AvalancheEscrowService {
                             });
                 }
             }
+            case "mutual-settle" -> {
+                require(client || freelancer, "only a party takes part in a mutual settlement");
+                ContractDispute d = recordedDispute(c, in.disputeId());
+                require(UNRESOLVED_DISPUTE.contains(d.getStatus()), "the recorded dispute is already resolved or cancelled");
+                require(in.releaseToFreelancer() != null, "the proposed outcome (releaseToFreelancer) is required");
+                boolean release = in.releaseToFreelancer();
+                p.put("releaseToFreelancer", release);
+                p.put("resolutionHash", settlementHash(d, release));
+                if (in.clientSignature() != null) {
+                    p.put("clientSignature", in.clientSignature());
+                }
+                if (in.freelancerSignature() != null) {
+                    p.put("freelancerSignature", in.freelancerSignature());
+                }
+                if (in.authorizationDeadline() != null) {
+                    p.put("authorizationDeadline", in.authorizationDeadline());
+                }
+                if (in.clientSignature() == null && in.freelancerSignature() == null && in.authorizationDeadline() == null) {
+                    // both parties signed through the marketplace: use the held pair for this outcome and its deadline
+                    pendingAuthorizations.findByContractIdAndAction(c.getId(), settlementKey(release))
+                            .filter(a -> a.getClientSignature() != null && a.getFreelancerSignature() != null)
+                            .filter(a -> a.getAuthorizationDeadline() > Instant.now().getEpochSecond())
+                            .ifPresent(a -> {
+                                p.put("clientSignature", a.getClientSignature());
+                                p.put("freelancerSignature", a.getFreelancerSignature());
+                                p.put("authorizationDeadline", a.getAuthorizationDeadline());
+                            });
+                }
+            }
             default -> throw new ApplicationException(ErrorCode.INVALID_DATA, "unknown action " + action);
         }
         return p;
+    }
+
+    private static final Set<DisputeStatus> UNRESOLVED_DISPUTE = Set.of(DisputeStatus.OPEN, DisputeStatus.UNDER_REVIEW,
+            DisputeStatus.DECISION_PENDING_RELEASE, DisputeStatus.DECISION_PENDING_REFUND);
+
+    /** The settlement record both parties sign: the recorded dispute and the proposed outcome, nothing else. */
+    static String settlementHash(ContractDispute d, boolean release) {
+        return sha("avalanche-settlement:" + d.getId() + ":" + (release ? "RELEASE" : "REFUND"));
     }
 
     private static void require(boolean condition, String message) {
@@ -446,25 +505,45 @@ public class AvalancheEscrowService {
                                                     String signature) {
         WorkContract c = contract(contractId);
         requireAvalanche(c);
+        require(isClient(c, userId) || isFreelancer(c, userId), "only a party takes part in a mutual refund");
+        Map<String, Object> params = new HashMap<>();
+        params.put("authorizationDeadline", authorizationDeadline);
+        return holdPartySignature(userId, c, MUTUAL_REFUND, MUTUAL_REFUND, params, authorizationDeadline, typedDataDigest, signature);
+    }
+
+    /**
+     * R12: stores the caller's signature of a mutual-settlement proposal for a recorded, unresolved dispute. Same rules as
+     * {@link #submitMutualRefundSignature}: the digest is re-derived from the gateway (outcome, amount, settlement record,
+     * dispute time, nonce, deadline, chain, contract); each party writes only its own signature; the contract verifies both.
+     */
+    @Transactional
+    public ContractView submitMutualSettlementSignature(UUID userId, UUID contractId, UUID disputeId, Boolean releaseToFreelancer,
+                                                        Long authorizationDeadline, String typedDataDigest, String signature) {
+        WorkContract c = contract(contractId);
+        Map<String, Object> params = authorize(userId, false, c, MUTUAL_SETTLE,
+                new Input(null, null, disputeId, null, null, null, null, authorizationDeadline, releaseToFreelancer));
+        return holdPartySignature(userId, c, MUTUAL_SETTLE, settlementKey(releaseToFreelancer), params, authorizationDeadline,
+                typedDataDigest, signature);
+    }
+
+    private ContractView holdPartySignature(UUID userId, WorkContract c, String gatewayAction, String key, Map<String, Object> params,
+                                            Long authorizationDeadline, String typedDataDigest, String signature) {
+        UUID contractId = c.getId();
         boolean client = isClient(c, userId);
-        boolean freelancer = isFreelancer(c, userId);
-        require(client || freelancer, "only a party takes part in a mutual refund");
         require(authorizationDeadline != null && authorizationDeadline > Instant.now().getEpochSecond(), "the authorization has expired");
         require(typedDataDigest != null && DIGEST_HEX.matcher(typedDataDigest).matches(), "a 32-byte typed-data digest is required");
         require(signature != null && SIGNATURE_HEX.matcher(signature).matches(), "a 65-byte signature is required");
         String escrowId = AvalancheEscrowIds.fromMilestone(milestone(contractId).getId());
-        Map<String, Object> params = new HashMap<>();
-        params.put("authorizationDeadline", authorizationDeadline);
-        PreparedAction expected = gateway().prepareAction(new EscrowActionRequest(escrowId, MUTUAL_REFUND, null, params));
+        PreparedAction expected = gateway().prepareAction(new EscrowActionRequest(escrowId, gatewayAction, null, params));
         require(typedDataDigest.equalsIgnoreCase(expected.typedDataDigest()), "the signed data does not match the current escrow authorization");
 
         Instant now = Instant.now();
         com.marketplace.backend.entity.AvalanchePendingAuthorization pending = pendingAuthorizations
-                .findWithLockByContractIdAndAction(contractId, MUTUAL_REFUND).orElse(null);
+                .findWithLockByContractIdAndAction(contractId, key).orElse(null);
         if (pending == null) {
             pending = new com.marketplace.backend.entity.AvalanchePendingAuthorization();
             pending.setContractId(contractId);
-            pending.setAction(MUTUAL_REFUND);
+            pending.setAction(key);
             pending.setCreatedAt(now);
         }
         if (pending.getTypedDataDigest() == null || pending.getAuthorizationDeadline() != authorizationDeadline
@@ -491,6 +570,17 @@ public class AvalancheEscrowService {
         } catch (RuntimeException e) {
             return null;
         }
+    }
+
+    private List<MutualSettlementState> mutualSettlementStates(UUID contractId) {
+        List<MutualSettlementState> states = new java.util.ArrayList<>();
+        for (boolean release : new boolean[]{true, false}) {
+            pendingAuthorizations.findByContractIdAndAction(contractId, settlementKey(release))
+                    .filter(a -> a.getAuthorizationDeadline() > Instant.now().getEpochSecond())
+                    .ifPresent(a -> states.add(new MutualSettlementState(release, a.getAuthorizationDeadline(), a.getTypedDataDigest(),
+                            a.getClientSignature() != null, a.getFreelancerSignature() != null)));
+        }
+        return states;
     }
 
     private MutualRefundState mutualRefundState(UUID contractId) {
@@ -540,6 +630,25 @@ public class AvalancheEscrowService {
                 m.setStatus(MilestoneStatus.REFUNDED);
                 c.setStatus(ContractStatus.CANCELLED);
                 pendingAuthorizations.findByContractIdAndAction(c.getId(), MUTUAL_REFUND).ifPresent(pendingAuthorizations::delete);
+            }
+            case "mutual-settle" -> {
+                // R12: the chain outcome decides; the recorded dispute follows it (existing RESOLVED_* values)
+                boolean released = status == NeutralEscrowStatus.RELEASED;
+                if (!released && status != NeutralEscrowStatus.REFUNDED) {
+                    row.setErrorClass("CHAIN_MISMATCH");
+                    return;
+                }
+                m.setStatus(released ? MilestoneStatus.RELEASED : MilestoneStatus.REFUNDED);
+                c.setStatus(released ? ContractStatus.COMPLETED : ContractStatus.CANCELLED);
+                disputes.findFirstByContractIdAndStatusInOrderByCreatedAtDesc(c.getId(), UNRESOLVED_DISPUTE)
+                        .ifPresent(d -> {
+                            d.setStatus(released ? DisputeStatus.RESOLVED_RELEASE : DisputeStatus.RESOLVED_REFUND);
+                            d.setResolvedAt(Instant.now());
+                            disputes.save(d);
+                        });
+                for (boolean release : new boolean[]{true, false}) {
+                    pendingAuthorizations.findByContractIdAndAction(c.getId(), settlementKey(release)).ifPresent(pendingAuthorizations::delete);
+                }
             }
             default -> {
                 row.setBusinessApplied(true);

@@ -77,6 +77,13 @@ public final class EscrowCalls {
         return encode("mutualRefund", b32(escrowId), new Uint64(deadline), bytes(clientSignature), bytes(freelancerSignature));
     }
 
+    /** R12: settlement of a Disputed escrow signed by both parties (client signature first); anyone may relay it. */
+    public static String mutualSettleDispute(String escrowId, boolean releaseToFreelancer, String settlementHash, long deadline,
+                                             byte[] clientSignature, byte[] freelancerSignature) {
+        return encode("mutualSettleDispute", b32(escrowId), new Bool(releaseToFreelancer), b32(settlementHash), new Uint64(deadline),
+                bytes(clientSignature), bytes(freelancerSignature));
+    }
+
     public static String getEscrow(String escrowId) {
         return encode("getEscrow", b32(escrowId));
     }
@@ -104,5 +111,11 @@ public final class EscrowCalls {
 
     public static String mutualRefundDigest(String escrowId, long nonce, long deadline) {
         return encode("mutualRefundDigest", b32(escrowId), new Uint64(nonce), new Uint64(deadline));
+    }
+
+    public static String mutualSettlementDigest(String escrowId, boolean releaseToFreelancer, BigInteger amount, String settlementHash,
+                                                long disputedAt, long nonce, long deadline) {
+        return encode("mutualSettlementDigest", b32(escrowId), new Bool(releaseToFreelancer), new Uint256(amount), b32(settlementHash),
+                new Uint64(disputedAt), new Uint64(nonce), new Uint64(deadline));
     }
 }
