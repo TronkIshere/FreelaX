@@ -1,0 +1,56 @@
+{
+  "label": "LOCAL_SIMULATION",
+  "kind": "outage and recovery on the compose-built Avalanche stack (not Fuji)",
+  "tool": "phase-2/compose-avalanche/outage.mjs",
+  "startedAt": "2026-11-05T13:12:18.369Z",
+  "steps": [
+    {
+      "step": "setup: users, throwaway wallets linked, simulated USDC minted (LOCAL only)",
+      "at": "2026-11-05T13:12:20.046Z",
+      "chainId": 31337
+    },
+    {
+      "step": "O1 gateway unavailable: read and record refused, no business effect; after the restart the same hash is recorded once and applied once",
+      "at": "2026-11-05T13:12:34.306Z",
+      "readWhileDown": "GET /api/v1/contracts/fa16a368-e854-4e21-97bc-d61301c29b22/avalanche -> 500",
+      "recordWhileDown": "POST /api/v1/contracts/fa16a368-e854-4e21-97bc-d61301c29b22/avalanche/actions/fund/transactions -> 500",
+      "contractWhileDown": "PENDING_FUNDING/PENDING_FUNDING",
+      "afterRecovery": "ACTIVE/FUNDED",
+      "rows": 1,
+      "sameRowOnSecondRecord": true
+    },
+    {
+      "step": "O2 RPC unavailable: the API degrades without changing business state; it reads FUNDED again after the RPC returns",
+      "at": "2026-11-05T13:12:54.802Z",
+      "viewWhilePaused": "GET /api/v1/contracts/fa16a368-e854-4e21-97bc-d61301c29b22/avalanche -> 500",
+      "refreshWhilePaused": "POST /api/v1/contracts/fa16a368-e854-4e21-97bc-d61301c29b22/avalanche/refresh -> 500",
+      "contractWhilePaused": "ACTIVE/FUNDED",
+      "chainAfter": "FUNDED"
+    },
+    {
+      "step": "O3 Anvil restart: the chain keeps its state (volume), the escrow still reads FUNDED, nothing is re-applied",
+      "at": "2026-11-05T13:12:56.424Z",
+      "blockBefore": "225",
+      "blockAfter": "225",
+      "chainStatus": "FUNDED",
+      "rows": 1
+    },
+    {
+      "step": "O4 backend restart: the first party signature survives, the second signature completes the pair, the refund is applied once",
+      "at": "2026-11-05T13:13:20.259Z",
+      "stateAfterRefund": "CANCELLED/REFUNDED"
+    },
+    {
+      "step": "O5 database unavailable: reads fail instead of answering wrongly; after the restart the state is unchanged and both services serve again",
+      "at": "2026-11-05T13:13:58.425Z",
+      "marketplaceWhileDown": "The operation was aborted due to timeout",
+      "gatewayWhileDown": "GET /api/v1/avalanche/escrows/0x0000000000000000000000000000000000000000000000000000000000000000 -> 404",
+      "stateBefore": "PENDING_FUNDING/PENDING_FUNDING",
+      "stateAfter": "PENDING_FUNDING/PENDING_FUNDING",
+      "gatewayBack": true
+    }
+  ],
+  "result": "FAIL",
+  "error": "timeout waiting for pending transaction applied after mining: {\"ok\":true,\"value\":null} | diagnostics {\"rows\":[{\"status\":\"REVERTED\",\"applied\":false,\"errorClass\":null}],\"chainBlock\":\"403\",\"contract\":\"PENDING_FUNDING/PENDING_FUNDING\",\"chain\":null}",
+  "finishedAt": "2026-11-05T13:15:39.696Z"
+}

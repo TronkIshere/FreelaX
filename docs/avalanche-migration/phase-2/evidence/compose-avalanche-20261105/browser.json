@@ -1,0 +1,119 @@
+{
+  "label": "LOCAL_SIMULATION",
+  "kind": "browser wallet validation with an EIP-1193 test double (NOT MetaMask, NOT Fuji)",
+  "tool": "phase-2/a2-local-stack/browser.mjs",
+  "startedAt": "2026-11-05T13:25:55.874Z",
+  "steps": [
+    {
+      "step": "stack",
+      "at": "2026-11-05T13:25:55.929Z",
+      "environment": "LOCAL_SIMULATION",
+      "chainId": 31337,
+      "frontend": "http://127.0.0.1:8080"
+    },
+    {
+      "step": "users, throwaway wallet and two contracts created through the API",
+      "at": "2026-11-05T13:25:57.952Z",
+      "contractA": "7333f3b6-2182-4ea4-b63c-0322bc6f29a3",
+      "contractB": "58f00fd8-7422-459f-b8ab-077e1a1a81ac"
+    },
+    {
+      "step": "S0 login through the UI form",
+      "at": "2026-11-05T13:25:59.908Z",
+      "ok": true
+    },
+    {
+      "step": "S1 Avalanche rail chosen in the UI; banner visible",
+      "at": "2026-11-05T13:26:01.052Z",
+      "banner": true
+    },
+    {
+      "step": "S2 unsupported chain refused, nothing signed, no wallet linked",
+      "at": "2026-11-05T13:26:01.131Z",
+      "uiMessage": "Mạng của ví không được hỗ trợ. Chỉ môi trường mô phỏng cục bộ và mạng thử nghiệm Avalanche Fuji được dùng; không có gì được ký hoặc gửi.",
+      "walletCalls": [
+        "eth_requestAccounts",
+        "eth_chainId"
+      ]
+    },
+    {
+      "step": "S3 wrong network and refused switch: blocked, nothing signed",
+      "at": "2026-11-05T13:26:01.195Z",
+      "uiMessage": "Ví đang ở sai mạng. Hãy chuyển ví sang đúng mạng rồi thử lại.",
+      "walletCalls": [
+        "eth_requestAccounts",
+        "eth_chainId",
+        "wallet_switchEthereumChain"
+      ]
+    },
+    {
+      "step": "S4 rejected signature: UI says so, no wallet linked",
+      "at": "2026-11-05T13:26:01.292Z",
+      "uiMessage": "Bạn đã từ chối yêu cầu trong ví. Chưa có gì được gửi."
+    },
+    {
+      "step": "S5 wallet linked through the UI (EIP-191 challenge signed, verified by the gateway)",
+      "at": "2026-11-05T13:26:01.712Z",
+      "linked": true
+    },
+    {
+      "step": "S6 funding without USDC fails visibly and applies nothing",
+      "at": "2026-11-05T13:26:03.751Z",
+      "uiMessage": "Ví không gửi được giao dịch.",
+      "contractStatus": "PENDING_FUNDING"
+    },
+    {
+      "step": "S7 transaction rejected in the wallet: UI says so, nothing applied",
+      "at": "2026-11-05T13:26:03.906Z",
+      "uiMessage": "Bạn đã từ chối yêu cầu trong ví. Chưa có gì được gửi."
+    },
+    {
+      "step": "S7a wallet switched to another account: refused before any transaction, the linked wallet is still the one shown",
+      "at": "2026-11-05T13:26:04.052Z",
+      "uiMessage": "Tài khoản đang chọn trong ví không phải ví đã liên kết với bạn. Hãy chuyển sang đúng tài khoản trong ví rồi thử lại; chưa có gì được ký hoặc gửi.",
+      "walletCalls": [
+        "eth_requestAccounts",
+        "eth_chainId"
+      ]
+    },
+    {
+      "step": "S7b locked or disconnected wallet: UI says no account was returned, nothing is sent",
+      "at": "2026-11-05T13:26:04.159Z",
+      "uiMessage": "Ví không trả về địa chỉ hợp lệ."
+    },
+    {
+      "step": "S8 invented transaction hash: not applied, contract stays PENDING_FUNDING, UI shows no funded state",
+      "at": "2026-11-05T13:26:12.539Z",
+      "rows": [
+        {
+          "action": "fund",
+          "status": "UNKNOWN",
+          "businessApplied": false
+        }
+      ],
+      "contractStatus": "PENDING_FUNDING"
+    },
+    {
+      "step": "S9 funding through the UI: FINALIZED, chain FUNDED, contract ACTIVE, UI and backend agree",
+      "at": "2026-11-05T13:26:20.110Z",
+      "txStatus": "FINALIZED",
+      "chainStatus": "FUNDED",
+      "contract": "ACTIVE",
+      "milestone": "FUNDED",
+      "walletCalls": [
+        "eth_requestAccounts",
+        "eth_chainId",
+        "wallet_switchEthereumChain",
+        "eth_sendTransaction"
+      ],
+      "recoveredFromWrongNetwork": true
+    },
+    {
+      "step": "S10 no raw status enum or English wallet error on the screen",
+      "at": "2026-11-05T13:26:20.113Z",
+      "pageErrors": 0
+    }
+  ],
+  "result": "PASS",
+  "finishedAt": "2026-11-05T13:26:20.517Z"
+}

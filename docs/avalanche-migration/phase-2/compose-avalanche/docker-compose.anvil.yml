@@ -1,0 +1,18 @@
+# Local Anvil for the compose "avalanche" profile (LOCAL_SIMULATION only). Add it with: docker compose -f docker-compose.yml -f <this file> --profile avalanche ...
+# The chain state is dumped to a named volume every 2 seconds and on a graceful stop, so `docker restart` keeps the deployed contracts.
+services:
+  anvil:
+    profiles: ["avalanche"]
+    image: ghcr.io/foundry-rs/foundry:v1.8.7
+    entrypoint: ["anvil"]
+    command: ["--host", "0.0.0.0", "--chain-id", "31337", "--block-time", "1", "--state", "/anvil/state.json", "--state-interval", "2"]
+    volumes:
+      - anvil-state:/anvil
+    ports:
+      - "127.0.0.1:8545:8545"
+    # the image runs Anvil as an unprivileged user that cannot write to a fresh named volume; without root no state file is written and a restart loses the chain
+    user: "0:0"
+    restart: "no"
+
+volumes:
+  anvil-state:

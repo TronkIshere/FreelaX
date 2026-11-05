@@ -74,13 +74,16 @@ async function newJobWithContract(client, freelancer, title) {
 }
 
 // ---- the wallet test double (Node side) ------------------------------------------------------------------------------------------
-const wallet = { address: null, key: null };
-const mode = { chainId: '0x7a69', rejectConnect: false, refuseSwitch: false, rejectSign: false, rejectSend: false, fabricateHash: false, calls: [] };
+const wallet = { address: null, key: null };   // the linked wallet
+const active = { address: null, key: null };   // the account the double currently exposes (can be switched to another one)
+const mode = { locked: false, chainId: '0x7a69', rejectConnect: false, refuseSwitch: false, rejectSign: false, rejectSend: false, fabricateHash: false, calls: [] };
 const rpcError = (code, message) => ({ error: { code, message } });
 function walletRpc(method, params = []) {
   mode.calls.push(method);
   switch (method) {
-    case 'eth_requestAccounts': case 'eth_accounts': return mode.rejectConnect ? rpcError(4001, 'User rejected the request.') : { result: [wallet.address] };
+    case 'eth_requestAccounts': case 'eth_accounts':
+      if (mode.rejectConnect) return rpcError(4001, 'User rejected the request.');
+      return { result: mode.locked ? [] : [active.address] };
     case 'eth_chainId': return { result: mode.chainId };
     case 'wallet_switchEthereumChain':
       if (mode.refuseSwitch) return rpcError(4902, 'Unrecognized chain.');
@@ -88,17 +91,17 @@ function walletRpc(method, params = []) {
     case 'personal_sign': {
       if (mode.rejectSign) return rpcError(4001, 'User rejected the request.');
       const message = Buffer.from(String(params[0]).slice(2), 'hex').toString('utf8');
-      return { result: cast(['wallet', 'sign', '--private-key', wallet.key, message]) };
+      return { result: cast(['wallet', 'sign', '--private-key', active.key, message]) };
     }
     case 'eth_signTypedData_v4':
       if (mode.rejectSign) return rpcError(4001, 'User rejected the request.');
-      return { result: cast(['wallet', 'sign', '--private-key', wallet.key, '--data', params[1]]) };
+      return { result: cast(['wallet', 'sign', '--private-key', active.key, '--data', params[1]]) };
     case 'eth_sendTransaction': {
       if (mode.rejectSend) return rpcError(4001, 'User rejected the request.');
       if (mode.fabricateHash) return { result: '0x' + 'ab'.repeat(32) }; // a hash for a transaction that was never sent
       const tx = params[0];
       try {
-        const out = JSON.parse(cast(['send', '--json', '--private-key', wallet.key, ...rpc, tx.to, tx.data]));
+        const out = JSON.parse(cast(['send', '--json', '--private-key', active.key, ...rpc, tx.to, tx.data]));
         if (out.status !== '0x1' && out.status !== 1 && out.status !== '1') return rpcError(-32000, 'transaction reverted');
         return { result: out.transactionHash };
       } catch (e) { return rpcError(-32000, String(e.message).slice(0, 120)); }
@@ -130,6 +133,8 @@ async function main() {
   const client = await user('CLIENT');
   const freelancer = await user('FREELANCER');
   Object.assign(wallet, newWallet());
+  Object.assign(active, wallet);
+  const otherAccount = newWallet();   // a second account of the same (test double) wallet, never linked
   // The escrow needs BOTH parties' linked EVM wallets. The freelancer's wallet is linked through the API (a second throwaway key); the
   // client's wallet is linked through the UI below.
   const freelancerWallet = newWallet();
@@ -226,6 +231,26 @@ async function main() {
   record('S7 transaction rejected in the wallet: UI says so, nothing applied', { uiMessage: (await alertText()).slice(0, 160) });
   mode.rejectSend = false;
 
+  // S7a the user switches the wallet to another account (not the linked one): refused before anything is sent
+  mode.calls.length = 0; Object.assign(active, otherAccount);
+  const txRowsBefore = (await view(A.contractId)).transactions.length;
+  await clickButton('Nạp tiền ký quỹ bằng ví');
+  await page.waitForFunction(() => /không phải ví đã liên kết/.test(document.body.innerText), null, { timeout: 30000 });
+  expect(!mode.calls.includes('eth_sendTransaction'), 'S7a a transaction was sent from an account that is not the linked wallet');
+  expect((await view(A.contractId)).transactions.length === txRowsBefore, 'S7a a transaction row was recorded');
+  const shownLinked = (await bodyText()).includes(wallet.address.slice(0, 10));
+  expect(shownLinked, 'S7a the screen no longer shows the linked wallet');
+  record('S7a wallet switched to another account: refused before any transaction, the linked wallet is still the one shown', { uiMessage: (await alertText()).slice(0, 170), walletCalls: [...new Set(mode.calls)] });
+  Object.assign(active, wallet);
+
+  // S7b the wallet is locked or disconnected (it returns no account)
+  mode.calls.length = 0; mode.locked = true;
+  await clickButton('Nạp tiền ký quỹ bằng ví');
+  await page.waitForFunction(() => /không trả về địa chỉ hợp lệ/.test(document.body.innerText), null, { timeout: 30000 });
+  expect(!mode.calls.includes('eth_sendTransaction') && (await view(A.contractId)).transactions.length === txRowsBefore, 'S7b something was sent while the wallet was locked');
+  record('S7b locked or disconnected wallet: UI says no account was returned, nothing is sent', { uiMessage: (await alertText()).slice(0, 170) });
+  mode.locked = false;
+
   // S8 a wallet that returns a transaction hash for a transaction that was never sent (contract B): never shown as success
   await page.goto(`${FRONTEND}/work/${B.jobId}`);
   await waitText('Nạp tiền ký quỹ bằng ví');
@@ -246,7 +271,7 @@ async function main() {
   // S9 genuine funding on contract A: the UI follows the chain to FINALIZED and the backend agrees
   await page.goto(`${FRONTEND}/work/${A.jobId}`);
   await waitText('Nạp tiền ký quỹ bằng ví');
-  mode.calls.length = 0;
+  mode.calls.length = 0; mode.chainId = '0xa869'; mode.refuseSwitch = false;   // the wallet starts on Fuji and switches when asked
   await clickButton('Nạp tiền ký quỹ bằng ví');
   await waitText('Đã chốt', 90000);
   await waitText('Đã nạp tiền', 60000);
@@ -256,7 +281,8 @@ async function main() {
   expect(fund?.status === 'FINALIZED' && fund.businessApplied && v.chain?.status === 'FUNDED', 'S9 backend state: ' + JSON.stringify(fund));
   expect(jobA2.contract?.status === 'ACTIVE' && jobA2.contract?.milestoneStatus === 'FUNDED', 'S9 contract state: ' + jobA2.contract?.status + '/' + jobA2.contract?.milestoneStatus);
   record('S9 funding through the UI: FINALIZED, chain FUNDED, contract ACTIVE, UI and backend agree', { txStatus: fund.status, chainStatus: v.chain.status,
-    contract: jobA2.contract.status, milestone: jobA2.contract.milestoneStatus, walletCalls: [...new Set(mode.calls)] });
+    contract: jobA2.contract.status, milestone: jobA2.contract.milestoneStatus, walletCalls: [...new Set(mode.calls)], recoveredFromWrongNetwork: mode.calls.includes('wallet_switchEthereumChain') && mode.chainId === '0x7a69' });
+  expect(mode.calls.includes('wallet_switchEthereumChain') && mode.chainId === '0x7a69', 'S9 the wrong network was not recovered through the switch');
 
   // S10 no raw English enum or wallet error text is left on the contract screen
   const finalText = await bodyText();

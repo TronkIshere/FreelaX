@@ -44,6 +44,30 @@ bash docs/avalanche-migration/phase-2/a2-local-stack/run.sh "D:/path/to/evidence
 ```
 The evidence path must be given as `D:/...` on Windows. The run takes about 6 minutes and tears everything down.
 
+## 3b. The whole Avalanche stack through Docker Compose (images built by compose)
+```sh
+# builds avalanche-integration, payment, MISA, Solana gateway, marketplace and the Caddy frontend with their Dockerfiles, starts mysql, redis and an Anvil
+# whose state lives in a volume, deploys the contracts with forge, hands the roles to the gateway's ephemeral signers (F3), then runs the drivers
+PLAYWRIGHT_CORE="/tmp/pw/node_modules/playwright-core/index.mjs"   bash docs/avalanche-migration/phase-2/compose-avalanche/run.sh "D:/path/to/evidence-dir" drive.mjs browser.mjs outage.mjs
+```
+- `drive.mjs` (API-level end to end: fund, submit, release, payout, mutual refund, stuck escrow, mutual settlement, administrator decision, arbiter), `browser.mjs`
+  (Edge, the Caddy frontend on http://127.0.0.1:8080, wallet test double) and `outage.mjs` (faults injected with the Docker CLI) are in `a2-local-stack` and `compose-avalanche`.
+- `OUTAGE_SCENARIOS=O6,O7 bash .../run.sh <dir> outage.mjs` runs only some outage scenarios (O1 gateway stop, O2 RPC pause, O3 Anvil restart, O4 backend restart, O5 database stop,
+  O6 pending transaction, O7 reverted transaction); scenarios O2 to O4 need O1 in the same run.
+- Compose names the MySQL and Redis containers `shared-mysql` and `shared-redis`; the script refuses to start if containers with those names belong to another project.
+- After any restart of the **gateway** in LOCAL_SIMULATION its signer addresses change (F3); hand the roles over again (what `run.sh` does at start, `outage.mjs` does after O1)
+  or every authorization it signs is refused by the escrow with `InvalidAuthorization`.
+- Anvil runs as root in its container so that the state file in the volume can be written; without that a restart silently resets the chain.
+
+## 3c. MySQL integration tests (opt-in, throwaway MySQL)
+```sh
+docker network create fxit-net; docker run -d --name fxit-mysql --network fxit-net -e MYSQL_ROOT_PASSWORD=<throwaway> mysql:8.4
+docker exec fxit-mysql mysql -uroot -p<throwaway> -e "CREATE DATABASE it_marketplace CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+docker run --rm --network fxit-net --memory=2g -e MAVEN_OPTS=-Xmx768m -v "$W:/src" -v "$HOME/.m2:/root/.m2" -w /src maven:3.9-eclipse-temurin-17   mvn -B -ntp -pl marketplace-backend test -Dtest='*MySql*IT' -Dsurefire.failIfNoSpecifiedTests=false   -Dfreelax.mysql.url="jdbc:mysql://fxit-mysql:3306/it_marketplace?useUnicode=true&characterEncoding=UTF-8" -Dfreelax.mysql.user=root -Dfreelax.mysql.password=<throwaway>
+```
+The three `*MySqlIT` classes are not part of the default test run (their names do not match surefire's patterns); they check Flyway V1 to V9 with Hibernate validation and the uniqueness
+and concurrency rules (A8, F13, payout, payment flow).
+
 ## 4. Browser validation of the real UI (wallet is a test double)
 ```sh
 mkdir -p /tmp/pw && (cd /tmp/pw && npm init -y >/dev/null && npm i playwright-core@1.49.1 --no-audit --no-fund)

@@ -1,0 +1,34 @@
+{
+  "label": "LOCAL_SIMULATION",
+  "kind": "outage and recovery on the compose-built Avalanche stack (not Fuji)",
+  "tool": "phase-2/compose-avalanche/outage.mjs",
+  "startedAt": "2026-11-05T12:23:13.342Z",
+  "steps": [
+    {
+      "step": "setup: users, throwaway wallets linked, simulated USDC minted (LOCAL only)",
+      "at": "2026-11-05T12:23:15.011Z",
+      "chainId": 31337
+    },
+    {
+      "step": "O1 gateway unavailable: read and record refused, no business effect; after the restart the same hash is recorded once and applied once",
+      "at": "2026-11-05T12:23:30.528Z",
+      "readWhileDown": "GET /api/v1/contracts/ab233fa2-1881-4230-8700-8ba993cab11a/avalanche -> 500",
+      "recordWhileDown": "POST /api/v1/contracts/ab233fa2-1881-4230-8700-8ba993cab11a/avalanche/actions/fund/transactions -> 500",
+      "contractWhileDown": "PENDING_FUNDING/PENDING_FUNDING",
+      "afterRecovery": "ACTIVE/FUNDED",
+      "rows": 1,
+      "sameRowOnSecondRecord": true
+    },
+    {
+      "step": "O2 RPC unavailable: the API degrades without changing business state; it reads FUNDED again after the RPC returns",
+      "at": "2026-11-05T12:23:51.067Z",
+      "viewWhilePaused": "GET /api/v1/contracts/ab233fa2-1881-4230-8700-8ba993cab11a/avalanche -> 500",
+      "refreshWhilePaused": "POST /api/v1/contracts/ab233fa2-1881-4230-8700-8ba993cab11a/avalanche/refresh -> 500",
+      "contractWhilePaused": "ACTIVE/FUNDED",
+      "chainAfter": "FUNDED"
+    }
+  ],
+  "result": "FAIL",
+  "error": "timeout waiting for escrow still funded after the chain restart: {\"ok\":false,\"error\":\"GET /api/v1/contracts/ab233fa2-1881-4230-8700-8ba993cab11a/avalanche -> 500\",\"status\":500}",
+  "finishedAt": "2026-11-05T12:25:24.718Z"
+}

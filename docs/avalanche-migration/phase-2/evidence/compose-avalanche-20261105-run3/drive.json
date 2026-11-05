@@ -1,0 +1,459 @@
+{
+  "label": "LOCAL_SIMULATION",
+  "tool": "phase-2/a2-local-stack",
+  "startedAt": "2026-11-05T13:10:50.161Z",
+  "steps": [
+    {
+      "step": "gateway",
+      "at": "2026-11-05T13:10:50.372Z",
+      "environment": "LOCAL_SIMULATION",
+      "chainId": 31337,
+      "escrow": "0xe7f1725e7734ce288f8367e1bb143e90bb3f0512",
+      "token": "0x5fbdb2315678afecb367f032d93f642f64180aa3",
+      "tokenKind": "MOCK"
+    },
+    {
+      "step": "users registered",
+      "at": "2026-11-05T13:10:51.216Z",
+      "client": "a2-client-c1b344e5@example.test",
+      "freelancer": "a2-freelancer-ed393caf@example.test"
+    },
+    {
+      "step": "A8 wallet link client",
+      "at": "2026-11-05T13:10:52.307Z",
+      "linked": "0x08247a5a211f34e8e63d541f4c18387a0ee18f14",
+      "replayOfUsedChallenge": "REFUSED"
+    },
+    {
+      "step": "A8 wallet link freelancer",
+      "at": "2026-11-05T13:10:52.569Z",
+      "linked": "0x55cf6e74339b813961ba31274c903f930cccae08",
+      "replayOfUsedChallenge": "REFUSED"
+    },
+    {
+      "step": "contract 1 on the Avalanche rail",
+      "at": "2026-11-05T13:10:53.017Z",
+      "jobId": "997f0f72-d55a-409b-9b06-434dad034b2a",
+      "contractId": "a79389a9-3805-4ee1-870f-5f9c92114660",
+      "networkId": "avalanche-local",
+      "paymentNetworkIdInJob": null
+    },
+    {
+      "step": "MockUSDC faucet to the client wallet (LOCAL only)",
+      "at": "2026-11-05T13:10:53.157Z",
+      "amountBaseUnits": "20000000"
+    },
+    {
+      "step": "fund applied",
+      "at": "2026-11-05T13:10:56.828Z",
+      "states": [
+        "CONFIRMED",
+        "FINALIZED"
+      ],
+      "chainStatus": "FUNDED",
+      "txHash": "0xa1c178a45b2437b9913957da51921951168aaf6dfae5bff28cf914b636e448d7",
+      "contract": "ACTIVE",
+      "milestone": "FUNDED"
+    },
+    {
+      "step": "work submitted in the marketplace",
+      "at": "2026-11-05T13:10:56.982Z",
+      "submissionStatus": "SUBMITTED",
+      "jobStatus": "IN_PROGRESS"
+    },
+    {
+      "step": "submission anchored on chain",
+      "at": "2026-11-05T13:10:58.686Z",
+      "states": [
+        "CONFIRMED",
+        "FINALIZED"
+      ],
+      "chainStatus": "SUBMITTED",
+      "txHash": "0xbe0b252d5a70463c650595f80370185a19a05a1eb6a49a2b9ce4aee4a23231ae"
+    },
+    {
+      "step": "release applied",
+      "at": "2026-11-05T13:11:00.695Z",
+      "states": [
+        "CONFIRMED",
+        "FINALIZED"
+      ],
+      "chainStatus": "RELEASED",
+      "txHash": "0xe353b902366ec1a2ad3709dd3353d0e4e50927adabcd0f74167000be58d0d24c",
+      "contract": "COMPLETED",
+      "milestone": "RELEASED"
+    },
+    {
+      "step": "settlement notification to the freelancer",
+      "at": "2026-11-05T13:11:00.725Z",
+      "types": [
+        "RELEASE_CONFIRMED",
+        "FUNDING_CONFIRMED",
+        "JOB_ASSIGNED"
+      ]
+    },
+    {
+      "step": "payout requested (local mock partner)",
+      "at": "2026-11-05T13:11:01.138Z",
+      "outcome": "CREATED",
+      "status": "AWAITING_USER_TRANSFER",
+      "amountBaseUnits": "5000000",
+      "depositAddress": "0x00000000000000000000000000000000000c0ffe",
+      "partnerId": "local-mock",
+      "partnerSimulated": true,
+      "partnerReportedFee": null,
+      "taxTreatment": "SOLANA_RAIL_RULES_SIMULATED",
+      "before": "refused before release: REFUSED"
+    },
+    {
+      "step": "payout completed (simulated fiat)",
+      "at": "2026-11-05T13:11:02.692Z",
+      "states": [
+        "TRANSFER_SUBMITTED",
+        "FIAT_PAYOUT_CONFIRMED"
+      ],
+      "transferChainState": "FINALIZED",
+      "transferMatch": "MATCHED",
+      "transferConfirmedAt": "2026-11-05T13:11:02.663040450Z",
+      "fiatConfirmedAt": "2026-11-05T13:11:02.663629677Z",
+      "fiatReference": "SIMULATED-PAYOUT-9c34768a-faac-3832-89d3-e1449c86b2dd",
+      "depositBalance": "5000000",
+      "freelancerBalanceAfter": "0"
+    },
+    {
+      "step": "completed payout cannot be reused",
+      "at": "2026-11-05T13:11:02.725Z",
+      "transferReuse": "REFUSED",
+      "secondRequest": "EXISTING"
+    },
+    {
+      "step": "contract 2 on the Avalanche rail",
+      "at": "2026-11-05T13:11:02.911Z",
+      "jobId": "6fdbbc42-0bd8-46ae-ad9d-0436c8554b37",
+      "contractId": "6e6fc8af-ac1c-4440-9485-d51ee12166c8",
+      "networkId": "avalanche-local",
+      "paymentNetworkIdInJob": null
+    },
+    {
+      "step": "fund applied (contract 2)",
+      "at": "2026-11-05T13:11:05.823Z",
+      "states": [
+        "CONFIRMED",
+        "FINALIZED"
+      ],
+      "chainStatus": "FUNDED",
+      "txHash": "0xb0ec3a1d638834a05c4a864b2492e003aaa275e465d3034227a313c1444ef25f"
+    },
+    {
+      "step": "P3-C4 stuck escrow reported",
+      "at": "2026-11-05T13:11:06.600Z",
+      "alerts": [
+        {
+          "code": "CLIENT_BLACKLISTED",
+          "address": "0x08247a5a211f34e8e63d541f4c18387a0ee18f14",
+          "blocks": [
+            "mutual-refund",
+            "resolve:refund",
+            "mutual-settle:refund"
+          ]
+        }
+      ],
+      "chainStatus": "FUNDED"
+    },
+    {
+      "step": "P3-C4 report cleared after the issuer lifted the control",
+      "at": "2026-11-05T13:11:07.594Z",
+      "alerts": []
+    },
+    {
+      "step": "F13 client signed",
+      "at": "2026-11-05T13:11:07.874Z",
+      "mutualRefund": {
+        "authorizationDeadline": 1793884867,
+        "typedDataDigest": "0x45f708ace3cd7a71b2bd4e754e0ce0f9b4ad023e87b4266bd9736b7df5f3420b",
+        "clientSigned": true,
+        "freelancerSigned": false
+      }
+    },
+    {
+      "step": "F13 freelancer signed",
+      "at": "2026-11-05T13:11:08.269Z",
+      "mutualRefund": {
+        "authorizationDeadline": 1793884867,
+        "typedDataDigest": "0x45f708ace3cd7a71b2bd4e754e0ce0f9b4ad023e87b4266bd9736b7df5f3420b",
+        "clientSigned": true,
+        "freelancerSigned": true
+      }
+    },
+    {
+      "step": "mutual refund applied",
+      "at": "2026-11-05T13:11:10.713Z",
+      "states": [
+        "CONFIRMED",
+        "FINALIZED"
+      ],
+      "chainStatus": "REFUNDED",
+      "txHash": "0x55989cd09578752b190947fb3ba7912e580404beb1650c1ec647c51282d2d0cf",
+      "contract": "CANCELLED",
+      "milestone": "REFUNDED"
+    },
+    {
+      "step": "held signatures spent",
+      "at": "2026-11-05T13:11:10.781Z",
+      "mutualRefund": null
+    },
+    {
+      "step": "no payout for a refunded escrow",
+      "at": "2026-11-05T13:11:10.835Z",
+      "request": "REFUSED"
+    },
+    {
+      "step": "R12 RELEASE: contract on the Avalanche rail",
+      "at": "2026-11-05T13:11:11.455Z",
+      "jobId": "a0566701-6d1b-4879-ac50-9ef6379bd278",
+      "contractId": "80251614-4d80-410f-900d-d00aa83e8373",
+      "networkId": "avalanche-local",
+      "paymentNetworkIdInJob": null
+    },
+    {
+      "step": "R12 RELEASE: funded and submitted on chain",
+      "at": "2026-11-05T13:11:16.703Z"
+    },
+    {
+      "step": "R12 RELEASE: escrow Disputed on chain",
+      "at": "2026-11-05T13:11:18.710Z",
+      "disputeId": "5e36a8e5-7601-4765-bc82-26610459f8fe",
+      "chainStatus": "DISPUTED"
+    },
+    {
+      "step": "R12 RELEASE: negative checks before the settlement",
+      "at": "2026-11-05T13:11:20.734Z",
+      "negatives": {
+        "noSignatureNoTransaction": "no transaction prepared",
+        "nonParty": "REFUSED: POST /api/v1/contracts/80251614-4d80-410f-900d-d00aa83e8373/avalanche/mutual-settle/signatures -> 400: {\"timestamp\":\"2026-11-05T13:11:19.012+00:00\",\"status\":100",
+        "wrongDigest": "REFUSED: POST /api/v1/contracts/80251614-4d80-410f-900d-d00aa83e8373/avalanche/mutual-settle/signatures -> 400: {\"timestamp\":\"2026-11-05T13:11:19.044+00:00\",\"status\":100",
+        "oneSignatureOnly": "no transaction prepared",
+        "mutualRefundWhileDisputed": "REFUSED: mutual-refund: nothing to send",
+        "forgedPartySignature": "REFUSED: cast send --json --private-key <redacted-key> --rpc-url http://localhost:8545 0xe7f1725e7734ce288f8367e1bb143e90bb3f0512 0xf6341c5f60393eaf2c9e40e6b198c04a740a8"
+      },
+      "chainStatusAfter": "DISPUTED"
+    },
+    {
+      "step": "R12 RELEASE: both parties signed",
+      "at": "2026-11-05T13:11:21.002Z",
+      "mutualSettlements": [
+        {
+          "releaseToFreelancer": true,
+          "authorizationDeadline": 1793884878,
+          "typedDataDigest": "0xc8f54c34114fa51be8333e627de389cd0843fc4fc25b29d2d33e2657a2964601",
+          "clientSigned": true,
+          "freelancerSigned": true
+        }
+      ]
+    },
+    {
+      "step": "R12 RELEASE: settlement finalized",
+      "at": "2026-11-05T13:11:22.844Z",
+      "txHash": "0xe8786a953610e328a9eba710108851604739d7d0351f1e8e000c4dbcbd292b7d",
+      "states": [
+        "CONFIRMED",
+        "FINALIZED"
+      ],
+      "chainStatus": "RELEASED",
+      "contract": "COMPLETED",
+      "milestone": "RELEASED",
+      "disputeStatus": "RESOLVED_RELEASE",
+      "settleAgainWhenNotDisputed": "REFUSED: POST /api/v1/contracts/80251614-4d80-410f-900d-d00aa83e8373/avalanche/actions/mutual-settle/prepare -> 400: {\"timestamp\":\"2026-11-05T13:11:22.790+00:00\",\"status",
+      "heldSignaturesSpent": [],
+      "clientBalanceBaseUnits": "15000000",
+      "freelancerBalanceBaseUnits": "5000000"
+    },
+    {
+      "step": "R12 REFUND: contract on the Avalanche rail",
+      "at": "2026-11-05T13:11:23.018Z",
+      "jobId": "c2d4b41e-e5f7-425c-877c-400fb338f61d",
+      "contractId": "6284584e-990c-4508-8d5e-61777d6b6619",
+      "networkId": "avalanche-local",
+      "paymentNetworkIdInJob": null
+    },
+    {
+      "step": "R12 REFUND: funded and submitted on chain",
+      "at": "2026-11-05T13:11:27.649Z"
+    },
+    {
+      "step": "R12 REFUND: escrow Disputed on chain",
+      "at": "2026-11-05T13:11:29.600Z",
+      "disputeId": "191b4f13-bb79-4512-b091-99e5aaaf5c1c",
+      "chainStatus": "DISPUTED"
+    },
+    {
+      "step": "R12 REFUND: negative checks before the settlement",
+      "at": "2026-11-05T13:11:30.783Z",
+      "negatives": {
+        "noSignatureNoTransaction": "no transaction prepared",
+        "nonParty": "REFUSED: POST /api/v1/contracts/6284584e-990c-4508-8d5e-61777d6b6619/avalanche/mutual-settle/signatures -> 400: {\"timestamp\":\"2026-11-05T13:11:29.880+00:00\",\"status\":100",
+        "wrongDigest": "REFUSED: POST /api/v1/contracts/6284584e-990c-4508-8d5e-61777d6b6619/avalanche/mutual-settle/signatures -> 400: {\"timestamp\":\"2026-11-05T13:11:29.918+00:00\",\"status\":100",
+        "oneSignatureOnly": "no transaction prepared",
+        "mutualRefundWhileDisputed": "REFUSED: mutual-refund: nothing to send",
+        "forgedPartySignature": "REFUSED: cast send --json --private-key <redacted-key> --rpc-url http://localhost:8545 0xe7f1725e7734ce288f8367e1bb143e90bb3f0512 0xf6341c5f641f650015214d839c6fbd8311cb1"
+      },
+      "chainStatusAfter": "DISPUTED"
+    },
+    {
+      "step": "R12 REFUND: both parties signed",
+      "at": "2026-11-05T13:11:31.060Z",
+      "mutualSettlements": [
+        {
+          "releaseToFreelancer": false,
+          "authorizationDeadline": 1793884889,
+          "typedDataDigest": "0xfa7c0ba3359c78df8e8ef87c39a03c1d5b59dafc481bd9121ec56de94843c3f1",
+          "clientSigned": true,
+          "freelancerSigned": true
+        }
+      ]
+    },
+    {
+      "step": "R12 REFUND: settlement finalized",
+      "at": "2026-11-05T13:11:32.820Z",
+      "txHash": "0x77783bde563d6f9fb3c850f522044f474bed0504460fa024856a1ea68d6f0b22",
+      "states": [
+        "CONFIRMED",
+        "FINALIZED"
+      ],
+      "chainStatus": "REFUNDED",
+      "contract": "CANCELLED",
+      "milestone": "REFUNDED",
+      "disputeStatus": "RESOLVED_REFUND",
+      "settleAgainWhenNotDisputed": "REFUSED: POST /api/v1/contracts/6284584e-990c-4508-8d5e-61777d6b6619/avalanche/actions/mutual-settle/prepare -> 400: {\"timestamp\":\"2026-11-05T13:11:32.774+00:00\",\"status",
+      "heldSignaturesSpent": [],
+      "clientBalanceBaseUnits": "20000000",
+      "freelancerBalanceBaseUnits": "5000000"
+    },
+    {
+      "step": "ARBITER REFUND: contract on the Avalanche rail",
+      "at": "2026-11-05T13:11:33.076Z",
+      "jobId": "fad9ef85-e3d1-436d-a087-08b445caafcc",
+      "contractId": "49daee70-df07-44fa-aeae-4e7d52465198",
+      "networkId": "avalanche-local",
+      "paymentNetworkIdInJob": null
+    },
+    {
+      "step": "ARBITER REFUND: funded and submitted on chain",
+      "at": "2026-11-05T13:11:38.724Z"
+    },
+    {
+      "step": "ARBITER REFUND: escrow Disputed on chain",
+      "at": "2026-11-05T13:11:40.679Z",
+      "disputeId": "22d2bc20-f50f-4b87-848d-f5195999f7cc",
+      "chainStatus": "DISPUTED"
+    },
+    {
+      "step": "ARBITER REFUND: administrator decision recorded, no money moved",
+      "at": "2026-11-05T13:11:40.891Z",
+      "status": "DECISION_PENDING_REFUND",
+      "negatives": {
+        "decisionBeforeClaim": "REFUSED: POST /api/v1/admin/disputes/22d2bc20-f50f-4b87-848d-f5195999f7cc/resolve -> 409: {\"timestamp\":\"2026-11-05T13:11:40.716+00:00\",\"status\":4039,\"error\":\"Trạng thái ",
+        "partyCannotClaim": "REFUSED: POST /api/v1/admin/disputes/22d2bc20-f50f-4b87-848d-f5195999f7cc/claim -> 403: {\"timestamp\":\"2026-11-05T13:11:40.726+00:00\",\"status\":2002,\"error\":\"Không có quyề",
+        "partyCannotDecide": "REFUSED: POST /api/v1/admin/disputes/22d2bc20-f50f-4b87-848d-f5195999f7cc/resolve -> 403: {\"timestamp\":\"2026-11-05T13:11:40.736+00:00\",\"status\":2002,\"error\":\"Không có qu",
+        "arbiterBeforeDecision": "REFUSED: POST /api/v1/contracts/49daee70-df07-44fa-aeae-4e7d52465198/avalanche/actions/resolve/execute -> 400: {\"timestamp\":\"2026-11-05T13:11:40.780+00:00\",\"status\":1000",
+        "otherKeyAfterDecision": "REFUSED: POST /api/v1/admin/disputes/22d2bc20-f50f-4b87-848d-f5195999f7cc/resolve -> 409: {\"timestamp\":\"2026-11-05T13:11:40.853+00:00\",\"status\":4040,\"error\":\"Tranh chấp ",
+        "clientCannotArbitrate": "REFUSED: POST /api/v1/contracts/49daee70-df07-44fa-aeae-4e7d52465198/avalanche/actions/resolve/execute -> 400: {\"timestamp\":\"2026-11-05T13:11:40.899+00:00\",\"status\":1000",
+        "freelancerCannotArbitrate": "REFUSED: POST /api/v1/contracts/49daee70-df07-44fa-aeae-4e7d52465198/avalanche/actions/resolve/execute -> 400: {\"timestamp\":\"2026-11-05T13:11:40.910+00:00\",\"status\":1000",
+        "secondArbiterRun": "REFUSED: POST /api/v1/contracts/49daee70-df07-44fa-aeae-4e7d52465198/avalanche/actions/resolve/execute -> 400: {\"timestamp\":\"2026-11-05T13:11:43.234+00:00\",\"status\":1000",
+        "otherKeyAfterResolution": "REFUSED: POST /api/v1/admin/disputes/22d2bc20-f50f-4b87-848d-f5195999f7cc/resolve -> 409: {\"timestamp\":\"2026-11-05T13:11:43.250+00:00\",\"status\":4040,\"error\":\"Tranh chấp ",
+        "mutualSettleAfterResolution": "REFUSED: POST /api/v1/contracts/49daee70-df07-44fa-aeae-4e7d52465198/avalanche/actions/mutual-settle/prepare -> 400: {\"timestamp\":\"2026-11-05T13:11:43.264+00:00\",\"status"
+      },
+      "chainStatus": "DISPUTED"
+    },
+    {
+      "step": "ARBITER REFUND: arbiter resolution finalized",
+      "at": "2026-11-05T13:11:43.267Z",
+      "txHash": "0x792c2d4e38aa5610485400c89ad26c563b69fa3f73d2840f501fb4ffdcd4782f",
+      "states": [
+        "SUBMITTED",
+        "CONFIRMED",
+        "FINALIZED"
+      ],
+      "chainStatus": "REFUNDED",
+      "contract": "CANCELLED",
+      "milestone": "REFUNDED",
+      "disputeStatus": "RESOLVED_REFUND",
+      "negatives": {
+        "decisionBeforeClaim": "REFUSED: POST /api/v1/admin/disputes/22d2bc20-f50f-4b87-848d-f5195999f7cc/resolve -> 409: {\"timestamp\":\"2026-11-05T13:11:40.716+00:00\",\"status\":4039,\"error\":\"Trạng thái ",
+        "partyCannotClaim": "REFUSED: POST /api/v1/admin/disputes/22d2bc20-f50f-4b87-848d-f5195999f7cc/claim -> 403: {\"timestamp\":\"2026-11-05T13:11:40.726+00:00\",\"status\":2002,\"error\":\"Không có quyề",
+        "partyCannotDecide": "REFUSED: POST /api/v1/admin/disputes/22d2bc20-f50f-4b87-848d-f5195999f7cc/resolve -> 403: {\"timestamp\":\"2026-11-05T13:11:40.736+00:00\",\"status\":2002,\"error\":\"Không có qu",
+        "arbiterBeforeDecision": "REFUSED: POST /api/v1/contracts/49daee70-df07-44fa-aeae-4e7d52465198/avalanche/actions/resolve/execute -> 400: {\"timestamp\":\"2026-11-05T13:11:40.780+00:00\",\"status\":1000",
+        "otherKeyAfterDecision": "REFUSED: POST /api/v1/admin/disputes/22d2bc20-f50f-4b87-848d-f5195999f7cc/resolve -> 409: {\"timestamp\":\"2026-11-05T13:11:40.853+00:00\",\"status\":4040,\"error\":\"Tranh chấp ",
+        "clientCannotArbitrate": "REFUSED: POST /api/v1/contracts/49daee70-df07-44fa-aeae-4e7d52465198/avalanche/actions/resolve/execute -> 400: {\"timestamp\":\"2026-11-05T13:11:40.899+00:00\",\"status\":1000",
+        "freelancerCannotArbitrate": "REFUSED: POST /api/v1/contracts/49daee70-df07-44fa-aeae-4e7d52465198/avalanche/actions/resolve/execute -> 400: {\"timestamp\":\"2026-11-05T13:11:40.910+00:00\",\"status\":1000",
+        "secondArbiterRun": "REFUSED: POST /api/v1/contracts/49daee70-df07-44fa-aeae-4e7d52465198/avalanche/actions/resolve/execute -> 400: {\"timestamp\":\"2026-11-05T13:11:43.234+00:00\",\"status\":1000",
+        "otherKeyAfterResolution": "REFUSED: POST /api/v1/admin/disputes/22d2bc20-f50f-4b87-848d-f5195999f7cc/resolve -> 409: {\"timestamp\":\"2026-11-05T13:11:43.250+00:00\",\"status\":4040,\"error\":\"Tranh chấp ",
+        "mutualSettleAfterResolution": "REFUSED: POST /api/v1/contracts/49daee70-df07-44fa-aeae-4e7d52465198/avalanche/actions/mutual-settle/prepare -> 400: {\"timestamp\":\"2026-11-05T13:11:43.264+00:00\",\"status"
+      }
+    },
+    {
+      "step": "ARBITER RELEASE: contract on the Avalanche rail",
+      "at": "2026-11-05T13:11:43.397Z",
+      "jobId": "052d96bf-d676-4bad-bd66-ae923c3d7eea",
+      "contractId": "4c99efe3-c68b-420f-b311-fe6201b31d4f",
+      "networkId": "avalanche-local",
+      "paymentNetworkIdInJob": null
+    },
+    {
+      "step": "ARBITER RELEASE: funded and submitted on chain",
+      "at": "2026-11-05T13:11:48.637Z"
+    },
+    {
+      "step": "ARBITER RELEASE: escrow Disputed on chain",
+      "at": "2026-11-05T13:11:50.536Z",
+      "disputeId": "7abbfc44-0cf3-41a4-838a-cda8ee6a9a56",
+      "chainStatus": "DISPUTED"
+    },
+    {
+      "step": "ARBITER RELEASE: administrator decision recorded, no money moved",
+      "at": "2026-11-05T13:11:50.713Z",
+      "status": "DECISION_PENDING_RELEASE",
+      "negatives": {
+        "decisionBeforeClaim": "REFUSED: POST /api/v1/admin/disputes/7abbfc44-0cf3-41a4-838a-cda8ee6a9a56/resolve -> 409: {\"timestamp\":\"2026-11-05T13:11:50.551+00:00\",\"status\":4039,\"error\":\"Trạng thái ",
+        "partyCannotClaim": "REFUSED: POST /api/v1/admin/disputes/7abbfc44-0cf3-41a4-838a-cda8ee6a9a56/claim -> 403: {\"timestamp\":\"2026-11-05T13:11:50.560+00:00\",\"status\":2002,\"error\":\"Không có quyề",
+        "partyCannotDecide": "REFUSED: POST /api/v1/admin/disputes/7abbfc44-0cf3-41a4-838a-cda8ee6a9a56/resolve -> 403: {\"timestamp\":\"2026-11-05T13:11:50.569+00:00\",\"status\":2002,\"error\":\"Không có qu",
+        "arbiterBeforeDecision": "REFUSED: POST /api/v1/contracts/4c99efe3-c68b-420f-b311-fe6201b31d4f/avalanche/actions/resolve/execute -> 400: {\"timestamp\":\"2026-11-05T13:11:50.606+00:00\",\"status\":1000",
+        "otherKeyAfterDecision": "REFUSED: POST /api/v1/admin/disputes/7abbfc44-0cf3-41a4-838a-cda8ee6a9a56/resolve -> 409: {\"timestamp\":\"2026-11-05T13:11:50.672+00:00\",\"status\":4040,\"error\":\"Tranh chấp ",
+        "clientCannotArbitrate": "REFUSED: POST /api/v1/contracts/4c99efe3-c68b-420f-b311-fe6201b31d4f/avalanche/actions/resolve/execute -> 400: {\"timestamp\":\"2026-11-05T13:11:50.722+00:00\",\"status\":1000",
+        "freelancerCannotArbitrate": "REFUSED: POST /api/v1/contracts/4c99efe3-c68b-420f-b311-fe6201b31d4f/avalanche/actions/resolve/execute -> 400: {\"timestamp\":\"2026-11-05T13:11:50.734+00:00\",\"status\":1000",
+        "secondArbiterRun": "REFUSED: POST /api/v1/contracts/4c99efe3-c68b-420f-b311-fe6201b31d4f/avalanche/actions/resolve/execute -> 400: {\"timestamp\":\"2026-11-05T13:11:53.027+00:00\",\"status\":1000",
+        "otherKeyAfterResolution": "REFUSED: POST /api/v1/admin/disputes/7abbfc44-0cf3-41a4-838a-cda8ee6a9a56/resolve -> 409: {\"timestamp\":\"2026-11-05T13:11:53.042+00:00\",\"status\":4040,\"error\":\"Tranh chấp ",
+        "mutualSettleAfterResolution": "REFUSED: POST /api/v1/contracts/4c99efe3-c68b-420f-b311-fe6201b31d4f/avalanche/actions/mutual-settle/prepare -> 400: {\"timestamp\":\"2026-11-05T13:11:53.056+00:00\",\"status"
+      },
+      "chainStatus": "DISPUTED"
+    },
+    {
+      "step": "ARBITER RELEASE: arbiter resolution finalized",
+      "at": "2026-11-05T13:11:53.058Z",
+      "txHash": "0xf92229d40fdfea4e6f2baec36503d05ace2646640f6ef7d93d41480c96f594aa",
+      "states": [
+        "SUBMITTED",
+        "CONFIRMED",
+        "FINALIZED"
+      ],
+      "chainStatus": "RELEASED",
+      "contract": "COMPLETED",
+      "milestone": "RELEASED",
+      "disputeStatus": "RESOLVED_RELEASE",
+      "negatives": {
+        "decisionBeforeClaim": "REFUSED: POST /api/v1/admin/disputes/7abbfc44-0cf3-41a4-838a-cda8ee6a9a56/resolve -> 409: {\"timestamp\":\"2026-11-05T13:11:50.551+00:00\",\"status\":4039,\"error\":\"Trạng thái ",
+        "partyCannotClaim": "REFUSED: POST /api/v1/admin/disputes/7abbfc44-0cf3-41a4-838a-cda8ee6a9a56/claim -> 403: {\"timestamp\":\"2026-11-05T13:11:50.560+00:00\",\"status\":2002,\"error\":\"Không có quyề",
+        "partyCannotDecide": "REFUSED: POST /api/v1/admin/disputes/7abbfc44-0cf3-41a4-838a-cda8ee6a9a56/resolve -> 403: {\"timestamp\":\"2026-11-05T13:11:50.569+00:00\",\"status\":2002,\"error\":\"Không có qu",
+        "arbiterBeforeDecision": "REFUSED: POST /api/v1/contracts/4c99efe3-c68b-420f-b311-fe6201b31d4f/avalanche/actions/resolve/execute -> 400: {\"timestamp\":\"2026-11-05T13:11:50.606+00:00\",\"status\":1000",
+        "otherKeyAfterDecision": "REFUSED: POST /api/v1/admin/disputes/7abbfc44-0cf3-41a4-838a-cda8ee6a9a56/resolve -> 409: {\"timestamp\":\"2026-11-05T13:11:50.672+00:00\",\"status\":4040,\"error\":\"Tranh chấp ",
+        "clientCannotArbitrate": "REFUSED: POST /api/v1/contracts/4c99efe3-c68b-420f-b311-fe6201b31d4f/avalanche/actions/resolve/execute -> 400: {\"timestamp\":\"2026-11-05T13:11:50.722+00:00\",\"status\":1000",
+        "freelancerCannotArbitrate": "REFUSED: POST /api/v1/contracts/4c99efe3-c68b-420f-b311-fe6201b31d4f/avalanche/actions/resolve/execute -> 400: {\"timestamp\":\"2026-11-05T13:11:50.734+00:00\",\"status\":1000",
+        "secondArbiterRun": "REFUSED: POST /api/v1/contracts/4c99efe3-c68b-420f-b311-fe6201b31d4f/avalanche/actions/resolve/execute -> 400: {\"timestamp\":\"2026-11-05T13:11:53.027+00:00\",\"status\":1000",
+        "otherKeyAfterResolution": "REFUSED: POST /api/v1/admin/disputes/7abbfc44-0cf3-41a4-838a-cda8ee6a9a56/resolve -> 409: {\"timestamp\":\"2026-11-05T13:11:53.042+00:00\",\"status\":4040,\"error\":\"Tranh chấp ",
+        "mutualSettleAfterResolution": "REFUSED: POST /api/v1/contracts/4c99efe3-c68b-420f-b311-fe6201b31d4f/avalanche/actions/mutual-settle/prepare -> 400: {\"timestamp\":\"2026-11-05T13:11:53.056+00:00\",\"status"
+      }
+    }
+  ],
+  "result": "PASS",
+  "finishedAt": "2026-11-05T13:11:53.058Z"
+}
