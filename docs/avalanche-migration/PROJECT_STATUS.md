@@ -414,3 +414,9 @@ E1: FUJI EVIDENCE OBTAINED, PENDING OWNER REVIEW. E5: faucet limits observed; th
 unexecuted observed; #16 INCONCLUSIVE. Phase 1 stays **PARTIAL** (E2 still needs X2; R4 decides E5/E6). Tool fix: time-bounded
 E7 wait (the former cap sent E7-k0 early); network-free tests 13/13.
 
+## Owner push decision (2026-11-05)
+The owner instructed in the session (2026-11-05, "push code lên trước đã đi bạn"): push the local commits. Applied as a
+fast-forward push of branch `avalanche/phase1-closure-phase3-proposal` to `origin` (8 commits after the 2026-11-04 push);
+`master` unchanged, no merge, no PR. Pre-push audit: no `.env`, keystore or key material in `origin/master..HEAD` (only the
+evidence checker's own detection patterns and test fixtures). This authorizes this push only (CLAUDE.md section 6).
+
