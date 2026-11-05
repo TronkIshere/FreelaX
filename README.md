@@ -2,9 +2,9 @@
 
 FreelaX là marketplace hai phía cho **Client** (thuê việc) và **Freelancer** (nhận việc). Hệ thống bao trọn vòng đời của một Job: đăng việc, thống nhất điều khoản, ký quỹ, bàn giao, nghiệm thu hoặc tranh chấp, chi trả, chứng từ thuế và đánh giá. Tiền đi theo **một luồng có bằng chứng ở từng bước**:
 
-**USD của Client → USDC trong ví Client → vault escrow của Job trên Solana → USDC trong ví Freelancer → VND vào tài khoản Freelancer**, kèm chứng từ khấu trừ thuế.
+**USD của Client → USDC trong ví Client → escrow của Job trên Avalanche C-Chain → USDC trong ví Freelancer → VND vào tài khoản Freelancer**, kèm chứng từ khấu trừ thuế.
 
-**Trạng thái (2026-10-10):** luồng `UNIFIED_USDC_PAYOUT` **đã triển khai ở phạm vi local mock**: Mock USDC trên Solana local validator, đối tác USD/VND và MISA đều mô phỏng. Môi trường local đã chuyển đổi, nên Job mới chỉ đi luồng này. **Chưa** có tiền thật, đối tác thật hay devnet/production.
+**Trạng thái:** Avalanche là blockchain chính của repo (nhánh `master`). Chạy ở hai môi trường mô phỏng: **LOCAL_SIMULATION** (Anvil, MockUSDC) và **AVALANCHE_FUJI** (testnet). Đối tác USD/VND và MISA đều mô phỏng. **Chưa** có tiền thật, đối tác thật hay Mainnet. Mã Solana cũ được giữ ở nhánh `solana` và không còn là module của `master`.
 
 ## Phạm vi dự án: mô phỏng phát triển trên Avalanche (ràng buộc cố định)
 
@@ -13,129 +13,109 @@ FreelaX là marketplace hai phía cho **Client** (thuê việc) và **Freelancer
 - **Không xử lý tiền thật** và không quyết toán tài chính thật. Công nghệ blockchain là thật (EVM, chữ ký, giao dịch trên testnet công khai), nhưng mọi nghiệp vụ tài chính đều là **mô phỏng**.
 - Chỉ hỗ trợ hai môi trường: **LOCAL_SIMULATION** (Anvil/EVM cục bộ, USDC mô phỏng) và **AVALANCHE_FUJI** (testnet AVAX và testnet USDC, giao dịch thật trên testnet công khai). **Mainnet nằm ngoài phạm vi**: không triển khai, không cấu hình, không có đường dự phòng.
 - Ngôn ngữ giao diện: "Simulation Balance", "Testnet USDC", "Simulated Escrow", "Testnet Transaction", "Demonstration Only"; tránh "số dư thật", "rút tiền", "đã nhận tiền thật".
-- Chi tiết, lý do dùng Avalanche, khác biệt local và testnet: [docs/SIMULATION_SCOPE.md](docs/SIMULATION_SCOPE.md). Phần "Những gì sẽ bổ sung" bên dưới là danh sách lịch sử; các mục tiền thật, đối tác thật, ví người dùng thật, Mainnet/production **không thuộc phạm vi**.
+- Chi tiết, lý do dùng Avalanche, khác biệt local và testnet: [docs/SIMULATION_SCOPE.md](docs/SIMULATION_SCOPE.md). Các mục tiền thật, đối tác thật, ví người dùng thật, Mainnet/production **không thuộc phạm vi**.
 
 ## Hệ thống có gì và đã làm được gì
 
 | Nhóm | Đã có |
 | --- | --- |
-| Tài khoản | Đăng ký/đăng nhập Client hoặc Freelancer; Admin cấp riêng; profile, kỹ năng, portfolio, hồ sơ công khai; ví Solana demo tự động cấp cho mỗi tài khoản trên local (không cần tiện ích ví) |
+| Tài khoản | Đăng ký/đăng nhập Client hoặc Freelancer; Admin cấp riêng; profile, kỹ năng, portfolio, hồ sơ công khai; liên kết ví EVM (EIP-1193, ví trình duyệt) với tài khoản |
 | Job và hợp đồng | Job có sản phẩm bàn giao, tiêu chí nghiệm thu, hạn, số lần sửa; tìm việc và ứng tuyển; hai bên xác nhận cùng một bản điều khoản (fingerprint) trước khi giao việc |
-| Ký quỹ | Client nộp USD → đối tác mô phỏng xác nhận → Mock USDC vào ví Client → Client ký chuyển vào vault của Milestone; công việc chỉ mở khi vault đã có tiền |
+| Ký quỹ | Client nộp USD → đối tác mô phỏng xác nhận → USDC mô phỏng vào ví Client → Client ký nạp escrow của Job trên Avalanche; công việc chỉ mở khi escrow đã có tiền |
 | Làm việc và nghiệm thu | Bàn giao có bằng chứng và phiên bản; Client **Duyệt / Yêu cầu chỉnh sửa / Mở tranh chấp**, kèm **đồng hồ đếm ngược**; hết 72 giờ không quyết định thì tự duyệt; gia hạn bàn giao một lần ≤ 7 ngày |
-| Tranh chấp | Mở tranh chấp sẽ khóa vault; Admin tiếp nhận rồi quyết định toàn phần: release cho Freelancer hoặc hoàn tiền cho Client |
+| Tranh chấp | Mở tranh chấp sẽ khóa escrow; hai bên có thể thỏa thuận chia (`mutualSettleDispute`), hoặc Admin/arbiter quyết định: release cho Freelancer hoặc hoàn tiền cho Client |
 | Chi trả và hoàn tiền | Freelancer ký rút USDC → đối tác chi VND sau khi trừ phí 3% và khấu trừ thuế 10% trên phần còn lại (100 USD → 2.182.500 VND); hủy trước release thì hoàn đủ USD cho Client, phí 0 |
 | Chứng từ thuế | Sau khi chi VND, MISA (mô phỏng) phát hành chứng từ khấu trừ thuế; Freelancer tải PDF/XML |
-| Quản trị | Đối soát 4 ranh giới tiền; bảng "Tiền đang ở đâu" tách theo USD/USDC/VND; quyết định Admin có audit; hủy hợp đồng quá hạn ký quỹ |
-| Độ tin cậy | Mỗi bước tiền có idempotency key; trạng thái `UNKNOWN` thì tra cứu lại, không gửi lệnh mới; hồi phục khi đối tác hoặc RPC sập mà không chi trùng; Flyway quản lý schema |
+| Quản trị | Đối soát các ranh giới tiền; bảng "Tiền đang ở đâu" tách theo USD/USDC/VND; quyết định Admin có audit; hủy hợp đồng quá hạn ký quỹ |
+| Độ tin cậy | Mỗi bước tiền có idempotency key; trạng thái `UNKNOWN` thì tra cứu lại, không gửi lệnh mới; hồi phục khi đối tác, RPC hoặc node chain sập mà không chi trùng; Flyway quản lý schema |
 | Khác | Finance, Activity, thông báo, đánh giá hai chiều và reputation |
 
-Đã kiểm chứng bằng unit/integration test, E2E trên local validator (release, hoàn tiền, tranh chấp, hết hạn review, sự cố) và browser test với tài khoản mới đăng ký. Chi tiết ở [VERIFICATION](docs/business/VERIFICATION.md).
+Đã kiểm chứng bằng unit/integration test, E2E trên Anvil và Docker Compose (drive, browser, outage) (release, hoàn tiền, tranh chấp, hết hạn review, sự cố) và browser test với tài khoản mới đăng ký. Kết quả Avalanche: [PROJECT_STATUS](docs/avalanche-migration/PROJECT_STATUS.md); chi tiết nghiệp vụ cũ ở [VERIFICATION](docs/business/VERIFICATION.md).
 
 ## Đọc tài liệu theo thứ tự
 
 1. [Nghiệp vụ hệ thống](docs/business/README.md): sản phẩm làm gì, ai làm gì, quy tắc đã chốt.
 2. [Luồng tiền](docs/business/PAYMENT_FLOW.md): tiền nằm ở đâu, bằng chứng nào, đối soát ra sao, ví dụ 100 USD.
-3. [Solana trong FreelaX](docs/business/SOLANA_ARCHITECTURE.md): ví, vault, release/refund, rút tiền, giải thích dễ hiểu.
-4. [Điều khoản local](docs/business/UNIFIED_FLOW_LOCAL_TERMS.md): con số và quy tắc cụ thể.
-5. [Guide trình diễn trên trình duyệt](docs/business/BROWSER_DEMO_GUIDE.md): đi qua luồng sản phẩm bằng giao diện, có ảnh.
-6. [Kiểm chứng](docs/business/VERIFICATION.md), [Checklist](docs/business/PAYMENT_FLOW_REBUILD_CHECKLIST.md), [Runbook chuyển đổi](docs/business/CUTOVER_RUNBOOK.md): bằng chứng, tiêu chí, vận hành.
+3. [Phạm vi mô phỏng](docs/SIMULATION_SCOPE.md) và [ADR 0001: chuyển Solana sang Avalanche](docs/adr/0001-solana-to-avalanche-migration.md): quyết định và ràng buộc.
+4. [Avalanche migration](docs/avalanche-migration/README.md), trạng thái trong [PROJECT_STATUS](docs/avalanche-migration/PROJECT_STATUS.md), cách chạy local trong [local-runbook](docs/avalanche-migration/phase-2/local-runbook.md).
+5. [Điều khoản local](docs/business/UNIFIED_FLOW_LOCAL_TERMS.md) và [Guide trình diễn trên trình duyệt](docs/business/BROWSER_DEMO_GUIDE.md).
+6. [Kiểm chứng](docs/business/VERIFICATION.md), [Checklist](docs/business/PAYMENT_FLOW_REBUILD_CHECKLIST.md), [Runbook chuyển đổi](docs/business/CUTOVER_RUNBOOK.md).
 
-7. [ADR 0001: chuyển Solana sang Avalanche](docs/adr/0001-solana-to-avalanche-migration.md): quyết định, ràng buộc tương thích và bằng chứng DB cần có trước khi gỡ luồng cũ.
-
-Thư mục `docs/business/archive/` và `docs/ui/` chỉ giữ biên bản lịch sử.
+Một số tài liệu trong `docs/business/` (ví dụ `SOLANA_ARCHITECTURE.md`) mô tả luồng Solana cũ và chỉ còn giá trị lịch sử; mã tương ứng nằm ở nhánh `solana`. Thư mục `docs/business/archive/` và `docs/ui/` chỉ giữ biên bản lịch sử.
 
 ## Kiến trúc nhanh
 
 ```text
-Trình duyệt (React/TypeScript, :8080)
+Trình duyệt (React/TypeScript, :8080), ví EIP-1193
       │  chỉ gọi /api/v1
       ▼
 Marketplace Backend (:9191) ── quyền, Job/hợp đồng, PaymentFlow, đối soát, scheduler
       ├──► Payment Backend (:9190) ─ đối tác USD/VND mô phỏng, sao kê độc lập
-      ├──► Solana Gateway (:9193) ── dựng/gửi/đọc giao dịch ──► Local validator (:9123)
-      │                                                         └─ Anchor program: vault, on-ramp, withdrawal
+      ├──► Avalanche Gateway (:9194) ─ dựng/gửi/đọc giao dịch EVM ──► Anvil (:8545) hoặc Fuji
+      │                                                              └─ FreelaXEscrow.sol (EIP-712)
       └──► MISA Backend (:9192) ──── chứng từ khấu trừ thuế PDF/XML (mô phỏng)
 MySQL (:3307, mỗi service một schema) · Redis (:6380)
 ```
 
-Marketplace là nơi quyết định nghiệp vụ. Solana là bằng chứng chuyển USDC; sao kê đối tác là bằng chứng tiền fiat; MISA là chứng từ thuế. Các cổng của Compose chỉ bind `127.0.0.1`.
+Marketplace là nơi quyết định nghiệp vụ. Avalanche là bằng chứng chuyển USDC (escrow on-chain); sao kê đối tác là bằng chứng tiền fiat; MISA là chứng từ thuế. Các cổng của Compose chỉ bind `127.0.0.1`.
 
 | Thư mục | Nội dung |
 | --- | --- |
 | `frontend/` | Giao diện React; script browser E2E ở `frontend/scripts/` |
 | `marketplace-backend/` | Spring Boot, nghiệp vụ chính, Flyway `db/migration` |
-| `payment-backend/` | Đối tác USD/VND mô phỏng (luồng thống nhất và partner escrow) cùng module checkout/payout dùng PayPal (đặt tên `BofA`, sandbox ở `dev`) cho luồng Job cũ |
-| `solana-integration/` | Solana Gateway (Spring Boot) |
-| `solana-stablecoin-payout/` | Anchor program, test, script E2E local |
+| `payment-backend/` | Đối tác USD/VND mô phỏng cùng module checkout/payout (PayPal sandbox ở `dev`) cho luồng Job cũ |
+| `avalanche-integration/` | Avalanche Gateway (Java 21, web3j), module blockchain chính |
+| `avalanche-contracts/` | Hợp đồng escrow Solidity (Foundry), script deploy, manifest |
 | `misa-backend/` | Chứng từ thuế mô phỏng |
+| `docs/avalanche-migration/` | Tài liệu, harness và bằng chứng của việc chuyển sang Avalanche |
 
-## Khởi chạy từng bước
+Mã Solana (`solana-integration/`, `solana-stablecoin-payout/`) chỉ còn ở nhánh `solana`.
 
-Cần Git, Docker + Compose, Solana CLI (`solana-test-validator`), Anchor, Node.js và Yarn. Chỉ dùng khóa và mật khẩu **demo**; không đưa password, API key hay private key vào Git hoặc ảnh chụp.
+## Khởi chạy local (LOCAL_SIMULATION)
 
-**Bước 1 — Cấu hình.** Tạo file bằng `cp .env.example .env`, rồi điền:
-- secret ngẫu nhiên cho MySQL, các JWT và internal API key;
-- mật khẩu tài khoản seed `DEMO_CLIENT_PASSWORD`, `DEMO_FREELANCER_PASSWORD`, `DEMO_ADMIN_PASSWORD`;
-- ví demo: `SOLANA_CUSTODIAL_CLIENT_PUBLIC_KEY`, `DEMO_FREELANCER_SOLANA_PUBLIC_KEY`, `SOLANA_ONRAMP_AUTHORITY_PUBLIC_KEY`, `SOLANA_LOCAL_PRIVATE_KEYS`. Định dạng khóa xem `solana-integration/README.md`.
-- Bật luồng thống nhất cho Job mới: `PAYMENT_FLOW_CUTOVER_ENABLED=true`.
-- Tùy chọn (chỉ `dev` + `localnet`): `LOCAL_WALLET_ENCRYPTION_KEY` tách khóa mã hóa ví demo khỏi JWT secret; `EXCHANGE_RATE_ALLOW_FALLBACK=true` (mặc định ở `dev`) cho phép tỷ giá 25000 khi tỷ giá live lỗi ở luồng cũ. Marketplace không khởi động nếu khóa ví local được đặt ngoài `dev` + `localnet`.
-- `SPRING_PROFILES_ACTIVE` mặc định là `dev` trong `application.yml` và `docker-compose.yml`; môi trường không phải local phải đặt rõ.
+Cần Git, Docker + Compose, Node.js 24 và Foundry (hoặc image `ghcr.io/foundry-rs/foundry:v1.8.7`). Chỉ dùng khóa và mật khẩu **demo**; không đưa password, API key hay private key vào Git hoặc ảnh chụp. Không dùng Mainnet; backend không được giữ khóa Fuji.
 
-**Bước 2 — Build program và bật validator** (giữ terminal này chạy):
+**Bước 1 - Cấu hình.** `cp .env.example .env`, rồi điền:
+- secret ngẫu nhiên cho MySQL, các JWT (ít nhất 64 ký tự) và internal API key (`PAYMENT_INTERNAL_API_KEY`, `AVALANCHE_INTERNAL_API_KEY`);
+- mật khẩu tài khoản seed `DEMO_CLIENT_PASSWORD`, `DEMO_FREELANCER_PASSWORD`, `DEMO_ADMIN_PASSWORD` (tối đa 72 byte);
+- Avalanche: `AVALANCHE_ENVIRONMENT=LOCAL_SIMULATION`, `AVALANCHE_RPC_PRIMARY_URL`, `AVALANCHE_SIGNERS_ENABLED`, `AVALANCHE_TX_ENABLED`, `AVALANCHE_DB_*`, `AVALANCHE_DEPLOYMENT_MANIFEST`, `AVALANCHE_GATEWAY_ENABLED=true`, `VITE_AVALANCHE_ENABLED=true`. Ý nghĩa từng biến có trong `.env.example`;
+- bật luồng thống nhất cho Job mới: `PAYMENT_FLOW_CUTOVER_ENABLED=true`.
 
-```bash
-cd solana-stablecoin-payout && yarn install --frozen-lockfile && anchor build --ignore-keys && cd ..
-solana-test-validator --ledger solana-stablecoin-payout/target/demo-ledger \
-  --rpc-port 9123 --faucet-port 9125 --bind-address 127.0.0.1 \
-  --upgradeable-program 2Tx2faZU1siV1xvKMxbRN1VesgXftjM3Lff3Nwn69oqb \
-    solana-stablecoin-payout/target/deploy/invoice_payments.so "$(solana address -k ~/.config/solana/id.json)" \
-  --quiet
-```
+**Bước 2 - Chain và hợp đồng.** Bật Anvil (profile `avalanche`, file `docs/avalanche-migration/phase-2/compose-avalanche/docker-compose.anvil.yml`), triển khai `avalanche-contracts/script/Deploy.s.sol` với `DEPLOY_ENVIRONMENT=LOCAL_SIMULATION` để sinh manifest `avalanche-contracts/deployments/LOCAL_SIMULATION.json`. Gateway dùng signer tạm thời, nên sau mỗi lần gateway khởi động lại phải cấp lại vai trò `AUTH_SIGNER_ROLE` và arbiter cho địa chỉ signer mới. Các lệnh cụ thể nằm trong `docs/avalanche-migration/phase-2/compose-avalanche/run.sh`.
 
-Dùng cùng một đường dẫn ledger cho các lần chạy sau để giữ dữ liệu; không thêm `--reset`. Dừng validator bằng `Ctrl+C`, không kill nó giữa chừng.
-
-**Bước 3 — Bật các service:**
+**Bước 3 - Bật các service:**
 
 ```bash
-docker compose --profile deploy up -d --build --wait
-docker compose --profile deploy ps
+docker compose -f docker-compose.yml -f docs/avalanche-migration/phase-2/compose-avalanche/docker-compose.anvil.yml --profile avalanche --profile deploy up -d --build
+docker compose --profile avalanche --profile deploy ps
 ```
 
-Lần đầu chạy, Flyway tạo schema; với DB cũ thì tự baseline.
+Lần đầu chạy, Flyway tạo schema.
 
-**Bước 4 — Khởi tạo Mock USDC và authority** (chỉ cần một lần cho ledger mới), từ `solana-stablecoin-payout`:
+**Chạy nhanh toàn bộ stack bằng harness** (secret ngẫu nhiên dùng một lần, không đọc `.env`):
 
 ```bash
-export ANCHOR_PROVIDER_URL=http://127.0.0.1:9123 ANCHOR_WALLET="$HOME/.config/solana/id.json"
-./node_modules/.bin/ts-mocha -p tsconfig.json -t 120000 scripts/bootstrap-local-demo.ts            # mint + treasury demo
-./node_modules/.bin/ts-mocha -p tsconfig.json -t 400000 scripts/local-unified-flow-e2e.ts --prepare # đồng bộ authority on-ramp/tỷ giá
+bash docs/avalanche-migration/phase-2/compose-avalanche/run.sh <thu-muc-ket-qua> drive.mjs browser.mjs outage.mjs
 ```
 
-Lệnh `--prepare` còn tạo 2 Job QA bằng tài khoản seed; cần flag cutover đang bật.
-
-**Bước 5 — Kiểm tra:** `curl -I http://localhost:8080` phải trả 200; `curl -i http://localhost:8080/api/v1/auth/me` trả 401 khi chưa đăng nhập là bình thường; RPC phải trả `"result":"ok"`:
+**Bước 4 - Kiểm tra:** `curl -I http://localhost:8080` phải trả 200; `curl -i http://localhost:8080/api/v1/auth/me` trả 401 khi chưa đăng nhập là bình thường; Anvil trả block number:
 
 ```bash
-curl -fsS -H 'Content-Type: application/json' --data '{"jsonrpc":"2.0","id":1,"method":"getHealth"}' http://127.0.0.1:9123
+curl -fsS -H 'Content-Type: application/json' --data '{"jsonrpc":"2.0","id":1,"method":"eth_blockNumber"}' http://127.0.0.1:8545
 ```
 
-**Bước 6 — Dùng thử:** mở `http://localhost:8080`, tự đăng ký tài khoản Client và Freelancer (ví demo được cấp tự động khi đăng nhập) và làm theo [guide trình diễn](docs/business/BROWSER_DEMO_GUIDE.md). Tài khoản seed: Freelancer `freelancer.seed@example.com`, Admin `admin.e2e@example.test`, Client seed khai báo trong `marketplace-backend/.../configuration/DataInitializer.java`; mật khẩu lấy trong `.env`.
+**Bước 5 - Dùng thử:** mở `http://localhost:8080`, đăng ký tài khoản Client và Freelancer, liên kết ví EVM và làm theo [guide trình diễn](docs/business/BROWSER_DEMO_GUIDE.md). Tài khoản seed: Freelancer `freelancer.seed@example.com`, Admin `admin.e2e@example.test`, Client seed khai báo trong `marketplace-backend/.../configuration/DataInitializer.java`; mật khẩu lấy trong `.env`.
 
-**Bước 7 — Chạy kiểm chứng tự động (tùy chọn):** lệnh ở [VERIFICATION](docs/business/VERIFICATION.md#chạy-lại-kiểm-chứng).
-
-**Dừng:** `Ctrl+C` validator, rồi `docker compose --profile deploy stop`. Tránh `down -v` nếu muốn giữ dữ liệu.
+**Dừng:** `docker compose --profile avalanche --profile deploy stop`. Tránh `down -v` nếu muốn giữ dữ liệu.
 
 ## Những gì sẽ bổ sung
 
-> Ghi chú phạm vi (2026-11-01): dự án là mô phỏng phát triển ([SIMULATION_SCOPE](docs/SIMULATION_SCOPE.md)). Các dòng "Tiền thật và đối tác thật", "Solana devnet/production", "Ví và khóa cho người dùng thật", "Chứng từ thuế thật" bên dưới **nằm ngoài phạm vi**; giữ nguyên làm tư liệu lịch sử.
+> Ghi chú phạm vi: dự án là mô phỏng phát triển ([SIMULATION_SCOPE](docs/SIMULATION_SCOPE.md)). Các mục tiền thật, đối tác thật, ví người dùng thật, chứng từ thuế thật và Mainnet **nằm ngoài phạm vi**.
 
 | Hạng mục | Ghi chú |
 | --- | --- |
-| Tiền thật và đối tác thật | On-ramp USD và off-ramp VND qua provider thật; cơ chế thu phí 3% và bằng chứng phí riêng; bảo đảm hoàn đủ USD |
-| Solana devnet/production | Triển khai program, quản lý authority và nâng cấp, giám sát RPC |
-| Ví và khóa cho người dùng thật | Cấp phát, bảo vệ, khôi phục ví; bỏ ví demo tự động và endpoint ký thay ở backend (chỉ dành cho localnet) |
-| Chứng từ thuế thật | Kết nối MISA hoặc cơ quan thuế thật; Flyway cho `misa-backend` (hiện vẫn `ddl-auto: update`) |
+| Avalanche Fuji | Chạy có chữ ký người và bằng chứng trên Fuji còn chờ chủ dự án; backend không giữ khóa Fuji. Xem [PROJECT_STATUS](docs/avalanche-migration/PROJECT_STATUS.md) |
+| Ví người dùng | Kiểm chứng với tiện ích ví thật (MetaMask); hiện mới kiểm chứng bằng ví giả lập EIP-1193 |
+| Chứng từ thuế | Flyway cho `misa-backend` (hiện vẫn `ddl-auto: update`) |
 | Sản phẩm | Nhiều Milestone trong một Job; chat làm bằng chứng tranh chấp; lịch ngày lễ cho hạn; tối ưu mobile |
-| Avalanche C-Chain | **PLANNED**: chưa có hợp đồng Solidity hay adapter. **PARTIALLY IMPLEMENTED**: cổng `BlockchainGateway` + `SolanaGatewayAdapter`, mới dùng ở `UnifiedUsdFundingService`. Luồng thanh toán cũ (`SOLANA_ESCROW`, Job không có `payment_flow_version`) vẫn đang được giữ; **BLOCKED** gỡ bỏ cho tới khi có số liệu DB, xem [ADR 0001](docs/adr/0001-solana-to-avalanche-migration.md) |
-| Vận hành | Cảnh báo cho khoản `UNKNOWN`/lệch kéo dài; báo cáo đối soát định kỳ theo từng loại tiền |
+| Vận hành | Cảnh báo cho khoản `UNKNOWN`/lệch kéo dài; báo cáo đối soát định kỳ |
