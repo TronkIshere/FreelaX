@@ -18,9 +18,9 @@ original reasoning. Do not add routine progress entries.
 - **Phase 3:** approved. Done: R12 settlement, payout fee/tax (V9), notifications, stuck-escrow reporting, scanner health,
   drills, clone lab. Open: A2 harness re-run with a settlement (engineering, next), MISA record for Avalanche payouts (NOT
   IMPLEMENTED), Fuji escrow deployment (B2/X3, owner signs), CI result of the 2026-11-05 push (unknown, no `gh` here).
-- **Last measured (2026-11-05, L-028, full coordinated run):** JDK 17 reactor 72 / 446 / 20 / 10; gateway 119/0/3; Foundry 77/1; frontend 30 files / 877 (Node 24.19.0); tooling 13; A2 PASS; gateway 119/0/3; Foundry 77 pass, 1 skipped; frontend 30
-  files / 877; human-signed tooling 13; MySQL ITs V7+V8 with V9 3/3.
-- **A2 with R12:** PASS on 2026-11-05 (LOCAL-SIM, L-027); no engineering item that needs no owner input is left except re-baselining gateway/Foundry/frontend on this machine (Node 24.19.0 needed).
+- **Last measured (2026-11-05, L-028, full coordinated run):** JDK 17 reactor 72 / 446 / 20 / 10; gateway 119/0/3; Foundry 77/1;
+  frontend 30 files / 877 (Node 24.19.0); human-signed tooling 13; A2 PASS. MySQL ITs V7 to V9 (3/3 on 2026-11-05, earlier) not re-run: no schema change since.
+- **A2 with R12:** PASS on 2026-11-05 (LOCAL-SIM, L-027); re-baselined on this machine in L-028. Open engineering gaps (not owner-gated): unit tests for the Solana-escrow and partner-escrow funding guards; a live administrator decision plus arbiter `resolve` in the A2 harness (see validation-matrix.md).
 - **Next executable task:** owner answers R4 and X2; owner browser-wallet check (B7); Fuji escrow deployment (B2/X3, owner signs).
 
 ## Entries
