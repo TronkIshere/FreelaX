@@ -218,6 +218,7 @@ services:
       args:
         VITE_MARKETPLACE_API_ORIGIN: ${VITE_MARKETPLACE_API_ORIGIN:-}
         VITE_SOLANA_CLUSTER: ${VITE_SOLANA_CLUSTER:-localnet}
+        VITE_AVALANCHE_ENABLED: ${VITE_AVALANCHE_ENABLED:-false}
     restart: unless-stopped
     depends_on:
       marketplace-backend:
