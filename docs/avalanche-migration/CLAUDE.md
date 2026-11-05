@@ -116,7 +116,7 @@ network, Mainnet endpoint or production-looking credential.
 ## 7. Testing and evidence requirements
 - Every code change: run the affected module's suite and record counts (run / pass / skipped) in the log and in the
   relevant report. Report environment incompatibilities separately from code failures.
-- Baselines to keep green (2026-11-04, last measured): legacy JDK 17 reactor payment 72, marketplace 446, misa 20,
+- Baselines to keep green (2026-11-05, last measured): legacy JDK 17 reactor payment 72, marketplace 453, misa 20,
   solana-integration 10; avalanche-integration 119 (3 optional skipped); Foundry 77 pass, 1 skipped (R12 adopted 2026-11-05); R12 lab 72; frontend 30
   files, 877 tests; human-signed tooling 13; A2 harness PASS (with the payout and R12 settlement flows). A drop is a regression unless
   explained. The opt-in MySQL ITs (`*MySqlIT`, `-Dfreelax.mysql.url`) run against a throwaway local MySQL only.

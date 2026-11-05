@@ -382,7 +382,34 @@ counting artifact (Foundry reports the invariant contract as one test). No owner
 ## Change note (2026-11-02 documentation reconciliation)
 Updated: this file; `README.md`; `04-migration-roadmap.md`; `05-risk-register.md`; `06-implementation-backlog.md`; `phase-1/README.md`; `phase-2/README.md`, `01`, `02`, `03`, `05`, `06`, `08`, `09`. No source, configuration or migration file was modified; no owner decision was changed.
 
-## Change note (2026-11-05, second session: technical gap closure; NO TEST WAS EXECUTED)
+## Validation results (final, 2026-11-05; this machine; LOCAL-SIM only, nothing here is Fuji or external evidence)
+Run in the order of [validation-matrix](validation-matrix.md) on HEAD `f9398d0`, after the second-session changes. No test failed and no
+source or test file had to be changed.
+| # | Suite | Environment | Run | Passed | Failed | Skipped |
+|---|---|---|---|---|---|---|
+| 1 | Foundry | pinned 1.8.7 image | 78 | 77 | 0 | 1 |
+| 2 | Gateway `avalanche-integration` | JDK 21 image, Testcontainers | 119 | 116 | 0 | 3 |
+| 3 | Targeted marketplace classes (6) | JDK 17 image | 70 | 70 | 0 | 0 |
+| 4a | payment-backend | JDK 17 reactor | 72 | 72 | 0 | 0 |
+| 4b | marketplace-backend | JDK 17 reactor | 453 | 453 | 0 | 0 |
+| 4c | misa-backend | JDK 17 reactor | 20 | 20 | 0 | 0 |
+| 4d | solana-integration | JDK 17 reactor | 10 | 10 | 0 | 0 |
+| 5 | Frontend (`tsc -b` clean) | `node:24.19.0` image | 877 (30 files) | 877 | 0 | 0 |
+| 6 | Marketplace boot jar, clean build | JDK 17 image | built | | | |
+| 7 | A2 single stack ([evidence](phase-2/evidence/LOCAL_SIMULATION-a2-local-stack-final-20261105.json)) | Docker, Anvil 31337, MockUSDC | PASS | | | |
+| 8 | Human-signed tooling | local Node 22.10 | 13 | 13 | 0 | 0 |
+Totals of the counted suites (1, 2, 4a to 4d, 5, 8): 1,642 run, 1,638 passed, 0 failed, 4 skipped. (Step 3 is a subset of step 4b and is not added; the A2 harness is a scenario run, not counted.)
+Marketplace 446 to 453 = the seven tests written in the second session. All other baselines are unchanged.
+**A2 now also proves, on one live LOCAL stack:** administrator claim and decision (`DECISION_PENDING_*`, no money moved, same key idempotent,
+other key refused), arbiter execution signed by the gateway's ephemeral LOCAL arbiter, chain REFUNDED or RELEASED, dispute `RESOLVED_*`,
+and the refusals (decision before claim, party claims or decides, arbiter before a decision, a party as arbiter, second arbiter run, second
+decision key, mutual settlement after resolution), for both outcomes.
+**Mutation check (test strength, not a product test):** the four new guards were removed one by one in a scratch run and each was caught by
+the intended test only (Solana entry, partner entry, fiat completion race, party-as-arbiter); the source was restored with `git checkout`
+and the jar rebuilt; the working tree contained only the new evidence file afterwards.
+Not run: MySQL ITs (no schema change), CI (nothing pushed), any Fuji or Mainnet access.
+
+## Change note (2026-11-05, second session: technical gap closure; implementation written without running tests, validated afterwards)
 Implementation and test preparation only, as instructed; nothing below has been run, so no status is raised to EXECUTED PASS.
 1. **Legacy rail isolation, completed:** besides the three entry guards (fiat `fund`, Solana escrow `prepare`, partner escrow `fund`), the
    fiat and partner **completion** points now refuse a contract that carries an Avalanche network id, which closes the race "fiat order
@@ -398,7 +425,6 @@ Implementation and test preparation only, as instructed; nothing below has been 
    `run.sh` seeds a throwaway dev administrator (dev profile only). `bash -n` and `node --check` only.
 5. Commands for the final validation: [validation-matrix](validation-matrix.md). The expected marketplace count after this work is about
    453 (446 + 7), to be confirmed.
-Risks of unrun code: the new tests and the harness may need small fixes on their first run.
 
 ## Validation results (2026-11-05, coordinated run after the dispute lifecycle review; this machine, LOCAL-SIM only)
 | Suite | Environment | Result |

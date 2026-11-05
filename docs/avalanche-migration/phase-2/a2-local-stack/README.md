@@ -32,15 +32,14 @@ random throwaway value created by `run.sh` for this run and discarded with the c
    escrow contract (the send is refused at gas estimation, so the revert reason is not in the evidence). The "mutual refund while
    Disputed" check only shows that no transaction can be prepared without signatures; the contract-level refusal is covered by the
    Foundry suite, not by this harness.
-6. **Administrator decision and arbiter resolution** (added 2026-11-05, second session; **IMPLEMENTED, NOT YET EXECUTED**): two more contracts are
+6. **Administrator decision and arbiter resolution** (added 2026-11-05, second session; **executed: PASS**, evidence `../evidence/LOCAL_SIMULATION-a2-local-stack-final-20261105.json`): two more contracts are
    disputed on chain and then resolved by the administrator workflow, REFUND and RELEASE. The dev-profile seed administrator
    (`admin.e2e@example.test`) gets a random throwaway password from `run.sh` (`DEMO_ADMIN_PASSWORD`, dev profile only, discarded with the
    containers). The administrator claims and records the decision (`DECISION_PENDING_*`, no money moves); the arbiter transaction is then
    triggered through `actions/resolve/execute` and signed by the gateway's ephemeral LOCAL arbiter; the dispute closes (`RESOLVED_*`) only after
    the chain outcome is read. Negative checks: decision before the claim, a party claiming or deciding, the arbiter acting before a decision,
    a second decision with another key, a party acting as the arbiter, a second arbiter run, a mutual settlement after the resolution. This
-   workflow is separate from the two-party settlement (flow 5). Its first execution decides whether it passes; the evidence file is
-   written only by that run.
+   workflow is separate from the two-party settlement (flow 5). LOCAL-SIM only.
 
 ## Party wallets
 The two party wallets are throwaway keys created inside the Anvil container for one run (the same pattern as the Phase 1

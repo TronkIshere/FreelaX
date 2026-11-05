@@ -5,7 +5,7 @@ records *what was done, why, and on what authority*, and the resume point. One e
 new evidence changes an entry's status, edit its **Status** line and add a dated "Update" line under it; do not delete the
 original reasoning. Do not add routine progress entries.
 
-## Current state (updated 2026-11-05, after L-029)
+## Current state (updated 2026-11-05, after L-030)
 - **Branch:** `avalanche/phase1-closure-phase3-proposal`; pushed to `origin` on owner instruction 2026-11-05 (`5b75208`); later
   commits are local. Commit messages carry **no** Claude attribution trailer (owner instruction 2026-11-05).
 - **Owner decisions 2026-11-05:** R6 Phase 3 APPROVED; R12 option (1) adopted; R1/C1 and R2 remainder: the owner signs (keystore),
@@ -18,10 +18,9 @@ original reasoning. Do not add routine progress entries.
 - **Phase 3:** approved. Done: R12 settlement, payout fee/tax (V9), notifications, stuck-escrow reporting, scanner health,
   drills, clone lab. Open: A2 harness re-run with a settlement (engineering, next), MISA record for Avalanche payouts (NOT
   IMPLEMENTED), Fuji escrow deployment (B2/X3, owner signs), CI result of the 2026-11-05 push (unknown, no `gh` here).
-- **Last measured (2026-11-05, L-028, full coordinated run):** JDK 17 reactor 72 / 446 / 20 / 10; gateway 119/0/3; Foundry 77/1;
-  frontend 30 files / 877 (Node 24.19.0); human-signed tooling 13; A2 PASS. MySQL ITs V7 to V9 (3/3 on 2026-11-05, earlier) not re-run: no schema change since.
-- **L-029 (no tests executed):** rail-isolation completion guards, party-as-arbiter hardening, new unit tests and the A2 admin/arbiter flow are written but NOT RUN; run the commands in `validation-matrix.md` before trusting them.
-- **A2 with R12:** PASS on 2026-11-05 (LOCAL-SIM, L-027); re-baselined on this machine in L-028. Open engineering gaps (not owner-gated): unit tests for the Solana-escrow and partner-escrow funding guards; a live administrator decision plus arbiter `resolve` in the A2 harness (see validation-matrix.md).
+- **Last measured (2026-11-05, L-030):** see PROJECT_STATUS "Validation results (final)". MySQL ITs V7 to V9 (3/3 earlier on 2026-11-05) not re-run: no schema change since.
+- **L-030 (final validation executed):** every suite of `validation-matrix.md` ran on `f9398d0` with no failure: Foundry 77/1, gateway 119/0/3, reactor 72 / 453 / 20 / 10, frontend 30 files / 877 (Node 24.19.0), tooling 13, A2 PASS including the administrator and arbiter flow. LOCAL-SIM only.
+- **A2 with R12:** PASS on 2026-11-05 (LOCAL-SIM, L-027); re-baselined on this machine in L-028. Open engineering gaps (not owner-gated): a unit test for the partner-escrow COMPLETION guard only.
 - **Next executable task:** owner answers R4 and X2; owner browser-wallet check (B7); Fuji escrow deployment (B2/X3, owner signs).
 
 ## Entries
@@ -511,4 +510,14 @@ original reasoning. Do not add routine progress entries.
   No further defect found by reading; a pre-funding cancellation racing an already prepared `fund` transaction is recorded as an edge case
   (the escrow's own funding expiry applies), not changed.
 - **No test, build, harness or CI was executed.** Commands for the final validation: `validation-matrix.md`.
+
+### L-030: Final validation executed (2026-11-05)
+- **Scope:** the coordinated validation of `validation-matrix.md`, in its order, on `f9398d0`; no feature work.
+- **Result:** all suites passed on the first run; no source, test or harness file was changed. Foundry 77 passed / 1 skipped; gateway 119 run /
+  3 skipped; reactor payment 72, marketplace 453, misa 20, solana-integration 10; frontend 877 in 30 files (`tsc -b` clean); tooling 13; A2
+  PASS with the R12 settlement flows and the new administrator decision and arbiter resolution flows (evidence
+  `phase-2/evidence/LOCAL_SIMULATION-a2-local-stack-final-20261105.json`).
+- **Test strength:** a mutation check removed four guards one at a time; each was caught by its intended test; source restored, jar rebuilt.
+- **Environment (not defects):** none new; Node 22.10 on the host is not used for the frontend (a Node 24.19.0 image is).
+- **Classification:** LOCAL-SIM. Nothing here validates anything on Fuji; B2, B7, E2 and R4 are unchanged.
 
