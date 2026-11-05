@@ -12,20 +12,24 @@ import com.freelax.avalanchegateway.contract.EscrowReader;
 import com.freelax.avalanchegateway.contract.EscrowReconciler;
 import com.freelax.avalanchegateway.contract.EscrowState;
 import com.freelax.avalanchegateway.contract.FundTerms;
+import com.freelax.avalanchegateway.dto.request.SubmitRequest;
+import com.freelax.avalanchegateway.entity.ScannedEvent;
+import com.freelax.avalanchegateway.entity.TxRecord;
+import com.freelax.avalanchegateway.entity.TxState;
 import com.freelax.avalanchegateway.env.AvalancheEnvironment;
+import com.freelax.avalanchegateway.repository.ScanRepository;
 import com.freelax.avalanchegateway.scan.EventDecoder;
 import com.freelax.avalanchegateway.scan.LogScanner;
 import com.freelax.avalanchegateway.scan.ProviderProfile;
-import com.freelax.avalanchegateway.scan.ScanRepository;
-import com.freelax.avalanchegateway.scan.ScannedEvent;
 import com.freelax.avalanchegateway.signer.Signature;
 import com.freelax.avalanchegateway.signer.SignerRegistry;
 import com.freelax.avalanchegateway.signer.SignerRole;
-import com.freelax.avalanchegateway.tx.SubmissionService.SubmitRequest;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DataSourceTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.web3j.abi.FunctionEncoder;
 import org.web3j.abi.datatypes.Address;
@@ -365,7 +369,7 @@ class EscrowContractTest {
         AnvilRpc.mine(url);
         AnvilRpc.mine(url);
         ScanRepository repo = new ScanRepository(new JdbcTemplate(LocalStack.dataSource()),
-                new org.springframework.transaction.support.TransactionTemplate(new org.springframework.jdbc.datasource.DataSourceTransactionManager(LocalStack.dataSource())),
+                new TransactionTemplate(new DataSourceTransactionManager(LocalStack.dataSource())),
                 Clock.systemUTC());
         EventDecoder decoder = EscrowEvents.registerAll(new EventDecoder());
         ChainClient scanClient = ChainClients.create(AvalancheEnvironment.LOCAL_SIMULATION, url, 5000, 0);

@@ -1,8 +1,10 @@
 package com.freelax.avalanchegateway.tx;
 
+import com.freelax.avalanchegateway.dto.request.SubmitRequest;
+import com.freelax.avalanchegateway.entity.TxRecord;
+import com.freelax.avalanchegateway.entity.TxState;
 import com.freelax.avalanchegateway.signer.SignerRegistry;
 import com.freelax.avalanchegateway.signer.SignerRole;
-import com.freelax.avalanchegateway.tx.SubmissionService.SubmitRequest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;

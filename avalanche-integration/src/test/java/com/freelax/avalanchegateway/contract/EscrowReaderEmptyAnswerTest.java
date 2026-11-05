@@ -1,8 +1,10 @@
 package com.freelax.avalanchegateway.contract;
 
-import com.freelax.avalanchegateway.api.ApiError;
-import com.freelax.avalanchegateway.api.ApiExceptionHandler;
 import com.freelax.avalanchegateway.chain.ChainClient;
+import com.freelax.avalanchegateway.dto.response.ApiError;
+import com.freelax.avalanchegateway.exception.ApiExceptionHandler;
+import com.freelax.avalanchegateway.exception.UnreadableChainStateException;
+import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -49,7 +51,7 @@ class EscrowReaderEmptyAnswerTest {
     private static final class ApiExceptionHandlerAccess {
         ResponseEntity<ApiError> unreadable(UnreadableChainStateException e) {
             try {
-                var method = ApiExceptionHandler.class.getDeclaredMethod("unreadable", UnreadableChainStateException.class, jakarta.servlet.http.HttpServletRequest.class);
+                var method = ApiExceptionHandler.class.getDeclaredMethod("unreadable", UnreadableChainStateException.class, HttpServletRequest.class);
                 method.setAccessible(true);
                 @SuppressWarnings("unchecked")
                 ResponseEntity<ApiError> r = (ResponseEntity<ApiError>) method.invoke(new ApiExceptionHandler(), e, new MockHttpServletRequest("GET", "/api/v1/avalanche/escrows/x"));

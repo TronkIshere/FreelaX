@@ -4,6 +4,11 @@ import com.freelax.avalanchegateway.chain.ChainClient;
 import com.freelax.avalanchegateway.chain.ChainClients;
 import com.freelax.avalanchegateway.config.TxProperties;
 import com.freelax.avalanchegateway.env.AvalancheEnvironment;
+import com.freelax.avalanchegateway.repository.TxRepository;
+import com.freelax.avalanchegateway.service.TransactionReconcileService;
+import com.freelax.avalanchegateway.service.TransactionSubmissionService;
+import com.freelax.avalanchegateway.service.impl.TransactionReconcileServiceImpl;
+import com.freelax.avalanchegateway.service.impl.TransactionSubmissionServiceImpl;
 import com.freelax.avalanchegateway.signer.DevSignerFactory;
 import com.freelax.avalanchegateway.signer.SignerRegistry;
 import com.freelax.avalanchegateway.startup.ValidatedEnvironment;
@@ -13,6 +18,7 @@ import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Clock;
+import java.util.Set;
 
 /** One "process" worth of objects wired by hand over the shared test database: a second Harness is a restart. */
 final class Harness {
@@ -27,8 +33,8 @@ final class Harness {
     final ChainClient client;
     final TxProperties properties;
     final SignerRegistry registry;
-    final SubmissionService submission;
-    final TxTracker tracker;
+    final TransactionSubmissionService submission;
+    final TransactionReconcileService tracker;
 
     Harness(HikariDataSource dataSource, String rpcUrl, int timeoutMs, TxProperties properties, SignerRegistry registry) {
         this(dataSource, rpcUrl, timeoutMs, properties, registry, null);
@@ -40,7 +46,7 @@ final class Harness {
 
     /** {@code allowedTargets} null means unrestricted (older tests); the contract tests pass the manifest's targets. */
     Harness(HikariDataSource dataSource, String rpcUrl, int timeoutMs, TxProperties properties, SignerRegistry registry, ChainClient secondary,
-            java.util.Set<String> allowedTargets) {
+            Set<String> allowedTargets) {
         Clock clock = Clock.systemUTC();
         this.jdbc = new JdbcTemplate(dataSource);
         this.repository = new TxRepository(jdbc);
@@ -51,8 +57,8 @@ final class Harness {
         this.properties = properties;
         this.registry = registry;
         ErrorClassifier classifier = new ErrorClassifier();
-        this.submission = new SubmissionService(client, LOCAL, registry, repository, allocator, transactions, properties, classifier, transitions, clock, allowedTargets);
-        this.tracker = new TxTracker(client, LOCAL, repository, transitions, submission, registry, classifier, properties, clock, secondary);
+        this.submission = new TransactionSubmissionServiceImpl(client, LOCAL, registry, repository, allocator, transactions, properties, classifier, transitions, clock, allowedTargets);
+        this.tracker = new TransactionReconcileServiceImpl(client, LOCAL, repository, transitions, submission, registry, classifier, properties, clock, secondary);
     }
 
     static SignerRegistry newRegistry() {

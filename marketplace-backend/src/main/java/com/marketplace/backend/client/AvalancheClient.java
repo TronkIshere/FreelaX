@@ -1,7 +1,14 @@
 package com.marketplace.backend.client;
 
 import com.marketplace.backend.configuration.AvalancheGatewayProperties;
-import com.marketplace.backend.dto.response.avalanche.AvalancheResults;
+import com.marketplace.backend.dto.response.avalanche.GatewayBalanceResponse;
+import com.marketplace.backend.dto.response.avalanche.GatewayConfigResponse;
+import com.marketplace.backend.dto.response.avalanche.GatewayEscrowResponse;
+import com.marketplace.backend.dto.response.avalanche.GatewayHashStatusResponse;
+import com.marketplace.backend.dto.response.avalanche.GatewayIssuerAlertsResponse;
+import com.marketplace.backend.dto.response.avalanche.GatewayPreparedActionResponse;
+import com.marketplace.backend.dto.response.avalanche.GatewayTokenTransferResponse;
+import com.marketplace.backend.dto.response.avalanche.GatewayTransactionResponse;
 import com.marketplace.backend.exception.AvalancheGatewayException;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.web.client.RestTemplateBuilder;
@@ -39,12 +46,12 @@ public class AvalancheClient {
         }).build();
     }
 
-    public AvalancheResults.Config getConfig() {
-        return get("config", "/config", AvalancheResults.Config.class).orElseThrow(() -> notFound("config"));
+    public GatewayConfigResponse getConfig() {
+        return get("config", "/config", GatewayConfigResponse.class).orElseThrow(() -> notFound("config"));
     }
 
-    public AvalancheResults.Balance getBalance(String address) {
-        return get("balance", "/assets/balance?address=" + address, AvalancheResults.Balance.class).orElseThrow(() -> notFound("balance"));
+    public GatewayBalanceResponse getBalance(String address) {
+        return get("balance", "/assets/balance?address=" + address, GatewayBalanceResponse.class).orElseThrow(() -> notFound("balance"));
     }
 
     public boolean validateAddress(String address) {
@@ -52,25 +59,25 @@ public class AvalancheClient {
         return Boolean.TRUE.equals(body.get("valid"));
     }
 
-    public Optional<AvalancheResults.Escrow> findEscrow(String escrowId) {
-        return get("get-escrow", "/escrows/" + escrowId, AvalancheResults.Escrow.class);
+    public Optional<GatewayEscrowResponse> findEscrow(String escrowId) {
+        return get("get-escrow", "/escrows/" + escrowId, GatewayEscrowResponse.class);
     }
 
-    public AvalancheResults.Prepared prepare(String escrowId, String action, Map<String, Object> body) {
-        return post("prepare", "/escrows/" + escrowId + "/actions/" + action + "/prepare", body, AvalancheResults.Prepared.class);
+    public GatewayPreparedActionResponse prepare(String escrowId, String action, Map<String, Object> body) {
+        return post("prepare", "/escrows/" + escrowId + "/actions/" + action + "/prepare", body, GatewayPreparedActionResponse.class);
     }
 
-    public AvalancheResults.Transaction execute(String escrowId, String action, Map<String, Object> body) {
-        return post("execute", "/escrows/" + escrowId + "/actions/" + action + "/execute", body, AvalancheResults.Transaction.class);
+    public GatewayTransactionResponse execute(String escrowId, String action, Map<String, Object> body) {
+        return post("execute", "/escrows/" + escrowId + "/actions/" + action + "/execute", body, GatewayTransactionResponse.class);
     }
 
-    public Optional<AvalancheResults.Transaction> findTransaction(String operationKey) {
-        return get("get-transaction", "/transactions/" + operationKey, AvalancheResults.Transaction.class);
+    public Optional<GatewayTransactionResponse> findTransaction(String operationKey) {
+        return get("get-transaction", "/transactions/" + operationKey, GatewayTransactionResponse.class);
     }
 
     /** P3-C4: issuer controls blocking an escrow (read-only); empty when the escrow does not exist. */
-    public Optional<AvalancheResults.IssuerAlerts> issuerAlerts(String escrowId) {
-        return get("get-issuer-alerts", "/escrows/" + escrowId + "/alerts", AvalancheResults.IssuerAlerts.class);
+    public Optional<GatewayIssuerAlertsResponse> issuerAlerts(String escrowId) {
+        return get("get-issuer-alerts", "/escrows/" + escrowId + "/alerts", GatewayIssuerAlertsResponse.class);
     }
 
     /** A8: asks the gateway whether {@code address} signed {@code message} (EIP-191 personal_sign). Verification only. */
@@ -81,13 +88,13 @@ public class AvalancheClient {
     }
 
     /** Payout rail: read-only on-chain evidence of a user's own token transfer (never a fiat payout confirmation). */
-    public AvalancheResults.TokenTransfer verifyTokenTransfer(String txHash, String from, String to, String amountBaseUnits) {
+    public GatewayTokenTransferResponse verifyTokenTransfer(String txHash, String from, String to, String amountBaseUnits) {
         return get("verify-token-transfer", "/token-transfers/" + txHash + "?from=" + from + "&to=" + to + "&amount=" + amountBaseUnits,
-                AvalancheResults.TokenTransfer.class).orElseThrow(() -> notFound("token-transfer"));
+                GatewayTokenTransferResponse.class).orElseThrow(() -> notFound("token-transfer"));
     }
 
-    public AvalancheResults.HashStatus getStatusByHash(String txHash) {
-        return get("get-status-by-hash", "/transactions/by-hash/" + txHash, AvalancheResults.HashStatus.class).orElseThrow(() -> notFound("status"));
+    public GatewayHashStatusResponse getStatusByHash(String txHash) {
+        return get("get-status-by-hash", "/transactions/by-hash/" + txHash, GatewayHashStatusResponse.class).orElseThrow(() -> notFound("status"));
     }
 
     private <T> Optional<T> get(String operation, String path, Class<T> type) {

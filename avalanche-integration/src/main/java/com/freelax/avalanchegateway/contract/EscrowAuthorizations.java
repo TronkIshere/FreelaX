@@ -4,6 +4,8 @@ import com.freelax.avalanchegateway.signer.Eip712Digest;
 import com.freelax.avalanchegateway.signer.Signature;
 import com.freelax.avalanchegateway.signer.Signer;
 
+import java.math.BigInteger;
+
 /**
  * EIP-712 typed data for the escrow's authorizations. Every digest binds the chain id and the verifying contract through the
  * domain, plus the escrow id, the action (the struct type), the nonce and a deadline. These builders only describe what to sign:
@@ -64,7 +66,7 @@ public final class EscrowAuthorizations {
      * R12: typed data both parties sign to settle a Disputed escrow. It binds the outcome, the full amount, the settlement
      * record hash and the dispute being settled ({@code disputedAt}), so a pair signed for another dispute or amount is invalid.
      */
-    public String mutualSettlementTypedData(String escrowId, boolean releaseToFreelancer, java.math.BigInteger amount, String settlementHash,
+    public String mutualSettlementTypedData(String escrowId, boolean releaseToFreelancer, BigInteger amount, String settlementHash,
                                             long disputedAt, long nonce, long deadline) {
         String type = "\"MutualSettlement\":[{\"name\":\"escrowId\",\"type\":\"bytes32\"},{\"name\":\"releaseToFreelancer\",\"type\":\"bool\"},"
                 + "{\"name\":\"amount\",\"type\":\"uint256\"},{\"name\":\"settlementHash\",\"type\":\"bytes32\"},"

@@ -1,6 +1,7 @@
 package com.marketplace.backend.payout.avalanche;
 
 import com.marketplace.backend.configuration.AvalancheGatewayProperties;
+import com.marketplace.backend.configuration.AvalanchePayoutProperties;
 import org.junit.jupiter.api.Test;
 
 import java.time.Clock;

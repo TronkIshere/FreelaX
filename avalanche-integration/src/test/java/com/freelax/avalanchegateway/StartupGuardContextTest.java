@@ -1,7 +1,8 @@
 package com.freelax.avalanchegateway;
 
-import com.freelax.avalanchegateway.env.EnvironmentGuardException;
+import com.freelax.avalanchegateway.applicationException.EnvironmentGuardException;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.BeanCreationException;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -44,7 +45,7 @@ class StartupGuardContextTest {
 
     private static boolean failedWhileCreatingChainClient(Throwable failure) {
         for (Throwable t = failure; t != null; t = t.getCause()) {
-            if (t instanceof org.springframework.beans.factory.BeanCreationException b && "chainClient".equals(b.getBeanName())) {
+            if (t instanceof BeanCreationException b && "chainClient".equals(b.getBeanName())) {
                 return true;
             }
         }

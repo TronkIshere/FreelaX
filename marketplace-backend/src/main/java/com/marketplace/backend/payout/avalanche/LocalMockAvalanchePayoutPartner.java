@@ -1,5 +1,6 @@
 package com.marketplace.backend.payout.avalanche;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.Locale;
@@ -61,7 +62,7 @@ public class LocalMockAvalanchePayoutPartner implements AvalanchePayoutPartner {
         if (!capability(request.chainId(), request.tokenAddress()).supported()) {
             throw new IllegalArgumentException("unsupported (chain, token) for the local mock");
         }
-        return new Order("SIMULATED-" + UUID.nameUUIDFromBytes(request.reference().getBytes(java.nio.charset.StandardCharsets.UTF_8)), depositAddress, null, null,
+        return new Order("SIMULATED-" + UUID.nameUUIDFromBytes(request.reference().getBytes(StandardCharsets.UTF_8)), depositAddress, null, null,
                 clock.instant().plus(Duration.ofHours(24)));
     }
 

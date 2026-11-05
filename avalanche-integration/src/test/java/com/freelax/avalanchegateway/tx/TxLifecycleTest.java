@@ -1,17 +1,30 @@
 package com.freelax.avalanchegateway.tx;
 
+import com.freelax.avalanchegateway.chain.ChainClients;
 import com.freelax.avalanchegateway.config.TxProperties;
+import com.freelax.avalanchegateway.dto.request.SubmitRequest;
+import com.freelax.avalanchegateway.entity.TxRecord;
+import com.freelax.avalanchegateway.entity.TxState;
+import com.freelax.avalanchegateway.env.AvalancheEnvironment;
+import com.freelax.avalanchegateway.exception.FeeCapExceededException;
+import com.freelax.avalanchegateway.exception.IdempotencyConflictException;
+import com.freelax.avalanchegateway.exception.InvalidRequestException;
+import com.freelax.avalanchegateway.exception.NonceGapException;
+import com.freelax.avalanchegateway.exception.SignerUnavailableException;
+import com.freelax.avalanchegateway.service.TransactionSubmissionService;
+import com.freelax.avalanchegateway.service.impl.TransactionSubmissionServiceImpl;
 import com.freelax.avalanchegateway.signer.SignerRegistry;
 import com.freelax.avalanchegateway.signer.SignerRole;
-import com.freelax.avalanchegateway.tx.SubmissionService.SubmitRequest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.web3j.protocol.core.DefaultBlockParameterName;
 
 import java.math.BigInteger;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -53,8 +66,8 @@ class TxLifecycleTest {
 
     @BeforeEach
     void cleanDatabase() {
-        new org.springframework.jdbc.core.JdbcTemplate(LocalStack.dataSource()).update("DELETE FROM avalanche_tx");
-        new org.springframework.jdbc.core.JdbcTemplate(LocalStack.dataSource()).update("DELETE FROM avalanche_nonce");
+        new JdbcTemplate(LocalStack.dataSource()).update("DELETE FROM avalanche_tx");
+        new JdbcTemplate(LocalStack.dataSource()).update("DELETE FROM avalanche_nonce");
         AnvilRpc.setAutomine(LocalStack.anvilUrl(), true);
     }
 
@@ -408,19 +421,19 @@ class TxLifecycleTest {
         Harness h = fundedHarness(LocalStack.anvilUrl(), capped);
         String relayer = h.registry.get(SignerRole.RELAYER).address();
 
-        assertThrows(SubmissionService.InvalidRequestException.class, () -> h.submission.submit(new SubmitRequest("k", SignerRole.RELAYER, OK_TARGET, "0x", 200_001)));
-        assertThrows(SubmissionService.InvalidRequestException.class, () -> h.submission.submit(new SubmitRequest("k", SignerRole.RELAYER, OK_TARGET, "0x", 20_999)));
-        assertThrows(SubmissionService.InvalidRequestException.class, () -> h.submission.submit(new SubmitRequest("bad key!", SignerRole.RELAYER, OK_TARGET, "0x", GAS)));
-        assertThrows(SubmissionService.InvalidRequestException.class, () -> h.submission.submit(new SubmitRequest("k", SignerRole.RELAYER, "0x123", "0x", GAS)));
-        assertThrows(SubmissionService.InvalidRequestException.class, () -> h.submission.submit(new SubmitRequest("k", SignerRole.RELAYER, OK_TARGET, "0xabc", GAS)));
-        assertThrows(SubmissionService.InvalidRequestException.class, () -> h.submission.submit(new SubmitRequest("k", null, OK_TARGET, "0x", GAS)));
+        assertThrows(InvalidRequestException.class, () -> h.submission.submit(new SubmitRequest("k", SignerRole.RELAYER, OK_TARGET, "0x", 200_001)));
+        assertThrows(InvalidRequestException.class, () -> h.submission.submit(new SubmitRequest("k", SignerRole.RELAYER, OK_TARGET, "0x", 20_999)));
+        assertThrows(InvalidRequestException.class, () -> h.submission.submit(new SubmitRequest("bad key!", SignerRole.RELAYER, OK_TARGET, "0x", GAS)));
+        assertThrows(InvalidRequestException.class, () -> h.submission.submit(new SubmitRequest("k", SignerRole.RELAYER, "0x123", "0x", GAS)));
+        assertThrows(InvalidRequestException.class, () -> h.submission.submit(new SubmitRequest("k", SignerRole.RELAYER, OK_TARGET, "0xabc", GAS)));
+        assertThrows(InvalidRequestException.class, () -> h.submission.submit(new SubmitRequest("k", null, OK_TARGET, "0x", GAS)));
         assertNull(h.allocator.peekNext("LOCAL_SIMULATION", 31337, relayer), "no nonce was consumed");
         assertEquals(0, h.jdbc.queryForObject("SELECT COUNT(*) FROM avalanche_tx", Integer.class));
 
         AnvilRpc.setAutomine(LocalStack.anvilUrl(), false);
         TxRecord ok = h.submission.submit(request("op-capped", OK_TARGET));
         assertTrue(ok.maxFeePerGas().compareTo(BigInteger.valueOf(2_000_000_000L)) <= 0, "the fee cap holds");
-        assertThrows(SubmissionService.FeeCapExceededException.class, () -> h.submission.speedUp("op-capped"));
+        assertThrows(FeeCapExceededException.class, () -> h.submission.speedUp("op-capped"));
     }
 
     @Test
@@ -428,8 +441,8 @@ class TxLifecycleTest {
         FaultProxy proxy = proxy();
         Harness h = fundedHarness(proxy.url(), Harness.props(30_000, 2));
         TxRecord first = h.submission.submit(request("op-conflict", OK_TARGET));
-        assertThrows(SubmissionService.IdempotencyConflictException.class, () -> h.submission.submit(request("op-conflict", REVERT_TARGET)));
-        assertThrows(SubmissionService.IdempotencyConflictException.class,
+        assertThrows(IdempotencyConflictException.class, () -> h.submission.submit(request("op-conflict", REVERT_TARGET)));
+        assertThrows(IdempotencyConflictException.class,
                 () -> h.submission.submit(new SubmitRequest("op-conflict", SignerRole.ADMIN, OK_TARGET, "0x", GAS)));
         assertEquals(1, proxy.sendCount.get());
         assertEquals(first.id(), h.repository.find("LOCAL_SIMULATION", 31337, "op-conflict").orElseThrow().id());
@@ -438,9 +451,9 @@ class TxLifecycleTest {
     @Test
     void aProcessWithoutSignersCannotSubmit() {
         Harness h = fundedHarness(LocalStack.anvilUrl(), Harness.props(30_000, 2));
-        SubmissionService noSigners = new SubmissionService(h.client, Harness.LOCAL, null, h.repository, h.allocator,
-                h.transactions, h.properties, new ErrorClassifier(), h.transitions, java.time.Clock.systemUTC(), null);
-        assertThrows(SubmissionService.SignerUnavailableException.class, () -> noSigners.submit(request("op-nosigner", OK_TARGET)));
+        TransactionSubmissionService noSigners = new TransactionSubmissionServiceImpl(h.client, Harness.LOCAL, null, h.repository, h.allocator,
+                h.transactions, h.properties, new ErrorClassifier(), h.transitions, Clock.systemUTC(), null);
+        assertThrows(SignerUnavailableException.class, () -> noSigners.submit(request("op-nosigner", OK_TARGET)));
     }
 
     // ---- second provider cross-check ------------------------------------------------------------------------------
@@ -453,8 +466,8 @@ class TxLifecycleTest {
         AnvilRpc.fund(LocalStack.anvilUrl(), registry.get(SignerRole.RELAYER).address());
         Harness withoutSecondary = harness(primary.url(), 5000, Harness.props(0, 1), registry);
         Harness withSecondary = new Harness(LocalStack.dataSource(), primary.url(), 5000, Harness.props(0, 1), registry,
-                com.freelax.avalanchegateway.chain.ChainClients.create(
-                        com.freelax.avalanchegateway.env.AvalancheEnvironment.LOCAL_SIMULATION, LocalStack.anvilUrl(), 5000, 0));
+                ChainClients.create(
+                        AvalancheEnvironment.LOCAL_SIMULATION, LocalStack.anvilUrl(), 5000, 0));
         harnesses.add(withSecondary);
 
         TxRecord one = withoutSecondary.submission.submit(request("op-xcheck-1", OK_TARGET));

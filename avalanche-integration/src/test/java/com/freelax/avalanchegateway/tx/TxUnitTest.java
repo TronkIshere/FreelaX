@@ -1,9 +1,12 @@
 package com.freelax.avalanchegateway.tx;
 
+import com.freelax.avalanchegateway.applicationException.EnvironmentGuardException;
 import com.freelax.avalanchegateway.config.TxProperties;
+import com.freelax.avalanchegateway.entity.TxRecord;
+import com.freelax.avalanchegateway.entity.TxState;
 import com.freelax.avalanchegateway.env.AvalancheEnvironment;
 import com.freelax.avalanchegateway.env.DbEndpointGuard;
-import com.freelax.avalanchegateway.env.EnvironmentGuardException;
+import com.freelax.avalanchegateway.service.impl.TransactionSubmissionServiceImpl;
 import com.freelax.avalanchegateway.signer.DevSignerFactory;
 import com.freelax.avalanchegateway.signer.Signer;
 import com.freelax.avalanchegateway.signer.SignerRole;
@@ -11,9 +14,12 @@ import com.freelax.avalanchegateway.startup.ValidatedEnvironment;
 import org.junit.jupiter.api.Test;
 import org.web3j.crypto.SignedRawTransaction;
 import org.web3j.crypto.TransactionDecoder;
+import org.web3j.crypto.transaction.type.Transaction1559;
 import org.web3j.crypto.transaction.type.TransactionType;
 
 import java.math.BigInteger;
+import java.net.SocketTimeoutException;
+import java.security.SignatureException;
 import java.time.Clock;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -47,7 +53,7 @@ class TxUnitTest {
     void transportFailuresAreNeverDefinitive() {
         assertEquals(ErrorClass.RATE_LIMITED, classifier.classifyTransport(new RuntimeException("Invalid response received: 429; <html>")));
         assertEquals(ErrorClass.RATE_LIMITED, classifier.classifyTransport(new RuntimeException("wrapper", new RuntimeException("Too Many Requests"))));
-        assertEquals(ErrorClass.TRANSPORT, classifier.classifyTransport(new java.net.SocketTimeoutException("timeout")));
+        assertEquals(ErrorClass.TRANSPORT, classifier.classifyTransport(new SocketTimeoutException("timeout")));
         assertEquals(ErrorClass.TRANSPORT, classifier.classifyTransport(new RuntimeException()));
     }
 
@@ -94,13 +100,13 @@ class TxUnitTest {
         TransactionSigning.Signed signed = TransactionSigning.sign(record(signer, 31337), signer);
         SignedRawTransaction decoded = (SignedRawTransaction) TransactionDecoder.decode(signed.rawHex());
         assertEquals(TransactionType.EIP1559, decoded.getType());
-        assertEquals(31337L, ((org.web3j.crypto.transaction.type.Transaction1559) decoded.getTransaction()).getChainId(), "the chain id is signed into the transaction");
+        assertEquals(31337L, ((Transaction1559) decoded.getTransaction()).getChainId(), "the chain id is signed into the transaction");
         assertEquals(BigInteger.valueOf(7), decoded.getNonce());
         assertEquals(BigInteger.ZERO, decoded.getValue());
         assertEquals("0x1111111111111111111111111111111111111111", decoded.getTo());
         try {
             assertEquals(signer.address().toLowerCase(), decoded.getFrom().toLowerCase());
-        } catch (java.security.SignatureException e) {
+        } catch (SignatureException e) {
             throw new AssertionError(e);
         }
         assertTrue(signed.txHash().startsWith("0x") && signed.txHash().length() == 66);
@@ -121,7 +127,7 @@ class TxUnitTest {
         ValidatedEnvironment fuji = new ValidatedEnvironment(AvalancheEnvironment.AVALANCHE_FUJI, 43113, "avalanchego", "api.avax-test.network");
         TxProperties props = Harness.props(0, 2);
         EnvironmentGuardException e = assertThrows(EnvironmentGuardException.class, () ->
-                new SubmissionService(null, fuji, null, null, null, null, props, classifier, null, Clock.systemUTC(), null));
+                new TransactionSubmissionServiceImpl(null, fuji, null, null, null, null, props, classifier, null, Clock.systemUTC(), null));
         assertEquals("SIGNER_FORBIDDEN_ENVIRONMENT", e.code());
     }
 

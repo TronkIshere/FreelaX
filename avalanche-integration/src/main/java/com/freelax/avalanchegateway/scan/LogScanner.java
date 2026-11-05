@@ -2,8 +2,10 @@ package com.freelax.avalanchegateway.scan;
 
 import com.freelax.avalanchegateway.chain.ChainClient;
 import com.freelax.avalanchegateway.chain.LogEntry;
-import com.freelax.avalanchegateway.chain.LogRangeExceededException;
+import com.freelax.avalanchegateway.entity.ScannedEvent;
 import com.freelax.avalanchegateway.env.AvalancheEnvironment;
+import com.freelax.avalanchegateway.exception.LogRangeExceededException;
+import com.freelax.avalanchegateway.repository.ScanRepository;
 import com.freelax.avalanchegateway.startup.ValidatedEnvironment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,6 +13,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 
 /**
  * Bounded, restart-safe scan of one contract's logs. It never scans past the safe head (confirmation depth on
@@ -91,7 +94,7 @@ public class LogScanner {
     }
 
     /** A6/F6: the persisted cursor, if any pass has stored one. */
-    public java.util.Optional<Long> cursorNow() {
+    public Optional<Long> cursorNow() {
         return repository.cursor(environment.environment().name(), environment.chainId(), contract);
     }
 

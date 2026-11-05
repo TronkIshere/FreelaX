@@ -1,6 +1,7 @@
 package com.marketplace.backend.payout.avalanche;
 
 import com.marketplace.backend.configuration.AvalancheGatewayProperties;
+import com.marketplace.backend.configuration.AvalanchePayoutProperties;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

@@ -1,6 +1,7 @@
 package com.freelax.avalanchegateway.tx;
 
 import com.freelax.avalanchegateway.AvalancheGatewayApplication;
+import com.freelax.avalanchegateway.contract.EscrowAuthorizations;
 import com.freelax.avalanchegateway.signer.SignerRegistry;
 import com.freelax.avalanchegateway.signer.SignerRole;
 import org.junit.jupiter.api.BeforeAll;
@@ -17,17 +18,25 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.web3j.abi.FunctionEncoder;
 import org.web3j.abi.datatypes.Address;
+import org.web3j.abi.datatypes.Bool;
 import org.web3j.abi.datatypes.Function;
 import org.web3j.abi.datatypes.generated.Bytes32;
+import org.web3j.abi.datatypes.generated.Uint256;
+import org.web3j.crypto.ECKeyPair;
 import org.web3j.crypto.Hash;
+import org.web3j.crypto.Keys;
+import org.web3j.crypto.Sign;
 import org.web3j.utils.Numeric;
 
 import java.io.IOException;
+import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -44,7 +53,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /** The gateway API over HTTP against the real contract, a real Anvil and MySQL. */
 @Testcontainers(disabledWithoutDocker = true)
 @SpringBootTest(classes = AvalancheGatewayApplication.class, webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@org.springframework.test.annotation.DirtiesContext(classMode = org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER_CLASS)
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class AvalancheApiTest {
 
     private static final String KEY = "test-internal-key";
@@ -293,12 +302,12 @@ class AvalancheApiTest {
         Map<String, Object> first = post(prepareFour, "{}");
         long deadline = ((Number) first.get("authorizationDeadline")).longValue();
         String typed = (String) first.get("typedData");
-        String clientSig = com.freelax.avalanchegateway.contract.EscrowAuthorizations.sign(registry.get(SignerRole.TEST_BUYER), typed).toHex();
+        String clientSig = EscrowAuthorizations.sign(registry.get(SignerRole.TEST_BUYER), typed).toHex();
         AnvilRpc.mine(LocalStack.anvilUrl());
         AnvilRpc.mine(LocalStack.anvilUrl());
         Map<String, Object> second = post(prepareFour, "{\"authorizationDeadline\":" + deadline + "}");
         assertEquals(typed, second.get("typedData"), "the second signer signs the same typed data");
-        String freelancerSig = com.freelax.avalanchegateway.contract.EscrowAuthorizations.sign(registry.get(SignerRole.TEST_FREELANCER),
+        String freelancerSig = EscrowAuthorizations.sign(registry.get(SignerRole.TEST_FREELANCER),
                 (String) second.get("typedData")).toHex();
         String both = ",\"clientSignature\":\"" + clientSig + "\",\"freelancerSignature\":\"" + freelancerSig + "\"";
         assertEquals("DEADLINE_REQUIRED", exchange(rest, HttpMethod.POST, prepareFour, KEY, "{" + both.substring(1) + "}", 400).get("code"));
@@ -324,12 +333,12 @@ class AvalancheApiTest {
         assertEquals("RELEASED", status(settled));
 
         // 4c. wallet linking (A8): EIP-191 personal_sign verification endpoint
-        org.web3j.crypto.ECKeyPair linkKey = org.web3j.crypto.Keys.createEcKeyPair();
-        String linkAddress = "0x" + org.web3j.crypto.Keys.getAddress(linkKey);
+        ECKeyPair linkKey = Keys.createEcKeyPair();
+        String linkAddress = "0x" + Keys.getAddress(linkKey);
         String challenge = "FreelaX EVM wallet binding\nNonce: " + UUID.randomUUID();
-        org.web3j.crypto.Sign.SignatureData sd = org.web3j.crypto.Sign.signPrefixedMessage(challenge.getBytes(java.nio.charset.StandardCharsets.UTF_8), linkKey);
-        String linkSig = org.web3j.utils.Numeric.toHexString(sd.getR()) + org.web3j.utils.Numeric.toHexStringNoPrefix(sd.getS())
-                + org.web3j.utils.Numeric.toHexStringNoPrefix(sd.getV());
+        Sign.SignatureData sd = Sign.signPrefixedMessage(challenge.getBytes(StandardCharsets.UTF_8), linkKey);
+        String linkSig = Numeric.toHexString(sd.getR()) + Numeric.toHexStringNoPrefix(sd.getS())
+                + Numeric.toHexStringNoPrefix(sd.getV());
         String verifyBody = "{\"address\":\"" + linkAddress + "\",\"message\":\"" + challenge.replace("\n", "\\n") +"\",\"signature\":\"" + linkSig + "\"}";
         assertEquals(true, post("/api/v1/avalanche/wallet-signatures/verify", verifyBody).get("valid"));
         assertEquals(false, post("/api/v1/avalanche/wallet-signatures/verify", verifyBody.replace("Nonce", "nonce")).get("valid"));
@@ -344,9 +353,9 @@ class AvalancheApiTest {
         assertTrue(((List<?>) get(alertsPath).get("alerts")).isEmpty(), "an unblocked escrow has no alerts");
         String token = STACK.usdc();
         ContractFixtures.sendFromAdmin(LocalStack.anvilUrl(), token, FunctionEncoder.encode(new Function("setBlacklisted",
-                List.of(new Address(freelancer()), new org.web3j.abi.datatypes.Bool(true)), List.of())));
+                List.of(new Address(freelancer()), new Bool(true)), List.of())));
         ContractFixtures.sendFromAdmin(LocalStack.anvilUrl(), token, FunctionEncoder.encode(new Function("setPaused",
-                List.of(new org.web3j.abi.datatypes.Bool(true)), List.of())));
+                List.of(new Bool(true)), List.of())));
         AnvilRpc.mine(LocalStack.anvilUrl());
         Map<String, Object> stuck = get(alertsPath);
         List<?> codes = ((List<?>) stuck.get("alerts")).stream().map(x -> ((Map<?, ?>) x).get("code")).toList();
@@ -354,9 +363,9 @@ class AvalancheApiTest {
         assertEquals("FUNDED", stuck.get("escrowStatus"));
         assertTrue(((String) stuck.get("note")).contains("no privileged withdrawal, bypass or rerouting"));
         ContractFixtures.sendFromAdmin(LocalStack.anvilUrl(), token, FunctionEncoder.encode(new Function("setPaused",
-                List.of(new org.web3j.abi.datatypes.Bool(false)), List.of())));
+                List.of(new Bool(false)), List.of())));
         ContractFixtures.sendFromAdmin(LocalStack.anvilUrl(), token, FunctionEncoder.encode(new Function("setBlacklisted",
-                List.of(new Address(freelancer()), new org.web3j.abi.datatypes.Bool(false)), List.of())));
+                List.of(new Address(freelancer()), new Bool(false)), List.of())));
         AnvilRpc.mine(LocalStack.anvilUrl());
         assertTrue(((List<?>) get(alertsPath).get("alerts")).isEmpty(), "lifting the controls clears the report");
         execute(five, "submit", ",\"evidenceHash\":\"" + Hash.sha3String("w5") + "\"");
@@ -389,9 +398,9 @@ class AvalancheApiTest {
         String sender = ContractFixtures.ANVIL_ACCOUNT_0.toLowerCase(Locale.ROOT);
         String partner = "0x" + "7e".repeat(20);
         ContractFixtures.sendFromAdmin(url, STACK.usdc(), FunctionEncoder.encode(new Function("mint",
-                List.of(new Address(sender), new org.web3j.abi.datatypes.generated.Uint256(5_000_000)), List.of())));
+                List.of(new Address(sender), new Uint256(5_000_000)), List.of())));
         String tx = ContractFixtures.sendFromAdmin(url, STACK.usdc(), FunctionEncoder.encode(new Function("transfer",
-                List.of(new Address(partner), new org.web3j.abi.datatypes.generated.Uint256(2_500_000)), List.of())));
+                List.of(new Address(partner), new Uint256(2_500_000)), List.of())));
         AnvilRpc.mine(url);
         AnvilRpc.mine(url);
         String base = "/api/v1/avalanche/token-transfers/";
@@ -411,7 +420,7 @@ class AvalancheApiTest {
 
         // a transfer larger than the balance is mined and reverts: never a match
         String reverted = ContractFixtures.sendFromAdmin(url, STACK.usdc(), FunctionEncoder.encode(new Function("transfer",
-                List.of(new Address(partner), new org.web3j.abi.datatypes.generated.Uint256(new java.math.BigInteger("1000000000000000"))), List.of())));
+                List.of(new Address(partner), new Uint256(new BigInteger("1000000000000000"))), List.of())));
         AnvilRpc.mine(url);
         Map<String, Object> rev = get(base + reverted + "?from=" + sender + "&to=" + partner + "&amount=1000000000000000");
         assertEquals("REVERTED", rev.get("state"));

@@ -1,5 +1,6 @@
 package com.marketplace.backend.blockchain.avalanche;
 
+import java.util.Locale;
 import java.util.UUID;
 
 public final class AvalancheEscrowIds {
@@ -9,7 +10,7 @@ public final class AvalancheEscrowIds {
 
     /** True for a contract that chose the Avalanche rail; the legacy funding paths must refuse such a contract (no mixed rails). */
     public static boolean isAvalancheNetwork(String paymentNetworkId) {
-        return paymentNetworkId != null && paymentNetworkId.trim().toLowerCase(java.util.Locale.ROOT).startsWith("avalanche");
+        return paymentNetworkId != null && paymentNetworkId.trim().toLowerCase(Locale.ROOT).startsWith("avalanche");
     }
 
     public static String fromMilestone(UUID milestoneId) {

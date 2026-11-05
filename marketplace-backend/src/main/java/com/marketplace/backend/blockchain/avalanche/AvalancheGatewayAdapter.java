@@ -9,6 +9,7 @@ import com.marketplace.backend.blockchain.EnvironmentInfo;
 import com.marketplace.backend.blockchain.EscrowActionRequest;
 import com.marketplace.backend.blockchain.EscrowReference;
 import com.marketplace.backend.blockchain.EscrowSnapshot;
+import com.marketplace.backend.blockchain.IssuerAlert;
 import com.marketplace.backend.blockchain.NeutralEscrowStatus;
 import com.marketplace.backend.blockchain.PreparedAction;
 import com.marketplace.backend.blockchain.PreparedTransaction;
@@ -17,7 +18,10 @@ import com.marketplace.backend.blockchain.TransactionResult;
 import com.marketplace.backend.blockchain.TransactionStatus;
 import com.marketplace.backend.client.AvalancheClient;
 import com.marketplace.backend.configuration.AvalancheGatewayProperties;
-import com.marketplace.backend.dto.response.avalanche.AvalancheResults;
+import com.marketplace.backend.dto.response.avalanche.GatewayConfigResponse;
+import com.marketplace.backend.dto.response.avalanche.GatewayHashStatusResponse;
+import com.marketplace.backend.dto.response.avalanche.GatewayPreparedActionResponse;
+import com.marketplace.backend.dto.response.avalanche.GatewayTransactionResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
@@ -43,7 +47,7 @@ public class AvalancheGatewayAdapter implements BlockchainGateway {
 
     @Override
     public ChainConfig config() {
-        AvalancheResults.Config config = avalanche.getConfig();
+        GatewayConfigResponse config = avalanche.getConfig();
         return new ChainConfig(StringUtils.hasText(config.token()) ? new AssetReference(config.token()) : null, config.paused());
     }
 
@@ -54,7 +58,7 @@ public class AvalancheGatewayAdapter implements BlockchainGateway {
 
     @Override
     public EnvironmentInfo environmentInfo() {
-        AvalancheResults.Config config = avalanche.getConfig();
+        GatewayConfigResponse config = avalanche.getConfig();
         return new EnvironmentInfo(config.environment(), config.chainId(), config.isSimulated(), config.explorerBaseUrl(),
                 config.backendSignersAvailable());
     }
@@ -71,7 +75,7 @@ public class AvalancheGatewayAdapter implements BlockchainGateway {
 
     @Override
     public PreparedAction prepareAction(EscrowActionRequest request) {
-        AvalancheResults.Prepared prepared = avalanche.prepare(request.escrowId(), request.action(), body(request));
+        GatewayPreparedActionResponse prepared = avalanche.prepare(request.escrowId(), request.action(), body(request));
         List<PreparedTransaction> transactions = prepared.transactions().stream()
                 .map(tx -> new PreparedTransaction(EVM_CALLDATA, tx.purpose(), tx.to(), tx.data(), tx.value(), prepared.chainId())).toList();
         return new PreparedAction(prepared.action(), prepared.escrowId(),
@@ -85,13 +89,13 @@ public class AvalancheGatewayAdapter implements BlockchainGateway {
     }
 
     @Override
-    public java.util.List<com.marketplace.backend.blockchain.IssuerAlert> issuerAlerts(EscrowReference escrow) {
+    public List<IssuerAlert> issuerAlerts(EscrowReference escrow) {
         return avalanche.issuerAlerts(escrow.id())
-                .map(r -> r.alerts() == null ? java.util.List.<com.marketplace.backend.blockchain.IssuerAlert>of() : r.alerts().stream()
-                        .map(a -> new com.marketplace.backend.blockchain.IssuerAlert(a.code(), a.address(),
-                                a.blocks() == null ? java.util.List.of() : java.util.List.copyOf(a.blocks())))
+                .map(r -> r.alerts() == null ? List.<IssuerAlert>of() : r.alerts().stream()
+                        .map(a -> new IssuerAlert(a.code(), a.address(),
+                                a.blocks() == null ? List.of() : List.copyOf(a.blocks())))
                         .toList())
-                .orElse(java.util.List.of());
+                .orElse(List.of());
     }
 
     @Override
@@ -106,14 +110,14 @@ public class AvalancheGatewayAdapter implements BlockchainGateway {
     public TransactionResult transactionStatus(TransactionReference transaction) {
         String id = transaction.id();
         if (id != null && id.matches("0x[0-9a-fA-F]{64}")) {
-            AvalancheResults.HashStatus status = avalanche.getStatusByHash(id);
+            GatewayHashStatusResponse status = avalanche.getStatusByHash(id);
             return new TransactionResult(transaction, TransactionStatus.valueOf(status.state()), status.txHash(), status.blockNumber(), null);
         }
         return avalanche.findTransaction(id).map(AvalancheGatewayAdapter::result)
                 .orElse(new TransactionResult(transaction, TransactionStatus.UNKNOWN, null, null, "NOT_FOUND"));
     }
 
-    private static TransactionResult result(AvalancheResults.Transaction tx) {
+    private static TransactionResult result(GatewayTransactionResponse tx) {
         return new TransactionResult(new TransactionReference(null, tx.operationKey()), TransactionStatus.valueOf(tx.state()), tx.txHash(),
                 tx.blockNumber(), tx.errorClass());
     }

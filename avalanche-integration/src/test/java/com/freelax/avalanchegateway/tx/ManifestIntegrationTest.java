@@ -1,16 +1,19 @@
 package com.freelax.avalanchegateway.tx;
 
+import com.freelax.avalanchegateway.applicationException.EnvironmentGuardException;
 import com.freelax.avalanchegateway.chain.ChainClient;
 import com.freelax.avalanchegateway.chain.ChainClients;
 import com.freelax.avalanchegateway.contract.DeploymentManifest;
 import com.freelax.avalanchegateway.contract.EscrowCalls;
 import com.freelax.avalanchegateway.contract.ManifestVerifier;
 import com.freelax.avalanchegateway.contract.VerifiedDeployment;
+import com.freelax.avalanchegateway.dto.request.SubmitRequest;
+import com.freelax.avalanchegateway.entity.TxRecord;
+import com.freelax.avalanchegateway.entity.TxState;
 import com.freelax.avalanchegateway.env.AvalancheEnvironment;
-import com.freelax.avalanchegateway.env.EnvironmentGuardException;
+import com.freelax.avalanchegateway.exception.InvalidRequestException;
 import com.freelax.avalanchegateway.signer.SignerRegistry;
 import com.freelax.avalanchegateway.signer.SignerRole;
-import com.freelax.avalanchegateway.tx.SubmissionService.SubmitRequest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -95,7 +98,7 @@ class ManifestIntegrationTest {
         String mint = EscrowCalls.erc20Mint(registry.get(SignerRole.RELAYER).address(), BigInteger.ONE);
         TxRecord ok = h.submission.submit(new SubmitRequest("allow-ok", SignerRole.RELAYER, stack.usdc().toUpperCase(Locale.ROOT).replace("0X", "0x"), mint, 100_000));
         assertEquals(TxState.SUBMITTED, ok.state());
-        SubmissionService.InvalidRequestException refused = assertThrows(SubmissionService.InvalidRequestException.class,
+        InvalidRequestException refused = assertThrows(InvalidRequestException.class,
                 () -> h.submission.submit(new SubmitRequest("allow-bad", SignerRole.RELAYER, "0x" + "99".repeat(20), mint, 100_000)));
         assertTrue(refused.getMessage().startsWith("TARGET_NOT_ALLOWED"), refused.getMessage());
         assertTrue(h.repository.find("LOCAL_SIMULATION", 31337, "allow-bad").isEmpty(), "a refused target creates no record");

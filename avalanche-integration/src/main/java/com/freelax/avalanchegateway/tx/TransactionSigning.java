@@ -1,5 +1,6 @@
 package com.freelax.avalanchegateway.tx;
 
+import com.freelax.avalanchegateway.entity.TxRecord;
 import com.freelax.avalanchegateway.signer.Signature;
 import com.freelax.avalanchegateway.signer.Signer;
 import org.web3j.crypto.Hash;

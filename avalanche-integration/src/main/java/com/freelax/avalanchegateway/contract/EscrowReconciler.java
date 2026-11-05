@@ -1,7 +1,7 @@
 package com.freelax.avalanchegateway.contract;
 
-import com.freelax.avalanchegateway.scan.ScanRepository;
-import com.freelax.avalanchegateway.scan.ScannedEvent;
+import com.freelax.avalanchegateway.entity.ScannedEvent;
+import com.freelax.avalanchegateway.repository.ScanRepository;
 import com.freelax.avalanchegateway.startup.ValidatedEnvironment;
 
 import java.util.List;

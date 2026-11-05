@@ -1,5 +1,7 @@
 package com.freelax.avalanchegateway.chain;
 
+import com.freelax.avalanchegateway.exception.ChainClientException;
+
 /**
  * Enforces a minimum gap between requests to one RPC host and honours a server-requested pause (HTTP Retry-After), so
  * public endpoints are not hammered.

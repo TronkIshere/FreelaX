@@ -1,6 +1,10 @@
 package com.marketplace.backend.controller;
 
 import com.marketplace.backend.configuration.UserPrincipal;
+import com.marketplace.backend.dto.request.avalanche.WalletChallengeRequest;
+import com.marketplace.backend.dto.request.avalanche.WalletVerifyRequest;
+import com.marketplace.backend.dto.response.avalanche.EvmBoundWalletResponse;
+import com.marketplace.backend.dto.response.avalanche.EvmWalletChallengeResponse;
 import com.marketplace.backend.dto.response.common.ResponseAPI;
 import com.marketplace.backend.service.EvmWalletLinkService;
 import lombok.RequiredArgsConstructor;
@@ -12,8 +16,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.UUID;
-
 /** EVM wallet linking for the Avalanche rail (register A8). Authenticated (not on the security white list). */
 @RestController
 @RequestMapping("/api/v1/avalanche/wallet-link")
@@ -22,26 +24,22 @@ import java.util.UUID;
 public class EvmWalletLinkController {
     private final EvmWalletLinkService service;
 
-    public record ChallengeRequest(String walletAddress) { }
-
-    public record VerifyRequest(UUID challengeId, String signature) { }
-
     @GetMapping
-    public ResponseAPI<EvmWalletLinkService.BoundWallet> current(@AuthenticationPrincipal UserPrincipal principal) {
-        return ResponseAPI.<EvmWalletLinkService.BoundWallet>builder().code(200).data(service.current(principal.getId())).build();
+    public ResponseAPI<EvmBoundWalletResponse> current(@AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseAPI.<EvmBoundWalletResponse>builder().code(200).data(service.current(principal.getId())).build();
     }
 
     @PostMapping("/challenge")
-    public ResponseAPI<EvmWalletLinkService.Challenge> challenge(@AuthenticationPrincipal UserPrincipal principal,
-                                                                 @RequestBody ChallengeRequest request) {
-        return ResponseAPI.<EvmWalletLinkService.Challenge>builder().code(200)
+    public ResponseAPI<EvmWalletChallengeResponse> challenge(@AuthenticationPrincipal UserPrincipal principal,
+                                                                 @RequestBody WalletChallengeRequest request) {
+        return ResponseAPI.<EvmWalletChallengeResponse>builder().code(200)
                 .data(service.challenge(principal.getId(), request.walletAddress())).build();
     }
 
     @PostMapping("/verify")
-    public ResponseAPI<EvmWalletLinkService.BoundWallet> verify(@AuthenticationPrincipal UserPrincipal principal,
-                                                                @RequestBody VerifyRequest request) {
-        return ResponseAPI.<EvmWalletLinkService.BoundWallet>builder().code(200)
+    public ResponseAPI<EvmBoundWalletResponse> verify(@AuthenticationPrincipal UserPrincipal principal,
+                                                                @RequestBody WalletVerifyRequest request) {
+        return ResponseAPI.<EvmBoundWalletResponse>builder().code(200)
                 .data(service.verify(principal.getId(), request.challengeId(), request.signature())).build();
     }
 }

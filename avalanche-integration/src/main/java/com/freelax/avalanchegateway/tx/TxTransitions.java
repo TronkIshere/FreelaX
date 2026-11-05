@@ -1,5 +1,9 @@
 package com.freelax.avalanchegateway.tx;
 
+import com.freelax.avalanchegateway.entity.TxRecord;
+import com.freelax.avalanchegateway.entity.TxState;
+import com.freelax.avalanchegateway.repository.TxRepository;
+
 import java.time.Clock;
 import java.util.EnumSet;
 import java.util.LinkedHashMap;

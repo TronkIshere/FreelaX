@@ -2,8 +2,8 @@ package com.freelax.avalanchegateway.signer;
 
 import com.freelax.avalanchegateway.AvalancheGatewayApplication;
 import com.freelax.avalanchegateway.StubRpcServer;
+import com.freelax.avalanchegateway.applicationException.EnvironmentGuardException;
 import com.freelax.avalanchegateway.chain.ChainClient;
-import com.freelax.avalanchegateway.env.EnvironmentGuardException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;

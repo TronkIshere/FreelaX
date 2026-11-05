@@ -1,7 +1,8 @@
 package com.marketplace.backend.client;
 
 import com.marketplace.backend.configuration.AvalancheGatewayProperties;
-import com.marketplace.backend.dto.response.avalanche.AvalancheResults;
+import com.marketplace.backend.dto.response.avalanche.GatewayConfigResponse;
+import com.marketplace.backend.dto.response.avalanche.GatewayPreparedActionResponse;
 import com.marketplace.backend.exception.AvalancheGatewayException;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;
@@ -60,7 +61,7 @@ class AvalancheClientTest {
     void parsesTheGatewayConfigAndSendsNoKeyOnReads() {
         body = "{\"environment\":\"LOCAL_SIMULATION\",\"isSimulated\":true,\"chainId\":31337,\"escrow\":\"0xe\",\"token\":\"0xt\",\"tokenKind\":\"MOCK\","
                 + "\"contractVersion\":\"1\",\"paused\":false,\"defaultArbiter\":\"0xa\",\"backendSignersAvailable\":true,\"explorerBaseUrl\":null,\"extra\":1}";
-        AvalancheResults.Config config = client.getConfig();
+        GatewayConfigResponse config = client.getConfig();
         assertEquals("LOCAL_SIMULATION", config.environment());
         assertTrue(config.isSimulated());
         assertEquals(31337, config.chainId());
@@ -74,7 +75,7 @@ class AvalancheClientTest {
         body = "{\"environment\":\"LOCAL_SIMULATION\",\"isSimulated\":true,\"chainId\":31337,\"action\":\"fund\",\"escrowId\":\"0x1\","
                 + "\"transactions\":[{\"purpose\":\"approve\",\"to\":\"0xt\",\"data\":\"0x1\",\"value\":\"0\"}],\"authorizationDeadline\":99,"
                 + "\"typedData\":null,\"typedDataDigest\":null}";
-        AvalancheResults.Prepared prepared = client.prepare("0x1", "fund", Map.of("amount", "1"));
+        GatewayPreparedActionResponse prepared = client.prepare("0x1", "fund", Map.of("amount", "1"));
         assertEquals(1, prepared.transactions().size());
         assertEquals(99L, prepared.authorizationDeadline());
         assertEquals("POST /api/v1/avalanche/escrows/0x1/actions/fund/prepare", requests.get(0));

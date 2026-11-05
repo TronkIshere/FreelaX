@@ -1,5 +1,8 @@
 package com.marketplace.backend.payout.avalanche;
 
+import com.marketplace.backend.entity.AvalanchePayoutRequest;
+import com.marketplace.backend.entity.AvalanchePayoutStatus;
+import com.marketplace.backend.repository.AvalanchePayoutRequestRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.springframework.beans.factory.annotation.Autowired;

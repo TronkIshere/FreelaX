@@ -1,5 +1,7 @@
 package com.freelax.avalanchegateway.chain;
 
+import com.freelax.avalanchegateway.exception.ChainClientException;
+import com.freelax.avalanchegateway.exception.LogRangeExceededException;
 import org.web3j.protocol.Web3j;
 import org.web3j.protocol.core.DefaultBlockParameter;
 import org.web3j.protocol.core.DefaultBlockParameterName;
@@ -19,6 +21,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 /**
  * Thin, paced wrapper over web3j. Transport failures (timeouts, HTTP 429, connection errors) surface as
@@ -51,12 +54,16 @@ public class ChainClient {
         return call("eth_blockNumber", () -> web3j.ethBlockNumber().send(), r -> r.getBlockNumber().longValueExact());
     }
 
-    /** The finalized block under the tag policy (Fuji). Not used by LOCAL_SIMULATION, where Anvil's tag does not advance. */
+    /**
+     * The finalized block under the tag policy (Fuji). Not used by LOCAL_SIMULATION, where Anvil's tag does not advance.
+     */
     public long finalizedBlockNumber() {
         return blockNumber(DefaultBlockParameterName.FINALIZED);
     }
 
-    /** Timestamp of the latest block, the clock that contract deadlines are checked against. */
+    /**
+     * Timestamp of the latest block, the clock that contract deadlines are checked against.
+     */
     public long latestBlockTimestamp() {
         return block(DefaultBlockParameterName.LATEST).getTimestamp().longValueExact();
     }
@@ -69,7 +76,9 @@ public class ChainClient {
         return block.getBaseFeePerGas();
     }
 
-    /** Raw submission. An RPC error is returned as a message; only transport failures throw. */
+    /**
+     * Raw submission. An RPC error is returned as a message; only transport failures throw.
+     */
     public SendOutcome sendRawTransaction(String signedHex) {
         pacer.await();
         EthSendTransaction response;
@@ -108,62 +117,93 @@ public class ChainClient {
      */
     public List<LogEntry> logs(String contractAddress, long fromBlock, long toBlock) {
         pacer.await();
+
+        EthFilter filter = new EthFilter(
+                DefaultBlockParameter.valueOf(BigInteger.valueOf(fromBlock)),
+                DefaultBlockParameter.valueOf(BigInteger.valueOf(toBlock)),
+                contractAddress);
+
         EthLog response;
         try {
-            EthFilter filter = new EthFilter(DefaultBlockParameter.valueOf(BigInteger.valueOf(fromBlock)),
-                    DefaultBlockParameter.valueOf(BigInteger.valueOf(toBlock)), contractAddress);
             response = web3j.ethGetLogs(filter).send();
         } catch (IOException | RuntimeException e) {
             throw new ChainClientException("eth_getLogs failed: " + e.getClass().getSimpleName(), e);
         }
+
         if (response.hasError()) {
-            String message = response.getError().getMessage() == null ? "" : response.getError().getMessage().toLowerCase(Locale.ROOT);
-            if (response.getError().getCode() == -32005 || message.contains("range") || message.contains("too many")
-                    || message.contains("exceed") || message.contains("limit") || message.contains("more than")) {
-                throw new LogRangeExceededException("eth_getLogs range or result size refused (code " + response.getError().getCode() + ")");
+            Response.Error error = response.getError();
+            String message = Optional.ofNullable(error.getMessage()).orElse("").toLowerCase(Locale.ROOT);
+            boolean rangeRefused = error.getCode() == -32005
+                    || Stream.of("range", "too many", "exceed", "limit", "more than").anyMatch(message::contains);
+
+            String detail = "(code " + error.getCode() + ")";
+            if (rangeRefused) {
+                throw new LogRangeExceededException("eth_getLogs range or result size refused " + detail);
             }
-            throw new ChainClientException("eth_getLogs returned an RPC error (code " + response.getError().getCode() + ")");
+            throw new ChainClientException("eth_getLogs returned an RPC error " + detail);
         }
+
         List<LogEntry> entries = new ArrayList<>();
         for (EthLog.LogResult<?> result : response.getLogs()) {
             if (!(result instanceof EthLog.LogObject log)) {
                 throw new ChainClientException("eth_getLogs returned a hash-only entry");
             }
-            entries.add(new LogEntry(log.getTransactionHash(), log.getLogIndex().intValueExact(), log.getBlockNumber().longValueExact(),
-                    log.getBlockHash(), log.getAddress(), List.copyOf(log.getTopics()), log.getData(), log.isRemoved()));
+            entries.add(new LogEntry(
+                    log.getTransactionHash(),
+                    log.getLogIndex().intValueExact(),
+                    log.getBlockNumber().longValueExact(),
+                    log.getBlockHash(),
+                    log.getAddress(),
+                    List.copyOf(log.getTopics()),
+                    log.getData(),
+                    log.isRemoved()));
         }
         return entries;
     }
 
-    /** Result of an eth_call: either the returned data, or the revert data of the failed call (never an exception for a revert). */
+    /**
+     * Result of an eth_call: either the returned data, or the revert data of the failed call (never an exception for a revert).
+     */
     public record CallResult(boolean reverted, String data) {
     }
 
-    /** Read-only contract call at the latest block. A revert is reported with its raw revert data for error mapping. */
+    /**
+     * Read-only contract call at the latest block. A revert is reported with its raw revert data for error mapping.
+     */
     public CallResult call(String to, String data) {
         return call(null, to, data);
     }
 
-    /** Same, simulated as coming from {@code from}: needed to reproduce the revert reason of a sender-dependent failure. */
+    /**
+     * Same, simulated as coming from {@code from}: needed to reproduce the revert reason of a sender-dependent failure.
+     */
     public CallResult call(String from, String to, String data) {
         pacer.await();
+
         EthCall response;
         try {
-            response = web3j.ethCall(Transaction.createEthCallTransaction(from, to, data), DefaultBlockParameterName.LATEST).send();
+            response = web3j.ethCall(
+                    Transaction.createEthCallTransaction(from, to, data),
+                    DefaultBlockParameterName.LATEST).send();
         } catch (IOException | RuntimeException e) {
             throw new ChainClientException("eth_call failed: " + e.getClass().getSimpleName(), e);
         }
-        if (response.hasError()) {
-            String raw = response.getError().getData();
-            if (raw == null || !raw.replace("\"", "").startsWith("0x")) {
-                throw new ChainClientException("eth_call returned an RPC error (code " + response.getError().getCode() + ")");
-            }
-            return new CallResult(true, raw.replace("\"", ""));
+
+        if (!response.hasError()) {
+            return new CallResult(false, response.getValue());
         }
-        return new CallResult(false, response.getValue());
+
+        Response.Error error = response.getError();
+        String revertData = error.getData() == null ? null : error.getData().replace("\"", "");
+        if (revertData == null || !revertData.startsWith("0x")) {
+            throw new ChainClientException("eth_call returned an RPC error (code " + error.getCode() + ")");
+        }
+        return new CallResult(true, revertData);
     }
 
-    /** Deployed bytecode at an address (empty means no contract). */
+    /**
+     * Deployed bytecode at an address (empty means no contract).
+     */
     public String code(String address) {
         return call("eth_getCode", () -> web3j.ethGetCode(address, DefaultBlockParameterName.LATEST).send(), r -> r.getCode());
     }

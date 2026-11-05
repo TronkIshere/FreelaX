@@ -1,5 +1,6 @@
 package com.freelax.avalanchegateway.tx;
 
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -20,7 +21,7 @@ final class AnvilRpc {
     /** @param jsonParams already-serialised JSON values, for example {@code "\"0xabc\""} or {@code "false"} */
     static String call(String url, String method, String... jsonParams) {
         String body = "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"" + method + "\",\"params\":[" + String.join(",", jsonParams) + "]}";
-        java.io.IOException last = null;
+        IOException last = null;
         for (int attempt = 0; attempt < 20; attempt++) {
             try {
                 HttpResponse<String> response = HTTP.send(HttpRequest.newBuilder(URI.create(url))
@@ -30,7 +31,7 @@ final class AnvilRpc {
                     throw new IllegalStateException(method + " failed: " + response.body());
                 }
                 return response.body();
-            } catch (java.io.IOException e) {
+            } catch (IOException e) {
                 // Docker Desktop's published port can accept and drop connections for a moment after the container starts
                 last = e;
                 try {

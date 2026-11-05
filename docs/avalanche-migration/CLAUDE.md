@@ -116,8 +116,8 @@ network, Mainnet endpoint or production-looking credential.
 ## 7. Testing and evidence requirements
 - Every code change: run the affected module's suite and record counts (run / pass / skipped) in the log and in the
   relevant report. Report environment incompatibilities separately from code failures.
-- Baselines to keep green (2026-11-05, last measured): legacy JDK 17 reactor payment 72, marketplace 456, misa 20,
-  solana-integration 10; avalanche-integration 122 (3 optional skipped); Foundry 77 pass, 1 skipped (R12 adopted 2026-11-05); R12 lab 72; frontend 32
+- Baselines to keep green (2026-11-05, last measured): legacy JDK 17 reactor payment 72, marketplace 456, misa 20
+  (`solana-integration` 10 lives on branch `solana` since 2026-11-06); avalanche-integration 122 (3 optional skipped); Foundry 77 pass, 1 skipped (R12 adopted 2026-11-05); R12 lab 72; frontend 32
   files, 883 tests; human-signed tooling 13; A2 harness PASS (with the payout, R12 settlement, administrator and arbiter flows); compose Avalanche drivers (drive, browser,
   outage) PASS. A drop is a regression unless explained. The opt-in MySQL ITs (`*MySqlIT`, `-Dfreelax.mysql.url`, 6 tests) run against a throwaway local MySQL only.
 - This machine (B10): JDK 25 only; Maven 3.10.0 in `~/.m2/wrapper/dists/apache-maven-3.10.0/*/bin` (not on `PATH`); JDK 23+

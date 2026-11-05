@@ -6,6 +6,7 @@ import org.web3j.utils.Numeric;
 
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
+import java.security.SignatureException;
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.regex.Pattern;
@@ -53,7 +54,8 @@ public final class WalletSignatureVerifier {
             BigInteger key = Sign.signedPrefixedMessageToKey(messageBytes, new Sign.SignatureData(v, r, s));
             String recovered = "0x" + Keys.getAddress(key);
             return recovered.toLowerCase(Locale.ROOT).equals(address.toLowerCase(Locale.ROOT));
-        } catch (Exception e) {
+        } catch (SignatureException | RuntimeException e) {
+            // an unrecoverable or malformed signature simply does not verify
             return false;
         }
     }

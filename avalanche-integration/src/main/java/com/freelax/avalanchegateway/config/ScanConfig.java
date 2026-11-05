@@ -1,16 +1,17 @@
 package com.freelax.avalanchegateway.config;
 
+import com.freelax.avalanchegateway.applicationException.EnvironmentErrorDefinitions;
+import com.freelax.avalanchegateway.applicationException.EnvironmentGuardException;
 import com.freelax.avalanchegateway.chain.ChainClient;
 import com.freelax.avalanchegateway.contract.DeploymentHolder;
 import com.freelax.avalanchegateway.contract.EscrowEvents;
 import com.freelax.avalanchegateway.env.AvalancheEnvironment;
 import com.freelax.avalanchegateway.env.EnvironmentGuard;
-import com.freelax.avalanchegateway.env.EnvironmentGuardException;
+import com.freelax.avalanchegateway.repository.ScanRepository;
 import com.freelax.avalanchegateway.scan.EventDecoder;
 import com.freelax.avalanchegateway.scan.LogScanner;
 import com.freelax.avalanchegateway.scan.ProviderProfile;
 import com.freelax.avalanchegateway.scan.ScanCoordinator;
-import com.freelax.avalanchegateway.scan.ScanRepository;
 import com.freelax.avalanchegateway.scan.WsHintListener;
 import com.freelax.avalanchegateway.startup.ValidatedEnvironment;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -46,13 +47,13 @@ public class ScanConfig {
         if (deployment.deployment() != null) {
             String escrow = deployment.deployment().manifest().escrow();
             if (contract != null && !contract.isBlank() && !contract.equalsIgnoreCase(escrow)) {
-                throw new EnvironmentGuardException("SCAN_CONTRACT_MISMATCH", "the configured contract differs from the deployment manifest");
+                throw new EnvironmentGuardException(EnvironmentErrorDefinitions.SCAN_CONTRACT_MISMATCH);
             }
             contract = escrow;
             startBlock = Math.max(startBlock, deployment.deployment().manifest().startBlock());
         }
         if (contract == null || !ADDRESS.matcher(contract).matches()) {
-            throw new EnvironmentGuardException("SCAN_CONTRACT_INVALID", "avalanche.scan.contract-address must be a 20-byte hex address");
+            throw new EnvironmentGuardException(EnvironmentErrorDefinitions.SCAN_CONTRACT_INVALID);
         }
         boolean local = validatedEnvironment.environment() == AvalancheEnvironment.LOCAL_SIMULATION;
         ProviderProfile profile = ProviderProfile.forHost(validatedEnvironment.endpointHost(), local);

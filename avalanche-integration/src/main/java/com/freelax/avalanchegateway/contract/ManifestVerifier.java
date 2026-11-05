@@ -1,8 +1,9 @@
 package com.freelax.avalanchegateway.contract;
 
+import com.freelax.avalanchegateway.applicationException.EnvironmentErrorDefinitions;
+import com.freelax.avalanchegateway.applicationException.EnvironmentGuardException;
 import com.freelax.avalanchegateway.chain.ChainClient;
 import com.freelax.avalanchegateway.env.AvalancheEnvironment;
-import com.freelax.avalanchegateway.env.EnvironmentGuardException;
 import com.freelax.avalanchegateway.startup.ValidatedEnvironment;
 import org.web3j.abi.FunctionReturnDecoder;
 import org.web3j.abi.TypeReference;
@@ -13,6 +14,7 @@ import org.web3j.utils.Numeric;
 
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -33,22 +35,22 @@ public final class ManifestVerifier {
     public static VerifiedDeployment verify(DeploymentManifest m, ValidatedEnvironment validated, ChainClient client) {
         checkStatic(m, validated);
         if (isEmpty(client.code(m.escrow()))) {
-            throw new EnvironmentGuardException("MANIFEST_CODE_MISSING", "no code at the escrow address");
+            throw new EnvironmentGuardException(EnvironmentErrorDefinitions.MANIFEST_CODE_MISSING, "no code at the escrow address");
         }
         if (isEmpty(client.code(m.token()))) {
-            throw new EnvironmentGuardException("MANIFEST_CODE_MISSING", "no code at the token address");
+            throw new EnvironmentGuardException(EnvironmentErrorDefinitions.MANIFEST_CODE_MISSING, "no code at the token address");
         }
         String pinned = addressOf(call(client, m.escrow(), "token()"));
         if (!pinned.equals(m.token())) {
-            throw new EnvironmentGuardException("MANIFEST_TOKEN_MISMATCH", "the escrow pins a different token than the manifest");
+            throw new EnvironmentGuardException(EnvironmentErrorDefinitions.MANIFEST_TOKEN_MISMATCH);
         }
         BigInteger decimals = new BigInteger(Numeric.cleanHexPrefix(call(client, m.token(), "decimals()")), 16);
         if (decimals.intValue() != 6) {
-            throw new EnvironmentGuardException("ASSET_DECIMALS", "the token must have 6 decimals");
+            throw new EnvironmentGuardException(EnvironmentErrorDefinitions.ASSET_DECIMALS);
         }
         String symbol = stringOf(call(client, m.token(), "symbol()"));
         if (!"USDC".equals(symbol)) {
-            throw new EnvironmentGuardException("ASSET_SYMBOL", "the token symbol must be USDC (the bridged USDC.e is refused)");
+            throw new EnvironmentGuardException(EnvironmentErrorDefinitions.ASSET_SYMBOL);
         }
         return new VerifiedDeployment(m);
     }
@@ -56,28 +58,28 @@ public final class ManifestVerifier {
     /** The checks that need no network. */
     static void checkStatic(DeploymentManifest m, ValidatedEnvironment validated) {
         if (!m.environment().equals(validated.environment().name())) {
-            throw new EnvironmentGuardException("MANIFEST_ENVIRONMENT_MISMATCH", "manifest " + m.environment() + " versus " + validated.environment());
+            throw new EnvironmentGuardException(EnvironmentErrorDefinitions.MANIFEST_ENVIRONMENT_MISMATCH, "manifest " + m.environment() + " versus " + validated.environment());
         }
         if (m.chainId() != validated.chainId()) {
-            throw new EnvironmentGuardException("MANIFEST_CHAIN_MISMATCH", "manifest chain " + m.chainId() + " versus " + validated.chainId());
+            throw new EnvironmentGuardException(EnvironmentErrorDefinitions.MANIFEST_CHAIN_MISMATCH, "manifest chain " + m.chainId() + " versus " + validated.chainId());
         }
         String token = m.token().toLowerCase(Locale.ROOT);
         if (DENY_LISTED.contains(token) || DENY_LISTED.contains(m.escrow().toLowerCase(Locale.ROOT))) {
-            throw new EnvironmentGuardException("ASSET_DENY_LISTED", "a deny-listed address (Mainnet USDC or USDC.e)");
+            throw new EnvironmentGuardException(EnvironmentErrorDefinitions.ASSET_DENY_LISTED);
         }
         boolean mock = "MOCK".equals(m.tokenKind());
         boolean circle = "CIRCLE_FUJI_USDC".equals(m.tokenKind());
         if (!mock && !circle) {
-            throw new EnvironmentGuardException("ASSET_NOT_ALLOWED", "unknown token kind");
+            throw new EnvironmentGuardException(EnvironmentErrorDefinitions.ASSET_NOT_ALLOWED, "unknown token kind");
         }
         if (circle && (!token.equals(FUJI_USDC) || m.chainId() != 43113)) {
-            throw new EnvironmentGuardException("ASSET_NOT_ALLOWED", "the Circle token must be the Fuji USDC on chain 43113");
+            throw new EnvironmentGuardException(EnvironmentErrorDefinitions.ASSET_NOT_ALLOWED, "the Circle token must be the Fuji USDC on chain 43113");
         }
         if (mock && validated.environment() != AvalancheEnvironment.LOCAL_SIMULATION) {
-            throw new EnvironmentGuardException("MOCK_TOKEN_FORBIDDEN", "the simulated token exists only in LOCAL_SIMULATION");
+            throw new EnvironmentGuardException(EnvironmentErrorDefinitions.MOCK_TOKEN_FORBIDDEN);
         }
         if (validated.environment() == AvalancheEnvironment.AVALANCHE_FUJI && !circle) {
-            throw new EnvironmentGuardException("ASSET_NOT_ALLOWED", "AVALANCHE_FUJI accepts only the Circle Fuji USDC");
+            throw new EnvironmentGuardException(EnvironmentErrorDefinitions.ASSET_NOT_ALLOWED, "AVALANCHE_FUJI accepts only the Circle Fuji USDC");
         }
     }
 
@@ -89,7 +91,7 @@ public final class ManifestVerifier {
         String selector = Numeric.toHexString(Hash.sha3(signature.getBytes(StandardCharsets.UTF_8)), 0, 4, true);
         ChainClient.CallResult result = client.call(to, selector);
         if (result.reverted() || result.data() == null || Numeric.cleanHexPrefix(result.data()).isEmpty()) {
-            throw new EnvironmentGuardException("MANIFEST_CALL_FAILED", signature + " did not answer at " + to);
+            throw new EnvironmentGuardException(EnvironmentErrorDefinitions.MANIFEST_CALL_FAILED, signature + " did not answer at " + to);
         }
         return result.data();
     }
@@ -101,7 +103,7 @@ public final class ManifestVerifier {
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private static String stringOf(String data) {
-        List<TypeReference<Type>> outputs = new java.util.ArrayList<>();
+        List<TypeReference<Type>> outputs = new ArrayList<>();
         outputs.add((TypeReference) new TypeReference<Utf8String>() { });
         List<Type> decoded = FunctionReturnDecoder.decode(data, outputs);
         return decoded.isEmpty() ? "" : ((Utf8String) decoded.get(0)).getValue();

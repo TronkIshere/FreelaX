@@ -4,6 +4,7 @@ import com.freelax.avalanchegateway.chain.ChainClient;
 import org.web3j.abi.FunctionEncoder;
 import org.web3j.abi.datatypes.Address;
 import org.web3j.abi.datatypes.Function;
+import org.web3j.crypto.Hash;
 import org.web3j.utils.Numeric;
 
 import java.math.BigInteger;
@@ -45,7 +46,7 @@ public final class IssuerControls {
     }
 
     public boolean paused() {
-        String selector = Numeric.toHexString(org.web3j.crypto.Hash.sha3("paused()".getBytes(StandardCharsets.UTF_8)), 0, 4, true);
+        String selector = Numeric.toHexString(Hash.sha3("paused()".getBytes(StandardCharsets.UTF_8)), 0, 4, true);
         return truthy(client.call(token, selector), "paused");
     }
 

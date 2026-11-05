@@ -1,26 +1,29 @@
 package com.freelax.avalanchegateway.tx;
 
 import com.freelax.avalanchegateway.chain.ChainClient;
-import com.freelax.avalanchegateway.chain.ChainClientException;
 import com.freelax.avalanchegateway.chain.ChainClients;
 import com.freelax.avalanchegateway.chain.LogEntry;
+import com.freelax.avalanchegateway.dto.request.SubmitRequest;
+import com.freelax.avalanchegateway.entity.ScannedEvent;
+import com.freelax.avalanchegateway.entity.TxRecord;
 import com.freelax.avalanchegateway.env.AvalancheEnvironment;
+import com.freelax.avalanchegateway.exception.ChainClientException;
+import com.freelax.avalanchegateway.repository.ScanRepository;
 import com.freelax.avalanchegateway.scan.EventDecoder;
 import com.freelax.avalanchegateway.scan.LogScanner;
 import com.freelax.avalanchegateway.scan.ProviderProfile;
 import com.freelax.avalanchegateway.scan.ScanCoordinator;
-import com.freelax.avalanchegateway.scan.ScanRepository;
-import com.freelax.avalanchegateway.scan.ScannedEvent;
 import com.freelax.avalanchegateway.scan.WsHintListener;
 import com.freelax.avalanchegateway.signer.SignerRegistry;
 import com.freelax.avalanchegateway.signer.SignerRole;
-import com.freelax.avalanchegateway.tx.SubmissionService.SubmitRequest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DataSourceTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.web3j.crypto.Hash;
 
@@ -125,8 +128,8 @@ class ScanTest {
 
     private static ScanRepository repository() {
         JdbcTemplate jdbc = new JdbcTemplate(LocalStack.dataSource());
-        return new ScanRepository(jdbc, new org.springframework.transaction.support.TransactionTemplate(
-                new org.springframework.jdbc.datasource.DataSourceTransactionManager(LocalStack.dataSource())), Clock.systemUTC());
+        return new ScanRepository(jdbc, new TransactionTemplate(
+                new DataSourceTransactionManager(LocalStack.dataSource())), Clock.systemUTC());
     }
 
     private ChainClient client(String url) {

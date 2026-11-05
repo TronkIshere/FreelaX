@@ -1,5 +1,7 @@
 package com.freelax.avalanchegateway.tx;
 
+import com.freelax.avalanchegateway.exception.NonceGapException;
+import com.freelax.avalanchegateway.repository.TxRepository;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.List;

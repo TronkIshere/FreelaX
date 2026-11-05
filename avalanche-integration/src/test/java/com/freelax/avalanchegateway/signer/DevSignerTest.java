@@ -1,7 +1,7 @@
 package com.freelax.avalanchegateway.signer;
 
+import com.freelax.avalanchegateway.applicationException.EnvironmentGuardException;
 import com.freelax.avalanchegateway.env.AvalancheEnvironment;
-import com.freelax.avalanchegateway.env.EnvironmentGuardException;
 import com.freelax.avalanchegateway.startup.ValidatedEnvironment;
 import org.bouncycastle.crypto.ec.CustomNamedCurves;
 import org.junit.jupiter.api.Test;
@@ -13,6 +13,7 @@ import org.web3j.utils.Numeric;
 import java.lang.reflect.Field;
 import java.math.BigInteger;
 import java.security.SecureRandom;
+import java.security.SignatureException;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -29,7 +30,7 @@ class DevSignerTest {
         return DevSignerFactory.create(new ValidatedEnvironment(AvalancheEnvironment.LOCAL_SIMULATION, 31337, "anvil", "127.0.0.1"), role);
     }
 
-    private static BigInteger recover(byte[] digest, Signature signature) throws java.security.SignatureException {
+    private static BigInteger recover(byte[] digest, Signature signature) throws SignatureException {
         return Sign.signedMessageHashToKey(digest, new Sign.SignatureData((byte) signature.v(), signature.r(), signature.s()));
     }
 
@@ -137,7 +138,7 @@ class DevSignerTest {
     private static BigInteger recoverUnchecked(byte[] digest, Signature signature) {
         try {
             return recover(digest, signature);
-        } catch (java.security.SignatureException e) {
+        } catch (SignatureException e) {
             throw new IllegalStateException(e);
         }
     }

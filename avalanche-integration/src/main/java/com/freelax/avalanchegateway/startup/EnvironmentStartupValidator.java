@@ -1,11 +1,11 @@
 package com.freelax.avalanchegateway.startup;
 
 import com.freelax.avalanchegateway.chain.ChainClient;
-import com.freelax.avalanchegateway.chain.ChainClientException;
 import com.freelax.avalanchegateway.chain.ChainClients;
 import com.freelax.avalanchegateway.config.AvalancheProperties;
 import com.freelax.avalanchegateway.env.AvalancheEnvironment;
 import com.freelax.avalanchegateway.env.EnvironmentGuard;
+import com.freelax.avalanchegateway.exception.ChainClientException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.SmartInitializingSingleton;

@@ -69,14 +69,16 @@ gets `UNSUPPORTED_RAIL` / `CONTRACT_NOT_ON_AVALANCHE_RAIL` and the gateway is no
   is the D-B question recorded in L-017; the adapter is default-off until that is answered.
 
 ## 6. Code and tests
-- Gateway (Java 21): `TokenTransferMatcher` (pure), `ChainClient.receiptLogs`, `EscrowActionService.verifyTokenTransfer`,
+- Gateway (Java 21): `TokenTransferMatcher` (pure), `ChainClient.receiptLogs`, `EscrowQueryService.verifyTokenTransfer`,
   `GET /token-transfers/{hash}`. Tests: `TokenTransferMatcherTest` (3), `AvalancheApiTest.aUsersOwnTokenTransferIsVerifiedFromTheReceiptLogs`
   (real Anvil: matched, amount mismatch, wrong recipient and sender, reverted, non-token target, unknown hash, input errors).
-- Marketplace (Java 17, additive, package `payout.avalanche`): V8 `avalanche_payout_requests`; `AvalanchePayoutStatus`,
-  `AvalanchePayoutRequest`, repository, `AvalanchePayoutPartner` port, `DisabledAvalanchePayoutPartner`,
-  `LocalMockAvalanchePayoutPartner`, `AvalanchePayoutConfiguration`, `AvalanchePayoutProperties`, `AvalanchePayoutService`,
-  `AvalanchePayoutController` (`/api/v1/avalanche/payouts`), `AvalancheClient.verifyTokenTransfer`. Tests:
-  `AvalanchePayoutStatusTest`, `AvalanchePayoutPartnerTest`, `AvalanchePayoutServiceTest`, opt-in `AvalancheV8MySqlIT`.
+- Marketplace (Java 17, additive; layered since the structural refactoring of 2026-11-05, see [../module-structure.md](../module-structure.md)):
+  V8 `avalanche_payout_requests`; `entity/AvalanchePayoutRequest` and `AvalanchePayoutStatus`, `repository/AvalanchePayoutRequestRepository`,
+  `AvalanchePayoutService` (interface) with `service/impl/AvalanchePayoutServiceImpl`, `mapper/AvalanchePayoutMapper`,
+  `controller/AvalanchePayoutController` (`/api/v1/avalanche/payouts`), `configuration/AvalanchePayoutProperties`, and in `payout/avalanche`
+  the partner port `AvalanchePayoutPartner` with `DisabledAvalanchePayoutPartner`, `LocalMockAvalanchePayoutPartner`,
+  `AvalanchePayoutConfiguration` and `SolanaRailFeeTaxRules`; `AvalancheClient.verifyTokenTransfer`. Tests: `AvalanchePayoutStatusTest`,
+  `AvalanchePayoutPartnerTest`, `AvalanchePayoutServiceImplTest`, opt-in `AvalancheV8MySqlIT`.
 - Frontend: `AvalanchePayoutSection` in the escrow panel (freelancer, released escrow only); sends the backend-built transfer
   from the released wallet only; shows both confirmations separately. Tests: `AvalanchePayoutSection.test.tsx`.
 - Live LOCAL run: A2 harness flow 1b (`phase-2/a2-local-stack`).

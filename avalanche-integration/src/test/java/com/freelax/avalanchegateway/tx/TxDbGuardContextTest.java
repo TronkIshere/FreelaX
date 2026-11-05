@@ -2,7 +2,9 @@ package com.freelax.avalanchegateway.tx;
 
 import com.freelax.avalanchegateway.AvalancheGatewayApplication;
 import com.freelax.avalanchegateway.StubRpcServer;
-import com.freelax.avalanchegateway.env.EnvironmentGuardException;
+import com.freelax.avalanchegateway.applicationException.EnvironmentGuardException;
+import com.freelax.avalanchegateway.service.TransactionReconcileService;
+import com.freelax.avalanchegateway.service.TransactionSubmissionService;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.builder.SpringApplicationBuilder;
@@ -10,6 +12,7 @@ import org.springframework.context.ConfigurableApplicationContext;
 
 import java.util.ArrayList;
 import java.util.List;
+import javax.sql.DataSource;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -48,9 +51,9 @@ class TxDbGuardContextTest {
                      .web(WebApplicationType.NONE)
                      .run("--server.port=0", "--avalanche.rpc.min-gap-ms=0", "--avalanche.environment=LOCAL_SIMULATION",
                              "--avalanche.rpc.primary.url=" + stub.url())) {
-            assertTrue(ctx.getBeansOfType(TxTracker.class).isEmpty());
-            assertTrue(ctx.getBeansOfType(SubmissionService.class).isEmpty());
-            assertTrue(ctx.getBeansOfType(javax.sql.DataSource.class).isEmpty());
+            assertTrue(ctx.getBeansOfType(TransactionReconcileService.class).isEmpty());
+            assertTrue(ctx.getBeansOfType(TransactionSubmissionService.class).isEmpty());
+            assertTrue(ctx.getBeansOfType(DataSource.class).isEmpty());
         }
     }
 

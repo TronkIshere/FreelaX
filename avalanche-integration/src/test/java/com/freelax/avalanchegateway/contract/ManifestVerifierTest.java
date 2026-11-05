@@ -1,7 +1,7 @@
 package com.freelax.avalanchegateway.contract;
 
+import com.freelax.avalanchegateway.applicationException.EnvironmentGuardException;
 import com.freelax.avalanchegateway.env.AvalancheEnvironment;
-import com.freelax.avalanchegateway.env.EnvironmentGuardException;
 import com.freelax.avalanchegateway.startup.ValidatedEnvironment;
 import org.junit.jupiter.api.Test;
 

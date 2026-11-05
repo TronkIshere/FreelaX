@@ -3,6 +3,7 @@ package com.marketplace.backend.blockchain.avalanche;
 import com.marketplace.backend.blockchain.BlockchainAddress;
 import com.marketplace.backend.blockchain.BlockchainGateway;
 import com.marketplace.backend.blockchain.BlockchainGatewayRegistry;
+import com.marketplace.backend.blockchain.BlockchainNetwork;
 import com.marketplace.backend.blockchain.ChainConfig;
 import com.marketplace.backend.blockchain.EnvironmentInfo;
 import com.marketplace.backend.blockchain.EscrowActionRequest;
@@ -13,13 +14,18 @@ import com.marketplace.backend.blockchain.PreparedAction;
 import com.marketplace.backend.blockchain.TransactionReference;
 import com.marketplace.backend.blockchain.TransactionResult;
 import com.marketplace.backend.blockchain.TransactionStatus;
-import com.marketplace.backend.blockchain.BlockchainNetwork;
 import com.marketplace.backend.blockchain.solana.SolanaGatewayAdapter;
 import com.marketplace.backend.client.AvalancheClient;
 import com.marketplace.backend.client.SolanaCprClient;
 import com.marketplace.backend.configuration.AvalancheGatewayProperties;
 import com.marketplace.backend.configuration.SolanaCprProperties;
-import com.marketplace.backend.dto.response.avalanche.AvalancheResults;
+import com.marketplace.backend.dto.response.avalanche.GatewayBalanceResponse;
+import com.marketplace.backend.dto.response.avalanche.GatewayConfigResponse;
+import com.marketplace.backend.dto.response.avalanche.GatewayEscrowResponse;
+import com.marketplace.backend.dto.response.avalanche.GatewayHashStatusResponse;
+import com.marketplace.backend.dto.response.avalanche.GatewayPreparedActionResponse;
+import com.marketplace.backend.dto.response.avalanche.GatewayPreparedTxResponse;
+import com.marketplace.backend.dto.response.avalanche.GatewayTransactionResponse;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
@@ -50,7 +56,7 @@ class AvalancheGatewayAdapterTest {
     @Test
     void mapsNetworkConfigAndEnvironmentWithoutExposingAvalancheTypes() {
         properties.setNetwork("avalanche-local");
-        when(avalanche.getConfig()).thenReturn(new AvalancheResults.Config("LOCAL_SIMULATION", true, 31337, "0xescrow", "0xtoken", "MOCK", "1",
+        when(avalanche.getConfig()).thenReturn(new GatewayConfigResponse("LOCAL_SIMULATION", true, 31337, "0xescrow", "0xtoken", "MOCK", "1",
                 true, "0xarb", true, null));
 
         assertEquals("avalanche-local", adapter.network().id());
@@ -66,7 +72,7 @@ class AvalancheGatewayAdapterTest {
 
     @Test
     void aMissingTokenMapsToNoAsset() {
-        when(avalanche.getConfig()).thenReturn(new AvalancheResults.Config("AVALANCHE_FUJI", true, 43113, "0xe", " ", "CIRCLE_FUJI_USDC", "1",
+        when(avalanche.getConfig()).thenReturn(new GatewayConfigResponse("AVALANCHE_FUJI", true, 43113, "0xe", " ", "CIRCLE_FUJI_USDC", "1",
                 false, "0xa", false, "https://explorer-test.avax.network/c-chain"));
         assertNull(adapter.config().acceptedAsset());
         assertFalse(adapter.environmentInfo().backendSignersAvailable());
@@ -75,10 +81,10 @@ class AvalancheGatewayAdapterTest {
     @Test
     void addressBalanceAndPreparedActionsAreDelegatedAsNeutralTypes() {
         when(avalanche.validateAddress("0xabc")).thenReturn(true);
-        when(avalanche.getBalance("0xabc")).thenReturn(new AvalancheResults.Balance("LOCAL_SIMULATION", true, "0xabc", "0xtoken", "5000000", 6));
-        when(avalanche.prepare(eq(ID), eq("fund"), any())).thenReturn(new AvalancheResults.Prepared("LOCAL_SIMULATION", true, 31337, "fund", ID,
-                List.of(new AvalancheResults.PreparedTx("approve", "0xtoken", "0x095ea7b3", "0"),
-                        new AvalancheResults.PreparedTx("fund", "0xescrow", "0xdeadbeef", "0")), 1_700_000_600L, null, null));
+        when(avalanche.getBalance("0xabc")).thenReturn(new GatewayBalanceResponse("LOCAL_SIMULATION", true, "0xabc", "0xtoken", "5000000", 6));
+        when(avalanche.prepare(eq(ID), eq("fund"), any())).thenReturn(new GatewayPreparedActionResponse("LOCAL_SIMULATION", true, 31337, "fund", ID,
+                List.of(new GatewayPreparedTxResponse("approve", "0xtoken", "0x095ea7b3", "0"),
+                        new GatewayPreparedTxResponse("fund", "0xescrow", "0xdeadbeef", "0")), 1_700_000_600L, null, null));
 
         assertTrue(adapter.validateAddress(new BlockchainAddress("0xabc")));
         assertEquals("5000000", adapter.assetBalance(new BlockchainAddress("0xabc")));
@@ -92,7 +98,7 @@ class AvalancheGatewayAdapterTest {
 
     @Test
     void escrowSnapshotNormalisesTheStatusAndAbsenceIsNull() {
-        when(avalanche.findEscrow(ID)).thenReturn(Optional.of(new AvalancheResults.Escrow("LOCAL_SIMULATION", true, 31337, ID, "DISPUTED", "0xc",
+        when(avalanche.findEscrow(ID)).thenReturn(Optional.of(new GatewayEscrowResponse("LOCAL_SIMULATION", true, 31337, ID, "DISPUTED", "0xc",
                 "0xf", "0xa", "100", 2, 1, 2, 10L, 0L, "0xs", "0xr")));
         when(avalanche.findEscrow("0x" + "00".repeat(32))).thenReturn(Optional.empty());
 
@@ -105,7 +111,7 @@ class AvalancheGatewayAdapterTest {
 
     @Test
     void anUnknownGatewayStatusIsRejectedNotGuessed() {
-        when(avalanche.findEscrow(ID)).thenReturn(Optional.of(new AvalancheResults.Escrow("LOCAL_SIMULATION", true, 31337, ID, "EXOTIC", "0xc",
+        when(avalanche.findEscrow(ID)).thenReturn(Optional.of(new GatewayEscrowResponse("LOCAL_SIMULATION", true, 31337, ID, "EXOTIC", "0xc",
                 "0xf", "0xa", "100", 2, 0, 0, 0L, 0L, "0x", "0x")));
         assertThrows(IllegalArgumentException.class, () -> adapter.escrowSnapshot(new EscrowReference(ID)));
     }
@@ -113,7 +119,7 @@ class AvalancheGatewayAdapterTest {
     @Test
     void transactionStatusUsesAllTenStatesAndNeverTurnsUnknownIntoFailure() {
         for (TransactionStatus status : TransactionStatus.values()) {
-            when(avalanche.findTransaction("op-" + status)).thenReturn(Optional.of(new AvalancheResults.Transaction("LOCAL_SIMULATION", true, 31337,
+            when(avalanche.findTransaction("op-" + status)).thenReturn(Optional.of(new GatewayTransactionResponse("LOCAL_SIMULATION", true, 31337,
                     "op-" + status, status.name(), "0xhash", 1L, null, null, "RELAYER")));
             TransactionResult result = adapter.transactionStatus(new TransactionReference(adapter.network(), "op-" + status));
             assertEquals(status, result.status());
@@ -137,7 +143,7 @@ class AvalancheGatewayAdapterTest {
     @Test
     void aTransactionHashIsLookedUpByHashAndOnRampIsNotSupported() {
         String hash = "0x" + "ab".repeat(32);
-        when(avalanche.getStatusByHash(hash)).thenReturn(new AvalancheResults.HashStatus("LOCAL_SIMULATION", true, 31337, hash, "CONFIRMED", 12L));
+        when(avalanche.getStatusByHash(hash)).thenReturn(new GatewayHashStatusResponse("LOCAL_SIMULATION", true, 31337, hash, "CONFIRMED", 12L));
         TransactionResult result = adapter.transactionStatus(new TransactionReference(adapter.network(), hash));
         assertEquals(TransactionStatus.CONFIRMED, result.status());
         assertEquals(12L, result.blockNumber());
@@ -150,7 +156,7 @@ class AvalancheGatewayAdapterTest {
             Map<?, ?> body = invocation.getArgument(2);
             assertEquals("op-9", body.get("operationKey"));
             assertEquals("client", body.get("by"));
-            return new AvalancheResults.Transaction("LOCAL_SIMULATION", true, 31337, "op-9", "SUBMITTED", "0xh", 3L, null, null, "TEST_BUYER");
+            return new GatewayTransactionResponse("LOCAL_SIMULATION", true, 31337, "op-9", "SUBMITTED", "0xh", 3L, null, null, "TEST_BUYER");
         });
         TransactionResult result = adapter.executeAction(new EscrowActionRequest(ID, "release", "op-9", Map.of("by", "client")));
         assertEquals(TransactionStatus.SUBMITTED, result.status());

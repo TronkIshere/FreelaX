@@ -1,7 +1,7 @@
 package com.freelax.avalanchegateway.contract;
 
+import com.freelax.avalanchegateway.entity.ScannedEvent;
 import com.freelax.avalanchegateway.scan.EventDecoder;
-import com.freelax.avalanchegateway.scan.ScannedEvent;
 import org.web3j.crypto.Hash;
 import org.web3j.utils.Numeric;
 

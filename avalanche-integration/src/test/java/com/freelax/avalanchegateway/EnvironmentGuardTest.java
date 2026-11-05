@@ -1,8 +1,8 @@
 package com.freelax.avalanchegateway;
 
+import com.freelax.avalanchegateway.applicationException.EnvironmentGuardException;
 import com.freelax.avalanchegateway.env.AvalancheEnvironment;
 import com.freelax.avalanchegateway.env.EnvironmentGuard;
-import com.freelax.avalanchegateway.env.EnvironmentGuardException;
 import org.junit.jupiter.api.Test;
 
 import static com.freelax.avalanchegateway.env.AvalancheEnvironment.AVALANCHE_FUJI;

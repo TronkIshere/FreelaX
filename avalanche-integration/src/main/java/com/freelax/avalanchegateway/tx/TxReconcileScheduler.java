@@ -1,5 +1,6 @@
 package com.freelax.avalanchegateway.tx;
 
+import com.freelax.avalanchegateway.service.TransactionReconcileService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -12,12 +13,12 @@ public class TxReconcileScheduler implements AutoCloseable {
 
     private static final Logger log = LoggerFactory.getLogger(TxReconcileScheduler.class);
 
-    private final TxTracker tracker;
+    private final TransactionReconcileService reconciler;
     private final long intervalMs;
     private ScheduledExecutorService executor;
 
-    public TxReconcileScheduler(TxTracker tracker, long intervalMs) {
-        this.tracker = tracker;
+    public TxReconcileScheduler(TransactionReconcileService reconciler, long intervalMs) {
+        this.reconciler = reconciler;
         this.intervalMs = intervalMs;
     }
 
@@ -32,7 +33,7 @@ public class TxReconcileScheduler implements AutoCloseable {
         });
         executor.scheduleWithFixedDelay(() -> {
             try {
-                tracker.reconcileInFlight();
+                reconciler.reconcileInFlight();
             } catch (RuntimeException e) {
                 log.warn("reconciliation pass failed: {}", e.getClass().getSimpleName());
             }

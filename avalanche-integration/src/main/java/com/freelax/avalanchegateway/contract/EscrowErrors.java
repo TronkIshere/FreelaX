@@ -3,6 +3,7 @@ package com.freelax.avalanchegateway.contract;
 import org.web3j.crypto.Hash;
 import org.web3j.utils.Numeric;
 
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,7 +32,7 @@ public final class EscrowErrors {
     }
 
     public static String selector(String signature) {
-        return Numeric.toHexString(Hash.sha3(signature.getBytes(java.nio.charset.StandardCharsets.UTF_8)), 0, 4, true);
+        return Numeric.toHexString(Hash.sha3(signature.getBytes(StandardCharsets.UTF_8)), 0, 4, true);
     }
 
     /** @return the error name for revert data such as {@code 0xb2b3b0e5...}, or empty when the selector is unknown */

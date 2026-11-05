@@ -8,6 +8,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -30,7 +31,7 @@ public class ScanCoordinator implements AutoCloseable {
     private final AtomicLong passes = new AtomicLong();
     private volatile LogScanner.ScanResult lastResult;
     /** A6/F6 scanner health: consecutive failed passes, last error class (never a message: it could carry an RPC URL). */
-    private final java.util.concurrent.atomic.AtomicInteger consecutiveFailures = new java.util.concurrent.atomic.AtomicInteger();
+    private final AtomicInteger consecutiveFailures = new AtomicInteger();
     private volatile String lastErrorClass;
     private volatile long lastSuccessAtMillis;
     public static final int DEGRADED_AFTER_FAILURES = 3;

@@ -1,9 +1,16 @@
 package com.freelax.avalanchegateway.contract;
 
 import com.freelax.avalanchegateway.chain.ChainClient;
+import com.freelax.avalanchegateway.exception.UnreadableChainStateException;
+import org.web3j.abi.FunctionEncoder;
+import org.web3j.abi.datatypes.Address;
+import org.web3j.abi.datatypes.Function;
+import org.web3j.crypto.Hash;
 import org.web3j.utils.Numeric;
 
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 /** Reads an escrow's on-chain record with eth_call. The struct is fully static, so the answer is 19 consecutive words. */
 public class EscrowReader {
@@ -46,8 +53,8 @@ public class EscrowReader {
 
     /** ERC-20 balance in base units (6 decimals) of an owner for a token. */
     public BigInteger tokenBalance(String token, String owner) {
-        String data = org.web3j.abi.FunctionEncoder.encode(new org.web3j.abi.datatypes.Function("balanceOf",
-                java.util.List.of(new org.web3j.abi.datatypes.Address(owner)), java.util.List.of()));
+        String data = FunctionEncoder.encode(new Function("balanceOf",
+                List.of(new Address(owner)), List.of()));
         ChainClient.CallResult result = client.call(token, data);
         if (result.reverted()) {
             throw new IllegalStateException("balanceOf reverted");
@@ -56,7 +63,7 @@ public class EscrowReader {
     }
 
     private String call(String signature) {
-        String selector = Numeric.toHexString(org.web3j.crypto.Hash.sha3(signature.getBytes(java.nio.charset.StandardCharsets.UTF_8)), 0, 4, true);
+        String selector = Numeric.toHexString(Hash.sha3(signature.getBytes(StandardCharsets.UTF_8)), 0, 4, true);
         ChainClient.CallResult result = client.call(contract, selector);
         if (result.reverted()) {
             throw new IllegalStateException(signature + " reverted");
