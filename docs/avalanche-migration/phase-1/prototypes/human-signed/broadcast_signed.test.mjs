@@ -1,7 +1,7 @@
 // Network-free guard tests: node --test broadcast_signed.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { checkEndpoint, decodeSigned, loadPlan } from './broadcast_signed.mjs';
+import { checkEndpoint, decodeSigned, loadPlan, usdcTokenFor, balanceOfCall, FUJI_USDC } from './broadcast_signed.mjs';
 
 // Minimal RLP encoder to build syntactically valid (fake-signature) EIP-1559 transactions for the decoder.
 const enc = (x) => {
@@ -53,4 +53,14 @@ test('a plan can never carry key material', () => {
     assert.throws(() => loadPlan('LOCAL_SIMULATION', JSON.stringify({ id: 'a', raw: tx(31337n), [field]: 'x' })), /PLAN_CONTAINS_SECRET_FIELD/);
   }
   assert.throws(() => loadPlan('LOCAL_SIMULATION', ''), /PLAN_EMPTY/);
+});
+
+test('#25: Fuji always reads the pinned Circle test USDC; LOCAL only with an explicit token', () => {
+  assert.equal(usdcTokenFor('AVALANCHE_FUJI'), FUJI_USDC);
+  assert.equal(usdcTokenFor('AVALANCHE_FUJI', FUJI_USDC.toUpperCase().replace('0X', '0x')), FUJI_USDC);
+  assert.throws(() => usdcTokenFor('AVALANCHE_FUJI', '0x' + '11'.repeat(20)), /USDC_TOKEN_NOT_ALLOWED/);
+  assert.equal(usdcTokenFor('LOCAL_SIMULATION'), null);
+  assert.equal(usdcTokenFor('LOCAL_SIMULATION', '0x' + 'AB'.repeat(20)), '0x' + 'ab'.repeat(20));
+  assert.throws(() => usdcTokenFor('LOCAL_SIMULATION', '0x1234'), /USDC_TOKEN_INVALID/);
+  assert.equal(balanceOfCall('0x' + 'Cd'.repeat(20)), '0x70a08231' + '0'.repeat(24) + 'cd'.repeat(20));
 });

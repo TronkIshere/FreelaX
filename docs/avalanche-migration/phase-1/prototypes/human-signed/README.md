@@ -29,13 +29,18 @@ wallet). Network-free tests: `node --test broadcast_signed.test.mjs check_eviden
 |---|---|---|
 | `E1-deploy` | deploy the disposable `Phase1Lab` (bytecode `../java-web3j/src/test/resources/Phase1Lab.bin`): submit ack, by-hash, receipt, `finalized` timings | AVAX |
 | `setup-grant-operator` | grant `OPERATOR_ROLE` to the sender (needed by `setValue`) | AVAX |
-| `E2-success+E4-duplicate` | successful call with timings; the same signed bytes resent immediately and after mining | AVAX |
+| `E2-success+E4-duplicate` | successful call with timings; the same signed bytes resent immediately and after mining; **#16 probe** (`probeLogs`): `eth_getLogs` for the lab contract polled from acceptance until the receipt, each poll followed by a receipt read, recorded as counts in `obs.logsBeforeReceipt` and `obs.logsAfterReceipt` (added 2026-11-05) | AVAX |
 | `E3-revert` | `boom(42)`: accepted at submission, executed with receipt status 0 | AVAX |
 | `E5-gap`, `E5-bump-*`, `E5-filler` | nonce gap, replacement ladder 100 to 200 % (stops at the first accepted bump), filler | AVAX |
-| `E7-k0..k8` | `actUntil(T_i + k)` broadcast when the head reaches `T_i`; records the including block timestamp against the deadline | AVAX |
+| `E7-k0`, `E7-k1`, `E7-k2`, `E7-k3`, `E7-k5`, `E7-k8` (six samples, k in {0, 1, 2, 3, 5, 8}) | `actUntil(T_i + k)` broadcast when the head reaches `T_i`; records the including block timestamp against the deadline | AVAX |
 Not covered: the Phase 1 E6 "timeout after submission" fault (needs a local proxy; covered on LOCAL by gateway test S3).
-**Circle test USDC is not needed** for any entry above: they touch only the lab contract. Test USDC is needed only for
-experiments that move tokens (escrow funding or settlement on Fuji, register B2 to B4), which are out of this plan.
+**#25 (added 2026-11-05):** once the sender is known, the broadcaster reads USDC `balanceOf(sender)` and `decimals()` with
+`eth_call` (read-only) and records `usdcBalanceOf` (token, holder, `callOk`, balance as a decimal string, decimals). On
+AVALANCHE_FUJI the token is pinned to Circle test USDC `0x5425890298aed601595a70ab815c96711a31bc65` (the gateway's
+`ManifestVerifier.FUJI_USDC`) and cannot be overridden; on LOCAL_SIMULATION it is optional (`USDC_TOKEN`, for example a
+MockUSDC on Anvil). A zero balance still demonstrates that `balanceOf` works; holding test USDC (Circle faucet) is optional and
+no entry above moves tokens. `check_evidence.mjs` refuses a Fuji file without `usdcBalanceOf` or without the #16 probe.
+Escrow funding or settlement on Fuji (register B2 to B4) stays out of this plan.
 AVAX required: the gas limits of the transactions that can execute add up to about 4.7 M; at the Phase 1 Fuji gas price
 (about 160 wei per gas) that is far below 0.01 AVAX. Admission also requires the sender to afford gasLimit x maxFee per
 transaction, so sign with the live fee values (never hard-coded) and fund comfortably above that worst case.
@@ -59,3 +64,12 @@ development signer, permitted by M2) signed the plan; the keyless broadcaster th
 mining `nonce too low`; the revert was accepted and mined with status 0; the gap transaction was accepted, the equal-fee
 replacement was `replacement transaction underpriced`, the **5 %** bump was accepted and mined after the filler; all six E7
 samples were consistent with `blockTimestamp <= deadline` (k = 0 reverted, included 1 s after its deadline).
+
+## Local validation (LOCAL_SIMULATION, 2026-11-05: #25 and #16 additions)
+Anvil 1.8.7 (`--block-time 5`) in Docker, throwaway keystore inside a disposable container, MockUSDC deployed on Anvil with
+25 USDC minted to the sender, `MIN_GAP_MS=100`. 19 entries broadcast; `check_evidence.mjs` OK. Observed (anvil only, **not**
+Fuji behaviour): `usdcBalanceOf` callOk, balance 25000000, decimals 6; `logsBeforeReceipt` 10 polls, 9 confirmed before the
+receipt, **0** with the transaction's log; `logsAfterReceipt` 1. With `--block-time 1` or 3 and the default 600 ms pacing, the
+transaction was mined before the first probe (0 polls before the receipt): on Fuji the count depends on block timing and
+endpoint pacing, and a zero count is recorded as such, not as evidence either way.
+[evidence](../../evidence/live/LOCAL_SIMULATION-human-signed-chain31337-20261105T035109Z.json)

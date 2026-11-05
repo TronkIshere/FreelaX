@@ -8,7 +8,10 @@ const LOCAL_FILE = 'LOCAL_SIMULATION-human-signed-chain31337-20261103T150927.jso
 const committed = JSON.parse(readFileSync(new URL('../../evidence/live/' + LOCAL_FILE, import.meta.url), 'utf8'));
 const HASH = '0x' + 'ab'.repeat(32);
 const base = () => ({ tool: 'human-signed/broadcast_signed.mjs', environment: 'AVALANCHE_FUJI', chainId: 43113, clientFamily: 'avalanchego',
-  results: [{ id: 'E1-deploy', hash: HASH, obs: { blockHash: HASH } }], finishedAt: '2026-11-04T00:00:00Z' });
+  results: [{ id: 'E1-deploy', hash: HASH, obs: { blockHash: HASH } },
+    { id: 'E2-success+E4-duplicate', hash: HASH, obs: { logsBeforeReceipt: { polls: 3, nonEmptyPolls: 0 }, logsAfterReceipt: 1 } }],
+  usdcBalanceOf: { token: '0x5425890298aed601595a70ab815c96711a31bc65', holder: '0x' + '12'.repeat(20), callOk: true, balance: '0', decimals: 6 },
+  finishedAt: '2026-11-04T00:00:00Z' });
 
 test('the committed LOCAL_SIMULATION evidence passes', () => {
   const r = checkEvidence(committed, LOCAL_FILE);
@@ -44,4 +47,11 @@ test('Mainnet or mismatched labels are rejected', () => {
 
 test('an unfinished or empty run is rejected', () => {
   assert.match(checkEvidence({ ...base(), results: [], finishedAt: undefined }).problems.join(), /no results.*did not finish/s);
+});
+
+test('a Fuji run must carry the #25 balanceOf read and the #16 eth_getLogs probe', () => {
+  const e = base(); delete e.usdcBalanceOf; e.results.pop();
+  const p = checkEvidence(e).problems.join('\n');
+  assert.match(p, /balanceOf read \(#25\)/);
+  assert.match(p, /eth_getLogs probe \(#16\)/);
 });

@@ -1,0 +1,98 @@
+label: LOCAL-SIM query validation (empty throwaway schema; NOT E2 evidence)
+generated_at_utc: 2026-11-05T03:53:07Z
+mysql: 8.4.11
+queries_found_in_request_document: 6
+applied marketplace V1__baseline_schema.sql
+applied marketplace V2__unified_terms_and_admin_audit.sql
+applied marketplace V3__unified_tax_rate_source.sql
+applied marketplace V4__local_auto_wallet.sql
+applied marketplace V5__local_wallet_recovery.sql
+applied marketplace V6__avalanche_chain_links.sql
+applied marketplace V7__avalanche_evm_wallets_and_pending_authorizations.sql
+applied marketplace V8__avalanche_payout_requests.sql
+applied payment V1__baseline_schema.sql
+--- marketplace (SELECT-only account, READ ONLY session)
+--------------
+SET SESSION TRANSACTION READ ONLY
+--------------
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+SELECT payment_flow_version, status, COUNT(*) AS n FROM jobs GROUP BY 1,2 ORDER BY 1,2
+--------------
+
+Empty set (0.00 sec)
+
+--------------
+SELECT payment_rail, status, COUNT(*) AS n FROM work_contracts GROUP BY 1,2 ORDER BY 1,2
+--------------
+
+Empty set (0.00 sec)
+
+--------------
+SELECT on_ramp_status, off_ramp_status, client_payment_status, on_chain_off_ramp_status,
+       contract_settlement_id IS NOT NULL AS contract_driven, COUNT(*) AS n
+FROM freelancer_payout_records GROUP BY 1,2,3,4,5 ORDER BY 1,2,3,4,5
+--------------
+
+Empty set (0.00 sec)
+
+--------------
+SELECT status, COUNT(*) AS n FROM jobs WHERE checkout_order_id IS NOT NULL GROUP BY 1
+--------------
+
+Empty set (0.00 sec)
+
+Bye
+--- payment (SELECT-only account, READ ONLY session)
+--------------
+SET SESSION TRANSACTION READ ONLY
+--------------
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+SELECT status, COUNT(*) AS n FROM bofa_checkout_orders GROUP BY 1
+--------------
+
+Empty set (0.00 sec)
+
+--------------
+SELECT COUNT(*) AS unfinished_checkout_orders FROM bofa_checkout_orders WHERE status = 'CREATED'
+--------------
+
++----------------------------+
+| unfinished_checkout_orders |
++----------------------------+
+|                          0 |
++----------------------------+
+1 row in set (0.00 sec)
+
+Bye
+--- write refusal checks (expected: errors)
+ERROR 1142 (42000) at line 2: DELETE command denied to user 'e2_readonly'@'localhost' for table 'jobs'
+--------------
+SET SESSION TRANSACTION READ ONLY
+--------------
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+DELETE FROM jobs WHERE 1=0
+--------------
+
+Bye
+--------------
+START TRANSACTION READ ONLY
+--------------
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+CREATE TABLE marketplace.e2_probe (x INT)
+--------------
+
+ERROR 1142 (42000) at line 2: CREATE command denied to user 'e2_readonly'@'localhost' for table 'e2_probe'
+Bye
+--- end

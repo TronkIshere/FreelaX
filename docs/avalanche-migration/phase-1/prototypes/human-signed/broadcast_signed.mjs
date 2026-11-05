@@ -8,7 +8,11 @@
 // usage: node broadcast_signed.mjs <LOCAL_SIMULATION|AVALANCHE_FUJI> <rpc-url> <plan.jsonl> <out.json>
 // A plan line is JSON: {"id":"E2-success","raw":"0x02...","wait":"finalized"|"receipt"|"none",
 //                       "group":"ladder" (optional), "notBeforeHeadTs":<sec> (optional), "deadline":<sec> (optional),
-//                       "resendAfterReceipt":true (optional)}
+//                       "resendAfterReceipt":true (optional), "probeLogs":true (optional: poll eth_getLogs for the lab
+//                       contract between acceptance and receipt, criterion #16)}
+// Criterion #25: once the sender is known the tool reads USDC balanceOf(sender) and decimals() with eth_call (read-only).
+// AVALANCHE_FUJI always uses the Circle test USDC below (same constant as the gateway's ManifestVerifier.FUJI_USDC); on
+// LOCAL_SIMULATION the token is optional (USDC_TOKEN, for example a MockUSDC deployed on Anvil).
 import { readFileSync, writeFileSync } from 'node:fs';
 
 const [ENV, RPC_URL, PLAN, OUT] = process.argv.slice(2);
@@ -17,6 +21,20 @@ const CHAINS = { LOCAL_SIMULATION: new Set([31337n, 43113n]), AVALANCHE_FUJI: ne
 const REJECTED = new Set([0n, 1n, 43114n]);
 const MAX_BALANCE_WEI = 10n * 10n ** 18n; // a faucet wallet never holds this much: refuse a possible real-funds wallet
 const FORBIDDEN_FIELDS = /key|mnemonic|seed|secret|password/i;
+export const FUJI_USDC = '0x5425890298aed601595a70ab815c96711a31bc65'; // Circle test USDC on Fuji (ManifestVerifier.FUJI_USDC)
+const SEL_BALANCE_OF = '0x70a08231'; const SEL_DECIMALS = '0x313ce567';
+
+/** The token whose balanceOf is read for criterion #25; Fuji is pinned and cannot be overridden. */
+export function usdcTokenFor(env, override) {
+  if (env === 'AVALANCHE_FUJI') {
+    if (override && override.toLowerCase() !== FUJI_USDC) throw new GuardError('USDC_TOKEN_NOT_ALLOWED', 'Fuji uses the pinned Circle test USDC only');
+    return FUJI_USDC;
+  }
+  if (!override) return null;
+  if (!/^0x[0-9a-fA-F]{40}$/.test(override)) throw new GuardError('USDC_TOKEN_INVALID', 'USDC_TOKEN must be a 20-byte hex address');
+  return override.toLowerCase();
+}
+export const balanceOfCall = (holder) => SEL_BALANCE_OF + holder.toLowerCase().replace(/^0x/, '').padStart(64, '0');
 
 class GuardError extends Error { constructor(code, msg) { super(`${code}: ${msg}`); this.code = code; } }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -105,12 +123,34 @@ async function rpc(method, params) {
 const anomalies = [];
 const num = (h) => (h == null ? null : Number(BigInt(h)));
 
-async function observe(hash, t0, wait) {
+async function observe(hash, t0, wait, probe = null) {
   const o = { hash };
-  for (let i = 0; i < 60 && o.byHashMs == null; i++) { const r = await rpc('eth_getTransactionByHash', [hash]); if (r.result) o.byHashMs = Date.now() - t0; else await sleep(250); }
-  if (wait === 'none') return o;
+  // #16: what a log reader sees between acceptance and execution (counts only; logs are public data). A poll counts as
+  // "before receipt" only when the receipt read right after it is still empty.
+  const lp = probe ? { address: probe.address, fromBlock: probe.fromBlock, polls: 0, pollsBeforeReceipt: 0, nonEmptyPollsBeforeReceipt: 0, errors: 0 } : null;
   let rc = null;
-  for (let i = 0; i < 120 && !rc; i++) { rc = (await rpc('eth_getTransactionReceipt', [hash])).result; if (!rc) await sleep(250); }
+  const pollLogs = async () => {
+    if (!lp || rc) return;
+    const lg = await rpc('eth_getLogs', [{ address: lp.address, fromBlock: lp.fromBlock, toBlock: 'latest' }]);
+    lp.polls++;
+    const seen = !lg.error && Array.isArray(lg.result) && lg.result.some((l) => l.transactionHash?.toLowerCase() === hash.toLowerCase());
+    if (lg.error || !Array.isArray(lg.result)) lp.errors++;
+    const after = (await rpc('eth_getTransactionReceipt', [hash])).result;
+    if (after) { rc = after; return; }
+    lp.pollsBeforeReceipt++; if (seen) lp.nonEmptyPollsBeforeReceipt++;
+  };
+  await pollLogs(); // first probe immediately after acceptance, before any other read
+  for (let i = 0; i < 60 && o.byHashMs == null; i++) { const r = await rpc('eth_getTransactionByHash', [hash]); if (r.result) o.byHashMs = Date.now() - t0; else { await pollLogs(); await sleep(250); } }
+  if (wait === 'none') return o;
+  for (let i = 0; i < 120 && !rc; i++) {
+    rc = (await rpc('eth_getTransactionReceipt', [hash])).result;
+    if (!rc) { await pollLogs(); if (!rc) await sleep(250); }
+  }
+  if (lp) {
+    o.logsBeforeReceipt = lp;
+    if (rc) { const lg = await rpc('eth_getLogs', [{ address: lp.address, fromBlock: rc.blockNumber, toBlock: rc.blockNumber }]);
+      o.logsAfterReceipt = Array.isArray(lg.result) ? lg.result.filter((l) => l.transactionHash?.toLowerCase() === hash.toLowerCase()).length : null; }
+  }
   if (!rc) { o.receipt = 'NOT_SEEN_WITHIN_WINDOW'; return o; } // not evidence of absence
   o.receiptMs = Date.now() - t0; o.status = rc.status; o.block = num(rc.blockNumber); o.from = rc.from; o.contractAddress = rc.contractAddress;
   o.gasUsed = num(rc.gasUsed); o.effectiveGasPrice = rc.effectiveGasPrice;
@@ -137,7 +177,8 @@ async function main() {
   if (plan.some((p) => p.tx.chainId !== chainId)) throw new GuardError('SIGNED_FOR_ANOTHER_CHAIN', 'a plan transaction is signed for a different chain id than the endpoint');
   Object.assign(evidence, { chainId: Number(chainId), clientFamily: family.slice(0, -1) });
 
-  let sender = null; let ladderDone = new Set();
+  const usdc = usdcTokenFor(ENV, process.env.USDC_TOKEN); // before any request
+  let sender = null; let ladderDone = new Set(); let lab = null;
   for (const p of plan) {
     if (p.group && ladderDone.has(p.group)) { evidence.results.push({ id: p.id, skipped: 'an earlier entry of this group was accepted' }); continue; }
     if (p.notBeforeHeadTs) {
@@ -153,7 +194,10 @@ async function main() {
     r.hash = sent.result;
     if (p.group) ladderDone.add(p.group);
     if (p.resendImmediately) { const again = await rpc('eth_sendRawTransaction', [p.raw]); r.immediateResend = again.error ? again.error.message : 'ACCEPTED ' + again.result; }
-    r.obs = await observe(r.hash, t0, p.wait || 'receipt');
+    const probe = p.probeLogs && lab ? { address: lab, fromBlock: head.number } : null;
+    if (p.probeLogs && !lab) r.logsProbe = 'NOT_RUN (lab contract address unknown)';
+    r.obs = await observe(r.hash, t0, p.wait || 'receipt', probe);
+    if (r.obs.contractAddress && !lab) lab = r.obs.contractAddress.toLowerCase();
     if (r.obs.from) {
       if (!sender) sender = r.obs.from.toLowerCase();
       else if (sender !== r.obs.from.toLowerCase()) r.senderChanged = true;
@@ -162,6 +206,17 @@ async function main() {
       const bal = BigInt((await rpc('eth_getBalance', [sender, 'latest'])).result);
       evidence.balanceChecked = true;
       if (bal > MAX_BALANCE_WEI) { evidence.results.push(r); evidence.stopped = 'REFUSED_SIGNER_BALANCE_TOO_HIGH (possible real-funds wallet)'; break; }
+    }
+    if (sender && !evidence.usdcBalanceOf) {
+      if (!usdc) evidence.usdcBalanceOf = { token: null, result: 'NOT_APPLICABLE (LOCAL_SIMULATION without USDC_TOKEN)' };
+      else {
+        const b = await rpc('eth_call', [{ to: usdc, data: balanceOfCall(sender) }, 'latest']);
+        const d = await rpc('eth_call', [{ to: usdc, data: SEL_DECIMALS }, 'latest']);
+        const okHex = (x) => typeof x?.result === 'string' && /^0x[0-9a-fA-F]{64}$/.test(x.result);
+        evidence.usdcBalanceOf = { token: usdc, holder: sender, callOk: okHex(b),
+          balance: okHex(b) ? BigInt(b.result).toString() : null, decimals: okHex(d) ? Number(BigInt(d.result)) : null,
+          error: okHex(b) ? null : String(b.error?.message ?? b.result ?? 'no result').slice(0, 120) };
+      }
     }
     if (p.resendAfterReceipt) { const again = await rpc('eth_sendRawTransaction', [p.raw]); r.resendAfterReceipt = again.error ? again.error.message : 'ACCEPTED ' + again.result; }
     if (p.deadline != null && r.obs.blockTimestamp != null) {

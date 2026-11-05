@@ -411,3 +411,15 @@ original reasoning. Do not add routine progress entries.
   the two-party path; new contract version under O-2. Implementation not started.
 - **Addendum 2:** owner answered R1/C1 and the R2 remainder: the owner is signer, funding owner and DB operator; device =
   encrypted keystore via `cast --keystore` on the owner's machine, new testnet-only wallet. E1/E2 stay BLOCKED until X1/X2 run.
+
+### L-023: E1 plan gaps #25 and #16 closed in tooling; E2 dry run on V1 to V8; document fixes (2026-11-05)
+- **Task:** P1-1 to P1-4 of the 2026-11-05 Phase 1 closure audit (owner said "làm thôi nào").
+- **Action:** `broadcast_signed.mjs` reads USDC `balanceOf(sender)` and `decimals()` by `eth_call` (Fuji token pinned to
+  Circle test USDC; LOCAL optional `USDC_TOKEN`) and, for plan entries with `probeLogs`, polls `eth_getLogs` for the lab
+  contract from acceptance until the receipt (counts only); `sign_plan.sh` sets `probeLogs` on the E2 entry;
+  `check_evidence.mjs` refuses a Fuji file without either. README: #25 text replaces "test USDC not needed"; E7 sample names
+  corrected (six samples). Requests page: R3, R5, R9, R10, R11 status rows aligned with the 2026-11-04 delegated decisions.
+- **Tests / evidence:** human-signed network-free tests **13 pass, 0 fail** (was 11); LOCAL run 19/19, checker OK
+  (`phase-1/evidence/live/LOCAL_SIMULATION-human-signed-chain31337-20261105T035109Z.json`); E2 dry run on marketplace V1 to V8
+  and payment migrations: six queries ran, writes refused (`phase-1/evidence/db-validation/...-20261105.txt`; not evidence).
+- **Status:** DONE locally. E1/E2 stay BLOCKED on X1/X2 (owner). No Fuji request was made.

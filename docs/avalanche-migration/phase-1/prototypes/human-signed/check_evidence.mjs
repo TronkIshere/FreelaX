@@ -43,6 +43,10 @@ export function checkEvidence(evidence, fileName) {
   if (!Array.isArray(evidence.results) || evidence.results.length === 0) problems.push('no results recorded');
   else evidence.results.forEach((r, i) => { if (!r || typeof r.id !== 'string') problems.push(`results[${i}] has no entry id`); });
   if (!evidence.finishedAt) problems.push('run did not finish (no finishedAt)');
+  if (evidence.environment === 'AVALANCHE_FUJI') { // criteria #25 and #16 must be captured by the single Fuji run
+    if (!evidence.usdcBalanceOf || evidence.usdcBalanceOf.token == null) problems.push('Fuji run without the USDC balanceOf read (#25)');
+    if (Array.isArray(evidence.results) && !evidence.results.some((r) => r?.obs?.logsBeforeReceipt)) problems.push('Fuji run without the eth_getLogs probe (#16)');
+  }
 
   if (fileName !== undefined) {
     const m = NAME.exec(fileName);
