@@ -182,7 +182,12 @@ async function main() {
   for (const p of plan) {
     if (p.group && ladderDone.has(p.group)) { evidence.results.push({ id: p.id, skipped: 'an earlier entry of this group was accepted' }); continue; }
     if (p.notBeforeHeadTs) {
-      for (let i = 0; i < 600; i++) { const b = (await rpc('eth_getBlockByNumber', ['latest', false])).result; if (num(b.timestamp) >= p.notBeforeHeadTs) break; await sleep(500); }
+      // Time-bounded wait (2026-11-05 Fuji run: the former 600-iteration cap expired ~16 s before T0 because one iteration takes
+      // under a second, so E7-k0 was sent early). Wait until the head reaches the target, at most target + 120 s by the local clock.
+      const giveUpAt = Date.now() + Math.max(0, p.notBeforeHeadTs * 1000 - Date.now()) + 120_000;
+      let reached = false;
+      while (!reached && Date.now() < giveUpAt) { const b = (await rpc('eth_getBlockByNumber', ['latest', false])).result; reached = num(b.timestamp) >= p.notBeforeHeadTs; if (!reached) await sleep(500); }
+      if (!reached) anomalies.push({ at: Date.now(), id: p.id, waitTimedOut: true });
     }
     const head = (await rpc('eth_getBlockByNumber', ['latest', false])).result;
     const r = { id: p.id, nonce: Number(p.tx.nonce), maxFeePerGas: p.tx.maxFeePerGas.toString(), maxPriorityFeePerGas: p.tx.maxPriorityFeePerGas.toString(),

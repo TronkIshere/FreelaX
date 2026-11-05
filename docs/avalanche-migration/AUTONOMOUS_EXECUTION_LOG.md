@@ -458,3 +458,12 @@ original reasoning. Do not add routine progress entries.
   `ContractSettlement` and the off-ramp; wiring it would need a new stage, left NOT IMPLEMENTED).
 - **Tests:** payout unit tests +3; MySQL ITs V7+V8 with V9 **3/3**; legacy JDK 17 reactor **72 / 439 / 20 / 10, BUILD SUCCESS** (marketplace +3; a first run failed on a test fixture without a contract budget, fixed in the test); frontend 877 (+1).
 - **Status:** DONE locally. Not pushed.
+
+### L-026: Phase 1 E1 human-signed Fuji run by the owner (2026-11-05)
+- **Who:** owner signed (keystore) and broadcast; engineering: read-only balance/nonce/fee reads before the run, evidence
+  review, `check_evidence.mjs` OK. No key, password or keystore content was ever seen by engineering.
+- **Issues on the way:** faucet limits (Chainlink needs mainnet LINK; Builder Hub 24 h cooldown); `sign_plan.sh` failed with
+  CRLF line endings (fixed with `.gitattributes`, commit `ff15885`); E7 wait cap too short (fixed after the run).
+- **Result:** see the FUJI-OBS report; E1 PENDING OWNER REVIEW; E5/E6 partly observed, rest INCONCLUSIVE (R4).
+- **Next:** owner reviews E1 and decides R4; X2 (six read-only queries on the development DB) is the remaining Phase 1 blocker.
+

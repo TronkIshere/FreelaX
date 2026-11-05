@@ -1,0 +1,367 @@
+{
+  "tool": "human-signed/broadcast_signed.mjs",
+  "environment": "AVALANCHE_FUJI",
+  "host": "api.avax-test.network",
+  "startedAt": "2026-11-05T06:43:13.158Z",
+  "note": "All transactions were signed by a human-held signer before this run; this tool holds no key.",
+  "results": [
+    {
+      "id": "E1-deploy",
+      "nonce": 0,
+      "maxFeePerGas": "2000000000",
+      "maxPriorityFeePerGas": "150",
+      "headTsAtSend": 1793860995,
+      "deadline": null,
+      "ackMs": 621,
+      "hash": "0x1234b491d37a9f7e0495b817ac4e2d254c35036029c977d3ab9463c86853e81a",
+      "obs": {
+        "hash": "0x1234b491d37a9f7e0495b817ac4e2d254c35036029c977d3ab9463c86853e81a",
+        "byHashMs": 3034,
+        "receiptMs": 3639,
+        "status": "0x1",
+        "block": 60556576,
+        "from": "0xb62ca2602de72dc1edf5f6a7b614ba6376e14889",
+        "contractAddress": "0x65c701a2946f7ebef5595888db49a16ca7f33eff",
+        "gasUsed": 1500000,
+        "effectiveGasPrice": "0xa0",
+        "blockTimestamp": 1793860997,
+        "blockTimestampMs": 1793860997801,
+        "finalizedMs": 8493,
+        "finalityTag": "finalized"
+      }
+    },
+    {
+      "id": "setup-grant-operator",
+      "nonce": 1,
+      "maxFeePerGas": "2000000000",
+      "maxPriorityFeePerGas": "150",
+      "headTsAtSend": 1793861006,
+      "deadline": null,
+      "ackMs": 619,
+      "hash": "0xd2c10b8ff613a63ae5c810170b64bb8bc707c1683bb814c80cad190ca18e0111",
+      "obs": {
+        "hash": "0xd2c10b8ff613a63ae5c810170b64bb8bc707c1683bb814c80cad190ca18e0111",
+        "byHashMs": 1239,
+        "receiptMs": 3061,
+        "status": "0x1",
+        "block": 60556585,
+        "from": "0xb62ca2602de72dc1edf5f6a7b614ba6376e14889",
+        "contractAddress": null,
+        "gasUsed": 100000,
+        "effectiveGasPrice": "0xa0",
+        "blockTimestamp": 1793861009,
+        "blockTimestampMs": 1793861009058
+      }
+    },
+    {
+      "id": "E2-success+E4-duplicate",
+      "nonce": 2,
+      "maxFeePerGas": "2000000000",
+      "maxPriorityFeePerGas": "150",
+      "headTsAtSend": 1793861010,
+      "deadline": null,
+      "ackMs": 620,
+      "hash": "0x921b626964bfa11de88434c596e1c11c24f0d9b8e723c5f1c76b6cd762b77a4c",
+      "immediateResend": "ACCEPTED 0x921b626964bfa11de88434c596e1c11c24f0d9b8e723c5f1c76b6cd762b77a4c",
+      "obs": {
+        "hash": "0x921b626964bfa11de88434c596e1c11c24f0d9b8e723c5f1c76b6cd762b77a4c",
+        "byHashMs": 3020,
+        "logsBeforeReceipt": {
+          "address": "0x65c701a2946f7ebef5595888db49a16ca7f33eff",
+          "fromBlock": "0x39c052a",
+          "polls": 1,
+          "pollsBeforeReceipt": 0,
+          "nonEmptyPollsBeforeReceipt": 0,
+          "errors": 0
+        },
+        "logsAfterReceipt": 1,
+        "receiptMs": 3636,
+        "status": "0x1",
+        "block": 60556589,
+        "from": "0xb62ca2602de72dc1edf5f6a7b614ba6376e14889",
+        "contractAddress": null,
+        "gasUsed": 100000,
+        "effectiveGasPrice": "0xa0",
+        "blockTimestamp": 1793861012,
+        "blockTimestampMs": 1793861012758,
+        "finalizedMs": 8473,
+        "finalityTag": "finalized"
+      },
+      "resendAfterReceipt": "nonce too low: next nonce 3, tx nonce 2"
+    },
+    {
+      "id": "E3-revert",
+      "nonce": 3,
+      "maxFeePerGas": "2000000000",
+      "maxPriorityFeePerGas": "150",
+      "headTsAtSend": 1793861020,
+      "deadline": null,
+      "ackMs": 573,
+      "hash": "0x9d154926ed275fec2893c860752672f47a1dfdcc5ef5518daa86afba8e7a4392",
+      "obs": {
+        "hash": "0x9d154926ed275fec2893c860752672f47a1dfdcc5ef5518daa86afba8e7a4392",
+        "byHashMs": 3003,
+        "receiptMs": 3617,
+        "status": "0x0",
+        "block": 60556600,
+        "from": "0xb62ca2602de72dc1edf5f6a7b614ba6376e14889",
+        "contractAddress": null,
+        "gasUsed": 50000,
+        "effectiveGasPrice": "0xa0",
+        "blockTimestamp": 1793861022,
+        "blockTimestampMs": 1793861022999
+      }
+    },
+    {
+      "id": "E5-gap",
+      "nonce": 5,
+      "maxFeePerGas": "2000000000",
+      "maxPriorityFeePerGas": "150",
+      "headTsAtSend": 1793861024,
+      "deadline": null,
+      "ackMs": 627,
+      "hash": "0xaba4f196333db334ebf1a57fd8be45adec798661f3ce54d2dba69675295d7894",
+      "obs": {
+        "hash": "0xaba4f196333db334ebf1a57fd8be45adec798661f3ce54d2dba69675295d7894",
+        "byHashMs": 1831
+      },
+      "finalPass": {
+        "receiptStatus": "0x1",
+        "block": 60556606,
+        "visibleByHash": true
+      }
+    },
+    {
+      "id": "E5-bump-100",
+      "nonce": 5,
+      "maxFeePerGas": "2000000000",
+      "maxPriorityFeePerGas": "150",
+      "headTsAtSend": 1793861026,
+      "deadline": null,
+      "ackMs": 583,
+      "hash": "0xca3c0bc40845f2a5c5c4defa11cdb947799bc63fa78077674e1e2dd421a47400",
+      "obs": {
+        "hash": "0xca3c0bc40845f2a5c5c4defa11cdb947799bc63fa78077674e1e2dd421a47400",
+        "byHashMs": 1196
+      },
+      "finalPass": {
+        "receiptStatus": null,
+        "block": null,
+        "visibleByHash": false
+      }
+    },
+    {
+      "id": "E5-bump-105",
+      "skipped": "an earlier entry of this group was accepted"
+    },
+    {
+      "id": "E5-bump-110",
+      "skipped": "an earlier entry of this group was accepted"
+    },
+    {
+      "id": "E5-bump-115",
+      "skipped": "an earlier entry of this group was accepted"
+    },
+    {
+      "id": "E5-bump-125",
+      "skipped": "an earlier entry of this group was accepted"
+    },
+    {
+      "id": "E5-bump-150",
+      "skipped": "an earlier entry of this group was accepted"
+    },
+    {
+      "id": "E5-bump-200",
+      "skipped": "an earlier entry of this group was accepted"
+    },
+    {
+      "id": "E5-filler",
+      "nonce": 4,
+      "maxFeePerGas": "2000000000",
+      "maxPriorityFeePerGas": "150",
+      "headTsAtSend": 1793861026,
+      "deadline": null,
+      "ackMs": 620,
+      "hash": "0x5cdecbac696a888475cc2fc20e606a9266f16919588132f1900d2140ae0e906d",
+      "obs": {
+        "hash": "0x5cdecbac696a888475cc2fc20e606a9266f16919588132f1900d2140ae0e906d",
+        "byHashMs": 2457,
+        "receiptMs": 3061,
+        "status": "0x1",
+        "block": 60556606,
+        "from": "0xb62ca2602de72dc1edf5f6a7b614ba6376e14889",
+        "contractAddress": null,
+        "gasUsed": 100000,
+        "effectiveGasPrice": "0xa0",
+        "blockTimestamp": 1793861031,
+        "blockTimestampMs": 1793861031510,
+        "finalizedMs": 12197,
+        "finalityTag": "finalized"
+      }
+    },
+    {
+      "id": "E7-k0",
+      "nonce": 6,
+      "maxFeePerGas": "2000000000",
+      "maxPriorityFeePerGas": "150",
+      "headTsAtSend": 1793861508,
+      "deadline": 1793861524,
+      "ackMs": 604,
+      "hash": "0xaf91b4d789061d3358525842e9ad520e014a7e041c3035522323969f06c0cb14",
+      "obs": {
+        "hash": "0xaf91b4d789061d3358525842e9ad520e014a7e041c3035522323969f06c0cb14",
+        "byHashMs": 2408,
+        "receiptMs": 3027,
+        "status": "0x1",
+        "block": 60556920,
+        "from": "0xb62ca2602de72dc1edf5f6a7b614ba6376e14889",
+        "contractAddress": null,
+        "gasUsed": 50000,
+        "effectiveGasPrice": "0xa0",
+        "blockTimestamp": 1793861511,
+        "blockTimestampMs": 1793861511248
+      },
+      "includedMinusDeadline": -13,
+      "statusMatchesTsLeDeadline": true
+    },
+    {
+      "id": "E7-k1",
+      "nonce": 7,
+      "maxFeePerGas": "2000000000",
+      "maxPriorityFeePerGas": "150",
+      "headTsAtSend": 1793861584,
+      "deadline": 1793861585,
+      "ackMs": 624,
+      "hash": "0xeccc2768ad606cfb0eed39d5e01419a084316af898f7ac898d52c70916ee7adb",
+      "obs": {
+        "hash": "0xeccc2768ad606cfb0eed39d5e01419a084316af898f7ac898d52c70916ee7adb",
+        "byHashMs": 3076,
+        "receiptMs": 3641,
+        "status": "0x0",
+        "block": 60556979,
+        "from": "0xb62ca2602de72dc1edf5f6a7b614ba6376e14889",
+        "contractAddress": null,
+        "gasUsed": 50000,
+        "effectiveGasPrice": "0xa0",
+        "blockTimestamp": 1793861587,
+        "blockTimestampMs": 1793861587819
+      },
+      "includedMinusDeadline": 2,
+      "statusMatchesTsLeDeadline": true
+    },
+    {
+      "id": "E7-k2",
+      "nonce": 8,
+      "maxFeePerGas": "2000000000",
+      "maxPriorityFeePerGas": "150",
+      "headTsAtSend": 1793861645,
+      "deadline": 1793861646,
+      "ackMs": 603,
+      "hash": "0x93babe0acdfe6d6df72a492c1808d9be10d6faad7fe7b851a09024c7b71e3614",
+      "obs": {
+        "hash": "0x93babe0acdfe6d6df72a492c1808d9be10d6faad7fe7b851a09024c7b71e3614",
+        "byHashMs": 2412,
+        "receiptMs": 3024,
+        "status": "0x0",
+        "block": 60557023,
+        "from": "0xb62ca2602de72dc1edf5f6a7b614ba6376e14889",
+        "contractAddress": null,
+        "gasUsed": 50000,
+        "effectiveGasPrice": "0xa0",
+        "blockTimestamp": 1793861647,
+        "blockTimestampMs": 1793861647944
+      },
+      "includedMinusDeadline": 1,
+      "statusMatchesTsLeDeadline": true
+    },
+    {
+      "id": "E7-k3",
+      "nonce": 9,
+      "maxFeePerGas": "2000000000",
+      "maxPriorityFeePerGas": "150",
+      "headTsAtSend": 1793861705,
+      "deadline": 1793861707,
+      "ackMs": 597,
+      "hash": "0xfb80ee901f9e703921d65d420804e001a39adc9c64a57cd259779c6cb3540dcb",
+      "obs": {
+        "hash": "0xfb80ee901f9e703921d65d420804e001a39adc9c64a57cd259779c6cb3540dcb",
+        "byHashMs": 1818,
+        "receiptMs": 3040,
+        "status": "0x0",
+        "block": 60557069,
+        "from": "0xb62ca2602de72dc1edf5f6a7b614ba6376e14889",
+        "contractAddress": null,
+        "gasUsed": 50000,
+        "effectiveGasPrice": "0xa0",
+        "blockTimestamp": 1793861708,
+        "blockTimestampMs": 1793861708397
+      },
+      "includedMinusDeadline": 1,
+      "statusMatchesTsLeDeadline": true
+    },
+    {
+      "id": "E7-k5",
+      "nonce": 10,
+      "maxFeePerGas": "2000000000",
+      "maxPriorityFeePerGas": "150",
+      "headTsAtSend": 1793861764,
+      "deadline": 1793861769,
+      "ackMs": 604,
+      "hash": "0xd4bcb16fc3b5a5044757d7d89a8a3c6111a079c955ccc7442cb9db66c170a4bc",
+      "obs": {
+        "hash": "0xd4bcb16fc3b5a5044757d7d89a8a3c6111a079c955ccc7442cb9db66c170a4bc",
+        "byHashMs": 1220,
+        "receiptMs": 2423,
+        "status": "0x1",
+        "block": 60557110,
+        "from": "0xb62ca2602de72dc1edf5f6a7b614ba6376e14889",
+        "contractAddress": null,
+        "gasUsed": 50000,
+        "effectiveGasPrice": "0xa0",
+        "blockTimestamp": 1793861767,
+        "blockTimestampMs": 1793861767896
+      },
+      "includedMinusDeadline": -2,
+      "statusMatchesTsLeDeadline": true
+    },
+    {
+      "id": "E7-k8",
+      "nonce": 11,
+      "maxFeePerGas": "2000000000",
+      "maxPriorityFeePerGas": "150",
+      "headTsAtSend": 1793861826,
+      "deadline": 1793861832,
+      "ackMs": 620,
+      "hash": "0x9786c8316c27500d67e887b233f165ac8ec3693589391d0ff1c169a549d1979d",
+      "obs": {
+        "hash": "0x9786c8316c27500d67e887b233f165ac8ec3693589391d0ff1c169a549d1979d",
+        "byHashMs": 1210,
+        "receiptMs": 2425,
+        "status": "0x1",
+        "block": 60557151,
+        "from": "0xb62ca2602de72dc1edf5f6a7b614ba6376e14889",
+        "contractAddress": null,
+        "gasUsed": 50000,
+        "effectiveGasPrice": "0xa0",
+        "blockTimestamp": 1793861829,
+        "blockTimestampMs": 1793861829408
+      },
+      "includedMinusDeadline": -3,
+      "statusMatchesTsLeDeadline": true
+    }
+  ],
+  "chainId": 43113,
+  "clientFamily": "avalanchego",
+  "balanceChecked": true,
+  "usdcBalanceOf": {
+    "token": "0x5425890298aed601595a70ab815c96711a31bc65",
+    "holder": "0xb62ca2602de72dc1edf5f6a7b614ba6376e14889",
+    "callOk": true,
+    "balance": "0",
+    "decimals": 6,
+    "error": null
+  },
+  "sender": "0xb62ca2602de72dc1edf5f6a7b614ba6376e14889",
+  "anomalies": [],
+  "finishedAt": "2026-11-05T06:57:11.716Z"
+}
