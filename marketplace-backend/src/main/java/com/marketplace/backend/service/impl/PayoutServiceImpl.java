@@ -344,7 +344,7 @@ public class PayoutServiceImpl implements PayoutService {
 
     private void notifyPayoutSimulated(Job job, FreelancerPayoutRecord payoutRecord) {
         String message = "Công việc \"" + job.getTitle() + "\" đã hoàn tất. "
-                + "USDC đã được chuyển on-chain theo luồng Client → Freelancer → Treasury với số lượng "
+                + "USDC đã được chuyển trên chuỗi theo luồng Client → Freelancer → Treasury với số lượng "
                 + payoutRecord.getAmountUsdcReceived().stripTrailingZeros().toPlainString()
                 + " Mock USDC trên " + payoutRecord.getOnRampNetwork()
                 + " (" + onChainReference(payoutRecord) + "). "

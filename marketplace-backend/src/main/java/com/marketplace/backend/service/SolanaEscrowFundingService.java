@@ -234,7 +234,7 @@ public class SolanaEscrowFundingService {
             contract.setStatus(ContractStatus.ACTIVE);
             job.setStatus(JobStatus.IN_PROGRESS);
             notifications.notify(contract.getFreelancerId(), NotificationType.FUNDING_CONFIRMED,
-                    "Milestone đã được ký quỹ on-chain", "Bạn có thể bắt đầu công việc.", job.getId());
+                    "Milestone đã được ký quỹ trên chuỗi", "Bạn có thể bắt đầu công việc.", job.getId());
         }
         return new EscrowView(contract.getPaymentRail() == null ? "SOLANA_ESCROW" : contract.getPaymentRail(), chain.status(), phase(chain, record), chain.address(),
                 chain.client(), chain.freelancer(), chain.mint(), chain.amount(),

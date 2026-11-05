@@ -27,6 +27,7 @@ import com.marketplace.backend.entity.MilestoneStatus;
 import com.marketplace.backend.entity.Wallet;
 import com.marketplace.backend.entity.WorkContract;
 import com.marketplace.backend.exception.ApplicationException;
+import com.marketplace.backend.exception.ErrorCode;
 import com.marketplace.backend.exception.AvalancheGatewayException;
 import com.marketplace.backend.repository.AvalancheChainTransactionRepository;
 import com.marketplace.backend.repository.ContractDisputeRepository;
@@ -239,6 +240,8 @@ class AvalancheEscrowServiceTest {
         contract.setReviewWindowHours(72);
         when(wallets.findFirstByUserIdOrderByIdAsc(freelancerId)).thenReturn(Optional.empty());
         assertRefused(() -> service.authorize(clientId, false, contract, "fund", none));
+        assertEquals(ErrorCode.AVALANCHE_WALLET_NOT_LINKED, assertThrows(ApplicationException.class,
+                () -> service.authorize(clientId, false, contract, "fund", none)).getErrorCode(), "the client is told what is missing");
         when(wallets.findFirstByUserIdOrderByIdAsc(freelancerId)).thenReturn(Optional.of(wallet(FREELANCER_WALLET)));
         when(gateway.validateAddress(new BlockchainAddress(FREELANCER_WALLET))).thenReturn(false);
         assertRefused(() -> service.authorize(clientId, false, contract, "fund", none));
@@ -945,4 +948,28 @@ class AvalancheEscrowServiceTest {
         assertEquals(ContractStatus.CANCELLED, contract.getStatus());
         assertEquals(DisputeStatus.RESOLVED_REFUND, d.getStatus());
     }
+
+    @Test
+    void anExecuteWithoutAnIdempotencyKeyIsItsOwnOperationAndNeverCollidesWithAnother() {
+        contract.setStatus(ContractStatus.PENDING_FUNDING);
+        java.util.Set<String> keys = new java.util.HashSet<>();
+        when(chainTransactions.findByNetworkIdAndOperationKey(any(), any())).thenReturn(Optional.empty());
+        when(chainTransactions.save(any(AvalancheChainTransaction.class))).thenAnswer(i -> i.getArgument(0));
+        when(chainTransactions.saveAndFlush(any(AvalancheChainTransaction.class))).thenAnswer(i -> {
+            AvalancheChainTransaction t = i.getArgument(0);
+            keys.add(t.getOperationKey());
+            return t;
+        });
+        for (int i = 0; i < 3; i++) {
+            try {
+                service.execute(clientId, false, contract.getId(), "fund", null);
+            } catch (RuntimeException e) {
+                // the gateway stub may refuse; only the recorded operation keys matter here
+            }
+        }
+        assertEquals(3, keys.size(), "three calls without a key are three operations");
+        assertTrue(keys.stream().allMatch(k -> k.startsWith(contract.getId() + ":fund:")));
+        verify(chainTransactions, never()).countByContractIdAndAction(any(), any());
+    }
 }
+

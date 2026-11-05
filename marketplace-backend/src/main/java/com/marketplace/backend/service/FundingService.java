@@ -226,7 +226,7 @@ public class FundingService {
                 job.setStatus(JobStatus.IN_PROGRESS);
                 locked.setStatus(FundingStatus.SUCCEEDED);
                 notifications.notify(contract.getFreelancerId(), NotificationType.FUNDING_CONFIRMED,
-                        "Milestone đã được funding", "Bạn có thể bắt đầu công việc \"" + job.getTitle() + "\".", job.getId());
+                        "Milestone đã được nạp tiền", "Bạn có thể bắt đầu công việc \"" + job.getTitle() + "\".", job.getId());
             });
         } catch (HttpClientErrorException ex) {
             // A definitive provider rejection is safe to retry with a new client key.

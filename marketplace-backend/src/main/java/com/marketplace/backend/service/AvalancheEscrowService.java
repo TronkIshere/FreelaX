@@ -229,10 +229,10 @@ public class AvalancheEscrowService {
             return linked.getAddress().toLowerCase(Locale.ROOT);
         }
         Wallet wallet = wallets.findFirstByUserIdOrderByIdAsc(userId)
-                .orElseThrow(() -> new ApplicationException(ErrorCode.INVALID_DATA, "a linked wallet is required"));
+                .orElseThrow(() -> new ApplicationException(ErrorCode.AVALANCHE_WALLET_NOT_LINKED));
         String address = wallet.getPublicKey();
         if (address == null || !gateway().validateAddress(new BlockchainAddress(address))) {
-            throw new ApplicationException(ErrorCode.INVALID_DATA, "the linked wallet is not a valid Avalanche address");
+            throw new ApplicationException(ErrorCode.AVALANCHE_WALLET_NOT_LINKED);
         }
         return address.toLowerCase(Locale.ROOT);
     }
@@ -419,7 +419,7 @@ public class AvalancheEscrowService {
         Milestone m = milestone(contractId);
         String escrowId = AvalancheEscrowIds.fromMilestone(m.getId());
         String operationKey = contractId + ":" + action + ":" + (input.idempotencyKey() != null && !input.idempotencyKey().isBlank()
-                ? input.idempotencyKey() : String.valueOf(chainTransactions.countByContractIdAndAction(contractId, action) + 1));
+                ? input.idempotencyKey() : UUID.randomUUID().toString());
         AvalancheChainTransaction existing = chainTransactions.findByNetworkIdAndOperationKey(properties.getNetwork(), operationKey).orElse(null);
         if (existing != null) {
             return existing;

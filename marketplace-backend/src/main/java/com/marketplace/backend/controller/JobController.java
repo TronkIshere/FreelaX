@@ -188,7 +188,7 @@ public class JobController {
                                                       @Valid @RequestBody AssignFreelancerRequest request) {
         return ResponseAPI.<JobResponse>builder()
                 .code(200)
-                .message("Đã chọn Freelancer; hợp đồng đang chờ funding")
+                .message("Đã chọn Freelancer; hợp đồng đang chờ nạp tiền")
                 .data(jobService.assignFreelancer(principal.getId(), jobId, request))
                 .build();
     }

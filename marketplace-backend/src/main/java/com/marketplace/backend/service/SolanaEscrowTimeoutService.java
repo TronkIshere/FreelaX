@@ -170,7 +170,7 @@ public class SolanaEscrowTimeoutService {
         if (contract.getFundingReminderSentAt() == null && !now.isBefore(assigned.plusSeconds(24 * 3600))) {
             contract.setFundingReminderSentAt(now);
             notifications.notify(contract.getClientUserId(), NotificationType.FUNDING_REMINDER,
-                    "Nhắc ký quỹ Milestone", "Còn dưới 24 giờ để ký quỹ on-chain.", contract.getJobId());
+                    "Nhắc ký quỹ Milestone", "Còn dưới 24 giờ để ký quỹ trên chuỗi.", contract.getJobId());
         }
         // The instruction itself rejects funding after 48 hours. Wait for any earlier
         // blockhash to expire before closing a locally unresolved build/signature.
@@ -286,7 +286,7 @@ public class SolanaEscrowTimeoutService {
         disputeAudit.save(audit);
         notifications.notify(actor.equals(contract.getClientUserId())
                         ? contract.getFreelancerId() : contract.getClientUserId(),
-                NotificationType.DISPUTE_OPENED, "Tranh chấp on-chain đã ghi nhận",
+                NotificationType.DISPUTE_OPENED, "Tranh chấp trên chuỗi đã ghi nhận",
                 "Bổ sung bằng chứng để Admin xử lý.", job.getId());
     }
 
@@ -316,9 +316,9 @@ public class SolanaEscrowTimeoutService {
         record.setLastChainStatus("REFUNDED_RECONCILED");
         record.setSettlementRetryPending(false);
         notifications.notify(contract.getClientUserId(), NotificationType.REFUND_CONFIRMED,
-                "Escrow đã hoàn tiền on-chain", "Vault đã hoàn tiền cho Client.", job.getId());
+                "Ký quỹ đã hoàn tiền trên chuỗi", "Vault đã hoàn tiền cho Client.", job.getId());
         notifications.notify(contract.getFreelancerId(), NotificationType.REFUND_CONFIRMED,
-                "Escrow đã hoàn tiền on-chain", "Vault đã hoàn tiền cho Client.", job.getId());
+                "Ký quỹ đã hoàn tiền trên chuỗi", "Vault đã hoàn tiền cho Client.", job.getId());
     }
 
     private void reconcileDispute(EscrowContract record, WorkContract contract,
@@ -344,9 +344,9 @@ public class SolanaEscrowTimeoutService {
             record.setSettlementRetryPending(false);
             if (release && record.getReleasedAt() == null) record.setReleasedAt(Instant.now());
             notifications.notify(contract.getClientUserId(), NotificationType.DISPUTE_DECIDED,
-                    "Tranh chấp escrow đã quyết toán", "Giao dịch Solana đã được xác nhận.", job.getId());
+                    "Tranh chấp ký quỹ đã quyết toán", "Giao dịch Solana đã được xác nhận.", job.getId());
             notifications.notify(contract.getFreelancerId(), NotificationType.DISPUTE_DECIDED,
-                    "Tranh chấp escrow đã quyết toán", "Giao dịch Solana đã được xác nhận.", job.getId());
+                    "Tranh chấp ký quỹ đã quyết toán", "Giao dịch Solana đã được xác nhận.", job.getId());
             return;
         }
         if (!"Disputed".equals(chain.status())) return;
@@ -411,9 +411,9 @@ public class SolanaEscrowTimeoutService {
         record.setSettlementRetryPending(false);
         if (record.getReleasedAt() == null) record.setReleasedAt(Instant.now());
         notifications.notify(contract.getFreelancerId(), NotificationType.RELEASE_CONFIRMED,
-                "Escrow đã giải ngân on-chain", "Milestone đã được giải ngân từ vault Solana.", job.getId());
+                "Ký quỹ đã giải ngân trên chuỗi", "Milestone đã được giải ngân từ vault Solana.", job.getId());
         notifications.notify(contract.getClientUserId(), NotificationType.REVIEW_AUTO_APPROVED,
-                "Escrow đã giải ngân on-chain", "Milestone đã được giải ngân sau khi chain xác nhận.", job.getId());
+                "Ký quỹ đã giải ngân trên chuỗi", "Milestone đã được giải ngân sau khi chain xác nhận.", job.getId());
     }
 
     private String releaseReference(EscrowContract record, SolanaEscrowResult chain) {

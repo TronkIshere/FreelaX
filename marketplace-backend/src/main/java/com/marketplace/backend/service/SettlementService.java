@@ -177,7 +177,7 @@ public class SettlementService {
                     contracts.save(eligible.contract());
                     jobs.save(eligible.job());
                     notifications.notify(s.getFreelancerId(), NotificationType.RELEASE_CONFIRMED,
-                            partnerRail ? "Đối tác mock đã chi trả" : "Đã ghi nhận release mô phỏng",
+                            partnerRail ? "Đối tác mock đã chi trả" : "Đã ghi nhận giải ngân mô phỏng",
                             partnerRail ? "Đối tác mô phỏng đã xác nhận chi VND; phí FreelaX 3% được tính lúc này. Không phải chuyển khoản ngân hàng thật."
                                     : "Quyền nhận tiền đã được ghi có trong sổ mô phỏng. "
                                     + "Solana, off-ramp và chứng từ thuế được xử lý riêng; chưa xác nhận chuyển khoản ngân hàng.",

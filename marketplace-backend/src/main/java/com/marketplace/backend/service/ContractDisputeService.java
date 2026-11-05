@@ -395,8 +395,8 @@ public class ContractDisputeService {
         saveEvidence(d.getId(), actor, items);
         log(d, actor, "OPENED", null, d.getStatus().name(), d.getDescription(), null);
         notifications.notify(actor.equals(c.getClientUserId()) ? c.getFreelancerId() : c.getClientUserId(),
-                NotificationType.DISPUTE_OPENED, "Tranh chấp escrow đã mở",
-                "Escrow đã khóa on-chain để chờ Admin xử lý.", j.getId());
+                NotificationType.DISPUTE_OPENED, "Tranh chấp ký quỹ đã mở",
+                "Ký quỹ đã khóa trên chuỗi để chờ Admin xử lý.", j.getId());
         return response(d);
     }
 
@@ -420,9 +420,9 @@ public class ContractDisputeService {
         log(d, adminId, "DECIDED", DisputeStatus.UNDER_REVIEW.name(), d.getStatus().name(),
                 d.getResolutionReason(), key);
         notifications.notify(c.getClientUserId(), NotificationType.DISPUTE_DECIDED,
-                "Admin đã quyết định tranh chấp escrow", "Đang chờ xác nhận giao dịch Solana.", j.getId());
+                "Admin đã quyết định tranh chấp ký quỹ", "Đang chờ xác nhận giao dịch Solana.", j.getId());
         notifications.notify(c.getFreelancerId(), NotificationType.DISPUTE_DECIDED,
-                "Admin đã quyết định tranh chấp escrow", "Đang chờ xác nhận giao dịch Solana.", j.getId());
+                "Admin đã quyết định tranh chấp ký quỹ", "Đang chờ xác nhận giao dịch Solana.", j.getId());
         return response(d);
     }
 
@@ -446,7 +446,7 @@ public class ContractDisputeService {
         disputes.saveAndFlush(d);
         log(d, adminId, "DECIDED", DisputeStatus.UNDER_REVIEW.name(), d.getStatus().name(), d.getResolutionReason(), key);
         for (UUID party : List.of(c.getClientUserId(), c.getFreelancerId())) {
-            notifications.notify(party, NotificationType.DISPUTE_DECIDED, "Admin đã quyết định tranh chấp escrow",
+            notifications.notify(party, NotificationType.DISPUTE_DECIDED, "Admin đã quyết định tranh chấp ký quỹ",
                     "Đang chờ giao dịch trọng tài Avalanche (mô phỏng) được xác nhận.", j.getId());
         }
         return response(d);

@@ -47,12 +47,12 @@ public enum ErrorCode {
     JOB_REQUIREMENTS_MISSING(4015, "Công việc phải có sản phẩm bàn giao và điều kiện nghiệm thu trước khi chọn Freelancer", HttpStatus.UNPROCESSABLE_ENTITY),
     FUNDING_NOT_FOUND(4016, "Không tìm thấy hợp đồng hoặc milestone", HttpStatus.NOT_FOUND),
     FUNDING_AMOUNT_CHANGED(4017, "Số tiền hoặc đơn vị tiền tệ đã thay đổi", HttpStatus.CONFLICT),
-    FUNDING_INVALID_STATE(4018, "Milestone không còn chờ funding", HttpStatus.CONFLICT),
+    FUNDING_INVALID_STATE(4018, "Milestone không còn chờ nạp tiền", HttpStatus.CONFLICT),
     FUNDING_KEY_CONFLICT(4019, "Idempotency-Key đã được dùng với nội dung khác", HttpStatus.CONFLICT),
-    FUNDING_IN_PROGRESS(4020, "Funding đang được xử lý hoặc đối soát", HttpStatus.CONFLICT),
+    FUNDING_IN_PROGRESS(4020, "Nạp tiền đang được xử lý hoặc đối soát", HttpStatus.CONFLICT),
     FUNDING_PAYMENT_METHOD_INVALID(4021, "Chưa có tài khoản ngân hàng Client hợp lệ", HttpStatus.UNPROCESSABLE_ENTITY),
     CONTRACT_SUBMISSION_NOT_FOUND(4022, "Không tìm thấy bản bàn giao của hợp đồng", HttpStatus.NOT_FOUND),
-    SUBMISSION_NOT_FUNDED(4023, "Milestone chưa được funding", HttpStatus.CONFLICT),
+    SUBMISSION_NOT_FUNDED(4023, "Milestone chưa được nạp tiền", HttpStatus.CONFLICT),
     SUBMISSION_INVALID_STATE(4024, "Trạng thái hợp đồng hoặc milestone không cho phép thao tác này", HttpStatus.CONFLICT),
     SUBMISSION_EVIDENCE_INVALID(4025, "Bằng chứng bàn giao không hợp lệ: %s", HttpStatus.UNPROCESSABLE_ENTITY),
     SUBMISSION_KEY_CONFLICT(4026, "Idempotency-Key đã được dùng với nội dung bàn giao khác", HttpStatus.CONFLICT),
@@ -63,7 +63,7 @@ public enum ErrorCode {
     DISPUTE_ALREADY_OPEN(4031, "Hợp đồng đã có dispute đang mở", HttpStatus.CONFLICT),
     DISPUTE_REASON_REQUIRED(4032, "Dispute cần reasonCode và description", HttpStatus.UNPROCESSABLE_ENTITY),
     SETTLEMENT_NOT_FOUND(4033, "Không tìm thấy hợp đồng hoặc settlement", HttpStatus.NOT_FOUND),
-    SETTLEMENT_INELIGIBLE(4034, "Hợp đồng chưa đủ điều kiện release", HttpStatus.CONFLICT),
+    SETTLEMENT_INELIGIBLE(4034, "Hợp đồng chưa đủ điều kiện giải ngân", HttpStatus.CONFLICT),
     CANCELLATION_NOT_FOUND(4035, "Không tìm thấy hợp đồng hoặc yêu cầu hủy", HttpStatus.NOT_FOUND),
     CANCELLATION_INELIGIBLE(4036, "Trạng thái không cho phép hủy thông thường", HttpStatus.CONFLICT),
     CANCELLATION_CONFLICT(4037, "Yêu cầu hủy đã tồn tại hoặc quyết định không còn hợp lệ", HttpStatus.CONFLICT),
@@ -86,6 +86,7 @@ public enum ErrorCode {
     SOLANA_CPR_NOT_CONFIGURED(5102, "Chưa cấu hình solana-cpr: %s", HttpStatus.INTERNAL_SERVER_ERROR),
 
     INTERNAL_ERROR(9999, "Đã có lỗi xảy ra, vui lòng thử lại sau", HttpStatus.INTERNAL_SERVER_ERROR),
+    AVALANCHE_WALLET_NOT_LINKED(4070, "Client và Freelancer đều cần liên kết ví EVM hợp lệ trước khi dùng ký quỹ Avalanche", HttpStatus.CONFLICT),
     ACCOUNT_NOT_FOUND(9997, "Không tìm thấy tài khoản", HttpStatus.NOT_FOUND);
 
     private final int code;

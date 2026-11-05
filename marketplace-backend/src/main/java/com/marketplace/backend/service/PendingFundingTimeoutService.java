@@ -33,7 +33,7 @@ public class PendingFundingTimeoutService {
         if (contract.getFundingReminderSentAt() == null) {
             contract.setFundingReminderSentAt(java.time.Instant.now());
             notifications.notify(contract.getClientUserId(), NotificationType.FUNDING_REMINDER,
-                    "Nhắc funding Milestone", "Bạn còn dưới 24 giờ để funding hợp đồng.", job.getId());
+                    "Nhắc nạp tiền Milestone", "Bạn còn dưới 24 giờ để nạp tiền cho hợp đồng.", job.getId());
         }
         if (java.time.Instant.now().isBefore(paymentFlows.fundingDeadline(contract))
                 || funding.existsByMilestoneIdAndStatusIn(milestone.getId(),
@@ -43,8 +43,8 @@ public class PendingFundingTimeoutService {
         milestone.setStatus(MilestoneStatus.CANCELLED);
         job.setStatus(JobStatus.CANCELLED);
         notifications.notify(contract.getClientUserId(), NotificationType.JOB_CANCELLED,
-                "Hết hạn funding", "Hợp đồng đã hủy do không được funding đúng hạn.", job.getId());
+                "Hết hạn nạp tiền", "Hợp đồng đã hủy do không được nạp tiền đúng hạn.", job.getId());
         notifications.notify(contract.getFreelancerId(), NotificationType.JOB_CANCELLED,
-                "Hết hạn funding", "Hợp đồng đã hủy do không được funding đúng hạn.", job.getId());
+                "Hết hạn nạp tiền", "Hợp đồng đã hủy do không được nạp tiền đúng hạn.", job.getId());
     }
 }

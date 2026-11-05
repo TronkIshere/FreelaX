@@ -114,7 +114,7 @@ public class ContractCancellationService {
             cancellations.saveAndFlush(row);
             if (preFunding) {
                 c.setStatus(ContractStatus.CANCELLED); m.setStatus(MilestoneStatus.CANCELLED); job.setStatus(JobStatus.CANCELLED);
-                notifyBoth(c, NotificationType.JOB_CANCELLED, "Hợp đồng đã hủy", "Hủy trước funding; không có hoàn tiền.");
+                notifyBoth(c, NotificationType.JOB_CANCELLED, "Hợp đồng đã hủy", "Hủy trước nạp tiền; không có hoàn tiền.");
             } else {
                 notifications.notify(other(c, actor), NotificationType.CANCELLATION_REQUESTED,
                         "Đề nghị hủy hợp đồng", "Đối tác đề nghị hủy; chưa có hoàn tiền. Bạn cần đồng ý hoặc từ chối.", job.getId());
