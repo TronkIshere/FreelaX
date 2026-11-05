@@ -196,14 +196,26 @@ public class AvalancheEscrowService {
     private ContractView view(UUID userId, boolean admin, WorkContract c) {
         boolean enabled = properties.getNetwork().equals(c.getPaymentNetworkId());
         if (!enabled) {
-            return new ContractView(c.getPaymentNetworkId(), false, null, null, null, List.of(), "This contract does not use the Avalanche rail.");
+            // A2/B7 finding: the client can choose the rail in the UI only if the view says the rail is available. It is offered only while
+            // the choice is still valid (same conditions as enable()): awaiting funding, no Solana escrow, no other network chosen.
+            boolean canChoose = c.getStatus() == ContractStatus.PENDING_FUNDING && c.getPaymentNetworkId() == null
+                    && solanaEscrows.findByContractId(c.getId()).isEmpty();
+            EnvironmentInfo environment = null;
+            if (canChoose) {
+                try {
+                    environment = gateway().environmentInfo();
+                } catch (RuntimeException e) {
+                    environment = null; // shown without the environment banner
+                }
+            }
+            return new ContractView(null, canChoose, environment, null, null, List.of(), "Hợp đồng này chưa dùng ký quỹ Avalanche.");
         }
         String escrowId = AvalancheEscrowIds.fromMilestone(milestone(c.getId()).getId());
         EnvironmentInfo environment = gateway().environmentInfo();
         EscrowSnapshot snapshot = gateway().escrowSnapshot(new EscrowReference(escrowId));
         return new ContractView(c.getPaymentNetworkId(), true, environment, escrowId, snapshot,
                 chainTransactions.findByContractIdOrderByIdAsc(c.getId()),
-                "Demonstration only: " + environment.environment() + " simulated escrow, testnet USDC with no real-world value.",
+                "Demonstration only: ký quỹ mô phỏng, USDC testnet hoặc mô phỏng, không có giá trị thực.",
                 mutualRefundState(c.getId()), snapshot == null ? List.of() : issuerAlerts(escrowId), mutualSettlementStates(c.getId()));
     }
 

@@ -818,8 +818,20 @@ class AvalancheEscrowServiceTest {
         when(gateway.escrowSnapshot(any())).thenReturn(null);
         assertEquals(NETWORK, service.status(clientId, false, contract.getId()).networkId());
         assertTrue(service.status(strangerId, true, contract.getId()).avalancheEnabled());
+        // a contract that has not chosen the rail: offered only while the choice is still valid, never as an Avalanche contract
         contract.setPaymentNetworkId(null);
-        assertFalse(service.status(clientId, false, contract.getId()).avalancheEnabled());
+        contract.setStatus(ContractStatus.PENDING_FUNDING);
+        AvalancheEscrowService.ContractView open = service.status(clientId, false, contract.getId());
+        assertTrue(open.avalancheEnabled());
+        assertNull(open.networkId());
+        assertNull(open.chain());
+        contract.setStatus(ContractStatus.ACTIVE);
+        assertFalse(service.status(clientId, false, contract.getId()).avalancheEnabled(), "not offered once funding began");
+        contract.setStatus(ContractStatus.PENDING_FUNDING);
+        contract.setPaymentNetworkId("solana-devnet");
+        AvalancheEscrowService.ContractView other = service.status(clientId, false, contract.getId());
+        assertFalse(other.avalancheEnabled(), "not offered when another network was chosen");
+        assertNull(other.networkId(), "a non-Avalanche network id is never reported as the Avalanche network");
     }
 
     // ---- R12 mutual settlement of a Disputed escrow (owner decision 2026-11-05) ---------------------------------------

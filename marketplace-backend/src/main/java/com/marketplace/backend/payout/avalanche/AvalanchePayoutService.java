@@ -40,8 +40,8 @@ import java.util.regex.Pattern;
 @ConditionalOnProperty(name = "avalanche-gateway.enabled", havingValue = "true")
 public class AvalanchePayoutService {
 
-    static final String NOTICE = "Demonstration only: Testnet/simulated USDC with no real-world value. The on-chain transfer"
-            + " confirmation and the partner's fiat payout confirmation are separate; neither implies the other.";
+    static final String NOTICE = "Demonstration only: USDC testnet hoặc mô phỏng, không có giá trị thực. Việc xác nhận chuyển trên chuỗi và việc đối tác xác nhận"
+            + " chi trả bằng tiền pháp định là hai bước riêng; bước này không kéo theo bước kia.";
     /** Reported for payout rows created before V9, which carry no fee or tax figures. */
     static final String TAX_TREATMENT = "NOT_DEFINED";
     private static final Pattern TX_HASH = Pattern.compile("0x[0-9a-fA-F]{64}");
