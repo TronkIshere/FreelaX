@@ -547,3 +547,12 @@ original reasoning. Do not add routine progress entries.
 - **Found and handled:** an uncommitted dependency edit in `avalanche-integration/pom.xml` (explicit `okhttp 4.12.0`) put `okio 3.6.0` next to web3j's `okhttp-jvm 5.5.0` and made 49 gateway tests fail with `NoSuchMethodError okio.Okio.socket`; the edit was reverted to the committed pom (the gateway builds and passes without it). Stale classes in `target/` after package moves cause duplicate-bean failures; use `clean`.
 - **Reported, not changed:** non-numeric `amount` on `fund` still ends in HTTP 500 (`new BigInteger`); `WalletSignatureRequest` is lenient about unknown properties (the strict annotation sat on another type in the source); legacy marketplace services keep fully qualified names in Avalanche guard lines.
 - **Tests (this machine, LOCAL-SIM):** gateway 122 run, 0 failures, 3 skipped (same as before); legacy JDK 17 reactor payment 72, marketplace 456, misa 20, all passing; MySQL ITs 6/6 on a throwaway MySQL 8.4; compose Avalanche run on images built from the refactored sources: `drive.mjs` PASS (45 steps), `outage.mjs` PASS (setup, O1 to O7b). Not re-run (code untouched): Foundry, frontend, the browser driver.
+
+### L-034: Owner decision on the Solana removal; new work branch (2026-11-12)
+- **Sync:** the local `avalanche/phase1-closure-phase3-proposal` was reset to `origin` (`a700c29`; the local push-note commit
+  `b543b65` was superseded and kept only as local branch `local-backup/push-note-b543b65`); local `master` fast-forwarded to
+  `origin/master` (`6f47900`); new branch **`avalanche/next`** from `master`.
+- **Decision recorded:** the owner confirmed the removal of the Solana modules from `master` as an official decision; backup
+  = branch `solana` (`a700c29`, verified). CLAUDE.md rules that still said "Solana stays intact" were updated.
+- **Open (owner):** the default primary rail is still SOLANA in code while the Solana gateway is gone from `master`.
+- **Status:** documentation only, committed locally on `avalanche/next`, not pushed.

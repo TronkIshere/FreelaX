@@ -22,9 +22,12 @@ Execution history and the resume point: [AUTONOMOUS_EXECUTION_LOG.md](AUTONOMOUS
 5. Pick the next action from the log's "Recommended next action", checked against the register.
 
 ## 2. Objective and scope
-- Objective (Phase 0, [README](README.md)): make Avalanche C-Chain the primary blockchain integration of FreelaX; Solana code,
-  modules, docs and records stay intact as the legacy reference; Avalanche is built and tested independently and integrated
-  progressively.
+- Objective (Phase 0, [README](README.md)): make Avalanche C-Chain the primary blockchain integration of FreelaX; Avalanche is
+  built and tested independently and integrated progressively.
+- **Solana (owner decision 2026-11-12, PROJECT_STATUS "Owner decision (2026-11-12)"):** the Solana modules
+  (`solana-integration`, `solana-stablecoin-payout`) are **no longer in `master`** (removed 2026-11-06); the legacy reference
+  is branch **`solana`** (`a700c29`, the last commit with them). Do not delete, rewrite or force-push branch `solana`. Solana
+  docs and records in `master` stay as history. Restoring Solana code into `master` needs a new owner decision.
 - **Permanent constraint** ([../SIMULATION_SCOPE.md](../SIMULATION_SCOPE.md)): FreelaX is a development simulation. No real
   funds, no real financial settlement. Only **LOCAL_SIMULATION** (Anvil, chain id 31337, simulated USDC) and
   **AVALANCHE_FUJI** (chain id 43113, testnet AVAX and Circle test USDC) exist. **Mainnet (43114) is out of scope**: not
@@ -40,8 +43,8 @@ Execution history and the resume point: [AUTONOMOUS_EXECUTION_LOG.md](AUTONOMOUS
   profile, **JDK 17 builds intentionally exclude it**); `avalanche-contracts` (Foundry 1.8.7, solc 0.8.38, OpenZeppelin
   v5.7.0); `marketplace-backend` (Java 17; Avalanche rail behind `avalanche-gateway.enabled=false`); `frontend`
   (React/Vite, EIP-1193 adapter, chain allow-list 31337/43113).
-- Legacy modules stay on **Java 17**; no global Java baseline change, no change to `Dockerfile.maven` or Solana targets
-  (O-16: root changes additive only). Persisted enums unchanged; schema changes are additive, forward-only Flyway.
+- Legacy modules stay on **Java 17**; no global Java baseline change, no change to `Dockerfile.maven`
+  (O-16: root changes additive only; the Solana targets left `master` with the modules on 2026-11-06). Persisted enums unchanged; schema changes are additive, forward-only Flyway.
 - Transaction model: union state set CREATED, SIGNED, SUBMITTED, PENDING, CONFIRMED, FINALIZED, REVERTED, FAILED, REPLACED,
   UNKNOWN (O-10, O-17). Confirmation keys on the receipt and `finalized`, never on submission or empty logs near head.
 - Assets by `(chainId, contract address)` from explicit configuration, never by symbol. USDC.e rejected.
@@ -85,7 +88,8 @@ Execution history and the resume point: [AUTONOMOUS_EXECUTION_LOG.md](AUTONOMOUS
   simulated; a real partner is out of scope. Before that, since the Lead's delegation of 2026-11-04, engineering may implement Phase 3 items that are
   reversible, simulation-only, default-off (or default to current behaviour) and covered by existing owner decisions; each is
   recorded as ENGINEERING DECIDED UNDER DELEGATED AUTHORITY (PROJECT_STATUS classification table). Done so far: settlement
-  notifications (flag, default off), primary-rail policy for new contracts (default SOLANA), stuck-escrow reporting (P3-C4),
+  notifications (flag, default off), primary-rail policy for new contracts (default SOLANA; **open question** since the Solana modules left `master`, see
+  PROJECT_STATUS "Owner decision (2026-11-12)"), stuck-escrow reporting (P3-C4),
   scanner health (A6), CI workflow (not executed), drills. Payout: a non-custodial adapter is built (default off, LOCAL mock
   partner only); a real partner, platform fee and tax treatment stay owner/external; never add custody or a chain fallback.
   F14/R12: **adopted 2026-11-05** (owner decision R12 option 1, O-5 question 8 amended for the two-party path): the escrow
@@ -109,7 +113,8 @@ Never, without a new explicit owner decision recorded in PROJECT_STATUS.md:
 - perform global installs or toolchain upgrades on the machine;
 - change Java 17 modules beyond **additive** changes: R11 (engineering decided under the Lead's delegation, 2026-11-04)
   allows additive code, migrations and tests in `marketplace-backend` (and `misa-backend` only if needed); the Java level,
-  Solana behaviour, legacy defaults and existing persisted values stay unchanged, and the full legacy JDK 17 reactor must pass.
+  legacy defaults and existing persisted values stay unchanged (Solana code is on branch `solana`), and the full JDK 17
+  reactor of `master` must pass.
 Every new configuration flag defaults to current behaviour. The application must keep failing closed on an unsupported
 network, Mainnet endpoint or production-looking credential.
 

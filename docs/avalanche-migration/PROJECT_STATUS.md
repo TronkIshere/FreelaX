@@ -591,3 +591,20 @@ Documentation only; no source, test, script, configuration or evidence file was 
 
 ## Change note (2026-11-06, structural refactoring of the Avalanche modules)
 Refactoring only: no change of behaviour, API, JSON shape, error code, Flyway schema, contract or security boundary (finding 9 and its compensating controls are unchanged). The gateway and the marketplace Avalanche code were reorganised into controller, dto, service and impl, repository, entity and error-definition packages; the new layout and the old-to-new mapping are in [module-structure.md](module-structure.md), the execution record is L-033. Class and test names in older reports (M3 to M9, the validation reports of 2026-11-04 and 2026-11-05) keep the names of their day. Measured on this machine, LOCAL-SIM: gateway 122 / 0 failures / 3 skipped; reactor payment 72, marketplace 456, misa 20; MySQL ITs 6/6; compose `drive` PASS (45 steps) and `outage` PASS on images built from the refactored sources. The Solana modules (`solana-integration`, `solana-stablecoin-payout`) are no longer in `master` and remain on branch `solana`; the 10 `solana-integration` tests are therefore not part of the `master` reactor.
+
+## Owner decision (2026-11-12, in session, authoritative)
+The owner confirmed in the session (2026-11-12) that removing the Solana modules from `master` (commits `7da98a2` and
+`1cc46cb`, 2026-11-06) is an **official owner decision**, with the Solana code backed up on a branch.
+
+| Item | Decision | Effect |
+|---|---|---|
+| Solana modules in `master` | **Removed** (`solana-integration`, `solana-stablecoin-payout`, the Solana gateway in the reactor, Dockerfiles and compose) | `master` is the Avalanche line; the 10 `solana-integration` tests are not part of the `master` reactor |
+| Backup | Branch **`solana`** on `origin`, at `a700c29` (last commit containing both modules; verified 2026-11-12: 105 files present there and absent in `master`) | Must not be deleted, rewritten or force-pushed. No tag was created (not requested) |
+| Restoring Solana into `master` | Needs a new owner decision | none |
+
+**Open question raised by this decision (not decided here):** `marketplace.primary-rail` still defaults to `SOLANA`
+(`application.yml`, `PrimaryRailPolicy`), and the marketplace still contains the Solana escrow rail services, while the
+Solana gateway module is no longer in `master`. Whether new contracts should default to AVALANCHE, and what happens to the
+Solana-rail code paths in the marketplace, is business behaviour and stays with the owner (no default was changed).
+
+Work now continues on branch `avalanche/next`, created from `master` (`6f47900`) on 2026-11-12. Documentation change only.
