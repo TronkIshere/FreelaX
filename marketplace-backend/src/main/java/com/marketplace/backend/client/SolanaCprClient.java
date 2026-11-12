@@ -259,6 +259,11 @@ public class SolanaCprClient {
     }
 
     private <T> T execute(String operation, ExchangeCall<T> call) {
+        // R13: no Solana gateway in this build. Same exception type and retry semantics as an unreachable gateway
+        // (not definitive), so every caller keeps its existing handling; no network request is made.
+        if (!properties.isEnabled()) {
+            throw new SolanaCprException(operation + ": SOLANA_RAIL_DISABLED", false, null);
+        }
         try {
             return call.exchange().getBody();
         } catch (RestClientResponseException e) {

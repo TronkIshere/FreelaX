@@ -22,9 +22,14 @@ Execution history and the resume point: [AUTONOMOUS_EXECUTION_LOG.md](AUTONOMOUS
 5. Pick the next action from the log's "Recommended next action", checked against the register.
 
 ## 2. Objective and scope
-- Objective (Phase 0, [README](README.md)): make Avalanche C-Chain the primary blockchain integration of FreelaX; Solana code,
-  modules, docs and records stay intact as the legacy reference; Avalanche is built and tested independently and integrated
-  progressively.
+- Objective (Phase 0, [README](README.md)): make Avalanche C-Chain the primary blockchain integration of FreelaX; Avalanche is
+  built and tested independently and integrated progressively.
+- **Solana rail switch (R13, owner decision 2026-11-12):** `solana-cpr.enabled` / `SOLANA_CPR_ENABLED`, default **false**:
+  marketplace calls to the Solana gateway fail closed with `SOLANA_RAIL_DISABLED` and the Solana escrow scheduler is idle.
+- **Solana (owner decision 2026-11-12, PROJECT_STATUS "Owner decision (2026-11-12)"):** the Solana modules
+  (`solana-integration`, `solana-stablecoin-payout`) are **no longer in `master`** (removed 2026-11-06); the legacy reference
+  is branch **`solana`** (`a700c29`, the last commit with them). Do not delete, rewrite or force-push branch `solana`. Solana
+  docs and records in `master` stay as history. Restoring Solana code into `master` needs a new owner decision.
 - **Permanent constraint** ([../SIMULATION_SCOPE.md](../SIMULATION_SCOPE.md)): FreelaX is a development simulation. No real
   funds, no real financial settlement. Only **LOCAL_SIMULATION** (Anvil, chain id 31337, simulated USDC) and
   **AVALANCHE_FUJI** (chain id 43113, testnet AVAX and Circle test USDC) exist. **Mainnet (43114) is out of scope**: not
@@ -40,8 +45,8 @@ Execution history and the resume point: [AUTONOMOUS_EXECUTION_LOG.md](AUTONOMOUS
   profile, **JDK 17 builds intentionally exclude it**); `avalanche-contracts` (Foundry 1.8.7, solc 0.8.38, OpenZeppelin
   v5.7.0); `marketplace-backend` (Java 17; Avalanche rail behind `avalanche-gateway.enabled=false`); `frontend`
   (React/Vite, EIP-1193 adapter, chain allow-list 31337/43113).
-- Legacy modules stay on **Java 17**; no global Java baseline change, no change to `Dockerfile.maven` or Solana targets
-  (O-16: root changes additive only). Persisted enums unchanged; schema changes are additive, forward-only Flyway.
+- Legacy modules stay on **Java 17**; no global Java baseline change, no change to `Dockerfile.maven`
+  (O-16: root changes additive only; the Solana targets left `master` with the modules on 2026-11-06). Persisted enums unchanged; schema changes are additive, forward-only Flyway.
 - Transaction model: union state set CREATED, SIGNED, SUBMITTED, PENDING, CONFIRMED, FINALIZED, REVERTED, FAILED, REPLACED,
   UNKNOWN (O-10, O-17). Confirmation keys on the receipt and `finalized`, never on submission or empty logs near head.
 - Assets by `(chainId, contract address)` from explicit configuration, never by symbol. USDC.e rejected.
@@ -85,7 +90,8 @@ Execution history and the resume point: [AUTONOMOUS_EXECUTION_LOG.md](AUTONOMOUS
   simulated; a real partner is out of scope. Before that, since the Lead's delegation of 2026-11-04, engineering may implement Phase 3 items that are
   reversible, simulation-only, default-off (or default to current behaviour) and covered by existing owner decisions; each is
   recorded as ENGINEERING DECIDED UNDER DELEGATED AUTHORITY (PROJECT_STATUS classification table). Done so far: settlement
-  notifications (flag, default off), primary-rail policy for new contracts (default SOLANA), stuck-escrow reporting (P3-C4),
+  notifications (flag, default off), primary-rail policy for new contracts (**default AVALANCHE since the owner decision of 2026-11-12**, rail on by default;
+  SOLANA selectable explicitly), stuck-escrow reporting (P3-C4),
   scanner health (A6), CI workflow (not executed), drills. Payout: a non-custodial adapter is built (default off, LOCAL mock
   partner only); a real partner, platform fee and tax treatment stay owner/external; never add custody or a chain fallback.
   F14/R12: **adopted 2026-11-05** (owner decision R12 option 1, O-5 question 8 amended for the two-party path): the escrow
@@ -109,17 +115,22 @@ Never, without a new explicit owner decision recorded in PROJECT_STATUS.md:
 - perform global installs or toolchain upgrades on the machine;
 - change Java 17 modules beyond **additive** changes: R11 (engineering decided under the Lead's delegation, 2026-11-04)
   allows additive code, migrations and tests in `marketplace-backend` (and `misa-backend` only if needed); the Java level,
-  Solana behaviour, legacy defaults and existing persisted values stay unchanged, and the full legacy JDK 17 reactor must pass.
+  legacy defaults and existing persisted values stay unchanged (Solana code is on branch `solana`), and the full JDK 17
+  reactor of `master` must pass.
 Every new configuration flag defaults to current behaviour. The application must keep failing closed on an unsupported
 network, Mainnet endpoint or production-looking credential.
 
 ## 7. Testing and evidence requirements
 - Every code change: run the affected module's suite and record counts (run / pass / skipped) in the log and in the
   relevant report. Report environment incompatibilities separately from code failures.
+- **Clean builds for recorded results** (2026-11-12): run Maven suites with `clean test` (for example `mvn -B -ntp clean test`,
+  `-pl avalanche-integration -am clean test`). After a branch switch, compiled classes left in `target/` can run a test that
+  no longer exists in the sources (2026-11-12: 34 `InstantiationError` from a stale `AvalancheEscrowServiceTest.class`).
+  CI starts from a fresh checkout and is not affected.
 - Baselines to keep green (2026-11-05, last measured): legacy JDK 17 reactor payment 72, marketplace 456, misa 20
   (`solana-integration` 10 lives on branch `solana` since 2026-11-06); avalanche-integration 122 (3 optional skipped); Foundry 77 pass, 1 skipped (R12 adopted 2026-11-05); R12 lab 72; frontend 32
   files, 883 tests; human-signed tooling 13; A2 harness PASS (with the payout, R12 settlement, administrator and arbiter flows); compose Avalanche drivers (drive, browser,
-  outage) PASS. A drop is a regression unless explained. The opt-in MySQL ITs (`*MySqlIT`, `-Dfreelax.mysql.url`, 6 tests) run against a throwaway local MySQL only.
+  outage) PASS (re-run 2026-11-12 with AVALANCHE as the default rail; dev stack: `phase-2/compose-avalanche/start-dev.sh`). A drop is a regression unless explained. The opt-in MySQL ITs (`*MySqlIT`, `-Dfreelax.mysql.url`, 6 tests) run against a throwaway local MySQL only.
 - This machine (B10): JDK 25 only; Maven 3.10.0 in `~/.m2/wrapper/dists/apache-maven-3.10.0/*/bin` (not on `PATH`); JDK 23+
   needs `-Dmaven.compiler.proc=full` for `payment-backend`. Use pinned images for real runtimes: `maven:3.9-eclipse-temurin-17`
   (legacy reactor), `maven:3.9-eclipse-temurin-21` (`-pl avalanche-integration -am test`, Testcontainers via the Docker

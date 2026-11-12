@@ -547,3 +547,39 @@ original reasoning. Do not add routine progress entries.
 - **Found and handled:** an uncommitted dependency edit in `avalanche-integration/pom.xml` (explicit `okhttp 4.12.0`) put `okio 3.6.0` next to web3j's `okhttp-jvm 5.5.0` and made 49 gateway tests fail with `NoSuchMethodError okio.Okio.socket`; the edit was reverted to the committed pom (the gateway builds and passes without it). Stale classes in `target/` after package moves cause duplicate-bean failures; use `clean`.
 - **Reported, not changed:** non-numeric `amount` on `fund` still ends in HTTP 500 (`new BigInteger`); `WalletSignatureRequest` is lenient about unknown properties (the strict annotation sat on another type in the source); legacy marketplace services keep fully qualified names in Avalanche guard lines.
 - **Tests (this machine, LOCAL-SIM):** gateway 122 run, 0 failures, 3 skipped (same as before); legacy JDK 17 reactor payment 72, marketplace 456, misa 20, all passing; MySQL ITs 6/6 on a throwaway MySQL 8.4; compose Avalanche run on images built from the refactored sources: `drive.mjs` PASS (45 steps), `outage.mjs` PASS (setup, O1 to O7b). Not re-run (code untouched): Foundry, frontend, the browser driver.
+
+### L-034: Owner decision on the Solana removal; new work branch (2026-11-12)
+- **Sync:** the local `avalanche/phase1-closure-phase3-proposal` was reset to `origin` (`a700c29`; the local push-note commit
+  `b543b65` was superseded and kept only as local branch `local-backup/push-note-b543b65`); local `master` fast-forwarded to
+  `origin/master` (`6f47900`); new branch **`avalanche/next`** from `master`.
+- **Decision recorded:** the owner confirmed the removal of the Solana modules from `master` as an official decision; backup
+  = branch `solana` (`a700c29`, verified). CLAUDE.md rules that still said "Solana stays intact" were updated.
+- **Open (owner):** the default primary rail is still SOLANA in code while the Solana gateway is gone from `master`.
+- **Status:** documentation only, committed locally on `avalanche/next`, not pushed.
+
+### L-035: Default rail AVALANCHE and rail on by default (2026-11-12)
+- **Authority:** owner decision 2026-11-12 (option a; "change the rail and enable the gateway").
+- **Changed:** `marketplace.primary-rail` default AVALANCHE, `avalanche-gateway.enabled` default true (application.yml,
+  `PrimaryRailPolicy`, docker-compose.yml, .env.example). Compose profile `avalanche` kept (see PROJECT_STATUS); partner
+  fiat-mock rail needs `MARKETPLACE_PRIMARY_RAIL=SOLANA` for new contracts.
+- **Tests:** JDK 17 reactor of master (clean build) payment 72, marketplace 456, misa 20, BUILD SUCCESS, same as the 2026-11-06 baseline (a first run without clean failed with 34 InstantiationError from a stale AvalancheEscrowServiceTest.class left in target/ by the previous branch; environment, not code).
+- **Not run:** compose drivers and partner-mock end-to-end scripts (need the full stack; the partner scripts now need the
+  explicit SOLANA setting).
+
+### L-036: Stabilisation after the default-rail change (2026-11-12)
+- **Authority:** owner "bắt đầu đi" on steps 1 to 5 proposed in the session; container clean-up approved by the owner.
+- **Done:** see PROJECT_STATUS change note (2026-11-12, stabilisation). Results: Foundry 77/1, gateway 122/0/3, reactor
+  72/456/20, frontend 32/883, compose drivers drive/browser/outage PASS on one run. `start-dev.sh`/`stop-dev.sh` added and used.
+- **Environment issues (not code):** Docker Desktop had to be started twice; stopped containers of an older compose project
+  `freelax` held the names `shared-mysql`/`shared-redis` (containers removed with approval, volumes kept); port 8080 is held by
+  a Windows `svchost` service (frontend moved to 8088 for the run); a session end interrupted one run (stack torn down with
+  `stop-dev.sh` and re-run). The evidence was scanned against the run's own throwaway env values before committing.
+- **Open:** R13 (Solana code paths); partner-mock flows not re-run; the dev stack is left running (stop with `stop-dev.sh`).
+
+### L-037: R13 option (a): Solana rail switch, default off (2026-11-12)
+- **Authority:** owner "chọn a" on R13.
+- **Change:** `solana-cpr.enabled` (default false at runtime); single guard in `SolanaCprClient.execute` (every HTTP call to
+  the Solana gateway passes there) throwing the existing non-definitive `SolanaCprException` with `SOLANA_RAIL_DISABLED`;
+  Solana escrow scheduler idle when disabled; compose and `.env.example` pass-through.
+- **Tests:** clean JDK 17 reactor of master 72 / 460 / 20, 0 failures, 0 skipped (marketplace +4: SolanaCprClientDisabledTest 2, SolanaEscrowTimeoutSchedulerTest 2; baseline 456).
+- **Runtime check (same day):** dev stack rebuilt from `2f49efa` (`start-dev.sh drive.mjs`, `SOLANA_CPR_ENABLED` unset, so false): marketplace started normally; `drive` **PASS** (Avalanche flows incl. R12 settlement and arbiter paths). Evidence kept local in `.avalanche-dev/evidence/` (not committed).

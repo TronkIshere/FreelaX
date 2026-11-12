@@ -46,3 +46,18 @@ R2 remainder (DB operator), R4, R6** (Phase 3 approval), the business part of R8
 | X1 (E1) | human operator with the owner-approved signer, after R1 | own Fuji transactions with the lab contract (testnet AVAX only) | [phase-1/prototypes/human-signed/README.md](phase-1/prototypes/human-signed/README.md) "Procedure" | `phase-1/evidence/live/AVALANCHE_FUJI-human-signed-chain43113-<utc>.json`; note the faucet's stated limits |
 | X2 (E2) | DB operator, once named (R2 remainder) | counts for the six read-only queries, **development database only** (R2, 2026-11-03) | [phase-1/db-rail-evidence-request.md](phase-1/db-rail-evidence-request.md) "Operator checklist and required output format" | one file, `rail-evidence-development-<yyyymmdd>.md`, under `phase-1/evidence/db/` |
 | X3 (B1, later B2) | owner-named funding owner | funding of the E1 address; later the human-signed escrow deployment | `avalanche-contracts/deployments/README.md` (Fuji section, still BLOCKED) | deployment manifest `AVALANCHE_FUJI.json` (addresses only) |
+
+## R13 (new 2026-11-12): Solana code paths left in the marketplace after the modules left `master`
+**ANSWERED 2026-11-12: option (a)**, implemented the same day (PROJECT_STATUS "Owner decision (2026-11-12, third)").
+**Finding (audit, no change made):** 19 classes in `marketplace-backend` still call the Solana gateway
+(`SolanaCprClient`, `SolanaGatewayAdapter`, `SolanaEscrowFundingService`, `SolanaEscrowTimeoutService`,
+`SolanaEscrowWorkflowService`, `SolanaOnRampProvider`, the unified-rail payment, payout, off-ramp and VND payout services,
+`SolanaEscrowTimeoutScheduler`, and related). None is behind a flag; with the Solana gateway gone they fail only when called,
+with a connection error. The schedulers poll the database and call the gateway only for existing Solana escrows.
+**Options (recommendation first):**
+(a) add a `solana.enabled` flag, default **false** on `master`, that makes these paths fail closed with a clear error and keeps
+the schedulers idle (additive, reversible, the code stays for reference);
+(b) remove the code from `master` (it is preserved on branch `solana`), which touches the unified and partner rails and needs
+a careful split;
+(c) leave as is (dormant code, failures only on use).
+**Who decides:** the owner (behaviour and scope of the legacy rails).

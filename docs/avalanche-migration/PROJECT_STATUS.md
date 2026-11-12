@@ -591,3 +591,71 @@ Documentation only; no source, test, script, configuration or evidence file was 
 
 ## Change note (2026-11-06, structural refactoring of the Avalanche modules)
 Refactoring only: no change of behaviour, API, JSON shape, error code, Flyway schema, contract or security boundary (finding 9 and its compensating controls are unchanged). The gateway and the marketplace Avalanche code were reorganised into controller, dto, service and impl, repository, entity and error-definition packages; the new layout and the old-to-new mapping are in [module-structure.md](module-structure.md), the execution record is L-033. Class and test names in older reports (M3 to M9, the validation reports of 2026-11-04 and 2026-11-05) keep the names of their day. Measured on this machine, LOCAL-SIM: gateway 122 / 0 failures / 3 skipped; reactor payment 72, marketplace 456, misa 20; MySQL ITs 6/6; compose `drive` PASS (45 steps) and `outage` PASS on images built from the refactored sources. The Solana modules (`solana-integration`, `solana-stablecoin-payout`) are no longer in `master` and remain on branch `solana`; the 10 `solana-integration` tests are therefore not part of the `master` reactor.
+
+## Owner decision (2026-11-12, in session, authoritative)
+The owner confirmed in the session (2026-11-12) that removing the Solana modules from `master` (commits `7da98a2` and
+`1cc46cb`, 2026-11-06) is an **official owner decision**, with the Solana code backed up on a branch.
+
+| Item | Decision | Effect |
+|---|---|---|
+| Solana modules in `master` | **Removed** (`solana-integration`, `solana-stablecoin-payout`, the Solana gateway in the reactor, Dockerfiles and compose) | `master` is the Avalanche line; the 10 `solana-integration` tests are not part of the `master` reactor |
+| Backup | Branch **`solana`** on `origin`, at `a700c29` (last commit containing both modules; verified 2026-11-12: 105 files present there and absent in `master`) | Must not be deleted, rewritten or force-pushed. No tag was created (not requested) |
+| Restoring Solana into `master` | Needs a new owner decision | none |
+
+**Open question raised by this decision (not decided here):** `marketplace.primary-rail` still defaults to `SOLANA`
+(`application.yml`, `PrimaryRailPolicy`), and the marketplace still contains the Solana escrow rail services, while the
+Solana gateway module is no longer in `master`. Whether new contracts should default to AVALANCHE, and what happens to the
+Solana-rail code paths in the marketplace, is business behaviour and stays with the owner (no default was changed).
+
+Work now continues on branch `avalanche/next`, created from `master` (`6f47900`) on 2026-11-12. Documentation change only.
+
+### Owner decision (2026-11-12, second): default rail of new contracts
+The owner chose option (a) for the open question above and, asked how, chose "change the rail and enable the gateway".
+
+| Setting | Before | Now (default) | Where |
+|---|---|---|---|
+| `marketplace.primary-rail` | SOLANA | **AVALANCHE** | `application.yml`, `PrimaryRailPolicy`, `docker-compose.yml`, `.env.example` |
+| `avalanche-gateway.enabled` | false | **true** | same files |
+
+Applied 2026-11-12 on branch `avalanche/next`. Existing contracts are never changed (the policy applies to new contracts only).
+**Not applied, by engineering judgement (recorded, reversible):** the `avalanche` compose profile is kept on the gateway
+service. The gateway refuses to start without an RPC endpoint, a deployment manifest and an internal key, and a working local
+chain also needs Anvil, the forge deployment and the role hand-over to the gateway's ephemeral signers; plain
+`docker compose up` cannot do these steps, so removing the profile would leave a restarting container. The working one-command
+local stack remains `phase-2/compose-avalanche/run.sh` (a non-teardown "start" variant is a possible follow-up).
+
+**Consequences to confirm (owner):** with AVALANCHE as default, new contracts can no longer use the legacy fiat-mock partner
+escrow (`PartnerEscrowFundingService` refuses an Avalanche contract, commit `fd34766`) unless a deployment sets
+`MARKETPLACE_PRIMARY_RAIL=SOLANA`; the repository's `scripts/partner-mock-*.mjs` end-to-end scripts therefore need that
+setting. Without a running gateway, contracts are still created but funding and the other chain actions report the gateway
+as unreachable (no fallback to another rail).
+
+Tests: JDK 17 reactor of master (clean build) payment 72, marketplace 456, misa 20, BUILD SUCCESS, same as the 2026-11-06 baseline (a first run without clean failed with 34 InstantiationError from a stale AvalancheEscrowServiceTest.class left in target/ by the previous branch; environment, not code).
+
+## Change note (2026-11-12, stabilisation after the default-rail change)
+Owner instruction "bắt đầu đi" on the proposed stabilisation steps 1 to 5. Branch `avalanche/next`, LOCAL-SIM only, not pushed.
+1. **Full validation after AVALANCHE became the default rail:** Foundry 77 pass / 1 skipped; gateway 122 / 0 failures / 3
+   skipped (clean build); JDK 17 reactor of `master` 72 / 456 / 20 (clean build); frontend 32 files / 883, `tsc -b` clean;
+   compose stack built from source with the drivers on one run: `drive` **PASS** (45 steps), `browser` **PASS** (15 steps),
+   `outage` **PASS** (9 steps) ([evidence](phase-2/evidence/compose-avalanche-20261112/)). The first browser run failed at S1:
+   the driver waited for the opt-in button, which a new contract no longer shows because it starts on the Avalanche rail;
+   the driver now accepts both cases and records which (test change, not a product defect).
+2. **Development stack that stays up:** `phase-2/compose-avalanche/start-dev.sh` and `stop-dev.sh` (run.sh `KEEP_STACK=1`),
+   `FREELAX_HTTP_BIND` passed through for the frontend port, `.avalanche-dev/` git-ignored, LF attributes for the scripts.
+   Used for real on 2026-11-12 (start, three drivers, stop).
+3. **Clean builds:** rule added to CLAUDE.md section 7.
+4. **Partner fiat-mock scripts:** `scripts/partner-mock-*.mjs` stop with a clear message unless the stack runs with
+   `MARKETPLACE_PRIMARY_RAIL=SOLANA` (checked with throwaway env files). The flows themselves were not re-run.
+5. **Solana code paths still in the marketplace:** audit only, no change; filed as request R13.
+
+### Owner decision (2026-11-12, third): R13 option (a), Solana rail switch
+The owner chose option (a). Implemented on `avalanche/next`:
+- `solana-cpr.enabled` (`SOLANA_CPR_ENABLED`), runtime default **false** in `application.yml`, `docker-compose.yml` and
+  `.env.example`. The Java field defaults to true only so that hand-built test properties keep exercising the client.
+- When false, `SolanaCprClient` fails every Solana gateway call **before any request** with `SolanaCprException("<op>:
+  SOLANA_RAIL_DISABLED", definitive=false)`: the same exception type and retry semantics as an unreachable gateway
+  (`CONNECTION_FAILED`), so every caller keeps its existing handling and no state changes; only the cause is explicit.
+- `SolanaEscrowTimeoutScheduler` returns immediately while disabled (no database polling, no reconciliation).
+- The code stays in `master` for reference; nothing was removed. Setting `SOLANA_CPR_ENABLED=true` restores the previous
+  behaviour (it still needs a Solana gateway, available on branch `solana`).
+Tests: clean JDK 17 reactor of master 72 / 460 / 20, 0 failures, 0 skipped (marketplace +4: SolanaCprClientDisabledTest 2, SolanaEscrowTimeoutSchedulerTest 2; baseline 456).

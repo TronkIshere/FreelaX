@@ -7,6 +7,8 @@
 # Usage: bash docs/avalanche-migration/phase-2/compose-avalanche/run.sh <output-dir> [driver.mjs ...]
 # Drivers are looked up in this folder, then in ../a2-local-stack (drive.mjs, browser.mjs). Default: drive.mjs. Each writes <output-dir>/<name>.json.
 # Environment given to every driver: MARKET GATEWAY GATEWAY_KEY ANVIL OUT FRONTEND ADMIN_EMAIL ADMIN_PASSWORD STACK_PROJECT; PLAYWRIGHT_CORE passes through.
+# KEEP_STACK=1 (used by start-dev.sh): leave the stack running after the drivers (none by default), keep the deployment manifest, and
+# keep the throwaway env file in <repo>/.avalanche-dev/env (git-ignored) so stop-dev.sh can stop it. Every start is a fresh stack.
 set -euo pipefail
 export MSYS_NO_PATHCONV=1
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -15,13 +17,16 @@ ROOT="$(cd "$HERE/../../../.." && pwd)"
 win() { cygpath -m "$1" 2>/dev/null || echo "$1"; }
 WINROOT="$(win "$ROOT")"; WINHERE="$(win "$HERE")"; WINA2="$(win "$A2")"
 OUTDIR="${1:?usage: run.sh <output-dir> [driver ...]}"; shift || true
-DRIVERS=("$@"); [ ${#DRIVERS[@]} -gt 0 ] || DRIVERS=(drive.mjs)
+KEEP="${KEEP_STACK:-0}"
+DRIVERS=("$@"); [ ${#DRIVERS[@]} -gt 0 ] || [ "$KEEP" = 1 ] || DRIVERS=(drive.mjs)
 mkdir -p "$OUTDIR"; OUTDIR="$(cd "$OUTDIR" && pwd)"; WINOUT="$(win "$OUTDIR")"
 P="${STACK_PROJECT:-fxav}"
 FOUNDRY=ghcr.io/foundry-rs/foundry:v1.8.7
 ANVIL_SENDER=0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266   # Anvil's well-known unlocked dev account (LOCAL only, no key)
 MANIFEST_REL=avalanche-contracts/deployments/LOCAL_SIMULATION.json
-TMPD="$(mktemp -d)"; ENVF="$TMPD/env"; ENVW="$(win "$ENVF")"
+TMPD="$(mktemp -d)"; ENVF="$TMPD/env"
+if [ "$KEEP" = 1 ]; then mkdir -p "$ROOT/.avalanche-dev"; ENVF="$ROOT/.avalanche-dev/env"; fi
+ENVW="$(win "$ENVF")"
 
 dc() { docker compose -p "$P" -f "$WINROOT/docker-compose.yml" -f "$WINHERE/docker-compose.anvil.yml" --env-file "$ENVW" --profile avalanche --profile deploy "$@"; }
 getv() { grep "^$1=" "$ENVF" | head -1 | cut -d= -f2-; }
@@ -34,7 +39,13 @@ on_exit() {
     echo "--- compose Avalanche run failed (rc=$rc); last log lines (secrets filtered):" >&2
     for s in avalanche-integration marketplace-backend; do dc logs --tail 25 "$s" 2>&1 | grep -viE "password|secret|key=" >&2 || true; done
   fi
-  down; restore_manifest; rm -rf "$TMPD"; exit $rc
+  if [ "$KEEP" = 1 ] && [ $rc -eq 0 ]; then
+    rm -rf "$TMPD"
+    echo "[fxav] stack left running (project $P): marketplace http://127.0.0.1:9191, gateway http://127.0.0.1:9194, frontend http://$HTTP_BIND, Anvil http://127.0.0.1:8545"
+    echo "[fxav] throwaway env (demo passwords, LOCAL only): $ROOT/.avalanche-dev/env ; stop with: bash $HERE/stop-dev.sh"
+    exit 0
+  fi
+  down; restore_manifest; rm -rf "$TMPD"; [ "$KEEP" = 1 ] && rm -f "$ENVF"; exit $rc
 }
 trap on_exit EXIT
 
@@ -49,6 +60,10 @@ down
 if [ -f "$ROOT/$MANIFEST_REL" ] && [ ! -f "$ROOT/$MANIFEST_REL.fxav-backup" ]; then mv "$ROOT/$MANIFEST_REL" "$ROOT/$MANIFEST_REL.fxav-backup"; fi
 
 node "$WINHERE/mkenv.mjs" "$ENVW"
+# FREELAX_HTTP_BIND (optional, default 127.0.0.1:8080): frontend bind, for a host where 8080 is taken (2026-11-12: held by a Windows service)
+HTTP_BIND="${FREELAX_HTTP_BIND:-127.0.0.1:8080}"
+case "$HTTP_BIND" in 127.0.0.1:[0-9]*) ;; *) echo "FREELAX_HTTP_BIND must be 127.0.0.1:<port> (loopback only)" >&2; exit 2;; esac
+if grep -q '^FREELAX_HTTP_BIND=' "$ENVF"; then sed -i "s|^FREELAX_HTTP_BIND=.*|FREELAX_HTTP_BIND=$HTTP_BIND|" "$ENVF"; else echo "FREELAX_HTTP_BIND=$HTTP_BIND" >> "$ENVF"; fi
 echo "[fxav] build the images (sequential)"
 COMPOSE_PARALLEL_LIMIT=1 dc build avalanche-integration payment-backend misa-backend marketplace-backend frontend >"$TMPD/build.log" 2>&1 || { tail -20 "$TMPD/build.log" >&2; exit 3; }
 
@@ -94,9 +109,9 @@ done
 sleep 15   # let payment and MISA finish starting
 
 export MARKET=http://127.0.0.1:9191 GATEWAY=http://127.0.0.1:9194 GATEWAY_KEY="$(getv AVALANCHE_INTERNAL_API_KEY)" ANVIL="$P-anvil-1" \
-  FRONTEND=http://127.0.0.1:8080 ADMIN_EMAIL=admin.e2e@example.test ADMIN_PASSWORD="$(getv DEMO_ADMIN_PASSWORD)" STACK_PROJECT="$P" MYSQL_CONTAINER=shared-mysql
+  FRONTEND="http://$HTTP_BIND" ADMIN_EMAIL=admin.e2e@example.test ADMIN_PASSWORD="$(getv DEMO_ADMIN_PASSWORD)" STACK_PROJECT="$P" MYSQL_CONTAINER=shared-mysql
 status=0
-for d in "${DRIVERS[@]}"; do
+for d in "${DRIVERS[@]+"${DRIVERS[@]}"}"; do
   f="$HERE/$d"; [ -f "$f" ] || f="$A2/$d"
   [ -f "$f" ] || { echo "driver $d not found" >&2; status=7; continue; }
   name="${d%.mjs}"

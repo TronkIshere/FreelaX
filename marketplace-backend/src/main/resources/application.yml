@@ -58,12 +58,14 @@ tax-certificate:
   sync-initial-delay-ms: 60000
   sync-interval-ms: 300000
 
-# P3-C2: default rail for NEW contracts (SOLANA keeps current behaviour; AVALANCHE needs the gateway enabled)
+# P3-C2: default rail for NEW contracts. Owner decision 2026-11-12: AVALANCHE by default (the Solana modules left master);
+# SOLANA can still be set explicitly. AVALANCHE needs the gateway enabled (no fallback to another rail).
 marketplace:
-  primary-rail: ${MARKETPLACE_PRIMARY_RAIL:SOLANA}
+  primary-rail: ${MARKETPLACE_PRIMARY_RAIL:AVALANCHE}
 
 avalanche-gateway:
-  enabled: ${AVALANCHE_GATEWAY_ENABLED:false}
+  # Owner decision 2026-11-12: on by default. The gateway service itself must run (see docker-compose.yml, profile avalanche).
+  enabled: ${AVALANCHE_GATEWAY_ENABLED:true}
   base-url: ${AVALANCHE_GATEWAY_BASE_URL:http://localhost:9194}
   internal-api-key: ${AVALANCHE_GATEWAY_INTERNAL_API_KEY:}
   network: ${AVALANCHE_GATEWAY_NETWORK:avalanche-local}
@@ -78,6 +80,8 @@ avalanche-payout:
   local-mock-deposit-address: ${AVALANCHE_PAYOUT_LOCAL_MOCK_DEPOSIT_ADDRESS:0x00000000000000000000000000000000000c0ffe}
 
 solana-cpr:
+  # R13 (owner decision 2026-11-12): the Solana gateway is not in master (branch solana); calls fail closed with SOLANA_RAIL_DISABLED
+  enabled: ${SOLANA_CPR_ENABLED:false}
   base-url: ${SOLANA_CPR_BASE_URL:http://localhost:9193}
   internal-api-key: ${SOLANA_CPR_INTERNAL_API_KEY:}
   custodial-client-public-key: ${SOLANA_CPR_CUSTODIAL_CLIENT_PUBLIC_KEY:}
