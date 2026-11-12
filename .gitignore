@@ -50,3 +50,6 @@ Thumbs.db
 # Test / coverage
 /coverage/
 *.hprof
+
+# Local Avalanche dev stack (start-dev.sh): throwaway env file and evidence, never committed
+.avalanche-dev/

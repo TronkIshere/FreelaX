@@ -5,6 +5,12 @@ import { readFileSync } from 'node:fs';
 const settings = Object.fromEntries(readFileSync(new URL('../.env', import.meta.url), 'utf8')
   .split(/\r?\n/).filter(line => line.includes('=') && !line.startsWith('#'))
   .map(line => [line.slice(0, line.indexOf('=')), line.slice(line.indexOf('=') + 1)]));
+// Owner decision 2026-11-12: new contracts default to the Avalanche rail, and the partner fiat-mock escrow refuses an Avalanche
+// contract. This flow therefore needs a stack started with MARKETPLACE_PRIMARY_RAIL=SOLANA (the legacy rails); stop early otherwise.
+if ((settings.MARKETPLACE_PRIMARY_RAIL || 'AVALANCHE').trim().toUpperCase() !== 'SOLANA') {
+  console.error('This partner-mock flow needs the legacy rail: start the stack with MARKETPLACE_PRIMARY_RAIL=SOLANA in its env file.');
+  process.exit(2);
+}
 const marketplace = process.env.MARKETPLACE_URL || 'http://127.0.0.1:9191/api/v1';
 const payment = process.env.PAYMENT_URL || 'http://127.0.0.1:9190';
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));

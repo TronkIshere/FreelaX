@@ -25,12 +25,15 @@ frontend toolchain run inside pinned images: `maven:3.9-eclipse-temurin-17` (leg
 
 ## 2. Legacy modules and the frontend through compose
 ```sh
-docker compose --env-file <your env file> --profile deploy up -d --build mysql redis payment-backend misa-backend solana-integration marketplace-backend frontend
+docker compose --env-file <your env file> --profile deploy up -d --build mysql redis payment-backend misa-backend marketplace-backend frontend
 ```
 Wait until `POST http://127.0.0.1:9191/api/v1/auth/sign-in` answers (400 for an empty body). The services restart by themselves while MySQL initializes,
 so first start takes a few minutes. If you change `MYSQL_ROOT_PASSWORD` after the volume exists, run `docker compose ... down -v` first.
 The project's own end-to-end scripts (`scripts/partner-mock-e2e.mjs`, `partner-mock-admin-e2e.mjs`) read the repository `.env`; run them from a copy next to
 a `.env` that matches the stack you started.
+**Since 2026-11-12** (owner decision: Avalanche is the default rail of new contracts) these legacy partner-mock flows need the
+stack started with `MARKETPLACE_PRIMARY_RAIL=SOLANA` in the env file; the scripts stop with a message otherwise. The
+`solana-integration` service is no longer in `master` (branch `solana`), so it is not started here.
 
 ## 3. Avalanche path on one local stack (gateway, Anvil, contracts, marketplace)
 The compose `avalanche` profile needs an Anvil node, a deployment manifest and a role hand-over to the gateway's ephemeral signers (F3); the harness
@@ -87,3 +90,16 @@ See [validation-matrix.md](../validation-matrix.md) "Commands of the final valid
 ## 7. Teardown
 `docker compose -p <project> down -v` for step 2; steps 3 and 4 remove their containers and restore any local manifest by themselves.
 Containers named `shared-mysql` and `shared-redis` are created by compose; check `docker ps` before removing anything you did not start.
+
+## Development stack that stays up (2026-11-12)
+```sh
+bash docs/avalanche-migration/phase-2/compose-avalanche/start-dev.sh            # build, start, deploy, hand over the roles; leave it running
+bash docs/avalanche-migration/phase-2/compose-avalanche/start-dev.sh drive.mjs  # same, then run drivers against it
+bash docs/avalanche-migration/phase-2/compose-avalanche/stop-dev.sh             # stop it and remove its volumes, manifest and env file
+```
+- It is `run.sh` in `KEEP_STACK=1` mode. Every start is a fresh stack (project `fxav`); data does not survive `stop-dev.sh`.
+- The throwaway env file (demo passwords, LOCAL only) is `.avalanche-dev/env`, git-ignored; driver output goes to `.avalanche-dev/evidence/`.
+- `FREELAX_HTTP_BIND=127.0.0.1:<port>` moves the frontend off 8080 (on this machine 8080 is held by a Windows service); loopback only.
+- The compose file names its MySQL and Redis containers `shared-mysql` and `shared-redis`; the script refuses to start while containers
+  with those names belong to another compose project (2026-11-12: the stopped containers of an older `freelax` project were removed
+  with the owner's approval; its volumes `freelax_mysql-data`, `freelax_caddy-*` were kept).

@@ -173,11 +173,15 @@ async function main() {
   record('S0 login through the UI form', { ok: true });
 
   // S1 open the contract and choose the Avalanche rail in the UI
+  // Since the owner decision of 2026-11-12 new contracts start on the Avalanche rail (marketplace.primary-rail AVALANCHE), so
+  // the opt-in button only appears on a stack started with MARKETPLACE_PRIMARY_RAIL=SOLANA. Accept both, and record which.
   await page.goto(`${FRONTEND}/work/${A.jobId}`);
-  await waitText('Dùng ký quỹ Avalanche cho hợp đồng này');
-  await clickButton('Dùng ký quỹ Avalanche cho hợp đồng này');
+  await page.waitForFunction(() => /Dùng ký quỹ Avalanche cho hợp đồng này|Liên kết ví EVM/.test(document.body.innerText), null, { timeout: 30000 });
+  const optIn = (await bodyText()).includes('Dùng ký quỹ Avalanche cho hợp đồng này');
+  if (optIn) await clickButton('Dùng ký quỹ Avalanche cho hợp đồng này');
   await waitText('Liên kết ví EVM');
-  record('S1 Avalanche rail chosen in the UI; banner visible', { banner: (await bodyText()).includes('mô phỏng') });
+  record('S1 Avalanche rail active in the UI; banner visible', { railSource: optIn ? 'chosen in the UI (primary rail SOLANA)' : 'default rail of the new contract (primary rail AVALANCHE)',
+    banner: (await bodyText()).includes('mô phỏng') });
 
   // S2 a wallet on a chain that is not allowed (Ethereum mainnet id 0x1): refused before anything is signed
   mode.chainId = '0x1'; mode.calls.length = 0;

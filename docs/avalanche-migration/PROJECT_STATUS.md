@@ -631,3 +631,19 @@ setting. Without a running gateway, contracts are still created but funding and 
 as unreachable (no fallback to another rail).
 
 Tests: JDK 17 reactor of master (clean build) payment 72, marketplace 456, misa 20, BUILD SUCCESS, same as the 2026-11-06 baseline (a first run without clean failed with 34 InstantiationError from a stale AvalancheEscrowServiceTest.class left in target/ by the previous branch; environment, not code).
+
+## Change note (2026-11-12, stabilisation after the default-rail change)
+Owner instruction "bắt đầu đi" on the proposed stabilisation steps 1 to 5. Branch `avalanche/next`, LOCAL-SIM only, not pushed.
+1. **Full validation after AVALANCHE became the default rail:** Foundry 77 pass / 1 skipped; gateway 122 / 0 failures / 3
+   skipped (clean build); JDK 17 reactor of `master` 72 / 456 / 20 (clean build); frontend 32 files / 883, `tsc -b` clean;
+   compose stack built from source with the drivers on one run: `drive` **PASS** (45 steps), `browser` **PASS** (15 steps),
+   `outage` **PASS** (9 steps) ([evidence](phase-2/evidence/compose-avalanche-20261112/)). The first browser run failed at S1:
+   the driver waited for the opt-in button, which a new contract no longer shows because it starts on the Avalanche rail;
+   the driver now accepts both cases and records which (test change, not a product defect).
+2. **Development stack that stays up:** `phase-2/compose-avalanche/start-dev.sh` and `stop-dev.sh` (run.sh `KEEP_STACK=1`),
+   `FREELAX_HTTP_BIND` passed through for the frontend port, `.avalanche-dev/` git-ignored, LF attributes for the scripts.
+   Used for real on 2026-11-12 (start, three drivers, stop).
+3. **Clean builds:** rule added to CLAUDE.md section 7.
+4. **Partner fiat-mock scripts:** `scripts/partner-mock-*.mjs` stop with a clear message unless the stack runs with
+   `MARKETPLACE_PRIMARY_RAIL=SOLANA` (checked with throwaway env files). The flows themselves were not re-run.
+5. **Solana code paths still in the marketplace:** audit only, no change; filed as request R13.

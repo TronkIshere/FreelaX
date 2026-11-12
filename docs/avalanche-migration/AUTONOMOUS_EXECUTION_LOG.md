@@ -565,3 +565,13 @@ original reasoning. Do not add routine progress entries.
 - **Tests:** JDK 17 reactor of master (clean build) payment 72, marketplace 456, misa 20, BUILD SUCCESS, same as the 2026-11-06 baseline (a first run without clean failed with 34 InstantiationError from a stale AvalancheEscrowServiceTest.class left in target/ by the previous branch; environment, not code).
 - **Not run:** compose drivers and partner-mock end-to-end scripts (need the full stack; the partner scripts now need the
   explicit SOLANA setting).
+
+### L-036: Stabilisation after the default-rail change (2026-11-12)
+- **Authority:** owner "bắt đầu đi" on steps 1 to 5 proposed in the session; container clean-up approved by the owner.
+- **Done:** see PROJECT_STATUS change note (2026-11-12, stabilisation). Results: Foundry 77/1, gateway 122/0/3, reactor
+  72/456/20, frontend 32/883, compose drivers drive/browser/outage PASS on one run. `start-dev.sh`/`stop-dev.sh` added and used.
+- **Environment issues (not code):** Docker Desktop had to be started twice; stopped containers of an older compose project
+  `freelax` held the names `shared-mysql`/`shared-redis` (containers removed with approval, volumes kept); port 8080 is held by
+  a Windows `svchost` service (frontend moved to 8088 for the run); a session end interrupted one run (stack torn down with
+  `stop-dev.sh` and re-run). The evidence was scanned against the run's own throwaway env values before committing.
+- **Open:** R13 (Solana code paths); partner-mock flows not re-run; the dev stack is left running (stop with `stop-dev.sh`).
