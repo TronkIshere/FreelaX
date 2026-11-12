@@ -582,3 +582,4 @@ original reasoning. Do not add routine progress entries.
   the Solana gateway passes there) throwing the existing non-definitive `SolanaCprException` with `SOLANA_RAIL_DISABLED`;
   Solana escrow scheduler idle when disabled; compose and `.env.example` pass-through.
 - **Tests:** clean JDK 17 reactor of master 72 / 460 / 20, 0 failures, 0 skipped (marketplace +4: SolanaCprClientDisabledTest 2, SolanaEscrowTimeoutSchedulerTest 2; baseline 456).
+- **Runtime check (same day):** dev stack rebuilt from `2f49efa` (`start-dev.sh drive.mjs`, `SOLANA_CPR_ENABLED` unset, so false): marketplace started normally; `drive` **PASS** (Avalanche flows incl. R12 settlement and arbiter paths). Evidence kept local in `.avalanche-dev/evidence/` (not committed).
