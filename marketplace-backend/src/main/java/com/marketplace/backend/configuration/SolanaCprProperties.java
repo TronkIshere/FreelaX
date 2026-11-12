@@ -10,6 +10,13 @@ import org.springframework.stereotype.Component;
 @Component
 @ConfigurationProperties(prefix = "solana-cpr")
 public class SolanaCprProperties {
+    /**
+     * R13 (owner decision 2026-11-12, option a): the Solana gateway modules are not in master (branch {@code solana}). When false,
+     * every call to the Solana gateway fails closed with SOLANA_RAIL_DISABLED and the Solana escrow scheduler stays idle.
+     * The runtime default is false ({@code solana-cpr.enabled} in application.yml, SOLANA_CPR_ENABLED); this field defaults to
+     * true only so that unit tests constructing the properties by hand keep exercising the client as before.
+     */
+    private boolean enabled = true;
     private String baseUrl;
     private String internalApiKey;
     private String custodialClientPublicKey;

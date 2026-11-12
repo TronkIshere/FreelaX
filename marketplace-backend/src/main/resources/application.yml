@@ -80,6 +80,8 @@ avalanche-payout:
   local-mock-deposit-address: ${AVALANCHE_PAYOUT_LOCAL_MOCK_DEPOSIT_ADDRESS:0x00000000000000000000000000000000000c0ffe}
 
 solana-cpr:
+  # R13 (owner decision 2026-11-12): the Solana gateway is not in master (branch solana); calls fail closed with SOLANA_RAIL_DISABLED
+  enabled: ${SOLANA_CPR_ENABLED:false}
   base-url: ${SOLANA_CPR_BASE_URL:http://localhost:9193}
   internal-api-key: ${SOLANA_CPR_INTERNAL_API_KEY:}
   custodial-client-public-key: ${SOLANA_CPR_CUSTODIAL_CLIENT_PUBLIC_KEY:}

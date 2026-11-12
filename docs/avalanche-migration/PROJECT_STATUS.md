@@ -647,3 +647,15 @@ Owner instruction "bắt đầu đi" on the proposed stabilisation steps 1 to 5.
 4. **Partner fiat-mock scripts:** `scripts/partner-mock-*.mjs` stop with a clear message unless the stack runs with
    `MARKETPLACE_PRIMARY_RAIL=SOLANA` (checked with throwaway env files). The flows themselves were not re-run.
 5. **Solana code paths still in the marketplace:** audit only, no change; filed as request R13.
+
+### Owner decision (2026-11-12, third): R13 option (a), Solana rail switch
+The owner chose option (a). Implemented on `avalanche/next`:
+- `solana-cpr.enabled` (`SOLANA_CPR_ENABLED`), runtime default **false** in `application.yml`, `docker-compose.yml` and
+  `.env.example`. The Java field defaults to true only so that hand-built test properties keep exercising the client.
+- When false, `SolanaCprClient` fails every Solana gateway call **before any request** with `SolanaCprException("<op>:
+  SOLANA_RAIL_DISABLED", definitive=false)`: the same exception type and retry semantics as an unreachable gateway
+  (`CONNECTION_FAILED`), so every caller keeps its existing handling and no state changes; only the cause is explicit.
+- `SolanaEscrowTimeoutScheduler` returns immediately while disabled (no database polling, no reconciliation).
+- The code stays in `master` for reference; nothing was removed. Setting `SOLANA_CPR_ENABLED=true` restores the previous
+  behaviour (it still needs a Solana gateway, available on branch `solana`).
+Tests: clean JDK 17 reactor of master 72 / 460 / 20, 0 failures, 0 skipped (marketplace +4: SolanaCprClientDisabledTest 2, SolanaEscrowTimeoutSchedulerTest 2; baseline 456).

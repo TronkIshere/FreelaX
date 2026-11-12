@@ -48,6 +48,7 @@ R2 remainder (DB operator), R4, R6** (Phase 3 approval), the business part of R8
 | X3 (B1, later B2) | owner-named funding owner | funding of the E1 address; later the human-signed escrow deployment | `avalanche-contracts/deployments/README.md` (Fuji section, still BLOCKED) | deployment manifest `AVALANCHE_FUJI.json` (addresses only) |
 
 ## R13 (new 2026-11-12): Solana code paths left in the marketplace after the modules left `master`
+**ANSWERED 2026-11-12: option (a)**, implemented the same day (PROJECT_STATUS "Owner decision (2026-11-12, third)").
 **Finding (audit, no change made):** 19 classes in `marketplace-backend` still call the Solana gateway
 (`SolanaCprClient`, `SolanaGatewayAdapter`, `SolanaEscrowFundingService`, `SolanaEscrowTimeoutService`,
 `SolanaEscrowWorkflowService`, `SolanaOnRampProvider`, the unified-rail payment, payout, off-ramp and VND payout services,

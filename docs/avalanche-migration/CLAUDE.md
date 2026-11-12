@@ -24,6 +24,8 @@ Execution history and the resume point: [AUTONOMOUS_EXECUTION_LOG.md](AUTONOMOUS
 ## 2. Objective and scope
 - Objective (Phase 0, [README](README.md)): make Avalanche C-Chain the primary blockchain integration of FreelaX; Avalanche is
   built and tested independently and integrated progressively.
+- **Solana rail switch (R13, owner decision 2026-11-12):** `solana-cpr.enabled` / `SOLANA_CPR_ENABLED`, default **false**:
+  marketplace calls to the Solana gateway fail closed with `SOLANA_RAIL_DISABLED` and the Solana escrow scheduler is idle.
 - **Solana (owner decision 2026-11-12, PROJECT_STATUS "Owner decision (2026-11-12)"):** the Solana modules
   (`solana-integration`, `solana-stablecoin-payout`) are **no longer in `master`** (removed 2026-11-06); the legacy reference
   is branch **`solana`** (`a700c29`, the last commit with them). Do not delete, rewrite or force-push branch `solana`. Solana

@@ -15,10 +15,14 @@ import java.util.List;
 public class SolanaEscrowTimeoutScheduler {
     private final EscrowContractRepository escrows;
     private final SolanaEscrowTimeoutService service;
+    private final com.marketplace.backend.configuration.SolanaCprProperties solana;
 
     @Scheduled(initialDelayString = "${escrow.reconcile-initial-delay-ms:30000}",
             fixedDelayString = "${escrow.reconcile-interval-ms:30000}")
     public void process() {
+        if (!solana.isEnabled()) {
+            return; // R13: Solana rail disabled in this build; nothing to reconcile, no database polling
+        }
         for (var escrow : escrows.findTop100ByLastChainStatusInOrderByUpdatedAtAsc(
                 List.of("Funded", "Submitted", "Revision", "Disputed",
                         "PENDING_CONFIRMATION", "AWAITING_SIGNATURE", "MISMATCH",

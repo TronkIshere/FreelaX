@@ -575,3 +575,10 @@ original reasoning. Do not add routine progress entries.
   a Windows `svchost` service (frontend moved to 8088 for the run); a session end interrupted one run (stack torn down with
   `stop-dev.sh` and re-run). The evidence was scanned against the run's own throwaway env values before committing.
 - **Open:** R13 (Solana code paths); partner-mock flows not re-run; the dev stack is left running (stop with `stop-dev.sh`).
+
+### L-037: R13 option (a): Solana rail switch, default off (2026-11-12)
+- **Authority:** owner "chọn a" on R13.
+- **Change:** `solana-cpr.enabled` (default false at runtime); single guard in `SolanaCprClient.execute` (every HTTP call to
+  the Solana gateway passes there) throwing the existing non-definitive `SolanaCprException` with `SOLANA_RAIL_DISABLED`;
+  Solana escrow scheduler idle when disabled; compose and `.env.example` pass-through.
+- **Tests:** clean JDK 17 reactor of master 72 / 460 / 20, 0 failures, 0 skipped (marketplace +4: SolanaCprClientDisabledTest 2, SolanaEscrowTimeoutSchedulerTest 2; baseline 456).
