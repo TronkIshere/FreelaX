@@ -88,8 +88,8 @@ Execution history and the resume point: [AUTONOMOUS_EXECUTION_LOG.md](AUTONOMOUS
   simulated; a real partner is out of scope. Before that, since the Lead's delegation of 2026-11-04, engineering may implement Phase 3 items that are
   reversible, simulation-only, default-off (or default to current behaviour) and covered by existing owner decisions; each is
   recorded as ENGINEERING DECIDED UNDER DELEGATED AUTHORITY (PROJECT_STATUS classification table). Done so far: settlement
-  notifications (flag, default off), primary-rail policy for new contracts (default SOLANA; **open question** since the Solana modules left `master`, see
-  PROJECT_STATUS "Owner decision (2026-11-12)"), stuck-escrow reporting (P3-C4),
+  notifications (flag, default off), primary-rail policy for new contracts (**default AVALANCHE since the owner decision of 2026-11-12**, rail on by default;
+  SOLANA selectable explicitly), stuck-escrow reporting (P3-C4),
   scanner health (A6), CI workflow (not executed), drills. Payout: a non-custodial adapter is built (default off, LOCAL mock
   partner only); a real partner, platform fee and tax treatment stay owner/external; never add custody or a chain fallback.
   F14/R12: **adopted 2026-11-05** (owner decision R12 option 1, O-5 question 8 amended for the two-party path): the escrow

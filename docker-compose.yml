@@ -106,9 +106,10 @@ services:
       DEMO_CLIENT_SOLANA_PUBLIC_KEY: ${SOLANA_CUSTODIAL_CLIENT_PUBLIC_KEY:-}
       DEMO_FREELANCER_SOLANA_PUBLIC_KEY: ${DEMO_FREELANCER_SOLANA_PUBLIC_KEY:-}
       SOLANA_LOCAL_PRIVATE_KEYS: ${SOLANA_LOCAL_PRIVATE_KEYS:-}
-      # Avalanche rail of the marketplace (development simulation). Every value defaults to the current behaviour: rail off, Solana primary.
-      MARKETPLACE_PRIMARY_RAIL: ${MARKETPLACE_PRIMARY_RAIL:-SOLANA}
-      AVALANCHE_GATEWAY_ENABLED: ${AVALANCHE_GATEWAY_ENABLED:-false}
+      # Avalanche rail of the marketplace (development simulation). Owner decision 2026-11-12: Avalanche is the default rail of new
+      # contracts and the rail is on; the gateway service below must run (profile avalanche) for funding and the other chain actions.
+      MARKETPLACE_PRIMARY_RAIL: ${MARKETPLACE_PRIMARY_RAIL:-AVALANCHE}
+      AVALANCHE_GATEWAY_ENABLED: ${AVALANCHE_GATEWAY_ENABLED:-true}
       AVALANCHE_GATEWAY_BASE_URL: ${AVALANCHE_GATEWAY_BASE_URL:-http://avalanche-integration:9194}
       AVALANCHE_GATEWAY_INTERNAL_API_KEY: ${AVALANCHE_INTERNAL_API_KEY:-}
       AVALANCHE_GATEWAY_NETWORK: ${AVALANCHE_GATEWAY_NETWORK:-avalanche-local}

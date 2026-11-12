@@ -608,3 +608,26 @@ Solana gateway module is no longer in `master`. Whether new contracts should def
 Solana-rail code paths in the marketplace, is business behaviour and stays with the owner (no default was changed).
 
 Work now continues on branch `avalanche/next`, created from `master` (`6f47900`) on 2026-11-12. Documentation change only.
+
+### Owner decision (2026-11-12, second): default rail of new contracts
+The owner chose option (a) for the open question above and, asked how, chose "change the rail and enable the gateway".
+
+| Setting | Before | Now (default) | Where |
+|---|---|---|---|
+| `marketplace.primary-rail` | SOLANA | **AVALANCHE** | `application.yml`, `PrimaryRailPolicy`, `docker-compose.yml`, `.env.example` |
+| `avalanche-gateway.enabled` | false | **true** | same files |
+
+Applied 2026-11-12 on branch `avalanche/next`. Existing contracts are never changed (the policy applies to new contracts only).
+**Not applied, by engineering judgement (recorded, reversible):** the `avalanche` compose profile is kept on the gateway
+service. The gateway refuses to start without an RPC endpoint, a deployment manifest and an internal key, and a working local
+chain also needs Anvil, the forge deployment and the role hand-over to the gateway's ephemeral signers; plain
+`docker compose up` cannot do these steps, so removing the profile would leave a restarting container. The working one-command
+local stack remains `phase-2/compose-avalanche/run.sh` (a non-teardown "start" variant is a possible follow-up).
+
+**Consequences to confirm (owner):** with AVALANCHE as default, new contracts can no longer use the legacy fiat-mock partner
+escrow (`PartnerEscrowFundingService` refuses an Avalanche contract, commit `fd34766`) unless a deployment sets
+`MARKETPLACE_PRIMARY_RAIL=SOLANA`; the repository's `scripts/partner-mock-*.mjs` end-to-end scripts therefore need that
+setting. Without a running gateway, contracts are still created but funding and the other chain actions report the gateway
+as unreachable (no fallback to another rail).
+
+Tests: JDK 17 reactor of master (clean build) payment 72, marketplace 456, misa 20, BUILD SUCCESS, same as the 2026-11-06 baseline (a first run without clean failed with 34 InstantiationError from a stale AvalancheEscrowServiceTest.class left in target/ by the previous branch; environment, not code).

@@ -556,3 +556,12 @@ original reasoning. Do not add routine progress entries.
   = branch `solana` (`a700c29`, verified). CLAUDE.md rules that still said "Solana stays intact" were updated.
 - **Open (owner):** the default primary rail is still SOLANA in code while the Solana gateway is gone from `master`.
 - **Status:** documentation only, committed locally on `avalanche/next`, not pushed.
+
+### L-035: Default rail AVALANCHE and rail on by default (2026-11-12)
+- **Authority:** owner decision 2026-11-12 (option a; "change the rail and enable the gateway").
+- **Changed:** `marketplace.primary-rail` default AVALANCHE, `avalanche-gateway.enabled` default true (application.yml,
+  `PrimaryRailPolicy`, docker-compose.yml, .env.example). Compose profile `avalanche` kept (see PROJECT_STATUS); partner
+  fiat-mock rail needs `MARKETPLACE_PRIMARY_RAIL=SOLANA` for new contracts.
+- **Tests:** JDK 17 reactor of master (clean build) payment 72, marketplace 456, misa 20, BUILD SUCCESS, same as the 2026-11-06 baseline (a first run without clean failed with 34 InstantiationError from a stale AvalancheEscrowServiceTest.class left in target/ by the previous branch; environment, not code).
+- **Not run:** compose drivers and partner-mock end-to-end scripts (need the full stack; the partner scripts now need the
+  explicit SOLANA setting).

@@ -11,7 +11,8 @@ import java.util.Locale;
 
 /**
  * Phase 3 P3-C2 (O1): the default rail for NEW contracts in development and demonstration environments (D-H). Existing
- * contracts are never changed. {@code SOLANA} (default) is the current behaviour. {@code AVALANCHE} records the configured
+ * contracts are never changed. {@code AVALANCHE} is the default since the owner decision of 2026-11-12 (the Solana modules
+ * left master); {@code SOLANA} remains selectable explicitly. {@code AVALANCHE} records the configured
  * Avalanche network on the new contract, exactly as the client opt-in ({@code AvalancheEscrowService.enable}) does today.
  * Fail closed: an unknown value stops startup, and {@code AVALANCHE} with the gateway disabled refuses contract creation
  * instead of silently falling back to Solana (SIMULATION_SCOPE section 8 rule 2). Rollback = set the property back.
@@ -23,7 +24,7 @@ public class PrimaryRailPolicy {
     private final Rail rail;
     private final AvalancheGatewayProperties avalanche;
 
-    public PrimaryRailPolicy(@Value("${marketplace.primary-rail:SOLANA}") String rail, AvalancheGatewayProperties avalanche) {
+    public PrimaryRailPolicy(@Value("${marketplace.primary-rail:AVALANCHE}") String rail, AvalancheGatewayProperties avalanche) {
         try {
             this.rail = Rail.valueOf(rail == null ? "" : rail.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
