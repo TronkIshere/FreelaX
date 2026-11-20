@@ -659,3 +659,13 @@ The owner chose option (a). Implemented on `avalanche/next`:
 - The code stays in `master` for reference; nothing was removed. Setting `SOLANA_CPR_ENABLED=true` restores the previous
   behaviour (it still needs a Solana gateway, available on branch `solana`).
 Tests: clean JDK 17 reactor of master 72 / 460 / 20, 0 failures, 0 skipped (marketplace +4: SolanaCprClientDisabledTest 2, SolanaEscrowTimeoutSchedulerTest 2; baseline 456).
+
+## Change note (2026-11-20): B7 with a real MetaMask extension (LOCAL-SIM)
+At the owner's request the browser wallet check was run in the owner's Chrome with MetaMask, against the dev stack built from
+`master` `0315c15` (chain 31337, Solana rail off). The owner added the local network, used a fresh MetaMask account and approved
+every prompt; Claude drove the page and checked UI, backend and chain. Result: wrong-network refusal, closed/rejected prompt,
+wallet link (EIP-191), escrow funding (approve + fund) and client release **PASS**, each followed to FINALIZED with UI, backend and
+chain agreeing ([evidence](phase-2/evidence/LOCAL_SIMULATION-b7-metamask-20261120.json)). The freelancer side used a throwaway
+wallet (not MetaMask). Not covered with MetaMask: account-change and disconnect events, dispute/R12/arbiter paths. B7 row: the
+MetaMask link, fund and release paths are now exercised (LOCAL-SIM); Fuji is not. Two UI observations recorded in the evidence
+(Solana opt-in button still visible with the rail off; legacy payout panel wording on a released Avalanche contract), not changed.

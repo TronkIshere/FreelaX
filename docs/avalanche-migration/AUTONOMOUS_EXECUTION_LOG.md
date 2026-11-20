@@ -583,3 +583,12 @@ original reasoning. Do not add routine progress entries.
   Solana escrow scheduler idle when disabled; compose and `.env.example` pass-through.
 - **Tests:** clean JDK 17 reactor of master 72 / 460 / 20, 0 failures, 0 skipped (marketplace +4: SolanaCprClientDisabledTest 2, SolanaEscrowTimeoutSchedulerTest 2; baseline 456).
 - **Runtime check (same day):** dev stack rebuilt from `2f49efa` (`start-dev.sh drive.mjs`, `SOLANA_CPR_ENABLED` unset, so false): marketplace started normally; `drive` **PASS** (Avalanche flows incl. R12 settlement and arbiter paths). Evidence kept local in `.avalanche-dev/evidence/` (not committed).
+
+### L-038: B7 with a real MetaMask (2026-11-20)
+- **Authority:** owner "bạn thử test trên trình duyệt thật kèm meta mask đi"; owner approved every MetaMask prompt.
+- **Before:** remote checked (no new branches; `master` = merge of PR #10); dev stack rebuilt; `drive` PASS and `browser` PASS
+  (15 steps) on `master` `0315c15` (first browser attempt lacked `PLAYWRIGHT_CORE`, environment only).
+- **Run:** see PROJECT_STATUS change note (2026-11-20) and `phase-2/evidence/LOCAL_SIMULATION-b7-metamask-20261120.json`:
+  link, fund, release with MetaMask PASS; contract COMPLETED, escrow RELEASED, freelancer 5 USDC (simulated).
+- **Open:** two UI observations (Solana opt-in button visible with the rail off; legacy payout panel wording); MetaMask
+  account-change/disconnect and dispute paths not exercised.
