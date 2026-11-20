@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { availableAvalancheActions, deliveryDateSeconds, type AvalancheActionContext } from './avalancheActions';
+import { availableAvalancheActions, deliveryDateSeconds, offersForChainState, type AvalancheActionContext } from './avalancheActions';
 
 const base: AvalancheActionContext = { userId: 'u', isClient: false, isFreelancer: false, isArbiter: false, submissions: [], dispute: null };
 const actions = (over: Partial<AvalancheActionContext>) => availableAvalancheActions({ ...base, ...over }).map(a => a.action);
@@ -84,5 +84,31 @@ describe('deliveryDateSeconds', () => {
     expect(deliveryDateSeconds('')).toBeNull();
     expect(deliveryDateSeconds('not a date')).toBeNull();
     expect(deliveryDateSeconds('2026-11-10T12:00')).toBe(Math.floor(new Date('2026-11-10T12:00').getTime() / 1000));
+  });
+});
+
+describe('offersForChainState (B7 follow-up 2026-11-20: no buttons the escrow would revert)', () => {
+  const client = availableAvalancheActions({ ...base, isClient: true, submissions: [{ id: 's', version: 1, status: 'SUBMITTED' }] });
+  const freelancer = availableAvalancheActions({ ...base, isFreelancer: true, submissions: [{ id: 's', version: 1, status: 'SUBMITTED' }] });
+  const names = (offers: ReturnType<typeof offersForChainState>) => offers.map(o => o.action).sort();
+  const chain = (status: string, reviewDueAt = 1000) => ({ status, deliveryDueAt: 500, reviewDueAt });
+  it('offers only funding before the escrow exists', () => {
+    expect(names(offersForChainState(client, null, true, 0))).toEqual(['fund']);
+    expect(names(offersForChainState(freelancer, null, false, 0))).toEqual([]);
+  });
+  it('offers nothing once the escrow is released or refunded', () => {
+    for (const status of ['RELEASED', 'REFUNDED', 'Released']) {
+      expect(offersForChainState(client, chain(status), true, 0)).toEqual([]);
+      expect(offersForChainState(freelancer, chain(status), false, 0)).toEqual([]);
+    }
+  });
+  it('while funded: extension, submit and mutual refund, no release', () => {
+    expect(names(offersForChainState(client, chain('FUNDED'), true, 0))).toEqual(['extension-approve', 'mutual-refund']);
+    expect(names(offersForChainState(freelancer, chain('FUNDED'), false, 0))).toEqual(['extension-request', 'mutual-refund', 'submit']);
+  });
+  it('while submitted: the client releases at any time, the freelancer only after the review window', () => {
+    expect(names(offersForChainState(client, chain('SUBMITTED'), true, 0))).toEqual(['mutual-refund', 'release']);
+    expect(names(offersForChainState(freelancer, chain('SUBMITTED', 1000), false, 999))).toEqual(['mutual-refund']);
+    expect(names(offersForChainState(freelancer, chain('SUBMITTED', 1000), false, 1000))).toEqual(['mutual-refund', 'release']);
   });
 });

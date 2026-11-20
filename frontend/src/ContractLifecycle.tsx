@@ -10,7 +10,7 @@ import { FundingPanel } from './Funding';
 import { MutualRefundPanel } from './MutualRefund';
 import { AvalancheEscrowPanel, avalancheUiEnabled } from './AvalancheEscrowPanel';
 import { connectSolanaWallet, signEscrowTransaction } from './escrowWallet';
-import { financialCopy, financialMoneyTone, settlementMoneyLabel, settlementNeedsRefresh, settlementStageLabel } from './financeStatus';
+import { avalancheContract, financialCopy, financialMoneyTone, settlementMoneyLabel, settlementNeedsRefresh, settlementStageLabel } from './financeStatus';
 import { disputeLabel, submissionLabel } from './status';
 import { attemptScope, clearAttempt, httpsUrl, localInstant, readAttempt, saveAttempt, smallReview, validateSubmission } from './workflowContracts';
 import type { Dispute, ContractSettlement, ContractSubmission, ContractSummary, EscrowFundingView, Job, OpenDisputeInput, Requirement, ReviewDecision, SubmissionPayload, User } from './types';
@@ -82,6 +82,9 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
   const freelancer = user.userType === 'FREELANCER' && job.freelancerId === user.id;
   // Unified contracts hold USDC in the same Solana vault, so work actions are wallet-signed escrow actions.
   const escrowRail = contract.paymentRail === 'SOLANA_ESCROW' || contract.paymentRail === 'UNIFIED_USDC_PAYOUT';
+  // Avalanche rail: funding and release run through the Avalanche escrow panel; the legacy bank funding and settlement
+  // sections would show records that never exist for this contract.
+  const avalancheRail = avalancheContract(job);
   const scope = attemptScope('submit', user.id, contract.id, contract.milestoneId || 'missing');
   const escrowReviewScope = attemptScope('escrow-review', user.id, contract.id,
     contract.milestoneId || 'missing');
@@ -455,7 +458,7 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
     </ActionGroup></section>
     {reviewEntry?.scope === reviewScope && reviewEntry.available && <CompletedReviewCallout counterpart={user.id === job.clientUserId ? 'Freelancer' : 'Client'} />}
     {children}
-    {job.status === 'AWAITING_PAYMENT' && !cancelled && <FundingPanel job={job} user={user} onJobUpdated={onJobUpdated}
+    {job.status === 'AWAITING_PAYMENT' && !cancelled && !avalancheRail && <FundingPanel job={job} user={user} onJobUpdated={onJobUpdated}
       blocked={!workAllowed || busy} operationLock={lock} onMutationChange={setFundingBusy} />}
     {latest && <section className="latest-submission" id="latest-submission" tabIndex={-1} aria-label="Bản bàn giao mới nhất"><SectionHeading title={'Bản bàn giao #' + latest.version} aside={submissionLabel(latest.status)} /><EvidenceRecord submission={latest} contract={contract} /><ReviewTiming submission={latest} contract={contract} now={now} /></section>}
     {loading && <p role="status">Đang tải lịch sử bàn giao…</p>}
@@ -490,7 +493,7 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
         && now < new Date(contract.deliveryDueAt).getTime() && <button className="button" disabled={busy} onClick={() => void approveExtension()}>Chấp thuận gia hạn</button>}
       {now > Number(escrowView.deliveryDueAt) * 1000 && <p role="status">Đã quá hạn bàn giao. Hệ thống không nhận bản bàn giao đầu tiên mới; cần xử lý tranh chấp.</p>}
     </section>}
-    {!escrowRail && releaseRelevant && <section className="settlement-document" aria-label="Quyết toán hợp đồng">
+    {!escrowRail && !avalancheRail && releaseRelevant && <section className="settlement-document" aria-label="Quyết toán hợp đồng">
       <SectionHeading title="Giải ngân hợp đồng" aside={settlement?.simulation ? 'Mô phỏng' : undefined} />
       {settlementLoading && <p role="status">Đang đọc trạng thái giải ngân…</p>}
       {!settlement && !settlementLoading && !settlementError && <p className="financial-status financial-status-pending" role="status">Chưa có bản ghi giải ngân để xác nhận. Đang đối soát với Marketplace.</p>}

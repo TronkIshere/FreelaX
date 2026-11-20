@@ -583,3 +583,37 @@ original reasoning. Do not add routine progress entries.
   Solana escrow scheduler idle when disabled; compose and `.env.example` pass-through.
 - **Tests:** clean JDK 17 reactor of master 72 / 460 / 20, 0 failures, 0 skipped (marketplace +4: SolanaCprClientDisabledTest 2, SolanaEscrowTimeoutSchedulerTest 2; baseline 456).
 - **Runtime check (same day):** dev stack rebuilt from `2f49efa` (`start-dev.sh drive.mjs`, `SOLANA_CPR_ENABLED` unset, so false): marketplace started normally; `drive` **PASS** (Avalanche flows incl. R12 settlement and arbiter paths). Evidence kept local in `.avalanche-dev/evidence/` (not committed).
+
+### L-038: B7 with a real MetaMask (2026-11-20)
+- **Authority:** owner "bạn thử test trên trình duyệt thật kèm meta mask đi"; owner approved every MetaMask prompt.
+- **Before:** remote checked (no new branches; `master` = merge of PR #10); dev stack rebuilt; `drive` PASS and `browser` PASS
+  (15 steps) on `master` `0315c15` (first browser attempt lacked `PLAYWRIGHT_CORE`, environment only).
+- **Run:** see PROJECT_STATUS change note (2026-11-20) and `phase-2/evidence/LOCAL_SIMULATION-b7-metamask-20261120.json`:
+  link, fund, release with MetaMask PASS; contract COMPLETED, escrow RELEASED, freelancer 5 USDC (simulated).
+- **Open:** two UI observations (Solana opt-in button visible with the rail off; legacy payout panel wording); MetaMask
+  account-change/disconnect and dispute paths not exercised.
+
+### L-039: Solana controls hidden in the UI (2026-11-20)
+- **Authority:** owner "cái râu ria còn liên quan đến Solana thì ẩn đi để giao diện nhìn sạch sẽ".
+- **Change:** `frontend/src/solanaUi.ts` (`VITE_SOLANA_ENABLED`, default false); Solana opt-in button, Solana wallet panel on
+  the simulated path and the sign-in auto Solana wallet call gated; payout wording without "Solana"; build pass-through.
+- **Tests:** frontend 32 files / 885 (+2 in `Funding.test.tsx`), `tsc -b` clean.
+
+### L-040: Legacy money sections hidden on Avalanche-rail contracts (2026-11-20)
+- **Authority:** owner "tập trung sửa lại hai cái giao diện kia cho đúng" (observations of L-038).
+- **Change:** `financeStatus.ts` helpers (`avalancheContract`, `avalancheFunded`, `avalancheReleased`); `ContractLifecycle.tsx`
+  hides the legacy funding panel and settlement section; `financeSpine.ts` / `Finance.tsx` chain-based labels and
+  not-applicable legacy stages; `Workflow.tsx` partner-mock sentence hidden on Avalanche contracts.
+- **Tests:** frontend 32 files / 890 (+5 in `ContractFinancial.test.tsx`), `tsc -b` clean; verified in Chrome on the dev stack.
+
+### L-041: Avalanche panel offers by on-chain state (2026-11-20)
+- **Authority:** owner "có đồng ý làm luôn mấy cái đó" (open points of L-040).
+- **Change:** `offersForChainState` in `frontend/src/avalancheActions.ts`, used by `AvalancheEscrowPanel.tsx` (replaces the
+  single R12 mutual-settle filter); the action group is not rendered when no action applies.
+- **Tests:** frontend 32 files / 894 (+4 in `avalancheActions.test.ts`; `AvalanchePanel.test.tsx` fixtures given a chain state),
+  `tsc -b` clean; verified in Chrome.
+
+### L-042: B7 notification observation corrected (2026-11-20)
+- The "freelancer notifications empty" observation of L-038 was wrong: the checking script read the page wrapper, not
+  `data.data`. Re-read: RELEASE_CONFIRMED, FUNDING_CONFIRMED, JOB_ASSIGNED present for the freelancer; release notification
+  visible to the client on the Hoạt động page. Evidence file corrected with a dated note. No code change.

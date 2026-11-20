@@ -13,7 +13,7 @@ import { Pagination } from './Jobs';
 import { checkoutLabel, clientPaymentLabel, decimal, exportLabel, maskedBank, offRampLabel,
   paymentTerminal, rateSource, safeExplorerUrl, syncableTaxStatuses, usdc, vnd,
   financePath, contractFinanceLabel, contractFinanceNeedsRefresh, contractFinanceTone, financialCopy,
-  settlementMoneyLabel, settlementStageLabel, releaseOwned } from './financeStatus';
+  settlementMoneyLabel, settlementStageLabel, releaseOwned, avalancheContract, avalancheFunded, avalancheFundedLabel, avalancheReleaseLabel } from './financeStatus';
 import { cancellationLabel, date, fundingLabel, money, refundLabel } from './status';
 import type { ContractFinance } from './financeStatus';
 import type { EscrowFundingView, FundingResponse, Job, JobPaymentStatus, Page, PaymentFlowTimeline, TaxRecord, User } from './types';
@@ -473,8 +473,8 @@ function ContractEvidence({ initialJob }: { initialJob: Job }) {
           'Nạp tiền, giải ngân và hoàn tiền là ba bản ghi riêng. Bản ghi mô phỏng không xác nhận chuyển khoản ngân hàng thật.'}</p>
         <FactGrid facts={[
           { label: 'Giá trị hợp đồng', value: decimal(job.contract!.amount) + ' ' + job.contract!.currency },
-          { label: 'Nạp tiền', value: funding ? fundingLabel(funding.fundingStatus) : fundingError ? 'Chưa đọc được nạp tiền' : 'Chưa có bản ghi nạp tiền' },
-          { label: 'Giải ngân', value: settlement ? settlementMoneyLabel(settlement.moneyStatus) : record.error ? 'Chưa xác minh giải ngân' : 'Chưa có bản ghi giải ngân' },
+          { label: 'Nạp tiền', value: funding ? fundingLabel(funding.fundingStatus) : avalancheFunded(job) ? avalancheFundedLabel : fundingError ? 'Chưa đọc được nạp tiền' : 'Chưa có bản ghi nạp tiền' },
+          { label: 'Giải ngân', value: settlement ? settlementMoneyLabel(settlement.moneyStatus) : avalancheContract(job) && releaseOwned(job) ? avalancheReleaseLabel(job) : record.error ? 'Chưa xác minh giải ngân' : 'Chưa có bản ghi giải ngân' },
           { label: 'Hoàn tiền', value: cancellation ? refundLabel(cancellation.refundStatus) : record.error ? 'Chưa xác minh hoàn tiền' : refundLabel(null) },
         ]} />
       </section>

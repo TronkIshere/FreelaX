@@ -17,6 +17,9 @@ const tx = (over: Partial<AvalancheChainTransaction> = {}): AvalancheChainTransa
   escrowId: '0x1', action: 'fund', operationKey: 'k', txHash: HASH, status: 'PENDING', errorClass: null,
   businessApplied: false, createdAt: '', updatedAt: '', ...over,
 });
+// On-chain snapshot in a given state: the panel offers only actions the escrow can accept in that state.
+const chainIn = (status: string) => ({ status, client: '0x1', freelancer: '0x2', amountBaseUnits: '5000000', maxRevisions: 2,
+  revisionsUsed: 0, deliveryDueAt: 0, reviewDueAt: 0 });
 const view = (over: Partial<AvalancheContractView> = {}): AvalancheContractView => ({
   networkId: 'AVALANCHE', avalancheEnabled: true,
   environment: { environment: 'LOCAL_SIMULATION', chainId: 31337, simulated: true, explorerBaseUrl: null, backendSignersAvailable: true },
@@ -176,8 +179,8 @@ describe('AvalancheEscrowPanel', () => {
   }) as unknown as EvmWallet;
 
   it('anchors the recorded submission with the freelancer wallet (A1 submit)', async () => {
-    vi.spyOn(api, 'avalancheStatus').mockResolvedValue(view());
-    vi.spyOn(api, 'avalancheRefresh').mockResolvedValue(view());
+    vi.spyOn(api, 'avalancheStatus').mockResolvedValue(view({ chain: chainIn('FUNDED') }));
+    vi.spyOn(api, 'avalancheRefresh').mockResolvedValue(view({ chain: chainIn('FUNDED') }));
     const prepare = vi.spyOn(api, 'avalanchePrepare').mockResolvedValue({ action: 'submit', escrowId: '0x1',
       transactions: [{ to: '0x' + '2'.repeat(40), data: '0xab', value: '0', chainId: 31337 }] });
     const record = vi.spyOn(api, 'avalancheRecordTransaction').mockResolvedValue(tx({ action: 'submit' }));
@@ -190,8 +193,8 @@ describe('AvalancheEscrowPanel', () => {
   });
 
   it('requires a date before an extension request and sends it as epoch seconds', async () => {
-    vi.spyOn(api, 'avalancheStatus').mockResolvedValue(view());
-    vi.spyOn(api, 'avalancheRefresh').mockResolvedValue(view());
+    vi.spyOn(api, 'avalancheStatus').mockResolvedValue(view({ chain: chainIn('FUNDED') }));
+    vi.spyOn(api, 'avalancheRefresh').mockResolvedValue(view({ chain: chainIn('FUNDED') }));
     const execute = vi.spyOn(api, 'avalancheExecute').mockResolvedValue(tx({ action: 'extension-request' }));
     await act(async () => root.render(<AvalancheEscrowPanel contractId="c" user={user} isClient={false} isFreelancer />));
     const simulated = () => button('Xin gia hạn bằng tài khoản mô phỏng')!;
@@ -209,8 +212,8 @@ describe('AvalancheEscrowPanel', () => {
   });
 
   it('lets a non-participant arbiter settle a recorded decision (A1 resolve)', async () => {
-    vi.spyOn(api, 'avalancheStatus').mockResolvedValue(view());
-    vi.spyOn(api, 'avalancheRefresh').mockResolvedValue(view());
+    vi.spyOn(api, 'avalancheStatus').mockResolvedValue(view({ chain: chainIn('DISPUTED') }));
+    vi.spyOn(api, 'avalancheRefresh').mockResolvedValue(view({ chain: chainIn('DISPUTED') }));
     const execute = vi.spyOn(api, 'avalancheExecute').mockResolvedValue(tx({ action: 'resolve' }));
     await act(async () => root.render(<AvalancheEscrowPanel contractId="c" user={user} isClient={false} isFreelancer={false} isArbiter
       dispute={{ disputeId: 'd', status: 'DECISION_PENDING_RELEASE', openedBy: 'x' }} />));
@@ -254,11 +257,11 @@ describe('AvalancheEscrowPanel', () => {
   });
 
   it('offers mutual refund by wallet and, in the simulation only, by simulated accounts', async () => {
-    vi.spyOn(api, 'avalancheStatus').mockResolvedValue(view());
+    vi.spyOn(api, 'avalancheStatus').mockResolvedValue(view({ chain: chainIn('FUNDED') }));
     await mount();
     expect(button('Hoàn tiền thỏa thuận bằng ví')).toBeDefined();
     expect(button('Hoàn tiền thỏa thuận bằng tài khoản mô phỏng')).toBeDefined();
-    vi.spyOn(api, 'avalancheStatus').mockResolvedValue(view({
+    vi.spyOn(api, 'avalancheStatus').mockResolvedValue(view({ chain: chainIn('FUNDED'),
       environment: { environment: 'AVALANCHE_FUJI', chainId: 43113, simulated: false, explorerBaseUrl: null, backendSignersAvailable: false } }));
     act(() => root.unmount()); root = createRoot(host);
     await mount();
@@ -270,11 +273,11 @@ describe('AvalancheEscrowPanel', () => {
   const SIG = '0x' + '5'.repeat(130);
 
   it('F13: the first signer stores a signature over the prepared deadline and sends nothing', async () => {
-    vi.spyOn(api, 'avalancheStatus').mockResolvedValue(view());
-    vi.spyOn(api, 'avalancheRefresh').mockResolvedValue(view());
+    vi.spyOn(api, 'avalancheStatus').mockResolvedValue(view({ chain: chainIn('FUNDED') }));
+    vi.spyOn(api, 'avalancheRefresh').mockResolvedValue(view({ chain: chainIn('FUNDED') }));
     const prepare = vi.spyOn(api, 'avalanchePrepare').mockResolvedValue({ action: 'mutual-refund', escrowId: '0x1', transactions: [],
       typedData: typed, typedDataDigest: '0x' + 'd'.repeat(64), authorizationDeadline: 1_900_000_000 });
-    const store = vi.spyOn(api, 'avalancheMutualRefundSignature').mockResolvedValue(view({
+    const store = vi.spyOn(api, 'avalancheMutualRefundSignature').mockResolvedValue(view({ chain: chainIn('FUNDED'),
       mutualRefund: { authorizationDeadline: 1_900_000_000, typedDataDigest: '0x' + 'd'.repeat(64), clientSigned: true, freelancerSigned: false } }));
     const wallet = { ...fakeWallet(), signTypedData: vi.fn(async () => SIG) } as unknown as EvmWallet;
     await mount(true, false, () => wallet);
@@ -287,14 +290,14 @@ describe('AvalancheEscrowPanel', () => {
 
   it('F13: the second signer reuses the pending deadline, then sends the refund prepared with both signatures', async () => {
     const pending = { authorizationDeadline: 1_900_000_000, typedDataDigest: '0x' + 'd'.repeat(64), clientSigned: true, freelancerSigned: false };
-    vi.spyOn(api, 'avalancheStatus').mockResolvedValue(view({ mutualRefund: pending }));
-    vi.spyOn(api, 'avalancheRefresh').mockResolvedValue(view());
+    vi.spyOn(api, 'avalancheStatus').mockResolvedValue(view({ chain: chainIn('FUNDED'), mutualRefund: pending }));
+    vi.spyOn(api, 'avalancheRefresh').mockResolvedValue(view({ chain: chainIn('FUNDED') }));
     const prepare = vi.spyOn(api, 'avalanchePrepare')
       .mockResolvedValueOnce({ action: 'mutual-refund', escrowId: '0x1', transactions: [], typedData: typed,
         typedDataDigest: pending.typedDataDigest, authorizationDeadline: pending.authorizationDeadline })
       .mockResolvedValueOnce({ action: 'mutual-refund', escrowId: '0x1',
         transactions: [{ to: '0x' + '2'.repeat(40), data: '0xab', value: '0', chainId: 31337 }] });
-    vi.spyOn(api, 'avalancheMutualRefundSignature').mockResolvedValue(view({ mutualRefund: { ...pending, freelancerSigned: true } }));
+    vi.spyOn(api, 'avalancheMutualRefundSignature').mockResolvedValue(view({ chain: chainIn('FUNDED'), mutualRefund: { ...pending, freelancerSigned: true } }));
     const record = vi.spyOn(api, 'avalancheRecordTransaction').mockResolvedValue(tx({ action: 'mutual-refund' }));
     const wallet = { ...fakeWallet(), signTypedData: vi.fn(async () => SIG) } as unknown as EvmWallet;
     await act(async () => root.render(<AvalancheEscrowPanel contractId="c" user={user} isClient={false} isFreelancer walletFactory={() => wallet} />));

@@ -9,6 +9,9 @@ ARG VITE_SOLANA_CLUSTER=localnet
 ENV VITE_SOLANA_CLUSTER=${VITE_SOLANA_CLUSTER}
 ARG VITE_AVALANCHE_ENABLED=false
 ENV VITE_AVALANCHE_ENABLED=${VITE_AVALANCHE_ENABLED}
+# R13: Solana controls hidden unless "true" (the Solana gateway is on branch solana, not in master)
+ARG VITE_SOLANA_ENABLED=false
+ENV VITE_SOLANA_ENABLED=${VITE_SOLANA_ENABLED}
 RUN npm run build
 
 FROM caddy:2-alpine

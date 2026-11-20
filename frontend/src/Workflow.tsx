@@ -4,6 +4,7 @@ import { Ban, BriefcaseBusiness, CalendarDays, CircleCheck, CircleX, Clock3, Hou
 import { ApiError, api } from './api';
 import { WorkLifecycle } from './WorkLifecycle';
 import { contractAmount, localInstant } from './workflowContracts';
+import { avalancheContract } from './financeStatus';
 import { ActionGroup, EvidenceDisclosure, FactGrid, PageHeading, SectionHeading, StatePanel } from './components';
 import { Pagination } from './Jobs';
 import { jobCategories } from './jobDiscovery';
@@ -81,7 +82,7 @@ function JobDocument({ job }: { job: Detail }) {
         { label: 'Gia hạn bàn giao', value: 'Một lần, tối đa 7 ngày sau hạn gốc, trước lần bàn giao đầu tiên' },
       ]} />
       <p className="metadata">Số VND cuối cùng dùng tỷ giá được xác nhận lúc rút tiền. Đây là giao dịch mô phỏng.</p>
-    </section> : <p>Với ký quỹ đối tác mock, Freelancer chịu phí FreelaX 3% chỉ khi được giải ngân; nếu hoàn trước giải ngân Client nhận đủ USD.</p>}
+    </section> : 'contract' in job && avalancheContract(job) ? null : <p>Với ký quỹ đối tác mock, Freelancer chịu phí FreelaX 3% chỉ khi được giải ngân; nếu hoàn trước giải ngân Client nhận đủ USD.</p>}
     {job.category && <p>Danh mục: {jobCategories[job.category] ?? 'Khác'}</p>}
     {!!job.skills?.length && <p>Kỹ năng: {job.skills.join(', ')}</p>}
     <ActionGroup label="Hồ sơ các bên"><Link className="text-link" to={'/profiles/' + encodeURIComponent(isDiscover(job) ? job.client.id : job.clientUserId)}>Hồ sơ Client</Link>{!isDiscover(job) && job.freelancerId && <Link className="text-link" to={'/profiles/' + encodeURIComponent(job.freelancerId)}>Hồ sơ Freelancer</Link>}</ActionGroup>

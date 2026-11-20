@@ -1,3 +1,4 @@
+import { solanaUiEnabled } from './solanaUi';
 import { useEffect, useRef, useState, type MutableRefObject } from 'react';
 import { api, ApiError } from './api';
 import { ActionGroup, EvidenceDisclosure, SectionHeading } from './components';
@@ -27,7 +28,8 @@ export function FundingPanel(props: {
   if (props.job.contract?.paymentRail === 'SOLANA_ESCROW' || chooseEscrow) {
     return <><WalletLinkPanel /><EscrowFundingPanel {...props} onChooseBack={() => setChooseEscrow(false)} /></>;
   }
-  return <><WalletLinkPanel /><SimulatedFundingPanel {...props} onChooseEscrow={() => setChooseEscrow(true)} onChoosePartner={() => setChoosePartner(true)} /></>;
+  // R13: the Solana wallet connection is only shown when the Solana rail is enabled in this build.
+  return <>{solanaUiEnabled() && <WalletLinkPanel />}<SimulatedFundingPanel {...props} onChooseEscrow={() => setChooseEscrow(true)} onChoosePartner={() => setChoosePartner(true)} /></>;
 }
 
 function UnifiedFundingPanel({ job, user, onJobUpdated, blocked = false, operationLock, onMutationChange }: {
@@ -283,7 +285,7 @@ function SimulatedFundingPanel({ job, user, onJobUpdated, blocked = false, opera
         <ActionGroup><button className="button" disabled={blocked || busy}>{busy ? 'Đang lưu…' : 'Lưu ngân hàng'}</button><button className="button button-secondary" type="button" disabled={busy} onClick={() => { setNumber(''); setHolder(''); setEditingBank(false); }}>Quay lại</button></ActionGroup>
       </form>}
       {eligible && !editingBank && !confirm && <ActionGroup><button className="button" disabled={blocked || busy || loading || !initialized.current || !bank?.ready || fundingUnresolved(funding?.fundingStatus) || funding?.fundingStatus === 'SUCCEEDED'} onClick={() => setConfirm(true)}>{funding?.fundingStatus === 'FAILED' ? 'Thử nạp tiền lại' : attempt.current ? 'Tiếp tục lần nạp tiền trước' : 'Nạp tiền mô phỏng'}</button></ActionGroup>}
-      {eligible && !loading && !funding && !attempt.current && <button className="text-button" disabled={blocked || busy} onClick={onChooseEscrow}>Chọn ký quỹ Solana</button>}
+      {solanaUiEnabled() && eligible && !loading && !funding && !attempt.current && <button className="text-button" disabled={blocked || busy} onClick={onChooseEscrow}>Chọn ký quỹ Solana</button>}
       {eligible && !loading && !funding && !attempt.current && <button className="text-button" disabled={blocked || busy} onClick={onChoosePartner}>Chọn ký quỹ đối tác mock</button>}
       {eligible && confirm && <div className="approval-confirm" role="group" aria-label="Xác nhận nạp tiền">
         <strong>Xác nhận {amount} {contract.currency} · Mô phỏng</strong><p>Capture mô phỏng theo số tiền hợp đồng đã chốt. Không xác nhận chi trả cho Freelancer.</p>

@@ -67,6 +67,32 @@ export function availableAvalancheActions(ctx: AvalancheActionContext): Avalanch
   return offers;
 }
 
+/**
+ * Keeps only the offers the escrow can accept in its current on-chain state (mirrors the state checks of FreelaXEscrow), so a
+ * finished or not yet funded escrow does not show buttons that could only revert. `chain` is null before the escrow exists.
+ * Time windows the contract also checks (delivery and review deadlines) are applied where the snapshot has them; the backend
+ * and the contract still decide.
+ */
+export function offersForChainState(offers: AvalancheActionOffer[],
+  chain: { status: string; deliveryDueAt?: number; reviewDueAt?: number } | null, isClient: boolean, nowSeconds: number): AvalancheActionOffer[] {
+  const status = (chain?.status ?? 'NONE').toUpperCase();
+  const reviewOpen = !!chain?.reviewDueAt && nowSeconds < chain.reviewDueAt;
+  const allowed: Record<string, (s: string) => boolean> = {
+    fund: s => s === 'NONE',
+    submit: s => s === 'FUNDED' || s === 'REVISION',
+    revise: s => s === 'SUBMITTED',
+    'extension-request': s => s === 'FUNDED',
+    'extension-approve': s => s === 'FUNDED',
+    dispute: s => s === 'FUNDED' || s === 'SUBMITTED' || s === 'REVISION',
+    // the client at any time while Submitted; anyone else only once the review window has passed
+    release: s => s === 'SUBMITTED' && (isClient || !reviewOpen),
+    resolve: s => s === 'DISPUTED',
+    'mutual-refund': s => s === 'FUNDED' || s === 'SUBMITTED' || s === 'REVISION',
+    'mutual-settle': s => s === 'DISPUTED',
+  };
+  return offers.filter(o => (allowed[o.action] ?? (() => true))(status));
+}
+
 /** Converts a `datetime-local` value to epoch seconds; null when empty or invalid. The contract enforces the bounds. */
 export function deliveryDateSeconds(value: string): number | null {
   if (!value) return null;

@@ -1,6 +1,6 @@
 import type { FundingResponse, Job, JobPaymentStatus, TaxRecord } from './types';
 import { type ContractFinance, type EvidenceStage, paymentStages, financialMoneyTone,
-  settlementMoneyLabel, settlementStageLabel, decimal, usdc, vnd, maskedBank } from './financeStatus';
+  settlementMoneyLabel, settlementStageLabel, decimal, usdc, vnd, maskedBank, avalancheContract, avalancheFunded, avalancheFundedLabel, avalancheReleased, avalancheReleaseLabel } from './financeStatus';
 import { fundingLabel, refundLabel } from './status';
 
 export interface MoneyStage extends EvidenceStage {
@@ -37,6 +37,20 @@ export function legacyMoneyStages(job: Job, payment: JobPaymentStatus, tax: TaxR
 
 export function contractMoneyStages(job: Job, record: ContractFinance, funding: FundingResponse | null,
   tax: TaxRecord | null, fundingError = '', taxError = ''): MoneyStage[] {
+  const stages = marketplaceMoneyStages(job, record, funding, tax, fundingError, taxError);
+  if (!avalancheContract(job) || stages.some(stage => stage.key === 'refund')) return stages;
+  // Avalanche rail: funding and release are chain records (no marketplace funding/settlement record), and the freelancer
+  // receives simulated USDC in their own wallet at release; the legacy wallet/VND/certificate pipeline does not apply.
+  return stages.map(stage => stage.key === 'funding' && !funding && avalancheFunded(job)
+    ? { ...stage, tone: 'done' as const, status: avalancheFundedLabel, note: 'Khoản tiền được giữ trong ký quỹ Avalanche (mô phỏng).', error: null }
+    : ['onchain', 'vnd', 'tax'].includes(stage.key)
+      ? { ...stage, tone: 'pending' as const, applicable: false, status: 'Không áp dụng cho ký quỹ Avalanche', error: null,
+        note: 'Khi giải ngân, Freelancer nhận USDC mô phỏng thẳng vào ví đã liên kết; chi trả VND (nếu có) do Freelancer tự yêu cầu.' }
+      : stage);
+}
+
+function marketplaceMoneyStages(job: Job, record: ContractFinance, funding: FundingResponse | null,
+  tax: TaxRecord | null, fundingError: string, taxError: string): MoneyStage[] {
   const { settlement, cancellation } = record;
   const cancelled = job.contract?.status === 'CANCELLED' || cancellation?.cancellationStatus === 'CANCELLED';
   const refund = cancelled || job.contract?.milestoneStatus === 'REFUND_PENDING' || cancellation?.cancellationStatus === 'REFUND_PENDING';
@@ -53,9 +67,10 @@ export function contractMoneyStages(job: Job, record: ContractFinance, funding: 
       status: fundingError ? 'Chưa đọc được nạp tiền' : funding ? fundingLabel(funding.fundingStatus) : 'Chưa có bản ghi nạp tiền',
       note: funding?.fundingStatus === 'SUCCEEDED' ? 'Khoản tiền đã được giữ; Freelancer có thể bắt đầu.' : 'Đang chờ Client hoàn tất việc giữ tiền.', error: fundingError, facts: amount, applicable: !cancelled },
     { key: refund ? 'refund' : 'release', title: refund ? 'Hoàn tiền cho Client' : 'Trả tiền cho Freelancer',
-      tone: record.error && !(refund ? cancellation : settlement) ? 'error' : financialMoneyTone(refund ? cancellation?.refundStatus : settlement?.moneyStatus),
+      tone: !refund && !settlement && avalancheReleased(job) ? 'done' as const
+        : record.error && !(refund ? cancellation : settlement) ? 'error' : financialMoneyTone(refund ? cancellation?.refundStatus : settlement?.moneyStatus),
       status: refund ? cancellation?.refundStatus ? refundLabel(cancellation.refundStatus) : cancelled ? 'Hợp đồng đã hủy; chưa có xác nhận hoàn tiền' : 'Chưa có xác nhận hoàn tiền'
-        : settlement ? settlementMoneyLabel(settlement.moneyStatus) : record.error ? 'Chưa xác minh giải ngân' : 'Chưa có bản ghi giải ngân',
+        : settlement ? settlementMoneyLabel(settlement.moneyStatus) : avalancheReleased(job) ? avalancheReleaseLabel(job) : record.error ? 'Chưa xác minh giải ngân' : 'Chưa có bản ghi giải ngân',
       note: refund ? 'Sau khi hủy, tiền được trả lại cho Client khi khoản hoàn được xác nhận.' : 'Sau khi kết quả được duyệt, tiền bắt đầu chuyển cho Freelancer.',
       error: refund ? cancellation?.lastError : settlement?.lastError,
       facts: amount, applicable: !(cancelled && !cancellation?.refundStatus) },

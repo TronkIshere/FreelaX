@@ -659,3 +659,40 @@ The owner chose option (a). Implemented on `avalanche/next`:
 - The code stays in `master` for reference; nothing was removed. Setting `SOLANA_CPR_ENABLED=true` restores the previous
   behaviour (it still needs a Solana gateway, available on branch `solana`).
 Tests: clean JDK 17 reactor of master 72 / 460 / 20, 0 failures, 0 skipped (marketplace +4: SolanaCprClientDisabledTest 2, SolanaEscrowTimeoutSchedulerTest 2; baseline 456).
+
+## Change note (2026-11-20): B7 with a real MetaMask extension (LOCAL-SIM)
+At the owner's request the browser wallet check was run in the owner's Chrome with MetaMask, against the dev stack built from
+`master` `0315c15` (chain 31337, Solana rail off). The owner added the local network, used a fresh MetaMask account and approved
+every prompt; Claude drove the page and checked UI, backend and chain. Result: wrong-network refusal, closed/rejected prompt,
+wallet link (EIP-191), escrow funding (approve + fund) and client release **PASS**, each followed to FINALIZED with UI, backend and
+chain agreeing ([evidence](phase-2/evidence/LOCAL_SIMULATION-b7-metamask-20261120.json)). The freelancer side used a throwaway
+wallet (not MetaMask). Not covered with MetaMask: account-change and disconnect events, dispute/R12/arbiter paths. B7 row: the
+MetaMask link, fund and release paths are now exercised (LOCAL-SIM); Fuji is not. Two UI observations recorded in the evidence
+(Solana opt-in button still visible with the rail off; legacy payout panel wording on a released Avalanche contract), not changed.
+
+## Change note (2026-11-20): Solana controls hidden in the UI (R13 follow-up)
+Owner instruction (2026-11-20): hide the remaining Solana-related UI so the screens are clean. Frontend flag
+`VITE_SOLANA_ENABLED` (default **false**; Dockerfile, compose and `.env.example` pass-through). When false: no
+"Chọn ký quỹ Solana" button, no Solana wallet connection panel on the simulated funding path, no automatic Solana wallet call
+at sign-in. The Avalanche payout labels no longer name the Solana rail ("quy tắc hiện hành của FreelaX", still labelled
+simulated; the rules themselves are unchanged, owner decision 2026-11-05). Records of older Solana contracts keep their history
+labels ("Solana (tham chiếu cũ)", Escrow Solana section). Frontend 32 files / 885 tests (+2), `tsc -b` clean.
+
+## Change note (2026-11-20): legacy money sections hidden on Avalanche-rail contracts (B7 follow-up)
+Found in the MetaMask run (B7, 2026-11-20). For a contract whose `paymentNetworkId` starts with `avalanche`, funding and release
+are chain records shown by the Avalanche panel; the marketplace funding/settlement records never exist for it. Now: the legacy
+bank funding panel and the "Giải ngân hợp đồng" settlement section are not shown on such contracts; the finance page reads
+funding and release from the contract state ("Đã nạp ký quỹ trên chuỗi (mô phỏng)", "Đã giải ngân trên chuỗi (mô phỏng)") and
+marks the legacy wallet/VND/certificate stages "Không áp dụng cho ký quỹ Avalanche"; the partner-mock fee sentence is not shown
+on Avalanche contracts. Other rails unchanged. Frontend 32 files / 890 tests (+5), `tsc -b` clean; checked in the browser on
+the dev stack (contract page and finance page of the released MetaMask contract).
+
+## Change note (2026-11-20): Avalanche panel offers only the actions the escrow state allows
+Owner instruction (2026-11-20, B7 follow-up). The Avalanche escrow panel showed every action of the role (fund, extension,
+release, mutual refund) whatever the on-chain state, so a released escrow still showed four pairs of buttons that could only
+revert. New `offersForChainState` (frontend `avalancheActions.ts`) mirrors the state checks of `FreelaXEscrow`: fund only before
+the escrow exists; submit Funded/Revision; revision request Submitted; extension Funded; dispute anchor Funded/Submitted/Revision;
+release Submitted (the freelancer only after the review window); mutual refund Funded/Submitted/Revision; resolve and mutual
+settlement Disputed; nothing once Released or Refunded. Presentation only: the backend and the contract still decide.
+Frontend 32 files / 894 tests (+4; six panel tests now give the snapshot the state their action needs), `tsc -b` clean; checked
+in Chrome on the released MetaMask contract (no action buttons, only "Làm mới trạng thái").

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, ApiError } from './api';
 import { ActionGroup, SectionHeading } from './components';
-import { availableAvalancheActions, deliveryDateSeconds, type AvalancheActionOffer } from './avalancheActions';
+import { availableAvalancheActions, deliveryDateSeconds, offersForChainState, type AvalancheActionOffer } from './avalancheActions';
 import type { AvalancheActionInput, AvalancheContractView } from './avalancheTypes';
 import { actionText, offerText, chainInstant, chainStatusText, walletErrorText, environmentBadge, environmentBanner, explorerTxUrl, issuerAlertText, shortHash, stateText, tokenLabel, usdcFromBaseUnits } from './avalanchePresentation';
 import { EvmWallet, WalletError } from './evmWallet';
@@ -185,8 +185,8 @@ export function AvalancheEscrowPanel({ contractId, user, isClient, isFreelancer,
   const onAvalanche = view.networkId !== null;
   const simulatedAccounts = !!env && env.backendSignersAvailable && env.simulated;
   const allowed = availableAvalancheActions({ userId: user.id, isClient, isFreelancer, isArbiter, submissions, dispute })
-    .filter(a => a.wallet || simulatedAccounts)
-    .filter(a => a.action !== 'mutual-settle' || view.chain?.status === 'DISPUTED'); // R12: only a Disputed escrow
+    .filter(a => a.wallet || simulatedAccounts);
+  const offered = offersForChainState(allowed, view.chain, isClient, Math.floor(Date.now() / 1000)); // R12 mutual-settle: Disputed only
   return <section className="review-action avalanche-panel" aria-label="Ký quỹ Avalanche">
     <SectionHeading title="Ký quỹ Avalanche" />
     {env && <p className={'avalanche-banner' + (env.simulated ? ' simulated' : ' testnet')} role="note">
@@ -223,8 +223,8 @@ export function AvalancheEscrowPanel({ contractId, user, isClient, isFreelancer,
       {offerText('mutual-settle', s.releaseToFreelancer ? 'release' : 'refund')}: Client {s.clientSigned ? 'đã ký' : 'chưa ký'},
       Freelancer {s.freelancerSigned ? 'đã ký' : 'chưa ký'}; chữ ký hết hạn lúc {chainInstant(s.authorizationDeadline)}.
     </p>)}
-    {onAvalanche && env && <ActionGroup label="Thao tác ký quỹ">
-      {allowed.map(a => <span key={a.action + (a.variant ?? '')} data-action={a.action} data-variant={a.variant}>
+    {onAvalanche && env && offered.length > 0 && <ActionGroup label="Thao tác ký quỹ">
+      {offered.map(a => <span key={a.action + (a.variant ?? '')} data-action={a.action} data-variant={a.variant}>
         {a.needsDate && <label>Hạn bàn giao mới<input type="datetime-local" value={extensionDate} disabled={busy}
           onChange={event => setExtensionDate(event.target.value)} /></label>}
         {a.wallet && <button className="button" disabled={busy || (a.needsDate && !extensionDate)} onClick={() => void withWallet(a)}>{offerText(a.action, a.variant)} bằng ví</button>}

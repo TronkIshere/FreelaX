@@ -1,0 +1,26 @@
+{
+  "label": "LOCAL-SIM",
+  "item": "B7 browser wallet check with a real MetaMask extension",
+  "date": "2026-11-20",
+  "environment": { "stack": "phase-2/compose-avalanche/start-dev.sh (project fxav), built from master 0315c15", "chainId": 31337, "rpc": "http://127.0.0.1:8545 (Anvil)", "frontend": "http://127.0.0.1:8088", "browser": "Google Chrome with MetaMask (owner's), driven by Claude in Chrome", "solanaRail": "SOLANA_CPR_ENABLED unset (false)" },
+  "roles": {
+    "owner": "added the local network (chain 31337) in MetaMask, created a fresh account for the test, approved every MetaMask prompt (connect, network switch, signature, approve, fund, release)",
+    "claude": "created throwaway users, job and contract through the API; clicked the page buttons; funded the fresh account with Anvil ETH and simulated USDC; sent the freelancer's on-chain submit by Anvil impersonation (its throwaway key was not kept); read UI, backend and chain state"
+  },
+  "wallets": { "client (MetaMask, fresh account)": "0x5b2d8e2b4e9d7d7bb33352e33a4a7eb8b6aa5e1b", "freelancer (throwaway, linked via API)": "0x08e79e6b30184a619AF3b7aD4520AeB3fcFf2402" },
+  "steps": [
+    { "step": "link attempt, MetaMask prompt closed or rejected", "ui": "Bạn đã từ chối yêu cầu trong ví. Chưa có gì được gửi.", "result": "PASS (no wallet linked)" },
+    { "step": "link attempt, MetaMask on a network other than 31337", "ui": "Ví đang ở sai mạng. Hãy chuyển ví sang đúng mạng rồi thử lại.", "result": "PASS (nothing signed, no wallet linked)" },
+    { "step": "link with MetaMask (EIP-191 challenge signed)", "ui": "Ví EVM đã liên kết: 0x5b2d8e2b…aa5e1b", "backend": "wallet-link = 0x5b2d…5e1b", "result": "PASS" },
+    { "step": "fund escrow with MetaMask (approve + fund)", "ui": "Nạp tiền ký quỹ: Đã chốt, contract 'Đang hiệu lực', milestone 'Đã nạp tiền'", "backend": "fund FINALIZED businessApplied, chain FUNDED, contract ACTIVE / FUNDED", "txHash": "0xb13ab7d5e7e8ea53477b5451ccf75801e90282be60e33b4f70e23f6ba6f08d74", "result": "PASS" },
+    { "step": "freelancer submission recorded and anchored (API + impersonated send, not MetaMask)", "backend": "submit FINALIZED businessApplied, chain SUBMITTED", "txHash": "0xe5ff65d287908ad13805c9d19372a22aa11f5a563bbb75a6e20bce5367fc543c", "result": "PASS" },
+    { "step": "release with MetaMask (client)", "ui": "Giải ngân: Đã chốt; 'Đã giải ngân cho Freelancer'; workflow Approved", "backend": "release FINALIZED businessApplied, chain RELEASED, contract COMPLETED, milestone RELEASED, job COMPLETED", "txHash": "0xac45052207f3c788bf8bce15a743404285d1f5c3597952554c2cd2a840a7fcc7", "balancesAfterBaseUnits": { "client": "15000000", "freelancer": "5000000" }, "result": "PASS" }
+  ],
+  "observations": [
+    "The button 'Chọn ký quỹ Solana' is still shown on the contract page although the Solana rail is disabled (R13); a click would fail closed. UI clean-up candidate, not changed.",
+    "After the release, the legacy section 'Giải ngân hợp đồng' shows 'Chưa có bản ghi giải ngân để xác nhận. Đang đối soát với Marketplace.' on an Avalanche-rail contract that is already released on chain; confusing wording, not changed.",
+    "Signing in as the same user through the API ends the browser session of that user (single session per account); not a defect.",
+    "Correction (2026-11-20, same day): the empty freelancer notifications list was a parsing error in the checking script (the response is a page under data.data). Re-read: the freelancer has RELEASE_CONFIRMED, FUNDING_CONFIRMED and JOB_ASSIGNED for this contract, and the client sees the release notification on the Hoạt động page. No defect."
+  ],
+  "notCovered": ["MetaMask account-change and disconnect events", "rejecting a transaction in MetaMask (covered by the test-double run of 2026-11-05)", "dispute, R12 settlement and arbiter paths with MetaMask"]
+}

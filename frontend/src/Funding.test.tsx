@@ -20,7 +20,7 @@ beforeEach(() => {
   sessionStorage.clear(); host = document.createElement('div'); document.body.append(host); root = createRoot(host); updated = vi.fn();
   vi.spyOn(api, 'clientBank').mockResolvedValue(ready); vi.spyOn(api, 'funding').mockResolvedValue(null); vi.spyOn(api, 'job').mockResolvedValue(job);
 });
-afterEach(() => { act(() => root.unmount()); host.remove(); vi.restoreAllMocks(); vi.useRealTimers(); });
+afterEach(() => { act(() => root.unmount()); host.remove(); vi.restoreAllMocks(); vi.useRealTimers(); vi.unstubAllEnvs(); });
 async function mount(user = client) { await act(async () => root.render(<FundingPanel job={job} user={user} onJobUpdated={updated} />)); }
 function button(text: string) { return [...host.querySelectorAll('button')].find(b => b.textContent === text)!; }
 async function click(text: string) { await act(async () => button(text).click()); }
@@ -80,6 +80,19 @@ describe('P06.4A funding', () => {
   it('4021 directs Client to bank setup without exposing server banking error', async () => {
     vi.spyOn(api, 'fund').mockRejectedValue(new ApiError('123456781234', 422, 4021)); await mount(); await fund();
     expect(host.querySelector('.bank-form')).not.toBeNull(); expect(host.textContent).not.toContain('123456781234');
+  });
+});
+
+describe('R13 Solana rail switch', () => {
+  it('hides the Solana escrow choice by default and keeps the other choices', async () => {
+    await mount();
+    expect(button('Chọn ký quỹ Solana')).toBeUndefined();
+    expect(button('Chọn ký quỹ đối tác mock')).toBeDefined();
+  });
+  it('shows the Solana escrow choice only when VITE_SOLANA_ENABLED is true', async () => {
+    vi.stubEnv('VITE_SOLANA_ENABLED', 'true');
+    await mount();
+    expect(button('Chọn ký quỹ Solana')).toBeDefined();
   });
 });
 
