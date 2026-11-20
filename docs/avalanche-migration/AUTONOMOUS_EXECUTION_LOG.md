@@ -605,3 +605,10 @@ original reasoning. Do not add routine progress entries.
   hides the legacy funding panel and settlement section; `financeSpine.ts` / `Finance.tsx` chain-based labels and
   not-applicable legacy stages; `Workflow.tsx` partner-mock sentence hidden on Avalanche contracts.
 - **Tests:** frontend 32 files / 890 (+5 in `ContractFinancial.test.tsx`), `tsc -b` clean; verified in Chrome on the dev stack.
+
+### L-041: Avalanche panel offers by on-chain state (2026-11-20)
+- **Authority:** owner "có đồng ý làm luôn mấy cái đó" (open points of L-040).
+- **Change:** `offersForChainState` in `frontend/src/avalancheActions.ts`, used by `AvalancheEscrowPanel.tsx` (replaces the
+  single R12 mutual-settle filter); the action group is not rendered when no action applies.
+- **Tests:** frontend 32 files / 894 (+4 in `avalancheActions.test.ts`; `AvalanchePanel.test.tsx` fixtures given a chain state),
+  `tsc -b` clean; verified in Chrome.

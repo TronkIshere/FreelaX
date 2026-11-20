@@ -686,3 +686,13 @@ funding and release from the contract state ("Đã nạp ký quỹ trên chuỗi
 marks the legacy wallet/VND/certificate stages "Không áp dụng cho ký quỹ Avalanche"; the partner-mock fee sentence is not shown
 on Avalanche contracts. Other rails unchanged. Frontend 32 files / 890 tests (+5), `tsc -b` clean; checked in the browser on
 the dev stack (contract page and finance page of the released MetaMask contract).
+
+## Change note (2026-11-20): Avalanche panel offers only the actions the escrow state allows
+Owner instruction (2026-11-20, B7 follow-up). The Avalanche escrow panel showed every action of the role (fund, extension,
+release, mutual refund) whatever the on-chain state, so a released escrow still showed four pairs of buttons that could only
+revert. New `offersForChainState` (frontend `avalancheActions.ts`) mirrors the state checks of `FreelaXEscrow`: fund only before
+the escrow exists; submit Funded/Revision; revision request Submitted; extension Funded; dispute anchor Funded/Submitted/Revision;
+release Submitted (the freelancer only after the review window); mutual refund Funded/Submitted/Revision; resolve and mutual
+settlement Disputed; nothing once Released or Refunded. Presentation only: the backend and the contract still decide.
+Frontend 32 files / 894 tests (+4; six panel tests now give the snapshot the state their action needs), `tsc -b` clean; checked
+in Chrome on the released MetaMask contract (no action buttons, only "Làm mới trạng thái").
