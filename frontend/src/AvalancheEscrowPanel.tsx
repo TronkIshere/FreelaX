@@ -184,8 +184,12 @@ export function AvalancheEscrowPanel({ contractId, user, isClient, isFreelancer,
   const env = view.environment;
   const onAvalanche = view.networkId !== null;
   const simulatedAccounts = !!env && env.backendSignersAvailable && env.simulated;
+  // The gateway's simulated accounts sign as its own test buyer/freelancer, never as the parties' linked wallets, so for the
+  // parties they can only revert (2026-11-20). They stay for the arbiter (resolve) and for a release by someone other than the
+  // client after the review window (sent by the relayer; the contract allows anyone then).
+  const simulatedFor = (a: AvalancheActionOffer) => simulatedAccounts && (isArbiter || (a.action === 'release' && !isClient));
   const allowed = availableAvalancheActions({ userId: user.id, isClient, isFreelancer, isArbiter, submissions, dispute })
-    .filter(a => a.wallet || simulatedAccounts);
+    .filter(a => a.wallet || simulatedFor(a));
   const offered = offersForChainState(allowed, view.chain, isClient, Math.floor(Date.now() / 1000)); // R12 mutual-settle: Disputed only
   return <section className="review-action avalanche-panel" aria-label="Ký quỹ Avalanche">
     <SectionHeading title="Ký quỹ Avalanche" />
@@ -228,7 +232,7 @@ export function AvalancheEscrowPanel({ contractId, user, isClient, isFreelancer,
         {a.needsDate && <label>Hạn bàn giao mới<input type="datetime-local" value={extensionDate} disabled={busy}
           onChange={event => setExtensionDate(event.target.value)} /></label>}
         {a.wallet && <button className="button" disabled={busy || (a.needsDate && !extensionDate)} onClick={() => void withWallet(a)}>{offerText(a.action, a.variant)} bằng ví</button>}
-        {simulatedAccounts && <button className="button button-secondary" disabled={busy || (a.needsDate && !extensionDate)}
+        {simulatedFor(a) && <button className="button button-secondary" disabled={busy || (a.needsDate && !extensionDate)}
           onClick={() => void withSimulatedAccount(a)}>{offerText(a.action, a.variant)} bằng tài khoản mô phỏng</button>}
         {!a.wallet && a.walletUnavailableReason && <small> {a.walletUnavailableReason}</small>}
       </span>)}

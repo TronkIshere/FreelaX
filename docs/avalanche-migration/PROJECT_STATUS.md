@@ -707,3 +707,11 @@ the client page shows no "Duyệt bàn giao" button but a hint to release with t
 request and dispute are unchanged. Other rails unchanged. Additive Java 17 change (R11). JDK 17 reactor clean: payment 72,
 marketplace **461** (+1), misa 20; frontend 32 files / 895 at this commit, `tsc -b` clean. The stuck demo contract in the local
 dev database was put back to "in review" by hand (LOCAL only, throwaway data).
+
+## Change note (2026-11-21): simulated-account buttons removed for the contract parties
+Found while preparing the owner's demo (2026-11-20): "… bằng tài khoản mô phỏng" makes the gateway sign as its own test buyer or
+test freelancer (`EscrowActionServiceImpl` signer roles), never as the parties' linked wallets, while the marketplace requires
+linked wallets and the escrow checks the sender (`fund`: `msg.sender == client`); for the parties these buttons could only
+revert. The Avalanche panel now offers the simulated path only where it works: the arbiter's resolution (arbiter signer) and a
+release by someone other than the client after the review window (relayer; permissionless on chain). Frontend only. Frontend
+32 files / 896 tests, `tsc -b` clean.

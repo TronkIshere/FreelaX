@@ -113,10 +113,18 @@ describe('AvalancheEscrowPanel', () => {
     expect(host.querySelector('li')?.textContent).toContain('chưa có thay đổi nghiệp vụ');
   });
 
-  it('offers a simulated-account action only in the simulation', async () => {
+  it('offers the parties no simulated-account action (it would sign as the gateway test account, not the linked wallet)', async () => {
     vi.spyOn(api, 'avalancheStatus').mockResolvedValue(view());
     await mount();
-    expect(host.textContent).toContain('Nạp tiền ký quỹ bằng tài khoản mô phỏng');
+    expect(button('Nạp tiền ký quỹ bằng ví')).toBeDefined();
+    expect(host.textContent).not.toContain('tài khoản mô phỏng');
+  });
+
+  it('keeps the simulated release for the freelancer once the review window has passed (sent by the relayer)', async () => {
+    vi.spyOn(api, 'avalancheStatus').mockResolvedValue(view({ chain: { ...chainIn('SUBMITTED'), reviewDueAt: 1 } }));
+    await act(async () => root.render(<AvalancheEscrowPanel contractId="c" user={user} isClient={false} isFreelancer />));
+    expect(button('Giải ngân bằng tài khoản mô phỏng')).toBeDefined();
+    expect(button('Hoàn tiền thỏa thuận bằng tài khoản mô phỏng')).toBeUndefined();
   });
 
   it('funds with the wallet using only backend-prepared calldata and records the hash', async () => {
@@ -197,7 +205,13 @@ describe('AvalancheEscrowPanel', () => {
     vi.spyOn(api, 'avalancheRefresh').mockResolvedValue(view({ chain: chainIn('FUNDED') }));
     const execute = vi.spyOn(api, 'avalancheExecute').mockResolvedValue(tx({ action: 'extension-request' }));
     await act(async () => root.render(<AvalancheEscrowPanel contractId="c" user={user} isClient={false} isFreelancer />));
-    const simulated = () => button('Xin gia hạn bằng tài khoản mô phỏng')!;
+    const prepare = vi.spyOn(api, 'avalanchePrepare').mockResolvedValue({ action: 'extension-request', escrowId: '0x1',
+      transactions: [{ to: '0x' + '2'.repeat(40), data: '0xab', value: '0', chainId: 31337 }] });
+    vi.spyOn(api, 'avalancheRecordTransaction').mockResolvedValue(tx({ action: 'extension-request' }));
+    const wallet = fakeWallet();
+    act(() => root.unmount()); root = createRoot(host);
+    await act(async () => root.render(<AvalancheEscrowPanel contractId="c" user={user} isClient={false} isFreelancer walletFactory={() => wallet} />));
+    const simulated = () => button('Xin gia hạn bằng ví')!;
     expect(simulated().disabled).toBe(true);
     const input = host.querySelector<HTMLInputElement>('[data-action="extension-request"] input[type="datetime-local"]')!;
     await act(async () => {
@@ -207,7 +221,8 @@ describe('AvalancheEscrowPanel', () => {
     });
     expect(simulated().disabled).toBe(false);
     await act(async () => { simulated().click(); });
-    expect(execute).toHaveBeenCalledWith('c', 'extension-request', expect.objectContaining({
+    expect(execute).not.toHaveBeenCalled();
+    expect(prepare).toHaveBeenCalledWith('c', 'extension-request', expect.objectContaining({
       newDeliveryDueAt: Math.floor(new Date('2026-11-10T12:00').getTime() / 1000) }));
   });
 
@@ -256,11 +271,11 @@ describe('AvalancheEscrowPanel', () => {
     expect(host.innerHTML).toBe('');
   });
 
-  it('offers mutual refund by wallet and, in the simulation only, by simulated accounts', async () => {
+  it('offers mutual refund by wallet only (no simulated-account path for the parties)', async () => {
     vi.spyOn(api, 'avalancheStatus').mockResolvedValue(view({ chain: chainIn('FUNDED') }));
     await mount();
     expect(button('Hoàn tiền thỏa thuận bằng ví')).toBeDefined();
-    expect(button('Hoàn tiền thỏa thuận bằng tài khoản mô phỏng')).toBeDefined();
+    expect(button('Hoàn tiền thỏa thuận bằng tài khoản mô phỏng')).toBeUndefined();
     vi.spyOn(api, 'avalancheStatus').mockResolvedValue(view({ chain: chainIn('FUNDED'),
       environment: { environment: 'AVALANCHE_FUJI', chainId: 43113, simulated: false, explorerBaseUrl: null, backendSignersAvailable: false } }));
     act(() => root.unmount()); root = createRoot(host);
@@ -321,7 +336,7 @@ describe('AvalancheEscrowPanel', () => {
     await act(async () => root.render(<AvalancheEscrowPanel contractId="c" user={user} isClient isFreelancer={false} dispute={disputeOpen} />));
     expect(button('Tất toán tranh chấp theo thỏa thuận (giải ngân cho Freelancer) bằng ví')).toBeDefined();
     expect(button('Tất toán tranh chấp theo thỏa thuận (hoàn cho Client) bằng ví')).toBeDefined();
-    expect(button('Tất toán tranh chấp theo thỏa thuận (hoàn cho Client) bằng tài khoản mô phỏng')).toBeDefined();
+    expect(button('Tất toán tranh chấp theo thỏa thuận (hoàn cho Client) bằng tài khoản mô phỏng')).toBeUndefined();
   });
 
   it('R12: the first signer stores a signature for the chosen outcome and sends nothing; the second sends the settlement', async () => {
