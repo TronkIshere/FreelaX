@@ -20,7 +20,7 @@
     "The button 'Chọn ký quỹ Solana' is still shown on the contract page although the Solana rail is disabled (R13); a click would fail closed. UI clean-up candidate, not changed.",
     "After the release, the legacy section 'Giải ngân hợp đồng' shows 'Chưa có bản ghi giải ngân để xác nhận. Đang đối soát với Marketplace.' on an Avalanche-rail contract that is already released on chain; confusing wording, not changed.",
     "Signing in as the same user through the API ends the browser session of that user (single session per account); not a defect.",
-    "The freelancer notifications list read through the API was empty after the release; not investigated in this run (the drive driver records settlement notifications separately)."
+    "Correction (2026-11-20, same day): the empty freelancer notifications list was a parsing error in the checking script (the response is a page under data.data). Re-read: the freelancer has RELEASE_CONFIRMED, FUNDING_CONFIRMED and JOB_ASSIGNED for this contract, and the client sees the release notification on the Hoạt động page. No defect."
   ],
   "notCovered": ["MetaMask account-change and disconnect events", "rejecting a transaction in MetaMask (covered by the test-double run of 2026-11-05)", "dispute, R12 settlement and arbiter paths with MetaMask"]
 }

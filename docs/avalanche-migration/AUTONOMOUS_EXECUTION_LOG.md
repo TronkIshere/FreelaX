@@ -612,3 +612,8 @@ original reasoning. Do not add routine progress entries.
   single R12 mutual-settle filter); the action group is not rendered when no action applies.
 - **Tests:** frontend 32 files / 894 (+4 in `avalancheActions.test.ts`; `AvalanchePanel.test.tsx` fixtures given a chain state),
   `tsc -b` clean; verified in Chrome.
+
+### L-042: B7 notification observation corrected (2026-11-20)
+- The "freelancer notifications empty" observation of L-038 was wrong: the checking script read the page wrapper, not
+  `data.data`. Re-read: RELEASE_CONFIRMED, FUNDING_CONFIRMED, JOB_ASSIGNED present for the freelancer; release notification
+  visible to the client on the Hoạt động page. Evidence file corrected with a dated note. No code change.
