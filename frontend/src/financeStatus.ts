@@ -7,6 +7,13 @@ export const releaseOwned = (job: Job) => job.contract?.milestoneStatus === 'REL
   job.contract?.milestoneStatus === 'RELEASED' || job.contract?.status === 'COMPLETED' || job.status === 'COMPLETED';
 export const cancelledContract = (job: Job) => job.contract?.status === 'CANCELLED' ||
   job.contract?.milestoneStatus === 'REFUNDED' || job.status === 'CANCELLED';
+/** The escrow is on the Avalanche rail: funding and release are chain records shown by the Avalanche panel, not marketplace
+ *  funding/settlement records, so the legacy funding and settlement sections do not apply. */
+export const avalancheContract = (job: { contract?: { paymentNetworkId?: string | null } | null }) => !!job.contract?.paymentNetworkId?.trim().toLowerCase().startsWith('avalanche');
+export const avalancheReleased = (job: Job) => avalancheContract(job) && job.contract?.milestoneStatus === 'RELEASED';
+export const avalancheFunded = (job: Job) => avalancheContract(job) && !!job.contract?.milestoneStatus && job.contract.milestoneStatus !== 'PENDING_FUNDING';
+export const avalancheFundedLabel = 'Đã nạp ký quỹ trên chuỗi (mô phỏng)';
+export const avalancheReleaseLabel = (job: Job) => avalancheReleased(job) ? 'Đã giải ngân trên chuỗi (mô phỏng)' : 'Chờ giải ngân trên chuỗi';
 export const refundOwned = (job: Job) => job.contract?.milestoneStatus === 'REFUND_PENDING';
 export const financialCopy = {
   fundingVsRelease: 'Nạp tiền đã xác nhận không có nghĩa Freelancer đã nhận giải ngân.',
@@ -26,6 +33,7 @@ export function contractFinanceTone(job: Job, value?: ContractFinance): Evidence
   if (refundOwned(job)) return 'pending';
   if (cancelledContract(job) || cancellation?.cancellationStatus === 'CANCELLED') return 'done';
   if (value?.settlement) return financialMoneyTone(value.settlement.moneyStatus);
+  if (avalancheReleased(job)) return 'done';
   return value?.error ? 'error' : 'pending';
 }
 
@@ -37,7 +45,7 @@ export function contractFinanceLabel(job: Job, value?: ContractFinance): string 
   if (cancelledContract(job) || cancellation?.cancellationStatus === 'CANCELLED') return 'Hợp đồng đã hủy';
   if (value?.settlement) return settlementMoneyLabel(value.settlement.moneyStatus);
   if (value?.error) return 'Chưa xác minh hồ sơ tài chính';
-  if (releaseOwned(job)) return 'Chưa có bản ghi giải ngân';
+  if (releaseOwned(job)) return avalancheContract(job) ? avalancheReleaseLabel(job) : 'Chưa có bản ghi giải ngân';
   if (cancellation) return cancellationLabel(cancellation.cancellationStatus);
   return job.status === 'AWAITING_PAYMENT' ? 'Chờ nạp tiền' : 'Nạp tiền và hồ sơ hợp đồng';
 }
@@ -49,6 +57,7 @@ export function contractFinanceNeedsRefresh(job: Job, value: ContractFinance): b
   if (cancellation?.cancellationStatus === 'REFUND_PENDING') return cancellation.refundStatus !== 'FAILED' || cancellation.retryable;
   if (refundOwned(job)) return true;
   if (cancelledContract(job) || cancellation?.cancellationStatus === 'CANCELLED') return false;
+  if (!value.settlement && avalancheReleased(job)) return false;
   if (value.settlement || releaseOwned(job)) return settlementNeedsRefresh(value.settlement);
   // Active contracts may receive a proposal or review decision while this page is open.
   return true;

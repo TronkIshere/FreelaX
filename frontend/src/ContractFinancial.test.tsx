@@ -7,6 +7,8 @@ import { api, ApiError } from './api';
 import { WorkLifecycle } from './WorkLifecycle';
 import { JobDetail } from './Workflow';
 import { attemptScope, saveAttempt } from './workflowContracts';
+import { contractFinanceLabel, contractFinanceNeedsRefresh, contractFinanceTone } from './financeStatus';
+import { contractMoneyStages, resolveMoneySpine } from './financeSpine';
 import type { ContractCancellationRecord, ContractSettlement, ContractSubmission, Job, User } from './types';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -64,6 +66,45 @@ async function reason(value = proposal.reason) {
   expect(el).toBeTruthy(); await act(async () => { Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(el, value); el.dispatchEvent(new Event('input', { bubbles: true })); });
 }
 async function request() { await act(async () => host.querySelector('.cancellation-form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))); }
+
+describe('Avalanche rail contracts (B7 follow-up 2026-11-20)', () => {
+  const onAvalanche = (job: Job): Job => ({ ...job, contract: { ...job.contract!, paymentNetworkId: 'avalanche-local' } });
+  it('does not show the legacy settlement section or its empty-record message after an on-chain release', async () => {
+    vi.mocked(api.contractSubmissions).mockResolvedValue([approved]);
+    await mount(onAvalanche(completed));
+    expect(host.querySelector('[aria-label="Quyết toán hợp đồng"]')).toBeNull();
+    expect(host.textContent).not.toContain('Chưa có bản ghi giải ngân');
+    expect(button('Đối chiếu giải ngân')).toBeUndefined();
+  });
+  it('does not show the legacy bank funding panel while the Avalanche contract waits for funding', async () => {
+    await mount(onAvalanche(preFunding));
+    expect(host.querySelector('[aria-label="Nạp tiền cho hợp đồng"]')).toBeNull();
+    expect(button('Nạp tiền mô phỏng')).toBeUndefined();
+    expect(button('Thiết lập ngân hàng')).toBeUndefined();
+  });
+  it('labels the finance record from the chain release instead of a missing settlement record', () => {
+    const empty = { settlement: null, cancellation: null, error: '' };
+    expect(contractFinanceLabel(onAvalanche(completed), empty)).toBe('Đã giải ngân trên chuỗi (mô phỏng)');
+    expect(contractFinanceTone(onAvalanche(completed), empty)).toBe('done');
+    expect(contractFinanceNeedsRefresh(onAvalanche(completed), empty)).toBe(false);
+    expect(contractFinanceLabel(onAvalanche(releasing), empty)).toBe('Chờ giải ngân trên chuỗi');
+    expect(contractFinanceLabel(completed, empty)).toBe('Chưa có bản ghi giải ngân');
+  });
+  it('builds the finance stages from the chain: funded and released, legacy payout stages not applicable', () => {
+    const stages = contractMoneyStages(onAvalanche(completed), { settlement: null, cancellation: null, error: '' }, null, null);
+    expect(stages.map(stage => [stage.key, stage.tone, stage.applicable !== false])).toEqual([
+      ['funding', 'done', true], ['release', 'done', true], ['onchain', 'pending', false], ['vnd', 'pending', false], ['tax', 'pending', false]]);
+    expect(stages[0].status).toBe('Đã nạp ký quỹ trên chuỗi (mô phỏng)');
+    expect(resolveMoneySpine(stages).resolved).toBe(true);
+    const legacy = contractMoneyStages(completed, { settlement: null, cancellation: null, error: '' }, null, null);
+    expect(legacy.every(stage => stage.applicable !== false)).toBe(true);
+  });
+  it('keeps the legacy sections for contracts that are not on the Avalanche rail', async () => {
+    vi.mocked(api.contractSubmissions).mockResolvedValue([approved]);
+    await mount(completed);
+    expect(host.querySelector('[aria-label="Quyết toán hợp đồng"]')).not.toBeNull();
+  });
+});
 
 describe('P0 approval and settlement authority', () => {
   beforeEach(() => { vi.mocked(api.contractSubmissions).mockResolvedValue([approved]); });

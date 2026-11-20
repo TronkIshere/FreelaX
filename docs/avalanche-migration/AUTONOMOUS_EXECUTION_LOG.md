@@ -598,3 +598,10 @@ original reasoning. Do not add routine progress entries.
 - **Change:** `frontend/src/solanaUi.ts` (`VITE_SOLANA_ENABLED`, default false); Solana opt-in button, Solana wallet panel on
   the simulated path and the sign-in auto Solana wallet call gated; payout wording without "Solana"; build pass-through.
 - **Tests:** frontend 32 files / 885 (+2 in `Funding.test.tsx`), `tsc -b` clean.
+
+### L-040: Legacy money sections hidden on Avalanche-rail contracts (2026-11-20)
+- **Authority:** owner "tập trung sửa lại hai cái giao diện kia cho đúng" (observations of L-038).
+- **Change:** `financeStatus.ts` helpers (`avalancheContract`, `avalancheFunded`, `avalancheReleased`); `ContractLifecycle.tsx`
+  hides the legacy funding panel and settlement section; `financeSpine.ts` / `Finance.tsx` chain-based labels and
+  not-applicable legacy stages; `Workflow.tsx` partner-mock sentence hidden on Avalanche contracts.
+- **Tests:** frontend 32 files / 890 (+5 in `ContractFinancial.test.tsx`), `tsc -b` clean; verified in Chrome on the dev stack.

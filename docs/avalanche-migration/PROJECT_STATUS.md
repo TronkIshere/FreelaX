@@ -677,3 +677,12 @@ Owner instruction (2026-11-20): hide the remaining Solana-related UI so the scre
 at sign-in. The Avalanche payout labels no longer name the Solana rail ("quy tắc hiện hành của FreelaX", still labelled
 simulated; the rules themselves are unchanged, owner decision 2026-11-05). Records of older Solana contracts keep their history
 labels ("Solana (tham chiếu cũ)", Escrow Solana section). Frontend 32 files / 885 tests (+2), `tsc -b` clean.
+
+## Change note (2026-11-20): legacy money sections hidden on Avalanche-rail contracts (B7 follow-up)
+Found in the MetaMask run (B7, 2026-11-20). For a contract whose `paymentNetworkId` starts with `avalanche`, funding and release
+are chain records shown by the Avalanche panel; the marketplace funding/settlement records never exist for it. Now: the legacy
+bank funding panel and the "Giải ngân hợp đồng" settlement section are not shown on such contracts; the finance page reads
+funding and release from the contract state ("Đã nạp ký quỹ trên chuỗi (mô phỏng)", "Đã giải ngân trên chuỗi (mô phỏng)") and
+marks the legacy wallet/VND/certificate stages "Không áp dụng cho ký quỹ Avalanche"; the partner-mock fee sentence is not shown
+on Avalanche contracts. Other rails unchanged. Frontend 32 files / 890 tests (+5), `tsc -b` clean; checked in the browser on
+the dev stack (contract page and finance page of the released MetaMask contract).
