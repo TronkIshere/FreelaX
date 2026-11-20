@@ -617,3 +617,11 @@ original reasoning. Do not add routine progress entries.
 - The "freelancer notifications empty" observation of L-038 was wrong: the checking script read the page wrapper, not
   `data.data`. Re-read: RELEASE_CONFIRMED, FUNDING_CONFIRMED, JOB_ASSIGNED present for the freelancer; release notification
   visible to the client on the Hoạt động page. Evidence file corrected with a dated note. No code change.
+
+### L-043: Avalanche contracts approved by the on-chain release only (2026-11-21)
+- **Authority:** owner "có tôi đồng ý luôn" on the proposed fix.
+- **Change:** backend `ContractSubmissionService` (APPROVE refused, auto-review skipped on Avalanche contracts); frontend
+  `ContractLifecycle.tsx` (no approve button, release hint). Tests: `ContractSubmissionServiceTest` +1,
+  `ContractLifecycle.test.tsx` +1.
+- **Results:** JDK 17 reactor (clean) 72 / 461 / 20; frontend 32 / 895, `tsc -b` clean.
+- **Local data:** demo contract "Landing page…" reverted from RELEASE_PENDING/APPROVED to SUBMITTED in the dev stack database.

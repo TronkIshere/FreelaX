@@ -122,6 +122,14 @@ describe('P06.4B contract workflow', () => {
     await input('.decision-form textarea', 'Fix mobile'); await submit('.decision-form'); expect(post).not.toHaveBeenCalled();
     await act(async () => (host.querySelector('.decision-form input[type=checkbox]') as HTMLInputElement).click()); await submit('.decision-form'); expect(post).toHaveBeenCalledWith('contract', 'v1', { decision: 'REQUEST_REVISION', feedback: 'Fix mobile', criterionIds: ['criterion'], deliverableIds: [] });
   });
+  it('Avalanche contract: no marketplace approval, the client is pointed to the on-chain release; revision and dispute stay', async () => {
+    vi.mocked(api.contractSubmissions).mockResolvedValue([v1]);
+    await mount({ ...review, contract: { ...review.contract!, paymentNetworkId: 'avalanche-local' } }, client);
+    expect(button('Duyệt bàn giao')).toBeUndefined();
+    expect(host.querySelector('[data-testid="avalanche-approval-hint"]')?.textContent).toContain('Giải ngân bằng ví');
+    expect(button('Yêu cầu chỉnh sửa')).toBeDefined();
+    expect(button('Mở tranh chấp')).toBeDefined();
+  });
   it('revision limit disables revision while approve/dispute remain valid', async () => {
     vi.mocked(api.contractSubmissions).mockResolvedValue([v1]); await mount({ ...review, contract: { ...review.contract!, revisionsUsed: 2 } }, client); expect(button('Yêu cầu chỉnh sửa')?.disabled).toBe(true); expect(button('Duyệt bàn giao')?.disabled).toBe(false); expect(button('Mở tranh chấp')?.disabled).toBe(false);
   });
