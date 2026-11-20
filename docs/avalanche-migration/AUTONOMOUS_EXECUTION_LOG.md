@@ -592,3 +592,9 @@ original reasoning. Do not add routine progress entries.
   link, fund, release with MetaMask PASS; contract COMPLETED, escrow RELEASED, freelancer 5 USDC (simulated).
 - **Open:** two UI observations (Solana opt-in button visible with the rail off; legacy payout panel wording); MetaMask
   account-change/disconnect and dispute paths not exercised.
+
+### L-039: Solana controls hidden in the UI (2026-11-20)
+- **Authority:** owner "cái râu ria còn liên quan đến Solana thì ẩn đi để giao diện nhìn sạch sẽ".
+- **Change:** `frontend/src/solanaUi.ts` (`VITE_SOLANA_ENABLED`, default false); Solana opt-in button, Solana wallet panel on
+  the simulated path and the sign-in auto Solana wallet call gated; payout wording without "Solana"; build pass-through.
+- **Tests:** frontend 32 files / 885 (+2 in `Funding.test.tsx`), `tsc -b` clean.

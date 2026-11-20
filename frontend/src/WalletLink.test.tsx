@@ -10,6 +10,7 @@ afterEach(() => { vi.restoreAllMocks(); vi.unstubAllEnvs(); });
 
 it('connects automatically and shows only the success message', async () => {
   vi.stubEnv('VITE_SOLANA_CLUSTER', 'localnet');
+  vi.stubEnv('VITE_SOLANA_ENABLED', 'true');
   vi.spyOn(api, 'autoSolanaWallet').mockResolvedValue({ walletAddress: 'D4GygZ5dmnMb8QJhgKSqgmDReQCbfoz39pKEv3W7zzNS' });
   const host = document.createElement('div');
   document.body.append(host);

@@ -1,3 +1,4 @@
+import { solanaUiEnabled } from './solanaUi';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { api, ApiError } from './api';
 import type { User } from './types';
@@ -29,7 +30,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     };
     api.restore().then(
       async user => {
-        if (import.meta.env.VITE_SOLANA_CLUSTER === 'localnet') await api.autoSolanaWallet().catch(() => undefined);
+        if (solanaUiEnabled() && import.meta.env.VITE_SOLANA_CLUSTER === 'localnet') await api.autoSolanaWallet().catch(() => undefined);
         if (active) setSession({ status: 'ready', user });
       },
       error => {
@@ -53,7 +54,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     },
     signIn: async (email, password) => {
       const user = await api.signIn(email, password);
-      if (import.meta.env.VITE_SOLANA_CLUSTER === 'localnet') await api.autoSolanaWallet().catch(() => undefined);
+      if (solanaUiEnabled() && import.meta.env.VITE_SOLANA_CLUSTER === 'localnet') await api.autoSolanaWallet().catch(() => undefined);
       setSession({ status: 'ready', user });
     },
     signOut: async () => {

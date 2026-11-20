@@ -669,3 +669,11 @@ chain agreeing ([evidence](phase-2/evidence/LOCAL_SIMULATION-b7-metamask-2026112
 wallet (not MetaMask). Not covered with MetaMask: account-change and disconnect events, dispute/R12/arbiter paths. B7 row: the
 MetaMask link, fund and release paths are now exercised (LOCAL-SIM); Fuji is not. Two UI observations recorded in the evidence
 (Solana opt-in button still visible with the rail off; legacy payout panel wording on a released Avalanche contract), not changed.
+
+## Change note (2026-11-20): Solana controls hidden in the UI (R13 follow-up)
+Owner instruction (2026-11-20): hide the remaining Solana-related UI so the screens are clean. Frontend flag
+`VITE_SOLANA_ENABLED` (default **false**; Dockerfile, compose and `.env.example` pass-through). When false: no
+"Chọn ký quỹ Solana" button, no Solana wallet connection panel on the simulated funding path, no automatic Solana wallet call
+at sign-in. The Avalanche payout labels no longer name the Solana rail ("quy tắc hiện hành của FreelaX", still labelled
+simulated; the rules themselves are unchanged, owner decision 2026-11-05). Records of older Solana contracts keep their history
+labels ("Solana (tham chiếu cũ)", Escrow Solana section). Frontend 32 files / 885 tests (+2), `tsc -b` clean.
