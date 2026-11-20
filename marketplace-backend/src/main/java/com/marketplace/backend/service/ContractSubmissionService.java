@@ -184,6 +184,12 @@ public class ContractSubmissionService {
         SolanaEscrowResult chain = onChainEscrow ? escrowState(milestone.getId()) : null;
         submission.setReviewedAt(LocalDateTime.now());
         if (request.getDecision() == ReviewSubmissionRequest.Decision.APPROVE) {
+            // Avalanche rail (2026-11-20): the client approves by releasing the escrow on chain. A marketplace approval would
+            // move the milestone to RELEASE_PENDING while the escrow may still be Funded, and an approved submission can no
+            // longer be anchored on chain, so the contract could never be released.
+            if (com.marketplace.backend.blockchain.avalanche.AvalancheEscrowIds.isAvalancheNetwork(contract.getPaymentNetworkId())) {
+                throw new ApplicationException(ErrorCode.SUBMISSION_INVALID_STATE);
+            }
             if (chain != null && !"Released".equals(chain.status())) {
                 throw new ApplicationException(ErrorCode.SUBMISSION_INVALID_STATE);
             }
@@ -310,7 +316,9 @@ public class ContractSubmissionService {
         Job job = jobs.findById(contract.getJobId())
                 .orElseThrow(() -> new ApplicationException(ErrorCode.CONTRACT_SUBMISSION_NOT_FOUND));
         // The escrow reconciler approves only after verifying the on-chain vault transfer.
-        if (escrowContracts.existsByContractId(contract.getId())) {
+        // Avalanche rail: once the review window has passed, release is permissionless on chain; no marketplace auto-approval.
+        if (escrowContracts.existsByContractId(contract.getId())
+                || com.marketplace.backend.blockchain.avalanche.AvalancheEscrowIds.isAvalancheNetwork(contract.getPaymentNetworkId())) {
             return AutoReviewOutcome.SKIPPED;
         }
         if (!PartnerEscrowFundingService.RAIL.equals(contract.getPaymentRail())

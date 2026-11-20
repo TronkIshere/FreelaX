@@ -201,6 +201,25 @@ class ContractSubmissionServiceTest {
     }
 
     @Test
+    void anAvalancheRailContractIsNotApprovedInTheMarketplaceButByTheOnChainRelease() {
+        when(funding.existsByMilestoneIdAndStatusIn(eq(milestone.getId()), any())).thenReturn(false);
+        contract.setPaymentNetworkId("avalanche-local");
+        service.submit(contract.getFreelancerId(), contract.getId(), "submit-av", request());
+        ReviewSubmissionRequest approve = new ReviewSubmissionRequest();
+        approve.setDecision(ReviewSubmissionRequest.Decision.APPROVE);
+        assertThatThrownBy(() -> service.decide(contract.getClientUserId(), contract.getId(), saved.getId(), approve))
+                .isInstanceOf(ApplicationException.class)
+                .extracting(ex -> ((ApplicationException) ex).getErrorCode())
+                .isEqualTo(ErrorCode.SUBMISSION_INVALID_STATE);
+        assertThat(saved.getStatus()).isEqualTo(JobSubmissionStatus.SUBMITTED);
+        assertThat(milestone.getStatus()).isEqualTo(MilestoneStatus.SUBMITTED);
+        // no automatic marketplace approval either: after the review window the release is permissionless on chain
+        assertThat(service.autoReview(saved.getId(), saved.getReviewDueAt().plusSeconds(1)))
+                .isEqualTo(ContractSubmissionService.AutoReviewOutcome.SKIPPED);
+        assertThat(milestone.getStatus()).isEqualTo(MilestoneStatus.SUBMITTED);
+    }
+
+    @Test
     void aLegacyRailContractWithoutAFundingRecordStillCannotSubmit() {
         when(funding.existsByMilestoneIdAndStatusIn(eq(milestone.getId()), any())).thenReturn(false);
         contract.setPaymentNetworkId("solana-localnet");

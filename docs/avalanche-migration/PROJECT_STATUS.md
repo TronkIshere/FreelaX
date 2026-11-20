@@ -696,3 +696,22 @@ release Submitted (the freelancer only after the review window); mutual refund F
 settlement Disputed; nothing once Released or Refunded. Presentation only: the backend and the contract still decide.
 Frontend 32 files / 894 tests (+4; six panel tests now give the snapshot the state their action needs), `tsc -b` clean; checked
 in Chrome on the released MetaMask contract (no action buttons, only "Làm mới trạng thái").
+
+## Change note (2026-11-21): Avalanche contracts are approved by the on-chain release only
+Found in the owner's demo run (2026-11-20): the client pressed "Duyệt bàn giao" before the freelancer had anchored the
+submission on chain. The marketplace moved the milestone to RELEASE_PENDING while the escrow was still Funded, and an approved
+submission can no longer be anchored, so the contract could never be released (deadlock). Owner approved the fix ("có tôi đồng
+ý luôn"). Now, for a contract whose `paymentNetworkId` starts with `avalanche`: `ContractSubmissionService.decide` refuses
+APPROVE (`SUBMISSION_INVALID_STATE`) and `autoReview` skips it (after the review window the release is permissionless on chain);
+the client page shows no "Duyệt bàn giao" button but a hint to release with the wallet once the submission is anchored. Revision
+request and dispute are unchanged. Other rails unchanged. Additive Java 17 change (R11). JDK 17 reactor clean: payment 72,
+marketplace **461** (+1), misa 20; frontend 32 files / 895 at this commit, `tsc -b` clean. The stuck demo contract in the local
+dev database was put back to "in review" by hand (LOCAL only, throwaway data).
+
+## Change note (2026-11-21): simulated-account buttons removed for the contract parties
+Found while preparing the owner's demo (2026-11-20): "… bằng tài khoản mô phỏng" makes the gateway sign as its own test buyer or
+test freelancer (`EscrowActionServiceImpl` signer roles), never as the parties' linked wallets, while the marketplace requires
+linked wallets and the escrow checks the sender (`fund`: `msg.sender == client`); for the parties these buttons could only
+revert. The Avalanche panel now offers the simulated path only where it works: the arbiter's resolution (arbiter signer) and a
+release by someone other than the client after the review window (relayer; permissionless on chain). Frontend only. Frontend
+32 files / 896 tests, `tsc -b` clean.

@@ -533,7 +533,8 @@ export function ContractLifecycle({ job, user, onJobUpdated, children, footer }:
     {canReview && <section className="review-action" id="work-primary-action" tabIndex={-1}><SectionHeading title="Quyết định của bạn" />
       <p className="metadata">Chỉnh sửa đã dùng: {contract.revisionsUsed}/{contract.maxRevisions}</p>
       {reviewAttempt && <p role="status">Đang đối soát quyết định ký quỹ đã gửi. Giữ nguyên nội dung trước khi ký lại.</p>}
-      {!decision && !reviewAttempt ? <ActionGroup><button className="button" disabled={busy} onClick={() => setDecision('APPROVE')}>Duyệt bàn giao</button><button className="button button-secondary" disabled={busy || !revisionAvailable} onClick={() => setDecision('REQUEST_REVISION')}>Yêu cầu chỉnh sửa</button><button className="text-button" disabled={busy} onClick={() => setDecision('OPEN_DISPUTE')}>Mở tranh chấp</button></ActionGroup>
+      {avalancheRail && <p className="metadata" data-testid="avalanche-approval-hint">Ký quỹ Avalanche: bạn duyệt bằng nút “Giải ngân bằng ví” trong khung Ký quỹ Avalanche, sau khi Freelancer đã ghi nhận bàn giao trên chuỗi.</p>}
+      {!decision && !reviewAttempt ? <ActionGroup>{!avalancheRail && <button className="button" disabled={busy} onClick={() => setDecision('APPROVE')}>Duyệt bàn giao</button>}<button className="button button-secondary" disabled={busy || !revisionAvailable} onClick={() => setDecision('REQUEST_REVISION')}>Yêu cầu chỉnh sửa</button><button className="text-button" disabled={busy} onClick={() => setDecision('OPEN_DISPUTE')}>Mở tranh chấp</button></ActionGroup>
         : <form className="decision-form" onSubmit={decide} aria-label="Xác nhận quyết định">
           {reviewAttempt ? <p>Tiếp tục đối soát quyết định {reviewAttempt.body.decision} cho bản #{latest.version}.</p> : <>
           {decision === 'APPROVE' && <p>Duyệt bản #{latest.version}? Phần việc được duyệt; tiền chuyển sang chờ xử lý, chưa giải ngân.</p>}
