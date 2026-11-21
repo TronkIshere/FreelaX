@@ -37,6 +37,10 @@ public class PayoutTransaction extends AbstractEntity<UUID> {
     @Column(name = "blockchain", nullable = false)
     String blockchain = "solana";
 
+    /** Withholding scheme (2026-11-21); null keeps the legacy configured PIT rate. Additive nullable column. */
+    @Column(name = "tax_scheme", length = 40)
+    String taxScheme;
+
     @Column(name = "transaction_hash", nullable = false)
     String transactionHash;
 

@@ -384,6 +384,9 @@ export interface TaxRecord {
   rateObservedAt: string | null;
   taxableIncomeVnd: DecimalValue | null;
   taxWithheldVnd: DecimalValue | null;
+  /** 2026-11-21: 'VN_DECREE_117_SERVICES' on Avalanche-rail certificates (PIT 2% + VAT 5%, simulated); absent/null = legacy. */
+  taxScheme?: string | null;
+  vatWithheldVnd?: DecimalValue | null;
   certificateNumber: string | null;
   certificateSymbol: string | null;
   lookupCode: string | null;

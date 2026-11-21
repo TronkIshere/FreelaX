@@ -67,6 +67,44 @@ class PayoutTransactionServiceImplTest {
         verify(payouts, never()).save(any());
     }
 
+    @Test
+    void decree117SchemeIsStoredAndAnUnknownSchemeIsRejected() {
+        UUID taxpayerId = UUID.randomUUID();
+        Taxpayer taxpayer = new Taxpayer();
+        taxpayer.setId(taxpayerId);
+        when(payouts.findByPlatformPayoutId("job-1")).thenReturn(Optional.empty());
+        when(taxpayers.findById(taxpayerId)).thenReturn(Optional.of(taxpayer));
+        CreatePayoutTransactionRequest scheme = request("300", "25000");
+        scheme.setTaxScheme("vn_decree_117_services");
+        service.record(taxpayerId, scheme);
+        verify(payouts).save(org.mockito.ArgumentMatchers.argThat(p ->
+                com.misa.backend.service.TaxScheme.DECREE_117_SERVICES.equals(p.getTaxScheme())));
+
+        CreatePayoutTransactionRequest unknown = request("300", "25000");
+        unknown.setTaxScheme("FLAT_99");
+        assertThatThrownBy(() -> service.record(taxpayerId, unknown)).isInstanceOf(ApplicationException.class);
+    }
+
+    @Test
+    void repeatPostWithADifferentSchemeIsRejected() {
+        UUID taxpayerId = UUID.randomUUID();
+        Taxpayer taxpayer = new Taxpayer();
+        taxpayer.setId(taxpayerId);
+        PayoutTransaction existing = new PayoutTransaction();
+        existing.setTaxpayer(taxpayer);
+        existing.setPlatformPayoutId("job-1");
+        existing.setTransactionHash("signature");
+        existing.setBlockchain("solana");
+        existing.setAmountUsdc(new BigDecimal("500"));
+        existing.setExchangeRate(new BigDecimal("25000"));
+        when(payouts.findByPlatformPayoutId("job-1")).thenReturn(Optional.of(existing));
+        CreatePayoutTransactionRequest scheme = request("500", "25000");
+        scheme.setTaxScheme(com.misa.backend.service.TaxScheme.DECREE_117_SERVICES);
+
+        assertThatThrownBy(() -> service.record(taxpayerId, scheme)).isInstanceOf(ApplicationException.class);
+        verify(payouts, never()).save(any());
+    }
+
     private CreatePayoutTransactionRequest request(String amount, String rate) {
         CreatePayoutTransactionRequest request = new CreatePayoutTransactionRequest();
         request.setPlatformPayoutId("job-1");

@@ -70,6 +70,10 @@ public class WithholdingCertificate extends AbstractEntity<UUID> {
     @Column(name = "tax_withheld", nullable = false, precision = 20, scale = 2)
     BigDecimal taxWithheld;
 
+    /** VAT withheld on behalf of the provider (Decree 117 scheme only, simulated); null otherwise. Additive nullable column. */
+    @Column(name = "vat_withheld", precision = 20, scale = 2)
+    BigDecimal vatWithheld;
+
     @Column(name = "currency", nullable = false)
     String currency = "VND";
 

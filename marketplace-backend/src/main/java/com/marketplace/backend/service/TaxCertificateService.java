@@ -14,6 +14,8 @@ public interface TaxCertificateService {
     /** Unified rail: issue the withholding certificate once the VND payout statement is confirmed. */
     void exportForUnifiedPayout(UUID paymentFlowId);
 
+    /** Avalanche rail (owner decision 2026-11-21): export the prepared record of a released escrow (Decree 117 scheme). */
+    void exportForAvalancheRelease(UUID taxRecordId);
     void exportForPayout(Job job, FreelancerPayoutRecord payoutRecord, String transactionReference);
 
     PageResponse<TaxCertificateResponse> listForUser(UUID userId, int page, int size);

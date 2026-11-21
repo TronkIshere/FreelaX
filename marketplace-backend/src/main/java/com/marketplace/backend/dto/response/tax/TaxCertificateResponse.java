@@ -27,6 +27,9 @@ public class TaxCertificateResponse {
     Instant rateObservedAt;
     BigDecimal taxableIncomeVnd;
     BigDecimal taxWithheldVnd;
+    /** 2026-11-21: withholding scheme (null = legacy) and the VAT withheld under the Decree 117 scheme (simulated). */
+    String taxScheme;
+    BigDecimal vatWithheldVnd;
     String certificateNumber;
     String certificateSymbol;
     String lookupCode;

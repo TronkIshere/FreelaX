@@ -104,7 +104,11 @@ public class WithholdingCertificateServiceImpl implements WithholdingCertificate
         certificate.setPayoutTransaction(payoutTransaction);
         certificate.setTaxpayer(payoutTransaction.getTaxpayer());
         certificate.setTaxableIncome(payoutTransaction.getAmountVndGross());
-        certificate.setTaxWithheld(taxEngineService.calculateTaxWithheld(payoutTransaction.getAmountVndGross()));
+        String scheme = payoutTransaction.getTaxScheme();
+        certificate.setTaxWithheld(scheme == null
+                ? taxEngineService.calculateTaxWithheld(payoutTransaction.getAmountVndGross())
+                : taxEngineService.calculateTaxWithheld(payoutTransaction.getAmountVndGross(), scheme));
+        certificate.setVatWithheld(taxEngineService.calculateVatWithheld(payoutTransaction.getAmountVndGross(), scheme));
         certificate.setStatus(CertificateStatus.DRAFT);
         certificate.setIdempotencyKey(key);
         certificate.setPayloadHash(hash);
@@ -140,6 +144,10 @@ public class WithholdingCertificateServiceImpl implements WithholdingCertificate
         List<String> values = List.of(p.getId().toString(), p.getPlatformPayoutId(),
                 p.getTaxpayer().getId().toString(), decimal(p.getAmountUsdc()), decimal(p.getExchangeRate()),
                 decimal(p.getAmountVndGross()), p.getBlockchain(), p.getTransactionHash(), "VND");
+        if (p.getTaxScheme() != null) { // legacy payouts keep their original fingerprint
+            values = new java.util.ArrayList<>(values);
+            values.add(p.getTaxScheme());
+        }
         String canonical = values.stream().map(v -> v.length() + ":" + v).collect(Collectors.joining());
         try {
             return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
@@ -300,6 +308,8 @@ public class WithholdingCertificateServiceImpl implements WithholdingCertificate
                 + "<Income>"
                 + "<TaxableIncome>" + certificate.getTaxableIncome() + "</TaxableIncome>"
                 + "<TaxWithheld>" + certificate.getTaxWithheld() + "</TaxWithheld>"
+                + (certificate.getVatWithheld() == null ? "" : "<VatWithheld>" + certificate.getVatWithheld() + "</VatWithheld>"
+                        + "<TaxScheme>" + xml(certificate.getPayoutTransaction().getTaxScheme()) + "</TaxScheme>")
                 + "</Income>"
                 + "</WithholdingCertificate>";
     }
@@ -370,7 +380,8 @@ public class WithholdingCertificateServiceImpl implements WithholdingCertificate
                 certificate.getSubmittedAt(),
                 certificate.getTaxAuthorityReference(),
                 certificate.getCancelledAt(),
-                certificate.getCancelReason()
+                certificate.getCancelReason(),
+                certificate.getVatWithheld()
         );
     }
 
@@ -410,6 +421,8 @@ public class WithholdingCertificateServiceImpl implements WithholdingCertificate
                 .income(IncomeSummary.builder()
                         .taxableIncome(certificate.getTaxableIncome())
                         .taxWithheld(certificate.getTaxWithheld())
+                        .vatWithheld(certificate.getVatWithheld())
+                        .taxScheme(certificate.getPayoutTransaction().getTaxScheme())
                         .currency(certificate.getCurrency())
                         .build())
                 .createdAt(certificate.getCreatedAt())

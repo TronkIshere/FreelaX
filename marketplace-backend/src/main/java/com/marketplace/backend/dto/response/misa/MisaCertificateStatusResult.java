@@ -30,4 +30,6 @@ public class MisaCertificateStatusResult {
     BigDecimal taxableIncome;
     @JsonAlias({"taxWithheldAmount"})
     BigDecimal taxWithheld;
+    /** Decree 117 scheme only (2026-11-21, simulated). */
+    BigDecimal vatWithheld;
 }

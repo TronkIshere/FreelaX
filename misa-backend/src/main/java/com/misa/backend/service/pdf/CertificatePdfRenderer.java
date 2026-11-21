@@ -243,6 +243,9 @@ public class CertificatePdfRenderer {
         incomeRow(table, "3", "Khoản đóng góp từ thiện, nhân đạo, khuyến học", charity, f, false);
         incomeRow(table, "4", "Tổng thu nhập tính thuế", assessable, f, false);
         incomeRow(table, "5", "Số thuế thu nhập cá nhân đã khấu trừ", nz(data.taxWithheld()), f, true);
+        if (data.vatWithheld() != null) { // Decree 117 scheme (simulated): VAT withheld on behalf of the provider
+            incomeRow(table, "6", "Thuế GTGT sàn khấu trừ thay (NĐ 117/2025, mô phỏng)", data.vatWithheld(), f, false);
+        }
 
         return table;
     }

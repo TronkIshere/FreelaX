@@ -109,7 +109,22 @@ public class MisaBackendClient {
                                                                BigDecimal sourceAmount, BigDecimal vndRate,
                                                                String transactionHash, String blockchain,
                                                                boolean sourceIsUsdc) {
+        return recordPayoutTransaction(taxpayerId, payoutReference, sourceAmount, vndRate, transactionHash, blockchain,
+                sourceIsUsdc, null);
+    }
+
+    /**
+     * {@code taxScheme} (2026-11-21): null keeps MISA's configured PIT rate (legacy); {@code VN_DECREE_117_SERVICES} records the
+     * Avalanche-rail payout under Decree 117/2025 (platform withholds PIT 2% + VAT 5% on behalf of the provider, simulated).
+     */
+    public MisaPayoutTransactionResult recordPayoutTransaction(UUID taxpayerId, UUID payoutReference,
+                                                               BigDecimal sourceAmount, BigDecimal vndRate,
+                                                               String transactionHash, String blockchain,
+                                                               boolean sourceIsUsdc, String taxScheme) {
         Map<String, Object> body = new HashMap<>();
+        if (taxScheme != null) {
+            body.put("taxScheme", taxScheme);
+        }
         body.put("platformPayoutId", payoutReference.toString());
         body.put("transactionHash", transactionHash);
         body.put("blockchain", blockchain);
@@ -119,7 +134,10 @@ public class MisaBackendClient {
         body.put("exchangeRate", vndRate);
         body.put("amountUsdc", sourceAmount);
         body.put("paymentDate", LocalDate.now());
-        body.put("description", "Thanh toán thù lao công việc " + payoutReference
+        body.put("description", taxScheme != null
+                ? "Thanh toán thù lao công việc " + payoutReference + " qua ký quỹ Avalanche (mô phỏng). Tỷ giá quy đổi: "
+                        + formatRate(vndRate) + " VND/USDC. Sàn khấu trừ thay theo Nghị định 117/2025: TNCN 2%, GTGT 5%."
+                : "Thanh toán thù lao công việc " + payoutReference
                 + ". Tỷ giá quy đổi: " + formatRate(vndRate)
                 + (sourceIsUsdc ? " VND/USDC sau phí dịch vụ" : " VND/USD"));
 
@@ -241,6 +259,9 @@ public class MisaBackendClient {
         }
         if (result.getTaxableIncome() == null && income.hasNonNull("taxableIncome")) {
             result.setTaxableIncome(income.get("taxableIncome").decimalValue());
+        }
+        if (result.getVatWithheld() == null && income.hasNonNull("vatWithheld")) {
+            result.setVatWithheld(income.get("vatWithheld").decimalValue());
         }
         return result;
     }
