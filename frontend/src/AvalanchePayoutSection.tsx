@@ -39,6 +39,8 @@ type Props = { contractId: string; expectedChainId: number; simulated: boolean; 
  * Freelancer-only, after the escrow released. Non-custodial: the user's own wallet sends the backend-built transfer to the
  * partner deposit address; FreelaX never holds or moves the funds. Shows the on-chain and fiat confirmations separately.
  */
+export const PAYOUT_IN_PROGRESS = new Set(['TRANSFER_SUBMITTED', 'TRANSFER_CONFIRMED', 'FIAT_PAYOUT_PENDING']);
+
 export function AvalanchePayoutSection({ contractId, expectedChainId, simulated, walletFactory }: Props) {
   const [payout, setPayout] = useState<AvalanchePayoutView | null | undefined>(undefined);
   const [unsupported, setUnsupported] = useState<string | null>(null);
@@ -57,6 +59,13 @@ export function AvalanchePayoutSection({ contractId, expectedChainId, simulated,
     }
   }, [contractId]);
   useEffect(() => { void load(); }, [load]);
+  // 2026-11-21: the server advances in-progress payouts on its own; re-read them so the page follows without a click.
+  const inProgress = !!payout && PAYOUT_IN_PROGRESS.has(payout.status);
+  useEffect(() => {
+    if (!inProgress) return;
+    const timer = window.setInterval(() => { if (document.visibilityState !== 'hidden') void load(); }, 10000);
+    return () => window.clearInterval(timer);
+  }, [inProgress, load]);
 
   async function run(work: () => Promise<void>) {
     if (lock.current) return;

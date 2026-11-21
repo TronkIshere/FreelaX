@@ -754,3 +754,11 @@ in progress, paid, failed); "Chứng từ thuế" follows the MISA record and li
 has its own explanation (previously one repeated sentence). The finance page keeps refreshing a released contract until its
 certificate exists; the tax record page shows the VAT and a Decree 117 simulation note. Frontend 32 files / **898** tests,
 `tsc -b` clean.
+
+## Change note (2026-11-21): VND payouts in progress advance automatically
+Owner request in session ("có luôn bạn") after a payout stayed at TRANSFER_SUBMITTED until "Làm mới chi trả" was clicked.
+`AvalanchePayoutRefreshScheduler` (flag `avalanche-payout.auto-refresh`, default **true** by that request; false = manual only)
+runs the freelancer's own refresh every 10 s for payouts in TRANSFER_SUBMITTED, TRANSFER_CONFIRMED or FIAT_PAYOUT_PENDING
+(on-chain transfer check, then the mock partner's fiat status). It sends no transaction, moves no funds and never changes the
+partner. The payout section re-reads an in-progress payout every 10 s and the finance page keeps refreshing while one is in
+progress. JDK 17 reactor (clean): payment 72, marketplace **466** (+1), misa 24; frontend 32 files / **899**, `tsc -b` clean.

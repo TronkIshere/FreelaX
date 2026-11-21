@@ -90,6 +90,22 @@ describe('Avalanche payout section (non-custodial, Phase 3)', () => {
     expect(host.querySelector('[data-testid="fiat-confirmed"]')?.textContent).toBe('Đã xác nhận');
     expect(button('Làm mới chi trả')).toBeUndefined();
   });
+  it('follows an in-progress payout on its own (server auto-refresh) and stops once it is paid', async () => {
+    vi.useFakeTimers();
+    try {
+      const read = vi.spyOn(api, 'avalanchePayout')
+        .mockResolvedValueOnce(payout({ status: 'TRANSFER_SUBMITTED', transferTxHash: HASH, preparedTransfer: null }))
+        .mockResolvedValue(payout({ status: 'FIAT_PAYOUT_CONFIRMED', onChainTransferConfirmed: true, fiatPayoutConfirmed: true,
+          transferTxHash: HASH, preparedTransfer: null }));
+      await mount();
+      expect(read).toHaveBeenCalledTimes(1);
+      await act(async () => { await vi.advanceTimersByTimeAsync(10000); });
+      expect(read).toHaveBeenCalledTimes(2);
+      expect(host.querySelector('[data-testid="fiat-confirmed"]')?.textContent).toBe('Đã xác nhận');
+      await act(async () => { await vi.advanceTimersByTimeAsync(30000); });
+      expect(read).toHaveBeenCalledTimes(2);
+    } finally { vi.useRealTimers(); }
+  });
 });
 
 describe('panel placement', () => {

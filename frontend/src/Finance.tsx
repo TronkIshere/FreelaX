@@ -414,12 +414,12 @@ function ContractEvidence({ initialJob }: { initialJob: Job }) {
     return () => { active = false; };
   }, [initialJob, attempt, tick]);
   useEffect(() => {
-    if (!ready || busy || !contractFinanceNeedsRefresh(job, record, tax)) return;
+    if (!ready || busy || !contractFinanceNeedsRefresh(job, record, tax, payout)) return;
     const refreshVisible = () => { if (document.visibilityState !== 'hidden') setTick(value => value + 1); };
     const timer = window.setTimeout(refreshVisible, 30000);
     document.addEventListener('visibilitychange', refreshVisible);
     return () => { window.clearTimeout(timer); document.removeEventListener('visibilitychange', refreshVisible); };
-  }, [ready, busy, job, record, tax, tick, attempt]);
+  }, [ready, busy, job, record, tax, payout, tick, attempt]);
   const { settlement, cancellation } = record;
   const refreshed = () => setAttempt(value => value + 1);
   const stages = contractMoneyStages(job, record, funding, tax, fundingError, taxError, payout);

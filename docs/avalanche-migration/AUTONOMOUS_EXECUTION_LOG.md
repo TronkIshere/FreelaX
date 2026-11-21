@@ -653,3 +653,10 @@ original reasoning. Do not add routine progress entries.
   certificate exists), `Finance.tsx` (payout read, VAT on the tax page), `types.ts`. Tests: `ContractFinancial.test.tsx`
   (stage test rewritten, +2).
 - **Results:** frontend 32 / 898, `tsc -b` clean.
+
+### L-048: VND payouts in progress advance automatically (2026-11-21)
+- **Authority:** owner "có luôn bạn" (offer to remove the manual "Làm mới chi trả" step).
+- **Change:** `AvalanchePayoutRefreshScheduler`, `AvalanchePayoutRequestRepository.findTop20ByStatusInOrderByUpdatedAtAsc`,
+  config `avalanche-payout.auto-refresh`; frontend `AvalanchePayoutSection.tsx` polling, `contractFinanceNeedsRefresh` payout
+  argument. Tests: `AvalanchePayoutRefreshSchedulerTest` (1), `AvalanchePayoutSection.test.tsx` +1.
+- **Results:** JDK 17 reactor (clean) 72 / 466 / 24; frontend 32 / 899, `tsc -b` clean.

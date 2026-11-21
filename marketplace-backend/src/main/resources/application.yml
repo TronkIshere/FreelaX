@@ -84,6 +84,8 @@ avalanche-payout:
   partner: ${AVALANCHE_PAYOUT_PARTNER:none}
   local-mock-token-address: ${AVALANCHE_PAYOUT_LOCAL_MOCK_TOKEN_ADDRESS:}
   local-mock-deposit-address: ${AVALANCHE_PAYOUT_LOCAL_MOCK_DEPOSIT_ADDRESS:0x00000000000000000000000000000000000c0ffe}
+  # Owner request 2026-11-21: payouts in progress are refreshed automatically (same check as "Làm mới chi trả"); false = manual.
+  auto-refresh: ${AVALANCHE_PAYOUT_AUTO_REFRESH:true}
 
 solana-cpr:
   # R13 (owner decision 2026-11-12): the Solana gateway is not in master (branch solana); calls fail closed with SOLANA_RAIL_DISABLED

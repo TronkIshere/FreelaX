@@ -11,6 +11,9 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface AvalanchePayoutRequestRepository extends JpaRepository<AvalanchePayoutRequest, UUID> {
+    /** Payouts still in progress, oldest update first (auto-refresh, 2026-11-21). */
+    java.util.List<AvalanchePayoutRequest> findTop20ByStatusInOrderByUpdatedAtAsc(
+            java.util.Collection<com.marketplace.backend.entity.AvalanchePayoutStatus> statuses);
     Optional<AvalanchePayoutRequest> findByNetworkIdAndMilestoneId(String networkId, UUID milestoneId);
 
     Optional<AvalanchePayoutRequest> findByNetworkIdAndTransferTxHash(String networkId, String transferTxHash);
