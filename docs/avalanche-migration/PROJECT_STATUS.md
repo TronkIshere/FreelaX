@@ -783,3 +783,7 @@ escrow deployment is presented as human-signed by design and listed under the ro
 "AI-assisted financial monitoring" wording is not repeated in the README (no such module exists in the code). The seeded client
 email is not listed. Funding commands for a MetaMask account on Anvil are taken from the patterns in `compose-avalanche/run.sh`
 (`anvil_setBalance`, MockUSDC `mint`); not executed in this change. Documentation only; no code or test change.
+
+## Owner push decision (2026-11-21, second)
+Owner instruction in session ("commit n push"): push branch `avalanche/readme-judges` (README restructure, `186d39f`) to
+`origin`. Push of this branch only; `master` is not pushed directly.
