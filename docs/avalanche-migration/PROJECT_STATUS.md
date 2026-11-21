@@ -800,3 +800,7 @@ MockUSDC funding commands from the `run.sh` patterns, wallet link), an eight-ste
 dispute, revision, mutual refund and auto-release branches (auto-release referenced to the Foundry tests, no time-warp command
 is given), and the automated drivers. UI labels were checked against the frontend sources (`avalancheActions`/
 `avalanchePresentation`, `Auth.tsx`, routes). Nothing was executed. Documentation only.
+
+## Owner push decision (2026-11-21, fourth)
+Owner instruction in session ("push đi"): fast-forward `master` to branch `avalanche/readme-e2e-guide` (README end-to-end
+guide, `9d63738`) and push `master` to `origin`, as with the previous README changes. Documentation only.
