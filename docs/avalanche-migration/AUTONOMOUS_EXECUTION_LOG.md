@@ -665,3 +665,8 @@ original reasoning. Do not add routine progress entries.
 - **Authority:** owner "Ghi vào luôn đi", then "commit và push đi" (push of branch `avalanche/readme-avalanche-section`).
 - **Change:** `README.md` new section after "Kiến trúc nhanh"; PROJECT_STATUS owner push decision and change note.
 - **Results:** documentation only; no suite affected, none run.
+
+### L-050: README restructured for the judges (2026-11-21)
+- **Authority:** owner request in session (Vietnamese README showing the strengths; no simulation section; Fuji phrased as human-signed by design).
+- **Change:** `README.md` rewritten; relative links checked to exist. Branch `avalanche/readme-judges` (from `avalanche/readme-avalanche-section`), not pushed.
+- **Results:** documentation only; no suite affected, none run.

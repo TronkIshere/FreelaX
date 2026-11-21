@@ -1,138 +1,125 @@
 # FreelaX
 
-FreelaX là marketplace hai phía cho **Client** (thuê việc) và **Freelancer** (nhận việc). Hệ thống bao trọn vòng đời của một Job: đăng việc, thống nhất điều khoản, ký quỹ, bàn giao, nghiệm thu hoặc tranh chấp, chi trả, chứng từ thuế và đánh giá. Tiền đi theo **một luồng có bằng chứng ở từng bước**:
+**Thuê freelancer, trả bằng USDC, tiền do hợp đồng thông minh trên Avalanche giữ, không do nền tảng giữ.**
 
-**USD của Client → USDC trong ví Client → escrow của Job trên Avalanche C-Chain → USDC trong ví Freelancer → VND vào tài khoản Freelancer**, kèm chứng từ khấu trừ thuế.
-
-**Trạng thái:** Avalanche là blockchain chính của repo (nhánh `master`). Chạy ở hai môi trường mô phỏng: **LOCAL_SIMULATION** (Anvil, MockUSDC) và **AVALANCHE_FUJI** (testnet). Đối tác USD/VND và MISA đều mô phỏng. **Chưa** có tiền thật, đối tác thật hay Mainnet. Mã Solana cũ được giữ ở nhánh `solana` và không còn là module của `master`.
-
-## Phạm vi dự án: mô phỏng phát triển trên Avalanche (ràng buộc cố định)
-
-> FreelaX is an Avalanche-powered development simulation of a USDC-based freelance payment and escrow platform. It demonstrates blockchain-based payment workflows, milestone escrow, transaction verification, and AI-assisted financial monitoring without handling real-world funds or providing actual financial settlement.
-
-- **Không xử lý tiền thật** và không quyết toán tài chính thật. Công nghệ blockchain là thật (EVM, chữ ký, giao dịch trên testnet công khai), nhưng mọi nghiệp vụ tài chính đều là **mô phỏng**.
-- Chỉ hỗ trợ hai môi trường: **LOCAL_SIMULATION** (Anvil/EVM cục bộ, USDC mô phỏng) và **AVALANCHE_FUJI** (testnet AVAX và testnet USDC, giao dịch thật trên testnet công khai). **Mainnet nằm ngoài phạm vi**: không triển khai, không cấu hình, không có đường dự phòng.
-- Ngôn ngữ giao diện: "Simulation Balance", "Testnet USDC", "Simulated Escrow", "Testnet Transaction", "Demonstration Only"; tránh "số dư thật", "rút tiền", "đã nhận tiền thật".
-- Chi tiết, lý do dùng Avalanche, khác biệt local và testnet: [docs/SIMULATION_SCOPE.md](docs/SIMULATION_SCOPE.md). Các mục tiền thật, đối tác thật, ví người dùng thật, Mainnet/production **không thuộc phạm vi**.
-
-## Hệ thống có gì và đã làm được gì
-
-| Nhóm | Đã có |
-| --- | --- |
-| Tài khoản | Đăng ký/đăng nhập Client hoặc Freelancer; Admin cấp riêng; profile, kỹ năng, portfolio, hồ sơ công khai; liên kết ví EVM (EIP-1193, ví trình duyệt) với tài khoản |
-| Job và hợp đồng | Job có sản phẩm bàn giao, tiêu chí nghiệm thu, hạn, số lần sửa; tìm việc và ứng tuyển; hai bên xác nhận cùng một bản điều khoản (fingerprint) trước khi giao việc |
-| Ký quỹ | Client nộp USD → đối tác mô phỏng xác nhận → USDC mô phỏng vào ví Client → Client ký nạp escrow của Job trên Avalanche; công việc chỉ mở khi escrow đã có tiền |
-| Làm việc và nghiệm thu | Bàn giao có bằng chứng và phiên bản; Client **Duyệt / Yêu cầu chỉnh sửa / Mở tranh chấp**, kèm **đồng hồ đếm ngược**; hết 72 giờ không quyết định thì tự duyệt; gia hạn bàn giao một lần ≤ 7 ngày |
-| Tranh chấp | Mở tranh chấp sẽ khóa escrow; hai bên có thể thỏa thuận chia (`mutualSettleDispute`), hoặc Admin/arbiter quyết định: release cho Freelancer hoặc hoàn tiền cho Client |
-| Chi trả và hoàn tiền | Freelancer ký rút USDC → đối tác chi VND sau khi trừ phí 3% và khấu trừ thuế 10% trên phần còn lại (100 USD → 2.182.500 VND); hủy trước release thì hoàn đủ USD cho Client, phí 0 |
-| Chứng từ thuế | Sau khi chi VND, MISA (mô phỏng) phát hành chứng từ khấu trừ thuế; Freelancer tải PDF/XML |
-| Quản trị | Đối soát các ranh giới tiền; bảng "Tiền đang ở đâu" tách theo USD/USDC/VND; quyết định Admin có audit; hủy hợp đồng quá hạn ký quỹ |
-| Độ tin cậy | Mỗi bước tiền có idempotency key; trạng thái `UNKNOWN` thì tra cứu lại, không gửi lệnh mới; hồi phục khi đối tác, RPC hoặc node chain sập mà không chi trùng; Flyway quản lý schema |
-| Khác | Finance, Activity, thông báo, đánh giá hai chiều và reputation |
-
-Đã kiểm chứng bằng unit/integration test, E2E trên Anvil và Docker Compose (drive, browser, outage) (release, hoàn tiền, tranh chấp, hết hạn review, sự cố) và browser test với tài khoản mới đăng ký. Kết quả Avalanche: [PROJECT_STATUS](docs/avalanche-migration/PROJECT_STATUS.md); chi tiết nghiệp vụ cũ ở [VERIFICATION](docs/business/VERIFICATION.md).
-
-## Đọc tài liệu theo thứ tự
-
-1. [Nghiệp vụ hệ thống](docs/business/README.md): sản phẩm làm gì, ai làm gì, quy tắc đã chốt.
-2. [Luồng tiền](docs/business/PAYMENT_FLOW.md): tiền nằm ở đâu, bằng chứng nào, đối soát ra sao, ví dụ 100 USD.
-3. [Phạm vi mô phỏng](docs/SIMULATION_SCOPE.md) và [ADR 0001: chuyển Solana sang Avalanche](docs/adr/0001-solana-to-avalanche-migration.md): quyết định và ràng buộc.
-4. [Avalanche migration](docs/avalanche-migration/README.md), trạng thái trong [PROJECT_STATUS](docs/avalanche-migration/PROJECT_STATUS.md), cách chạy local trong [local-runbook](docs/avalanche-migration/phase-2/local-runbook.md).
-5. [Điều khoản local](docs/business/UNIFIED_FLOW_LOCAL_TERMS.md) và [Guide trình diễn trên trình duyệt](docs/business/BROWSER_DEMO_GUIDE.md).
-6. [Kiểm chứng](docs/business/VERIFICATION.md), [Checklist](docs/business/PAYMENT_FLOW_REBUILD_CHECKLIST.md), [Runbook chuyển đổi](docs/business/CUTOVER_RUNBOOK.md).
-
-Một số tài liệu trong `docs/business/` (ví dụ `SOLANA_ARCHITECTURE.md`) mô tả luồng Solana cũ và chỉ còn giá trị lịch sử; mã tương ứng nằm ở nhánh `solana`. Thư mục `docs/business/archive/` và `docs/ui/` chỉ giữ biên bản lịch sử.
-
-## Kiến trúc nhanh
+FreelaX là marketplace hai phía cho **Client** (thuê việc) và **Freelancer** (nhận việc). Hệ thống bao trọn vòng đời của một Job: đăng việc, thống nhất điều khoản, ký quỹ USDC trên **Avalanche C-Chain**, bàn giao, nghiệm thu hoặc tranh chấp, giải ngân, đổi sang VND và lập chứng từ khấu trừ thuế.
 
 ```text
-Trình duyệt (React/TypeScript, :8080), ví EIP-1193
-      │  chỉ gọi /api/v1
-      ▼
-Marketplace Backend (:9191) ── quyền, Job/hợp đồng, PaymentFlow, đối soát, scheduler
-      ├──► Payment Backend (:9190) ─ đối tác USD/VND mô phỏng, sao kê độc lập
-      ├──► Avalanche Gateway (:9194) ─ dựng/gửi/đọc giao dịch EVM ──► Anvil (:8545) hoặc Fuji
-      │                                                              └─ FreelaXEscrow.sol (EIP-712)
-      └──► MISA Backend (:9192) ──── chứng từ khấu trừ thuế PDF/XML (mô phỏng)
-MySQL (:3307, mỗi service một schema) · Redis (:6380)
+USD của Client → USDC trong ví Client → Escrow trên Avalanche C-Chain → USDC trong ví Freelancer → VND + chứng từ thuế
 ```
 
-Marketplace là nơi quyết định nghiệp vụ. Avalanche là bằng chứng chuyển USDC (escrow on-chain); sao kê đối tác là bằng chứng tiền fiat; MISA là chứng từ thuế. Các cổng của Compose chỉ bind `127.0.0.1`.
+## Ba điểm khác biệt
 
-| Thư mục | Nội dung |
-| --- | --- |
-| `frontend/` | Giao diện React; script browser E2E ở `frontend/scripts/` |
-| `marketplace-backend/` | Spring Boot, nghiệp vụ chính, Flyway `db/migration` |
-| `payment-backend/` | Đối tác USD/VND mô phỏng cùng module checkout/payout (PayPal sandbox ở `dev`) cho luồng Job cũ |
-| `avalanche-integration/` | Avalanche Gateway (Java 21, web3j), module blockchain chính |
-| `avalanche-contracts/` | Hợp đồng escrow Solidity (Foundry), script deploy, manifest |
-| `misa-backend/` | Chứng từ thuế mô phỏng |
-| `docs/avalanche-migration/` | Tài liệu, harness và bằng chứng của việc chuyển sang Avalanche |
+1. **Tự giải ngân, không ai chặn được.** Hết hạn duyệt 72 giờ mà Client im lặng, **bất kỳ ai** cũng gọi được `release()` và USDC đi thẳng vào ví Freelancer. Kể cả khi hợp đồng bị tạm dừng, tiền đến hạn vẫn giải ngân được. ([`release`](avalanche-contracts/src/FreelaXEscrow.sol#L209))
+2. **Nền tảng không chạm được vào tiền.** Escrow là hợp đồng bất biến, không có hàm rút tiền đặc quyền. Backend chỉ ký điều khoản bằng EIP-712; admin, pauser, backend signer đều không chuyển được USDC đang ký quỹ.
+3. **Mỗi bước tiền đều có bằng chứng độc lập.** Receipt và event trên chuỗi ở mức `finalized`, sao kê đối tác, chứng từ thuế. Một phản hồi HTTP thành công không bao giờ được tính là đã xong.
 
-Mã Solana (`solana-integration/`, `solana-stablecoin-payout/`) chỉ còn ở nhánh `solana`.
-
-## Vì sao Avalanche và FreelaX tận dụng nó thế nào
+## Avalanche được tận dụng thế nào
 
 | Điểm | Cách FreelaX dùng |
 | --- | --- |
-| **Tiền do hợp đồng giữ, không do FreelaX giữ** | `FreelaXEscrow.sol` là hợp đồng bất biến, không có hàm rút tiền đặc quyền. Admin, pauser và backend signer đều không chạm được vào USDC đang ký quỹ |
-| **Tự giải ngân không cần ai cho phép** | Hết hạn duyệt (72 giờ) thì **bất kỳ ai** gọi được `release()`, USDC đi thẳng vào ví Freelancer. Pause chỉ chặn nạp mới, không chặn release. Mở tranh chấp sẽ xóa đồng hồ duyệt |
-| **EIP-712 thay cho đồng ký** | Backend chỉ ký điều khoản có cấu trúc (`FundAuthorization`, `SubmitAuthorization`, `RevisionAuthorization`), gắn chain id, địa chỉ hợp đồng, escrowId, nonce và deadline nên không replay được. Hoàn tiền và thỏa thuận tranh chấp cần chữ ký của **cả hai bên** |
-| **Tách vai trò khóa** | Authorization signer, arbiter, relayer, pauser, admin là các khóa riêng; không vai trò nào vừa ký điều khoản vừa chuyển được tiền. Arbiter được snapshot lúc nạp và chỉ xử lý escrow đang tranh chấp |
-| **Finality nhanh, xác nhận theo `finalized`** | Một bước tiền chỉ được xác nhận khi block đã `finalized`, không phải khi vừa gửi. Đo trên Fuji (hợp đồng lab, 2026-11-05): có receipt sau khoảng 3,6 giây, `finalized` sau 8,5–12,2 giây |
-| **Xử lý đúng Continuous Execution (Helicon)** | Giao dịch được chấp nhận chưa chắc đã chạy: chỉ receipt `status = 1` từ đúng hợp đồng mới tính. `eth_getLogs` rỗng gần đầu chuỗi không được coi là "không có sự kiện" |
-| **USDC native của Circle** | Tài sản nhận diện theo `(chainId, địa chỉ hợp đồng)`, không theo tên. Token cố định lúc triển khai; USDC.e bị từ chối |
-| **Hệ sinh thái EVM** | Solidity + OpenZeppelin (`AccessControl`, `ReentrancyGuard`, `EIP712`, `SafeERC20`), Foundry (fuzz, invariant), Slither, web3j, MetaMask qua EIP-1193. Thay cho codec Borsh/Anchor tự viết ở bản Solana |
-| **Event log và kiểm chứng công khai** | Mỗi chuyển trạng thái phát event; gateway quét log theo cursor, chống trùng theo `(txHash, logIndex)` và đối chiếu với `getEscrow()`. Trên Fuji, ai cũng tự kiểm được trên explorer |
-| **An toàn môi trường** | Chỉ chấp nhận chain 31337 và 43113, từ chối Mainnet ngay khi khởi động; backend không giữ khóa Fuji |
+| **Hợp đồng giữ tiền, luật nằm trên chuỗi** | [`FreelaXEscrow.sol`](avalanche-contracts/src/FreelaXEscrow.sol) thi hành toàn bộ luật escrow: nạp, gia hạn, bàn giao, yêu cầu sửa, tranh chấp, giải ngân, phán quyết, hoàn tiền. Mọi hạn chót và bộ đếm đều kiểm bằng `block.timestamp` trên chuỗi |
+| **EIP-712 thay cho đồng ký** | Backend ký điều khoản có cấu trúc (`FundAuthorization`, `SubmitAuthorization`, `RevisionAuthorization`) gắn chain id, địa chỉ hợp đồng, escrowId, nonce và deadline, nên **không replay được** sang escrow, chain hay hợp đồng khác. Freelancer không thể tự khởi động đồng hồ duyệt bằng bằng chứng mà marketplace chưa ghi nhận |
+| **Hai bên tự thỏa thuận, không cần nền tảng** | Hoàn tiền (`mutualRefund`) và giải quyết tranh chấp (`mutualSettleDispute`) chỉ cần chữ ký EIP-712 của **cả Client và Freelancer**; ai cũng nộp được giao dịch |
+| **Tách vai trò khóa** | Authorization signer, arbiter, relayer, pauser, admin là các khóa riêng; không vai trò nào vừa ký điều khoản vừa chuyển được tiền. Arbiter được snapshot lúc nạp, không ai gán lại được |
+| **Finality nhanh, xác nhận theo `finalized`** | Một bước tiền chỉ được ghi nhận khi block đã `finalized`. Giao dịch tự ký trên Fuji: có receipt sau khoảng **3,6 giây**, `finalized` sau **8,5–12,2 giây** ([đo đạc](docs/avalanche-migration/phase-1/evidence/live/FUJI-OBS-e1-human-signed-run-20261105.md)) |
+| **Xử lý đúng Continuous Execution (Helicon, ACP-194)** | Giao dịch được chấp nhận chưa chắc đã chạy: chỉ receipt `status = 1` từ đúng hợp đồng mới tính. `eth_getLogs` rỗng gần đầu chuỗi không bị coi là "không có sự kiện"; luôn đối chiếu receipt và đọc state `getEscrow()` |
+| **USDC native của Circle** | Tài sản nhận diện theo `(chainId, địa chỉ hợp đồng)`, không theo tên. Token cố định lúc triển khai; USDC.e (bridged, cùng tên "USDC Coin") bị từ chối |
+| **Event log và kiểm chứng công khai** | Mỗi chuyển trạng thái phát event. Gateway quét log theo cursor, chống trùng theo `(txHash, logIndex)`, đối chiếu với provider thứ hai cùng mạng |
+| **Hệ sinh thái EVM** | Solidity + OpenZeppelin v5.7 (`AccessControl`, `ReentrancyGuard`, `EIP712`, `SafeERC20`), Foundry 1.8.7 (fuzz, invariant), Slither, web3j 6.1.0, MetaMask qua EIP-1193 |
+| **An toàn mạng** | Chỉ chấp nhận chain **31337** (Anvil) và **43113** (Fuji); Mainnet và chain lạ bị từ chối ngay khi khởi động |
 
-Lựa chọn Avalanche là quyết định về kỹ thuật và kiến trúc (D1). Tài liệu **không** khẳng định Avalanche nhanh hơn hay rẻ hơn Solana, vì chưa đo so sánh. Escrow FreelaX **chưa** được triển khai lên Fuji (cần chủ dự án ký). Chi tiết: [so sánh Solana và Avalanche](docs/avalanche-migration/02-solana-vs-avalanche.md), [nghiên cứu kỹ thuật](docs/avalanche-migration/01-avalanche-technical-research.md), [kiến trúc đích](docs/avalanche-migration/03-target-architecture.md).
+**Chuyển từ Solana sang Avalanche.** FreelaX ban đầu chạy trên Solana (Anchor/Rust) và đã chuyển hoàn toàn sang C-Chain: bỏ codec Borsh/Anchor tự viết, thay admin key "làm mọi thứ" bằng 5 vai trò tách khóa, thay việc backend ký auto-claim bằng `release()` permissionless, thay polling account state bằng event log. Chi tiết: [so sánh Solana và Avalanche](docs/avalanche-migration/02-solana-vs-avalanche.md).
 
-## Khởi chạy local (LOCAL_SIMULATION)
+**Sẵn sàng cho Fuji theo thiết kế bảo mật.** Script triển khai có chain guard, ghi manifest, và hướng dẫn xác minh trên Snowtrace ([deployments](avalanche-contracts/deployments/README.md)). Việc triển khai lên Fuji được thiết kế để **con người ký** bằng keystore hoặc ví phần cứng: backend không bao giờ giữ khóa Fuji, và gateway tự kiểm code, token, decimals của manifest trước khi chấp nhận.
 
-Cần Git, Docker + Compose, Node.js 24 và Foundry (hoặc image `ghcr.io/foundry-rs/foundry:v1.8.7`). Chỉ dùng khóa và mật khẩu **demo**; không đưa password, API key hay private key vào Git hoặc ảnh chụp. Không dùng Mainnet; backend không được giữ khóa Fuji.
+## Chức năng
 
-**Bước 1 - Cấu hình.** `cp .env.example .env`, rồi điền:
-- secret ngẫu nhiên cho MySQL, các JWT (ít nhất 64 ký tự) và internal API key (`PAYMENT_INTERNAL_API_KEY`, `AVALANCHE_INTERNAL_API_KEY`);
-- mật khẩu tài khoản seed `DEMO_CLIENT_PASSWORD`, `DEMO_FREELANCER_PASSWORD`, `DEMO_ADMIN_PASSWORD` (tối đa 72 byte);
-- Avalanche: `AVALANCHE_ENVIRONMENT=LOCAL_SIMULATION`, `AVALANCHE_RPC_PRIMARY_URL`, `AVALANCHE_SIGNERS_ENABLED`, `AVALANCHE_TX_ENABLED`, `AVALANCHE_DB_*`, `AVALANCHE_DEPLOYMENT_MANIFEST`, `AVALANCHE_GATEWAY_ENABLED=true`, `VITE_AVALANCHE_ENABLED=true`. Ý nghĩa từng biến có trong `.env.example`;
-- bật luồng thống nhất cho Job mới: `PAYMENT_FLOW_CUTOVER_ENABLED=true`.
-
-**Bước 2 - Chain và hợp đồng.** Bật Anvil (profile `avalanche`, file `docs/avalanche-migration/phase-2/compose-avalanche/docker-compose.anvil.yml`), triển khai `avalanche-contracts/script/Deploy.s.sol` với `DEPLOY_ENVIRONMENT=LOCAL_SIMULATION` để sinh manifest `avalanche-contracts/deployments/LOCAL_SIMULATION.json`. Gateway dùng signer tạm thời, nên sau mỗi lần gateway khởi động lại phải cấp lại vai trò `AUTH_SIGNER_ROLE` và arbiter cho địa chỉ signer mới. Các lệnh cụ thể nằm trong `docs/avalanche-migration/phase-2/compose-avalanche/run.sh`.
-
-**Bước 3 - Bật các service:**
-
-```bash
-docker compose -f docker-compose.yml -f docs/avalanche-migration/phase-2/compose-avalanche/docker-compose.anvil.yml --profile avalanche --profile deploy up -d --build
-docker compose --profile avalanche --profile deploy ps
-```
-
-Lần đầu chạy, Flyway tạo schema.
-
-**Chạy nhanh toàn bộ stack bằng harness** (secret ngẫu nhiên dùng một lần, không đọc `.env`):
-
-```bash
-bash docs/avalanche-migration/phase-2/compose-avalanche/run.sh <thu-muc-ket-qua> drive.mjs browser.mjs outage.mjs
-```
-
-**Bước 4 - Kiểm tra:** `curl -I http://localhost:8080` phải trả 200; `curl -i http://localhost:8080/api/v1/auth/me` trả 401 khi chưa đăng nhập là bình thường; Anvil trả block number:
-
-```bash
-curl -fsS -H 'Content-Type: application/json' --data '{"jsonrpc":"2.0","id":1,"method":"eth_blockNumber"}' http://127.0.0.1:8545
-```
-
-**Bước 5 - Dùng thử:** mở `http://localhost:8080`, đăng ký tài khoản Client và Freelancer, liên kết ví EVM và làm theo [guide trình diễn](docs/business/BROWSER_DEMO_GUIDE.md). Tài khoản seed: Freelancer `freelancer.seed@example.com`, Admin `admin.e2e@example.test`, Client seed khai báo trong `marketplace-backend/.../configuration/DataInitializer.java`; mật khẩu lấy trong `.env`.
-
-**Dừng:** `docker compose --profile avalanche --profile deploy stop`. Tránh `down -v` nếu muốn giữ dữ liệu.
-
-## Những gì sẽ bổ sung
-
-> Ghi chú phạm vi: dự án là mô phỏng phát triển ([SIMULATION_SCOPE](docs/SIMULATION_SCOPE.md)). Các mục tiền thật, đối tác thật, ví người dùng thật, chứng từ thuế thật và Mainnet **nằm ngoài phạm vi**.
-
-| Hạng mục | Ghi chú |
+| Nhóm | Đã có |
 | --- | --- |
-| Avalanche Fuji | Chạy có chữ ký người và bằng chứng trên Fuji còn chờ chủ dự án; backend không giữ khóa Fuji. Xem [PROJECT_STATUS](docs/avalanche-migration/PROJECT_STATUS.md) |
-| Ví người dùng | Kiểm chứng với tiện ích ví thật (MetaMask); hiện mới kiểm chứng bằng ví giả lập EIP-1193 |
-| Chứng từ thuế | Flyway cho `misa-backend` (hiện vẫn `ddl-auto: update`) |
-| Sản phẩm | Nhiều Milestone trong một Job; chat làm bằng chứng tranh chấp; lịch ngày lễ cho hạn; tối ưu mobile |
-| Vận hành | Cảnh báo cho khoản `UNKNOWN`/lệch kéo dài; báo cáo đối soát định kỳ |
+| Tài khoản | Đăng ký Client hoặc Freelancer; Admin cấp riêng; profile, kỹ năng, portfolio, hồ sơ công khai; **liên kết ví EVM** bằng chữ ký EIP-191 |
+| Job và hợp đồng | Job có sản phẩm bàn giao, tiêu chí nghiệm thu, hạn, số lần sửa; tìm việc, ứng tuyển; hai bên xác nhận **cùng một bản điều khoản** (fingerprint) trước khi giao việc |
+| Ký quỹ | Client ký `approve` + `fund` bằng MetaMask; công việc chỉ mở khi escrow đã có tiền trên chuỗi |
+| Bàn giao và nghiệm thu | Bàn giao có bằng chứng và phiên bản; Client **giải ngân / yêu cầu sửa (tối đa 2) / mở tranh chấp** với đồng hồ đếm ngược; gia hạn một lần ≤ 7 ngày, Client duyệt trên chuỗi |
+| Tranh chấp | Mở tranh chấp khóa escrow; arbiter quyết định, hoặc hai bên tự thỏa thuận bằng hai chữ ký |
+| Chi trả VND | **Non-custodial**: Freelancer tự ký chuyển USDC tới đối tác off-ramp; gateway chứng minh giao dịch từ receipt (đúng token, đúng một log `Transfer`) rồi mới hỏi trạng thái chi VND; tiến trình tự cập nhật |
+| Chứng từ thuế | Khi escrow được giải ngân, tự lập chứng từ khấu trừ **TNCN 2% + GTGT 5%** theo cơ chế của Nghị định 117/2025, tải PDF/XML |
+| Quản trị | Đối soát 4 ranh giới USD → USDC → escrow → người nhận → VND; bảng "Tiền đang ở đâu"; báo cáo escrow bị kẹt; quyết định Admin có audit |
+| Độ tin cậy | Idempotency key cho mỗi bước tiền; 10 trạng thái giao dịch; `UNKNOWN` thì tra cứu lại, không gửi lệnh mới; chịu được sự cố RPC, node, đối tác, DB mà không chi trùng |
+
+## Kiến trúc
+
+```text
+Trình duyệt (React/TypeScript, :8080) ── ví MetaMask (EIP-1193) ──────────────┐
+      │  /api/v1                                                              │ approve, fund, release, submit...
+      ▼                                                                       ▼
+Marketplace Backend (:9191) ── Job, hợp đồng, PaymentFlow, đối soát      Avalanche C-Chain
+      ├──► Avalanche Gateway (:9194) ── web3j: dựng, ký EIP-712, gửi, ──► FreelaXEscrow.sol + USDC
+      │                                 theo dõi receipt, quét event       (Anvil 31337 / Fuji 43113)
+      ├──► Payment Backend (:9190) ──── đối tác USD/VND, sao kê độc lập
+      └──► MISA Backend (:9192) ─────── chứng từ khấu trừ thuế PDF/XML
+MySQL (mỗi service một schema) · Redis · mọi cổng chỉ bind 127.0.0.1
+```
+
+Hợp đồng on-chain quyết định **tiền, trạng thái escrow, hạn, bộ đếm, phán quyết**; marketplace quyết định **nghiệp vụ, sổ cái, phí, thuế, thông báo**.
+
+| Thư mục | Công nghệ | Vai trò |
+| --- | --- | --- |
+| `avalanche-contracts/` | Solidity 0.8.38, OpenZeppelin v5.7.0, Foundry 1.8.7 | Escrow, script triển khai có chain guard, manifest |
+| `avalanche-integration/` | Java 21, Spring, web3j 6.1.0 | Gateway: cấp nonce qua DB, signer theo vai trò, tx tracker 10 trạng thái, log scanner |
+| `marketplace-backend/` | Java 17, Spring Boot, Flyway | Nghiệp vụ chính, scheduler, đối soát, chi trả, thuế |
+| `frontend/` | React, TypeScript, Vite | Giao diện; panel escrow chỉ hiện hành động mà trạng thái trên chuỗi cho phép |
+| `payment-backend/` | Java 17 | Đối tác USD/VND, sao kê |
+| `misa-backend/` | Java 17 | Chứng từ thuế |
+
+## Kiểm thử
+
+| Phần | Kết quả |
+| --- | --- |
+| Hợp đồng (Foundry: unit, fuzz, invariant) | 77 pass |
+| Avalanche Gateway (Testcontainers + Anvil thật) | 122 test, 0 lỗi |
+| Marketplace / Payment / MISA | 466 / 72 / 24 |
+| Frontend (Vitest) | 32 file, 899 test |
+| Toàn stack Docker Compose | Kịch bản `drive` (45 bước), `browser` (15 bước), `outage` (9 bước: sập gateway, RPC, chain, backend, DB): **PASS** ([evidence](docs/avalanche-migration/phase-2/evidence/compose-avalanche-20261112/)) |
+| MetaMask thật | Liên kết ví, nạp escrow, giải ngân, theo dõi tới `finalized`: **PASS** ([evidence](docs/avalanche-migration/phase-2/evidence/LOCAL_SIMULATION-b7-metamask-20261120.json)) |
+| Phân tích tĩnh | Slither, kết quả đã phân loại ([output](docs/avalanche-migration/phase-2/evidence/slither-escrow-2026-11-03.txt)) |
+
+## Dành cho ban giám khảo
+
+**Đọc theo thứ tự:** README này → [`FreelaXEscrow.sol`](avalanche-contracts/src/FreelaXEscrow.sol) (luật escrow) → [Luồng tiền](docs/business/PAYMENT_FLOW.md) → [Kiến trúc đích](docs/avalanche-migration/03-target-architecture.md).
+
+**Chạy toàn bộ stack bằng một lệnh** (cần Docker, Git Bash và Node; Java, Foundry và Node của frontend chạy trong image, không cần cài):
+
+```bash
+bash docs/avalanche-migration/phase-2/compose-avalanche/start-dev.sh
+```
+
+Script dựng Anvil (chain 31337), triển khai escrow và USDC bằng Foundry, cấp vai trò cho gateway, rồi bật các service. Sẵn sàng khi in ra `stack left running`; mở `http://localhost:8080`. Cổng (127.0.0.1): 8080 giao diện, 9191 API, 9194 gateway, 8545 Anvil. Nếu 8080 bận: `FREELAX_HTTP_BIND=127.0.0.1:<port>`. Dừng: `bash docs/avalanche-migration/phase-2/compose-avalanche/stop-dev.sh`.
+
+**Tài khoản:** Freelancer `freelancer.seed@example.com`, Admin `admin.e2e@example.test`; mật khẩu demo được sinh mỗi lần chạy, nằm trong `.avalanche-dev/env` (`DEMO_FREELANCER_PASSWORD`, `DEMO_ADMIN_PASSWORD`). Client: tự đăng ký tại trang Sign up.
+
+**Ví MetaMask:** thêm mạng RPC `http://127.0.0.1:8545`, chain ID `31337`, dùng một account mới, rồi liên kết ví trong ứng dụng. Cấp AVAX và USDC thử nghiệm cho ví đó (thay `<ví>` và `<token>`; địa chỉ token nằm trong `avalanche-contracts/deployments/LOCAL_SIMULATION.json`):
+
+```bash
+docker exec fxav-anvil-1 cast rpc anvil_setBalance <ví> 0x56BC75E2D63100000 --rpc-url http://localhost:8545
+docker exec fxav-anvil-1 cast send --unlocked --from 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 <token> "mint(address,uint256)" <ví> 1000000000 --rpc-url http://localhost:8545
+```
+
+Lệnh thứ nhất cấp 100 coin gốc của chain local để trả gas, lệnh thứ hai cấp 1.000 USDC (6 decimals). Hướng dẫn chạy chi tiết từng service: [local-runbook](docs/avalanche-migration/phase-2/local-runbook.md).
+
+## Lộ trình
+
+| Hạng mục | Hướng phát triển |
+| --- | --- |
+| Fuji công khai | Triển khai escrow lên Fuji do con người ký, xác minh mã nguồn trên Snowtrace |
+| Trải nghiệm ví | Nạp bằng một chữ ký với EIP-2612 `permit` (USDC của Circle đã hỗ trợ); relayer trả gas cho người dùng |
+| Sản phẩm | Nhiều milestone trong một Job (hợp đồng đã tách escrow theo milestone); chat làm bằng chứng tranh chấp; tối ưu mobile |
+| Vận hành | Cảnh báo cho giao dịch `UNKNOWN` kéo dài; báo cáo đối soát định kỳ |
+
+## Tài liệu
+
+- [Nghiệp vụ hệ thống](docs/business/README.md) và [Luồng tiền](docs/business/PAYMENT_FLOW.md)
+- [Nghiên cứu kỹ thuật Avalanche](docs/avalanche-migration/01-avalanche-technical-research.md), [so sánh Solana và Avalanche](docs/avalanche-migration/02-solana-vs-avalanche.md), [kiến trúc đích](docs/avalanche-migration/03-target-architecture.md)
+- [Vòng đời giao dịch và đối soát](docs/avalanche-migration/phase-2/06-transaction-lifecycle-and-reconciliation-plan.md), [rà soát bảo mật](docs/avalanche-migration/security-review-2026-11-05.md)
+- [Phạm vi và môi trường](docs/SIMULATION_SCOPE.md), [ADR 0001: chuyển Solana sang Avalanche](docs/adr/0001-solana-to-avalanche-migration.md)
+- Trạng thái và quyết định: [PROJECT_STATUS](docs/avalanche-migration/PROJECT_STATUS.md)

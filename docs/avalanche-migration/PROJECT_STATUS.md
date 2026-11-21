@@ -773,3 +773,13 @@ permissionless release, EIP-712 authorizations, role-separated keys, `finalized`
 timings, Continuous Execution handling, Circle USDC pinning, EVM tooling, event logs, environment guards), with the limits stated:
 no speed or cost advantage over Solana is claimed (D1) and the FreelaX escrow is not deployed on Fuji (B2 BLOCKED).
 Documentation only; no code or test change.
+
+## Change note (2026-11-21): README restructured for the judges
+Owner request in session: README rewritten in Vietnamese around the project's strengths (three differentiators, Avalanche
+usage table, features, architecture, tests with evidence links, a "for the judges" quick start, roadmap). Owner choices: the
+README does not carry the simulation-scope section (the owner answers that question in person; `docs/SIMULATION_SCOPE.md` is
+unchanged and still linked; the README still names the networks 31337/43113 and states that Mainnet is refused) and the Fuji
+escrow deployment is presented as human-signed by design and listed under the roadmap (B2 unchanged: BLOCKED). The
+"AI-assisted financial monitoring" wording is not repeated in the README (no such module exists in the code). The seeded client
+email is not listed. Funding commands for a MetaMask account on Anvil are taken from the patterns in `compose-avalanche/run.sh`
+(`anvil_setBalance`, MockUSDC `mint`); not executed in this change. Documentation only; no code or test change.
