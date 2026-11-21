@@ -791,3 +791,12 @@ Owner instruction in session ("commit n push"): push branch `avalanche/readme-ju
 ## Owner push decision (2026-11-21, third)
 Owner instruction in session ("tôi cần vào thẳng master cơ"): fast-forward `master` to branch `avalanche/readme-judges`
 (README changes and their status notes) and push `master` to `origin`, without a pull request. Documentation only.
+
+## Change note (2026-11-21): README end-to-end guide for the judges
+Owner request in session. The README section "Dành cho ban giám khảo" now has six parts: what to read, one-command start
+(`start-dev.sh`) with the port table, login accounts (new Client and Freelancer registrations; seeded freelancer and admin;
+seed passwords read from the throwaway `.avalanche-dev/env`), MetaMask preparation (local network, two accounts, gas and
+MockUSDC funding commands from the `run.sh` patterns, wallet link), an eight-step manual end-to-end walk-through with the
+dispute, revision, mutual refund and auto-release branches (auto-release referenced to the Foundry tests, no time-warp command
+is given), and the automated drivers. UI labels were checked against the frontend sources (`avalancheActions`/
+`avalanchePresentation`, `Auth.tsx`, routes). Nothing was executed. Documentation only.

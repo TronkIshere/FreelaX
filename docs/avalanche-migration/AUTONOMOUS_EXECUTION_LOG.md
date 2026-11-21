@@ -670,3 +670,8 @@ original reasoning. Do not add routine progress entries.
 - **Authority:** owner request in session (Vietnamese README showing the strengths; no simulation section; Fuji phrased as human-signed by design).
 - **Change:** `README.md` rewritten; relative links checked to exist. Branch `avalanche/readme-judges` (from `avalanche/readme-avalanche-section`), not pushed.
 - **Results:** documentation only; no suite affected, none run.
+
+### L-051: README end-to-end guide for the judges (2026-11-21)
+- **Authority:** owner request in session.
+- **Change:** README "Dành cho ban giám khảo" rewritten (start, accounts, MetaMask, manual E2E, branches, drivers); relative links checked. Branch `avalanche/readme-e2e-guide`, not pushed.
+- **Results:** documentation only; the walk-through and the funding commands were not executed in this change.

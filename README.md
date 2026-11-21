@@ -86,26 +86,92 @@ Hợp đồng on-chain quyết định **tiền, trạng thái escrow, hạn, b�
 
 ## Dành cho ban giám khảo
 
-**Đọc theo thứ tự:** README này → [`FreelaXEscrow.sol`](avalanche-contracts/src/FreelaXEscrow.sol) (luật escrow) → [Luồng tiền](docs/business/PAYMENT_FLOW.md) → [Kiến trúc đích](docs/avalanche-migration/03-target-architecture.md).
+Đi hết một Job từ đăng việc tới chứng từ thuế mất khoảng **15 phút**.
 
-**Chạy toàn bộ stack bằng một lệnh** (cần Docker, Git Bash và Node; Java, Foundry và Node của frontend chạy trong image, không cần cài):
+### 1. Đọc gì trước
+
+README này → [`FreelaXEscrow.sol`](avalanche-contracts/src/FreelaXEscrow.sol) (luật escrow) → [Luồng tiền](docs/business/PAYMENT_FLOW.md) → [Kiến trúc đích](docs/avalanche-migration/03-target-architecture.md).
+
+### 2. Khởi chạy bằng một lệnh
+
+Cần **Docker**, **Git Bash** và **Node**. Java, Foundry và toolchain frontend chạy trong image, không cần cài.
 
 ```bash
 bash docs/avalanche-migration/phase-2/compose-avalanche/start-dev.sh
 ```
 
-Script dựng Anvil (chain 31337), triển khai escrow và USDC bằng Foundry, cấp vai trò cho gateway, rồi bật các service. Sẵn sàng khi in ra `stack left running`; mở `http://localhost:8080`. Cổng (127.0.0.1): 8080 giao diện, 9191 API, 9194 gateway, 8545 Anvil. Nếu 8080 bận: `FREELAX_HTTP_BIND=127.0.0.1:<port>`. Dừng: `bash docs/avalanche-migration/phase-2/compose-avalanche/stop-dev.sh`.
+Script dựng Anvil (chain 31337), triển khai escrow và USDC bằng Foundry, cấp vai trò cho gateway, rồi bật các service. Sẵn sàng khi in ra `stack left running`; mở **http://localhost:8080**.
 
-**Tài khoản:** Freelancer `freelancer.seed@example.com`, Admin `admin.e2e@example.test`; mật khẩu demo được sinh mỗi lần chạy, nằm trong `.avalanche-dev/env` (`DEMO_FREELANCER_PASSWORD`, `DEMO_ADMIN_PASSWORD`). Client: tự đăng ký tại trang Sign up.
+| Cổng (127.0.0.1) | Dịch vụ |
+| --- | --- |
+| 8080 | Giao diện (đổi bằng `FREELAX_HTTP_BIND=127.0.0.1:<port>` nếu bận) |
+| 9191 / 9194 | Marketplace API / Avalanche Gateway |
+| 8545 | Anvil (RPC cho MetaMask) |
 
-**Ví MetaMask:** thêm mạng RPC `http://127.0.0.1:8545`, chain ID `31337`, dùng một account mới, rồi liên kết ví trong ứng dụng. Cấp AVAX và USDC thử nghiệm cho ví đó (thay `<ví>` và `<token>`; địa chỉ token nằm trong `avalanche-contracts/deployments/LOCAL_SIMULATION.json`):
+Mỗi lần chạy là một stack mới. Dừng: `bash docs/avalanche-migration/phase-2/compose-avalanche/stop-dev.sh`.
+
+### 3. Tài khoản đăng nhập
+
+| Vai trò | Cách có tài khoản | Ghi chú |
+| --- | --- | --- |
+| **Client** | Đăng ký mới tại trang đăng ký, chọn vai trò Client | |
+| **Freelancer** | Đăng ký mới, chọn vai trò Freelancer, điền phần **thông tin bắt buộc cho Freelancer** (thuế và ngân hàng, gồm số định danh và quốc tịch) | Thông tin này dùng để lập chứng từ thuế. Có sẵn tài khoản seed `freelancer.seed@example.com` |
+| **Admin** | `admin.e2e@example.test` | Dùng cho nhánh tranh chấp |
+
+Mật khẩu của tài khoản seed được sinh mới mỗi lần chạy, xem bằng:
+
+```bash
+grep -E "DEMO_(ADMIN|FREELANCER)_PASSWORD" .avalanche-dev/env
+```
+
+Mỗi tài khoản chỉ giữ một phiên đăng nhập: dùng **một hồ sơ trình duyệt cho mỗi vai trò** (hoặc một cửa sổ thường và một cửa sổ ẩn danh).
+
+### 4. Chuẩn bị ví MetaMask
+
+1. Thêm mạng: RPC `http://127.0.0.1:8545`, chain ID `31337`. Tạo **một account cho Client và một account cho Freelancer**.
+2. Cấp coin trả gas và USDC thử nghiệm cho từng account (địa chỉ `<token>` nằm trong `avalanche-contracts/deployments/LOCAL_SIMULATION.json`):
 
 ```bash
 docker exec fxav-anvil-1 cast rpc anvil_setBalance <ví> 0x56BC75E2D63100000 --rpc-url http://localhost:8545
 docker exec fxav-anvil-1 cast send --unlocked --from 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 <token> "mint(address,uint256)" <ví> 1000000000 --rpc-url http://localhost:8545
 ```
 
-Lệnh thứ nhất cấp 100 coin gốc của chain local để trả gas, lệnh thứ hai cấp 1.000 USDC (6 decimals). Hướng dẫn chạy chi tiết từng service: [local-runbook](docs/avalanche-migration/phase-2/local-runbook.md).
+Lệnh thứ nhất cấp 100 coin gốc của chain local, lệnh thứ hai cấp 1.000 USDC (6 decimals).
+
+3. Trong ứng dụng, mỗi người bấm **Liên kết ví EVM** và ký thông điệp trong MetaMask. Giao diện từ chối nếu MetaMask đang ở mạng khác hoặc đang chọn account không phải ví đã liên kết.
+
+### 5. Kịch bản end-to-end
+
+| # | Ai | Thao tác | Kết quả cần thấy |
+| --- | --- | --- | --- |
+| 1 | Client | *Đăng công việc*: ngân sách nhỏ (ví dụ 5 USD), hạn bàn giao ít nhất 24 giờ, một sản phẩm và một tiêu chí nghiệm thu | Job hiện điều khoản và thời hạn duyệt |
+| 2 | Freelancer | Mở Job, tick đồng ý điều khoản, **Ứng tuyển** | |
+| 3 | Client | Mở danh sách ứng tuyển, **Chọn Freelancer** và xác nhận | Hai bên đã đồng ý cùng một bản điều khoản; hợp đồng được tạo trên rail Avalanche |
+| 4 | Client | Trong panel Avalanche, bấm **Nạp tiền ký quỹ**, duyệt `approve` rồi `fund` trong MetaMask | Giao dịch đi qua *Đã gửi* → *Đã vào khối* → **Đã chốt**; trạng thái trên chuỗi **Đã nạp tiền** |
+| 5 | Freelancer | **Gửi bàn giao** (tóm tắt và URL HTTPS làm bằng chứng), rồi **Ghi nhận bàn giao** bằng MetaMask | **Đã bàn giao, chờ nghiệm thu**, đồng hồ 72 giờ chạy trên chuỗi |
+| 6 | Client | Bấm **Giải ngân** trong MetaMask | **Đã giải ngân cho Freelancer**: USDC nằm trong ví của Freelancer |
+| 7 | Freelancer | Trang *Thu nhập* → **Yêu cầu chi trả**, ký chuyển USDC tới đối tác | Tiến trình tự cập nhật tới khi đối tác xác nhận chi VND |
+| 8 | Freelancer | *Thu nhập* → *Chứng từ thuế* | Chứng từ khấu trừ **TNCN 2% + GTGT 5%**; **Tải PDF / XML** |
+
+Trên rail Avalanche, việc duyệt chính là giao dịch `release()` trên chuỗi; marketplace không có nút duyệt thay.
+
+**Các nhánh khác** (thay bước 6):
+- **Yêu cầu chỉnh sửa** (tối đa 2 lần): Freelancer bàn giao lại, đồng hồ duyệt bắt đầu lại.
+- **Tranh chấp:** một bên bấm **Mở tranh chấp**, escrow bị khóa. Admin vào `/admin/disputes`, tiếp nhận hồ sơ, chọn giải ngân cho Freelancer hoặc hoàn cho Client, rồi bấm **Thực thi quyết định tranh chấp**. Hoặc hai bên cùng ký **Tất toán tranh chấp theo thỏa thuận**.
+- **Hoàn tiền thỏa thuận:** trước khi có tranh chấp, cả hai bên ký thì USDC về lại ví Client.
+- **Tự giải ngân sau 72 giờ:** khi hết hạn duyệt, panel hiện nút **Giải ngân** cho người khác Client. Kịch bản thời gian này được chứng minh bằng test [`test_release_clientAnytimeAnyoneAfterTheReviewWindow`](avalanche-contracts/test/FreelaXEscrowCore.t.sol#L462) và [`test_pauseBlocksOnlyFundingNotReleaseOrExtension`](avalanche-contracts/test/FreelaXEscrowCore.t.sol#L507).
+
+### 6. Chạy tự động
+
+Các driver chạy ngay sau khi stack khởi động, kết quả ghi vào `.avalanche-dev/evidence/`:
+
+```bash
+bash docs/avalanche-migration/phase-2/compose-avalanche/start-dev.sh drive.mjs outage.mjs
+```
+
+- `drive.mjs`: toàn bộ luồng qua API với tài khoản mới: liên kết ví, nạp, bàn giao, giải ngân, chi trả, hoàn tiền thỏa thuận, escrow bị kẹt, tất toán tranh chấp theo thỏa thuận, quyết định Admin, thực thi của arbiter.
+- `outage.mjs`: giả lập sự cố bằng Docker: dừng gateway, tạm dừng RPC, khởi động lại chain và backend, dừng database, giao dịch treo, giao dịch bị hoàn tác; kiểm tra hệ thống phục hồi mà không chi trùng.
+- `browser.mjs`: kịch bản trên trình duyệt thật, cần thêm `PLAYWRIGHT_CORE` (xem [local-runbook](docs/avalanche-migration/phase-2/local-runbook.md)).
 
 ## Lộ trình
 
