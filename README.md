@@ -71,6 +71,23 @@ Marketplace là nơi quyết định nghiệp vụ. Avalanche là bằng chứng
 
 Mã Solana (`solana-integration/`, `solana-stablecoin-payout/`) chỉ còn ở nhánh `solana`.
 
+## Vì sao Avalanche và FreelaX tận dụng nó thế nào
+
+| Điểm | Cách FreelaX dùng |
+| --- | --- |
+| **Tiền do hợp đồng giữ, không do FreelaX giữ** | `FreelaXEscrow.sol` là hợp đồng bất biến, không có hàm rút tiền đặc quyền. Admin, pauser và backend signer đều không chạm được vào USDC đang ký quỹ |
+| **Tự giải ngân không cần ai cho phép** | Hết hạn duyệt (72 giờ) thì **bất kỳ ai** gọi được `release()`, USDC đi thẳng vào ví Freelancer. Pause chỉ chặn nạp mới, không chặn release. Mở tranh chấp sẽ xóa đồng hồ duyệt |
+| **EIP-712 thay cho đồng ký** | Backend chỉ ký điều khoản có cấu trúc (`FundAuthorization`, `SubmitAuthorization`, `RevisionAuthorization`), gắn chain id, địa chỉ hợp đồng, escrowId, nonce và deadline nên không replay được. Hoàn tiền và thỏa thuận tranh chấp cần chữ ký của **cả hai bên** |
+| **Tách vai trò khóa** | Authorization signer, arbiter, relayer, pauser, admin là các khóa riêng; không vai trò nào vừa ký điều khoản vừa chuyển được tiền. Arbiter được snapshot lúc nạp và chỉ xử lý escrow đang tranh chấp |
+| **Finality nhanh, xác nhận theo `finalized`** | Một bước tiền chỉ được xác nhận khi block đã `finalized`, không phải khi vừa gửi. Đo trên Fuji (hợp đồng lab, 2026-11-05): có receipt sau khoảng 3,6 giây, `finalized` sau 8,5–12,2 giây |
+| **Xử lý đúng Continuous Execution (Helicon)** | Giao dịch được chấp nhận chưa chắc đã chạy: chỉ receipt `status = 1` từ đúng hợp đồng mới tính. `eth_getLogs` rỗng gần đầu chuỗi không được coi là "không có sự kiện" |
+| **USDC native của Circle** | Tài sản nhận diện theo `(chainId, địa chỉ hợp đồng)`, không theo tên. Token cố định lúc triển khai; USDC.e bị từ chối |
+| **Hệ sinh thái EVM** | Solidity + OpenZeppelin (`AccessControl`, `ReentrancyGuard`, `EIP712`, `SafeERC20`), Foundry (fuzz, invariant), Slither, web3j, MetaMask qua EIP-1193. Thay cho codec Borsh/Anchor tự viết ở bản Solana |
+| **Event log và kiểm chứng công khai** | Mỗi chuyển trạng thái phát event; gateway quét log theo cursor, chống trùng theo `(txHash, logIndex)` và đối chiếu với `getEscrow()`. Trên Fuji, ai cũng tự kiểm được trên explorer |
+| **An toàn môi trường** | Chỉ chấp nhận chain 31337 và 43113, từ chối Mainnet ngay khi khởi động; backend không giữ khóa Fuji |
+
+Lựa chọn Avalanche là quyết định về kỹ thuật và kiến trúc (D1). Tài liệu **không** khẳng định Avalanche nhanh hơn hay rẻ hơn Solana, vì chưa đo so sánh. Escrow FreelaX **chưa** được triển khai lên Fuji (cần chủ dự án ký). Chi tiết: [so sánh Solana và Avalanche](docs/avalanche-migration/02-solana-vs-avalanche.md), [nghiên cứu kỹ thuật](docs/avalanche-migration/01-avalanche-technical-research.md), [kiến trúc đích](docs/avalanche-migration/03-target-architecture.md).
+
 ## Khởi chạy local (LOCAL_SIMULATION)
 
 Cần Git, Docker + Compose, Node.js 24 và Foundry (hoặc image `ghcr.io/foundry-rs/foundry:v1.8.7`). Chỉ dùng khóa và mật khẩu **demo**; không đưa password, API key hay private key vào Git hoặc ảnh chụp. Không dùng Mainnet; backend không được giữ khóa Fuji.

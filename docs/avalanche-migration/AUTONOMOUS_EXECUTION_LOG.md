@@ -660,3 +660,8 @@ original reasoning. Do not add routine progress entries.
   config `avalanche-payout.auto-refresh`; frontend `AvalanchePayoutSection.tsx` polling, `contractFinanceNeedsRefresh` payout
   argument. Tests: `AvalanchePayoutRefreshSchedulerTest` (1), `AvalanchePayoutSection.test.tsx` +1.
 - **Results:** JDK 17 reactor (clean) 72 / 466 / 24; frontend 32 / 899, `tsc -b` clean.
+
+### L-049: README section on how FreelaX uses Avalanche (2026-11-21)
+- **Authority:** owner "Ghi vào luôn đi", then "commit và push đi" (push of branch `avalanche/readme-avalanche-section`).
+- **Change:** `README.md` new section after "Kiến trúc nhanh"; PROJECT_STATUS owner push decision and change note.
+- **Results:** documentation only; no suite affected, none run.

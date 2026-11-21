@@ -762,3 +762,14 @@ runs the freelancer's own refresh every 10 s for payouts in TRANSFER_SUBMITTED, 
 (on-chain transfer check, then the mock partner's fiat status). It sends no transaction, moves no funds and never changes the
 partner. The payout section re-reads an in-progress payout every 10 s and the finance page keeps refreshing while one is in
 progress. JDK 17 reactor (clean): payment 72, marketplace **466** (+1), misa 24; frontend 32 files / **899**, `tsc -b` clean.
+
+## Owner push decision (2026-11-21)
+Owner instruction in session ("commit và push đi"): commit the README Avalanche section and push branch
+`avalanche/readme-avalanche-section` to `origin`. Push of this branch only; `master` is not pushed directly.
+
+## Change note (2026-11-21): README section on how FreelaX uses Avalanche
+Owner request in session. `README.md` gains the section "Vì sao Avalanche và FreelaX tận dụng nó thế nào" (contract custody,
+permissionless release, EIP-712 authorizations, role-separated keys, `finalized`-based confirmation with the Fuji lab-contract
+timings, Continuous Execution handling, Circle USDC pinning, EVM tooling, event logs, environment guards), with the limits stated:
+no speed or cost advantage over Solana is claimed (D1) and the FreelaX escrow is not deployed on Fuji (B2 BLOCKED).
+Documentation only; no code or test change.
