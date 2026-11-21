@@ -51,6 +51,14 @@ public class TaxCertificateRecord extends AbstractEntity<UUID> {
     @Column(precision = 20, scale = 0)
     private BigDecimal taxWithheldVnd;
 
+    /** Withholding scheme (V10, 2026-11-21); null keeps the legacy configured PIT rate. */
+    @Column(length = 40)
+    private String taxScheme;
+
+    /** VAT withheld on behalf of the provider (Decree 117 scheme, simulated); null otherwise. */
+    @Column(precision = 20, scale = 0)
+    private BigDecimal vatWithheldVnd;
+
     @Column(length = 160)
     private String transactionReference;
 

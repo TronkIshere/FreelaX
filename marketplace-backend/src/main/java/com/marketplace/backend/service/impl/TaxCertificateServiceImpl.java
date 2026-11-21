@@ -78,6 +78,8 @@ public class TaxCertificateServiceImpl implements TaxCertificateService {
     WorkContractRepository workContractRepository;
 
     private static final String UNIFIED_REFERENCE = "unified:";
+    /** Avalanche rail (2026-11-21): the record is keyed to the released contract. */
+    public static final String AVALANCHE_RELEASE_REFERENCE = "avalanche-release:";
     private static final BigDecimal UNIFIED_WITHHOLDING_RATE = new BigDecimal("0.10");
 
     @Override
@@ -138,6 +140,33 @@ public class TaxCertificateServiceImpl implements TaxCertificateService {
         if (taxRecord.getMisaCertificateId() != null || taxRecord.getStatus() == TaxCertificateStatus.EXPORT_FAILED)
             return;
         export(taxRecord, job, true);
+    }
+
+    @Override
+    @Transactional
+    public void exportForAvalancheRelease(UUID taxRecordId) {
+        TaxCertificateRecord taxRecord = taxCertificateRecordRepository.findById(taxRecordId)
+                .orElseThrow(() -> new ApplicationException(ErrorCode.TAX_RECORD_NOT_FOUND, taxRecordId));
+        String reference = taxRecord.getTransactionReference();
+        if (reference == null || !reference.startsWith(AVALANCHE_RELEASE_REFERENCE) || !avalancheReleased(reference))
+            throw new ApplicationException(ErrorCode.TAX_RECORD_INVALID_STATUS, "escrow not released");
+        // One automatic attempt; a failed export waits for the participant's explicit retry (same rule as the unified rail).
+        if (taxRecord.getMisaCertificateId() != null || taxRecord.getStatus() == TaxCertificateStatus.EXPORT_FAILED) return;
+        Job job = jobRepository.findById(taxRecord.getJobId())
+                .orElseThrow(() -> new ApplicationException(ErrorCode.JOB_NOT_FOUND, taxRecord.getJobId()));
+        export(taxRecord, job, true);
+    }
+
+    private boolean avalancheReleased(String reference) {
+        try {
+            UUID contractId = UUID.fromString(reference.substring(AVALANCHE_RELEASE_REFERENCE.length()));
+            return workContractRepository.findById(contractId)
+                    .filter(c -> TaxRecordBlockchain.AVALANCHE.equals(TaxRecordBlockchain.label(c.getPaymentNetworkId())))
+                    .map(c -> c.getStatus() == com.marketplace.backend.entity.ContractStatus.COMPLETED)
+                    .orElse(false);
+        } catch (IllegalArgumentException ex) {
+            return false;
+        }
     }
 
     private PaymentFlowStep unifiedStep(UUID flowId, String kind) {
@@ -290,8 +319,12 @@ public class TaxCertificateServiceImpl implements TaxCertificateService {
             return freelancerPayoutRecordRepository.findById(taxRecord.getPayoutRecordId())
                     .map(r -> r.getOffRampStatus() == OffRampStatus.COMPLETED)
                     .orElse(false);
-        // Unified rail: completed means the partner's VND payout statement is confirmed.
         String reference = taxRecord.getTransactionReference();
+        // Avalanche rail (2026-11-21): completed means the escrow was released on chain (contract COMPLETED by the chain record).
+        if (reference != null && reference.startsWith(AVALANCHE_RELEASE_REFERENCE)) {
+            return avalancheReleased(reference);
+        }
+        // Unified rail: completed means the partner's VND payout statement is confirmed.
         if (reference == null || !reference.startsWith(UNIFIED_REFERENCE)) return false;
         try { return unifiedPayoutConfirmed(UUID.fromString(reference.substring(UNIFIED_REFERENCE.length()))); }
         catch (IllegalArgumentException ex) { return false; }
@@ -315,8 +348,11 @@ public class TaxCertificateServiceImpl implements TaxCertificateService {
 
             if (taxRecord.getMisaPayoutTransactionId() == null) {
                 String blockchain = TaxRecordBlockchain.forJob(workContractRepository, job.getId());
-                MisaPayoutTransactionResult payoutTx =
-                        taxRecord.getRateSource() == ExchangeRateSource.LOCKED_PAYOUT_QUOTE
+                MisaPayoutTransactionResult payoutTx = taxRecord.getTaxScheme() != null
+                        ? misaBackendClient.recordPayoutTransaction(taxRecord.getMisaTaxpayerId(),
+                            job.getId(), taxRecord.getAmountUsd(), taxRecord.getUsdToVndRate(),
+                            taxRecord.getTransactionReference(), blockchain, true, taxRecord.getTaxScheme())
+                        : taxRecord.getRateSource() == ExchangeRateSource.LOCKED_PAYOUT_QUOTE
                         ? misaBackendClient.recordPayoutTransaction(taxRecord.getMisaTaxpayerId(),
                             job.getId(), taxRecord.getAmountUsd(), taxRecord.getUsdToVndRate(),
                             taxRecord.getTransactionReference(), blockchain, true)
@@ -441,6 +477,9 @@ public class TaxCertificateServiceImpl implements TaxCertificateService {
         if (result.getTaxWithheld() != null) {
             taxRecord.setTaxWithheldVnd(result.getTaxWithheld().setScale(0, RoundingMode.HALF_UP));
         }
+        if (result.getVatWithheld() != null) {
+            taxRecord.setVatWithheldVnd(result.getVatWithheld().setScale(0, RoundingMode.HALF_UP));
+        }
 
         LocalDateTime now = LocalDateTime.now();
         if (taxRecord.getIssuedAt() == null && ISSUED_STATUSES.contains(taxRecord.getStatus())) {
@@ -502,6 +541,8 @@ public class TaxCertificateServiceImpl implements TaxCertificateService {
                 .rateObservedAt(r.getRateObservedAt())
                 .taxableIncomeVnd(r.getTaxableIncomeVnd())
                 .taxWithheldVnd(r.getTaxWithheldVnd())
+                .taxScheme(r.getTaxScheme())
+                .vatWithheldVnd(r.getVatWithheldVnd())
                 .certificateNumber(r.getCertificateNumber())
                 .certificateSymbol(r.getCertificateSymbol())
                 .lookupCode(r.getLookupCode())

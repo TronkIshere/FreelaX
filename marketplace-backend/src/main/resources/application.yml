@@ -71,6 +71,12 @@ avalanche-gateway:
   network: ${AVALANCHE_GATEWAY_NETWORK:avalanche-local}
   settlement-notifications: ${AVALANCHE_GATEWAY_SETTLEMENT_NOTIFICATIONS:false}
 
+# Owner decision 2026-11-21: when an Avalanche escrow is released, a simulated MISA withholding certificate is created under
+# Decree 117/2025 (platform withholds PIT 2% + VAT 5% on behalf of the provider). false restores the previous behaviour
+# (no certificate on the Avalanche rail). The USDC the freelancer's wallet received is never changed by this.
+avalanche-tax-certificate:
+  enabled: ${AVALANCHE_TAX_CERTIFICATE_ENABLED:true}
+
 # Phase 3 non-custodial Avalanche payout adapter. Default: disabled, no partner -> explicit UNSUPPORTED_RAIL, no fallback.
 # Only 'none' and 'local-mock' (LOCAL_SIMULATION, avalanche-local) exist; no real partner is integrated.
 avalanche-payout:

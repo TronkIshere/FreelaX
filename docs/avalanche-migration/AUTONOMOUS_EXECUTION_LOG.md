@@ -638,3 +638,11 @@ original reasoning. Do not add routine progress entries.
 - **Change:** `misa-backend` `TaxScheme`, `TaxEngineService` default methods, payout/certificate entities, request/response
   DTOs, PDF and XML. Tests: `CertificateRecoveryTest` +2, `PayoutTransactionServiceImplTest` +2.
 - **Results:** misa-backend (JDK 17, clean) 24 / 24 pass.
+
+### L-046: MISA certificate for released Avalanche escrows (2026-11-21)
+- **Authority:** owner decision 2026-11-21 (step 05 option (a), Decree 117).
+- **Change:** `AvalancheTaxCertificatePreparer`, `AvalancheTaxCertificateScheduler`, `TaxCertificateServiceImpl`
+  (`exportForAvalancheRelease`, Avalanche completion check, scheme-aware payout record, VAT from MISA), `MisaBackendClient`
+  (scheme overload, `income.vatWithheld`), `WorkContractRepository` query, V10 migration, config flag. Test:
+  `AvalancheTaxCertificateTest` (4).
+- **Results:** JDK 17 reactor (clean) 72 / 465 / 24.

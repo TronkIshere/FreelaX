@@ -735,3 +735,14 @@ is rejected, absent keeps the legacy behaviour); the certificate withholds PIT 2
 columns `payout_transaction.tax_scheme`, `withholding_certificate.vat_withheld`, created by the existing `ddl-auto=update`);
 the scheme is part of the payout idempotency check and, only when present, of the certificate fingerprint (legacy fingerprints
 unchanged); PDF row 6 and XML carry the VAT. misa tests **24** (+4).
+
+## Change note (2026-11-21): MISA certificate for released Avalanche escrows (Decree 117)
+`marketplace-backend` (additive, Java 17, R11): `AvalancheTaxCertificateScheduler` (flag `avalanche-tax-certificate.enabled`,
+default **true** by the owner decision of 2026-11-21; false restores the previous behaviour) finds COMPLETED Avalanche
+contracts without a tax record; `AvalancheTaxCertificatePreparer` records the escrowed amount, the USD/VND rate (existing
+provider, Solana-rail rounding), the taxable VND, reference `avalanche-release:<contractId>` and scheme
+`VN_DECREE_117_SERVICES`; `TaxCertificateServiceImpl.exportForAvalancheRelease` registers the taxpayer and records the payout
+with the scheme in MISA (one automatic attempt, then the participant's retry, as on the unified rail). Flyway **V10** adds
+nullable `tax_certificate_records.tax_scheme` and `vat_withheld_vnd`; the API exposes both. The freelancer's tax profile
+(identity number, nationality) must be filled, otherwise the export fails and can be retried. JDK 17 reactor (clean): payment
+72, marketplace **465** (+4), misa 24.
