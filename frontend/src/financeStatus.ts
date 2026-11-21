@@ -50,14 +50,15 @@ export function contractFinanceLabel(job: Job, value?: ContractFinance): string 
   return job.status === 'AWAITING_PAYMENT' ? 'Chờ nạp tiền' : 'Nạp tiền và hồ sơ hợp đồng';
 }
 
-export function contractFinanceNeedsRefresh(job: Job, value: ContractFinance): boolean {
+export function contractFinanceNeedsRefresh(job: Job, value: ContractFinance, tax?: TaxRecord | null): boolean {
   if (value.error) return true;
   const cancellation = value.cancellation;
   if (cancellation?.refundStatus === 'SUCCEEDED') return false;
   if (cancellation?.cancellationStatus === 'REFUND_PENDING') return cancellation.refundStatus !== 'FAILED' || cancellation.retryable;
   if (refundOwned(job)) return true;
   if (cancelledContract(job) || cancellation?.cancellationStatus === 'CANCELLED') return false;
-  if (!value.settlement && avalancheReleased(job)) return false;
+  // Avalanche rail (2026-11-21): the MISA certificate (Decree 117) is created by the server shortly after the release.
+  if (!value.settlement && avalancheReleased(job)) return tax !== undefined && !tax?.misaCertificateId && tax?.status !== 'EXPORT_FAILED';
   if (value.settlement || releaseOwned(job)) return settlementNeedsRefresh(value.settlement);
   // Active contracts may receive a proposal or review decision while this page is open.
   return true;

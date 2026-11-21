@@ -646,3 +646,10 @@ original reasoning. Do not add routine progress entries.
   (scheme overload, `income.vatWithheld`), `WorkContractRepository` query, V10 migration, config flag. Test:
   `AvalancheTaxCertificateTest` (4).
 - **Results:** JDK 17 reactor (clean) 72 / 465 / 24.
+
+### L-047: Avalanche finance stages 03 to 05 (2026-11-21)
+- **Authority:** owner decision 2026-11-21.
+- **Change:** `financeSpine.ts` (`contractMoneyStages` with the payout view), `financeStatus.ts` (refresh until the
+  certificate exists), `Finance.tsx` (payout read, VAT on the tax page), `types.ts`. Tests: `ContractFinancial.test.tsx`
+  (stage test rewritten, +2).
+- **Results:** frontend 32 / 898, `tsc -b` clean.

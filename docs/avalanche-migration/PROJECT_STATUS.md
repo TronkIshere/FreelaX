@@ -746,3 +746,11 @@ with the scheme in MISA (one automatic attempt, then the participant's retry, as
 nullable `tax_certificate_records.tax_scheme` and `vat_withheld_vnd`; the API exposes both. The freelancer's tax profile
 (identity number, nationality) must be filled, otherwise the export fails and can be retried. JDK 17 reactor (clean): payment
 72, marketplace **465** (+4), misa 24.
+
+## Change note (2026-11-21): Avalanche finance stages 03 to 05 shown with their real state
+Frontend (owner decision 2026-11-21): on an Avalanche contract, "Xác nhận chuyển tiền trong ví" is done at the on-chain release
+(USDC sent straight to the linked wallet); "Chuyển VND" shows the freelancer's own mock-partner payout request (not requested,
+in progress, paid, failed); "Chứng từ thuế" follows the MISA record and lists taxable revenue, PIT 2% and VAT 5%. Each stage
+has its own explanation (previously one repeated sentence). The finance page keeps refreshing a released contract until its
+certificate exists; the tax record page shows the VAT and a Decree 117 simulation note. Frontend 32 files / **898** tests,
+`tsc -b` clean.

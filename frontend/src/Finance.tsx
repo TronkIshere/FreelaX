@@ -13,9 +13,10 @@ import { Pagination } from './Jobs';
 import { checkoutLabel, clientPaymentLabel, decimal, exportLabel, maskedBank, offRampLabel,
   paymentTerminal, rateSource, safeExplorerUrl, syncableTaxStatuses, usdc, vnd,
   financePath, contractFinanceLabel, contractFinanceNeedsRefresh, contractFinanceTone, financialCopy,
-  settlementMoneyLabel, settlementStageLabel, releaseOwned, avalancheContract, avalancheFunded, avalancheFundedLabel, avalancheReleaseLabel } from './financeStatus';
+  settlementMoneyLabel, settlementStageLabel, releaseOwned, avalancheContract, avalancheFunded, avalancheFundedLabel, avalancheReleased, avalancheReleaseLabel } from './financeStatus';
 import { cancellationLabel, date, fundingLabel, money, refundLabel } from './status';
 import type { ContractFinance } from './financeStatus';
+import type { AvalanchePayoutView } from './avalancheTypes';
 import type { EscrowFundingView, FundingResponse, Job, JobPaymentStatus, Page, PaymentFlowTimeline, TaxRecord, User } from './types';
 import { connectSolanaWallet, signEscrowTransaction } from './escrowWallet';
 import { PaymentJourney, paymentJourneySummary } from './PaymentJourney';
@@ -372,6 +373,7 @@ function ContractEvidence({ initialJob }: { initialJob: Job }) {
   const [taxError, setTaxError] = useState('');
   const [payment, setPayment] = useState<JobPaymentStatus | null>(null);
   const [paymentError, setPaymentError] = useState('');
+  const [payout, setPayout] = useState<AvalanchePayoutView | null>(null);
   const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);
   const [attempt, setAttempt] = useState(0);
@@ -394,8 +396,12 @@ function ContractEvidence({ initialJob }: { initialJob: Job }) {
       const nextPayment = current.checkoutOrderId && (financial.settlement || releaseOwned(current))
         ? await api.paymentStatus(current.id).then(data => ({ data, error: '' }), cause => ({ data: null, error: message(cause) }))
         : { data: null, error: '' };
+      // Avalanche rail (2026-11-21): the freelancer's own VND payout request (mock partner), if any; read-only here.
+      const nextPayout = avalancheReleased(current)
+        ? await api.avalanchePayout(contract.id).catch(() => null) : null;
       if (!active) return;
       setJob(current);
+      setPayout(nextPayout);
       setRecord(previous => ({ ...financial,
         settlement: financial.settlement ?? (financial.error ? previous.settlement : null),
         cancellation: financial.cancellation ?? (financial.error ? previous.cancellation : null) }));
@@ -408,15 +414,15 @@ function ContractEvidence({ initialJob }: { initialJob: Job }) {
     return () => { active = false; };
   }, [initialJob, attempt, tick]);
   useEffect(() => {
-    if (!ready || busy || !contractFinanceNeedsRefresh(job, record)) return;
+    if (!ready || busy || !contractFinanceNeedsRefresh(job, record, tax)) return;
     const refreshVisible = () => { if (document.visibilityState !== 'hidden') setTick(value => value + 1); };
     const timer = window.setTimeout(refreshVisible, 30000);
     document.addEventListener('visibilitychange', refreshVisible);
     return () => { window.clearTimeout(timer); document.removeEventListener('visibilitychange', refreshVisible); };
-  }, [ready, busy, job, record, tick, attempt]);
+  }, [ready, busy, job, record, tax, tick, attempt]);
   const { settlement, cancellation } = record;
   const refreshed = () => setAttempt(value => value + 1);
-  const stages = contractMoneyStages(job, record, funding, tax, fundingError, taxError);
+  const stages = contractMoneyStages(job, record, funding, tax, fundingError, taxError, payout);
   const simulated = !!(settlement?.simulation || cancellation?.simulation || funding?.simulation);
   const technicalFacts = [
     { label: 'Tham chiếu giải ngân', value: settlement?.releaseReference },
@@ -909,7 +915,9 @@ export function TaxRecordDetail() {
     && taxableVnd! - taxVnd! === payoutVnd;
   const oldCertificate = amountsKnown && taxableVnd === jobVnd
     && payoutVnd === jobVnd! - feeVnd! && taxVnd! > 0;
-  const payoutComplete = payment?.offRampStatus === 'COMPLETED' || unifiedPaid;
+  // Decree 117 records exist only for an Avalanche escrow already released on chain (2026-11-21).
+  const decree117 = record.taxScheme === 'VN_DECREE_117_SERVICES';
+  const payoutComplete = payment?.offRampStatus === 'COMPLETED' || unifiedPaid || decree117;
   const canSync = payoutComplete && !!record.misaCertificateId && syncableTaxStatuses.has(record.status);
   const canRetry = payoutComplete && record.status === 'EXPORT_FAILED';
   return <article className="tax-page tax-case-page">
@@ -923,7 +931,9 @@ export function TaxRecordDetail() {
       <TaxStatus record={record} /></div></div>
       {payment?.simulation === true && <p className="simulation-mark">Mô phỏng · luồng chi trả; chứng từ phản ánh dữ liệu hệ thống.</p>}
       <div className="tax-amounts"><div><span>Thu nhập chịu thuế</span><strong>{vnd(record.taxableIncomeVnd)}</strong></div>
-        <div><span>Thuế đã khấu trừ</span><strong>{vnd(record.taxWithheldVnd)}</strong></div></div>
+        <div><span>{decree117 ? 'TNCN đã khấu trừ (2%)' : 'Thuế đã khấu trừ'}</span><strong>{vnd(record.taxWithheldVnd)}</strong></div>
+        {decree117 && <div><span>GTGT khấu trừ thay (5%)</span><strong>{vnd(record.vatWithheldVnd)}</strong></div>}</div>
+      {decree117 && <p className="simulation-mark" data-testid="decree-117-note">Mô phỏng · ký quỹ Avalanche: sàn khấu trừ thay theo Nghị định 117/2025 (TNCN 2%, GTGT 5% trên doanh thu quy đổi VND). USDC Freelancer đã nhận trong ví không bị trừ.</p>}
     </section>
     <div className="tax-case-layout"><section className="tax-fact-ledger" aria-label="Số liệu hồ sơ thuế"><h2>Tiền công, phí và thuế</h2>
       {amountsMatch && <p>Giá trị công việc được đổi sang VND, trừ phí dịch vụ rồi mới tính thuế. Số thực nhận là phần còn lại sau cả hai khoản trừ.</p>}

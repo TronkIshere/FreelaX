@@ -9,7 +9,8 @@ import { JobDetail } from './Workflow';
 import { attemptScope, saveAttempt } from './workflowContracts';
 import { contractFinanceLabel, contractFinanceNeedsRefresh, contractFinanceTone } from './financeStatus';
 import { contractMoneyStages, resolveMoneySpine } from './financeSpine';
-import type { ContractCancellationRecord, ContractSettlement, ContractSubmission, Job, User } from './types';
+import type { ContractCancellationRecord, ContractSettlement, ContractSubmission, Job, TaxRecord, User } from './types';
+import type { AvalanchePayoutView } from './avalancheTypes';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 const client: User = { id: 'client', displayName: 'Client', email: 'c@example.test', userType: 'CLIENT' };
@@ -90,14 +91,40 @@ describe('Avalanche rail contracts (B7 follow-up 2026-11-20)', () => {
     expect(contractFinanceLabel(onAvalanche(releasing), empty)).toBe('Chờ giải ngân trên chuỗi');
     expect(contractFinanceLabel(completed, empty)).toBe('Chưa có bản ghi giải ngân');
   });
-  it('builds the finance stages from the chain: funded and released, legacy payout stages not applicable', () => {
-    const stages = contractMoneyStages(onAvalanche(completed), { settlement: null, cancellation: null, error: '' }, null, null);
+  it('builds the finance stages from the chain: wallet transfer, optional VND payout and the Decree 117 certificate (2026-11-21)', () => {
+    const empty = { settlement: null, cancellation: null, error: '' };
+    const stages = contractMoneyStages(onAvalanche(completed), empty, null, null);
     expect(stages.map(stage => [stage.key, stage.tone, stage.applicable !== false])).toEqual([
-      ['funding', 'done', true], ['release', 'done', true], ['onchain', 'pending', false], ['vnd', 'pending', false], ['tax', 'pending', false]]);
+      ['funding', 'done', true], ['release', 'done', true], ['onchain', 'done', true], ['vnd', 'pending', true], ['tax', 'active', true]]);
     expect(stages[0].status).toBe('Đã nạp ký quỹ trên chuỗi (mô phỏng)');
-    expect(resolveMoneySpine(stages).resolved).toBe(true);
-    const legacy = contractMoneyStages(completed, { settlement: null, cancellation: null, error: '' }, null, null);
+    expect(stages[2].status).toBe('USDC đã vào ví Freelancer (mô phỏng)');
+    expect(stages[3].status).toBe('Freelancer chưa yêu cầu chi trả VND');
+    expect(stages[4].status).toBe('Đang lập chứng từ MISA (mô phỏng)');
+    expect(new Set(stages.slice(2).map(stage => stage.note)).size).toBe(3); // each stage explains itself
+    expect(stages[4].note).toContain('Nghị định 117/2025');
+    expect(resolveMoneySpine(stages).resolved).toBe(false);
+
+    const tax = { status: 'ACCEPTED', statusLabel: 'Đã được chấp nhận', taxableIncomeVnd: 7500000, taxWithheldVnd: 150000,
+      vatWithheldVnd: 375000, taxScheme: 'VN_DECREE_117_SERVICES' } as unknown as TaxRecord;
+    const payout = { status: 'FIAT_PAYOUT_CONFIRMED', fiatPayoutConfirmed: true, fiatReference: 'MOCK-1' } as unknown as AvalanchePayoutView;
+    const done = contractMoneyStages(onAvalanche(completed), empty, null, tax, '', '', payout);
+    expect(done.map(stage => stage.tone)).toEqual(['done', 'done', 'done', 'done', 'done']);
+    expect(done[4].facts.map(fact => fact.label + ' ' + fact.value).join(' | ')).toMatch(/TNCN 2%.*150.*GTGT 5%.*375/);
+    expect(resolveMoneySpine(done).resolved).toBe(true);
+
+    const legacy = contractMoneyStages(completed, empty, null, null);
     expect(legacy.every(stage => stage.applicable !== false)).toBe(true);
+  });
+  it('waits for the on-chain release before the wallet, VND and certificate stages start', () => {
+    const stages = contractMoneyStages(onAvalanche(releasing), { settlement: null, cancellation: null, error: '' }, null, null);
+    expect(stages.slice(2).map(stage => [stage.tone, stage.status])).toEqual([
+      ['pending', 'Chờ giải ngân trên chuỗi'], ['pending', 'Chờ giải ngân trên chuỗi'], ['pending', 'Chờ giải ngân trên chuỗi']]);
+  });
+  it('keeps refreshing a released Avalanche contract until its certificate exists', () => {
+    const empty = { settlement: null, cancellation: null, error: '' };
+    expect(contractFinanceNeedsRefresh(onAvalanche(completed), empty, null)).toBe(true);
+    expect(contractFinanceNeedsRefresh(onAvalanche(completed), empty, { misaCertificateId: 'c', status: 'DRAFT' } as unknown as TaxRecord)).toBe(false);
+    expect(contractFinanceNeedsRefresh(onAvalanche(completed), empty, { misaCertificateId: null, status: 'EXPORT_FAILED' } as unknown as TaxRecord)).toBe(false);
   });
   it('keeps the legacy sections for contracts that are not on the Avalanche rail', async () => {
     vi.mocked(api.contractSubmissions).mockResolvedValue([approved]);
