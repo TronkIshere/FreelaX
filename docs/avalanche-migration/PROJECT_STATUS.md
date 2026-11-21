@@ -787,3 +787,7 @@ email is not listed. Funding commands for a MetaMask account on Anvil are taken 
 ## Owner push decision (2026-11-21, second)
 Owner instruction in session ("commit n push"): push branch `avalanche/readme-judges` (README restructure, `186d39f`) to
 `origin`. Push of this branch only; `master` is not pushed directly.
+
+## Owner push decision (2026-11-21, third)
+Owner instruction in session ("tôi cần vào thẳng master cơ"): fast-forward `master` to branch `avalanche/readme-judges`
+(README changes and their status notes) and push `master` to `origin`, without a pull request. Documentation only.
