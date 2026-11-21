@@ -1,5 +1,7 @@
 package com.misa.backend.service.impl;
 
+import com.misa.backend.service.TaxScheme;
+
 import com.misa.backend.dto.request.misa.CreatePayoutTransactionRequest;
 import com.misa.backend.dto.response.misa.PayoutTransactionResponse;
 import com.misa.backend.entity.PayoutTransaction;
@@ -29,6 +31,12 @@ public class PayoutTransactionServiceImpl implements PayoutTransactionService {
     @Override
     @Transactional
     public PayoutTransactionResponse record(UUID taxpayerId, CreatePayoutTransactionRequest request) {
+        String scheme;
+        try {
+            scheme = TaxScheme.normalize(request.getTaxScheme());
+        } catch (IllegalArgumentException ex) {
+            throw new ApplicationException(ErrorCode.INVALID_DATA);
+        }
         PayoutTransaction existing = payoutTransactionRepository
                 .findByPlatformPayoutId(request.getPlatformPayoutId()).orElse(null);
         if (existing != null) {
@@ -38,7 +46,8 @@ public class PayoutTransactionServiceImpl implements PayoutTransactionService {
                     || !Objects.equals(existing.getTransactionHash(), request.getTransactionHash())
                     || !Objects.equals(existing.getBlockchain(), request.getBlockchain())
                     || existing.getAmountUsdc().compareTo(request.getAmountUsdc()) != 0
-                    || existing.getExchangeRate().compareTo(request.getExchangeRate()) != 0) {
+                    || existing.getExchangeRate().compareTo(request.getExchangeRate()) != 0
+                    || !Objects.equals(existing.getTaxScheme(), scheme)) {
                 throw new ApplicationException(ErrorCode.DATA_ALREADY_EXISTS, request.getPlatformPayoutId());
             }
             return toResponse(existing);
@@ -51,6 +60,7 @@ public class PayoutTransactionServiceImpl implements PayoutTransactionService {
         transaction.setPlatformPayoutId(request.getPlatformPayoutId());
         transaction.setTaxpayer(taxpayer);
         transaction.setBlockchain(request.getBlockchain());
+        transaction.setTaxScheme(scheme);
         transaction.setTransactionHash(request.getTransactionHash());
         transaction.setDescription(request.getDescription());
         transaction.setAmountUsdc(request.getAmountUsdc());

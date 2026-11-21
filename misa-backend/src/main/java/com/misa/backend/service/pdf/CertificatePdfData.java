@@ -39,5 +39,7 @@ public record CertificatePdfData(
         LocalDateTime submittedAt,
         String taxAuthorityReference,
         LocalDateTime cancelledAt,
-        String cancelReason
+        String cancelReason,
+        /** Decree 117 scheme only (2026-11-21, simulated); null on legacy certificates. */
+        BigDecimal vatWithheld
 ) {}

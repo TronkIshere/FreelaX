@@ -23,6 +23,8 @@ public class CreatePayoutTransactionRequest {
     String transactionHash;
 
     String blockchain = "solana";
+    /** Optional withholding scheme (2026-11-21): absent keeps the legacy PIT rate; see TaxScheme. */
+    String taxScheme;
 
     String description;
 

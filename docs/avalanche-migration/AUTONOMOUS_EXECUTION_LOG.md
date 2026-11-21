@@ -632,3 +632,9 @@ original reasoning. Do not add routine progress entries.
   (+1 test; the extension-request test now uses the wallet path).
 - **Results:** frontend 32 / 896, `tsc -b` clean. Probe on the dev stack (2026-11-20): party `execute` of `fund` REVERTED
   with linked wallets, as explained above.
+
+### L-045: MISA Decree 117 withholding scheme (2026-11-21)
+- **Authority:** owner decision 2026-11-21 (PROJECT_STATUS "Owner decision (2026-11-21)"): step 05 option (a), PIT 2% + VAT 5%.
+- **Change:** `misa-backend` `TaxScheme`, `TaxEngineService` default methods, payout/certificate entities, request/response
+  DTOs, PDF and XML. Tests: `CertificateRecoveryTest` +2, `PayoutTransactionServiceImplTest` +2.
+- **Results:** misa-backend (JDK 17, clean) 24 / 24 pass.

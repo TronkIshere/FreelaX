@@ -170,6 +170,26 @@ class CertificateRecoveryTest {
         verifyNoInteractions(provider);
     }
 
+    @Test void decree117PayoutWithholdsPitTwoPercentAndVatFivePercent() {
+        when(taxEngine.calculateTaxWithheld(any(), any())).thenCallRealMethod();
+        when(taxEngine.calculateVatWithheld(any(), any())).thenCallRealMethod();
+        tx.executeWithoutResult(status -> { var p = payouts.findById(payout.getId()).orElseThrow();
+            p.setTaxScheme(TaxScheme.DECREE_117_SERVICES); payouts.save(p); });
+        var c = service.create(request(payout.getId(), "decree-117"));
+        var saved = certificates.findById(c.getId()).orElseThrow();
+        assertThat(saved.getTaxWithheld()).isEqualByComparingTo("50000");   // 2% of 2,500,000
+        assertThat(saved.getVatWithheld()).isEqualByComparingTo("125000");  // 5% of 2,500,000
+        assertThat(c.getIncome().getTaxScheme()).isEqualTo(TaxScheme.DECREE_117_SERVICES);
+    }
+
+    @Test void legacyPayoutKeepsTheConfiguredRateAndNoVat() {
+        var c = service.create(request(payout.getId(), "legacy"));
+        var saved = certificates.findById(c.getId()).orElseThrow();
+        assertThat(saved.getTaxWithheld()).isEqualByComparingTo("250000");
+        assertThat(saved.getVatWithheld()).isNull();
+        assertThat(c.getIncome().getTaxScheme()).isNull();
+    }
+
     private CreateWithholdingCertificateRequest request(UUID id, String key) {
         var r = new CreateWithholdingCertificateRequest(); r.setPayoutTransactionId(id); r.setIdempotencyKey(key); return r;
     }

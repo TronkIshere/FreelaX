@@ -715,3 +715,23 @@ linked wallets and the escrow checks the sender (`fund`: `msg.sender == client`)
 revert. The Avalanche panel now offers the simulated path only where it works: the arbiter's resolution (arbiter signer) and a
 release by someone other than the client after the review window (relayer; permissionless on chain). Frontend only. Frontend
 32 files / 896 tests, `tsc -b` clean.
+
+## Owner decision (2026-11-21, in session, authoritative): Avalanche finance stages and Decree 117 certificate
+Asked in session why the "Xác nhận chuyển tiền trong ví", "Chuyển VND" and "Chứng từ thuế" stages were "Không áp dụng" on
+Avalanche contracts, the owner decided (answers "1/ bước 5a, 2/ GTGT 5% + TNCN 2% (sàn khấu trừ thay theo Nghị định 117/2025)"):
+1. All three stages are shown on Avalanche contracts with their real state: the wallet transfer is the on-chain release, the VND
+   payout is the freelancer's own request through the mock partner, and the certificate is created.
+2. **Step 05 option (a):** when an Avalanche escrow is released, a **simulated MISA withholding certificate** is created. This
+   **supersedes** the part of the payout decision of 2026-11-05 that said "no MISA record for the Avalanche rail".
+3. **Tax computation:** the platform withholds on behalf of the individual provider under Decree 117/2025/ND-CP: **PIT 2% +
+   VAT 5%** of the service revenue (escrowed amount converted to VND with the existing USD/VND rate provider and Solana-rail
+   rounding). The legacy rails keep the configured PIT rate (10%) unchanged.
+Simulation only: no real tax filing; the USDC the freelancer received on chain is never reduced. Engineering note, not legal
+advice: the Decree 117 rates are the owner's choice for the demo; a real deployment needs a tax adviser's confirmation.
+
+## Change note (2026-11-21): MISA Decree 117 withholding scheme
+`misa-backend` (additive, Java 17, R11): optional `taxScheme` on a payout transaction (`VN_DECREE_117_SERVICES`; anything else
+is rejected, absent keeps the legacy behaviour); the certificate withholds PIT 2% and records `vatWithheld` 5% (new nullable
+columns `payout_transaction.tax_scheme`, `withholding_certificate.vat_withheld`, created by the existing `ddl-auto=update`);
+the scheme is part of the payout idempotency check and, only when present, of the certificate fingerprint (legacy fingerprints
+unchanged); PDF row 6 and XML carry the VAT. misa tests **24** (+4).

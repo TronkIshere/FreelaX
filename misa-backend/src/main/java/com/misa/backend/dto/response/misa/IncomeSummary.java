@@ -13,5 +13,8 @@ import java.math.BigDecimal;
 public class IncomeSummary {
     BigDecimal taxableIncome;
     BigDecimal taxWithheld;
+    /** Decree 117 scheme only (2026-11-21, simulated); null otherwise. */
+    BigDecimal vatWithheld;
+    String taxScheme;
     String currency;
 }
